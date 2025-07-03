@@ -1,0 +1,6 @@
+google-generativeai
+voyageai
+faiss-cpu
+numpy
+python-dotenv
+tqdm

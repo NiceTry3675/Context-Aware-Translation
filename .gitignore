@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+venv/
+.venv/
+
+# Environment variables
+.env
+
+# IDE / Editor specific
+.vscode/
+.idea/
+
+# Archives
+_archive/
+
+# Translation output & logs
+translated_novel/
+debug_prompts_*.txt
+context_log_*.txt
+
+# Vector DB files (if re-enabled)
+vector_db/
