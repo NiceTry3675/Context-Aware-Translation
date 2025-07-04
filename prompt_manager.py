@@ -1,32 +1,54 @@
 class PromptManager:
+    # New, simplified prompts for a multi-step style guide generation
+    DETERMINE_NARRATIVE_VOICE = """
+You are a literary analyst. Read the following text and determine the primary narrative voice.
+Your answer MUST be one of the following: '1st-person' or '3rd-person'.
+Do not provide any other explanation or text.
+
+**Sample Text:**
+---
+{sample_text}
+---
+
+**Narrative Voice:**
+"""
+
+    DETERMINE_SPEECH_LEVEL = """
+You are a lead Korean translator. The narrative voice of the novel is **{narrative_voice}**.
+Based on the sample text below, choose the single most appropriate Korean speech level for the main narration.
+Your choice MUST be one of the following: '해라체 (haerache)', '해요체 (haeyoche)', or '하십시오체 (hasipsioche)'.
+Provide only the chosen level and nothing else.
+
+**Sample Text:**
+---
+{sample_text}
+---
+
+**Recommended Speech Level:**
+"""
+
     # Prompts for dynamic_config_builder.py
     EXTRACT_KEY_TERMS = """
-Your task is to act as a data extractor for a literary translation project. From the text segment below, identify and extract key terms that are crucial for maintaining consistency.
+Your task is to act as a data extractor. From the text segment below, identify and extract key terms crucial for consistency.
 
 **Focus on:**
-- Proper Nouns: Names of people, specific locations, or organizations (e.g., "Gregor Samsa", "the Ministry").
-- Unique Concepts or Objects: Items or ideas central to the plot or setting (e.g., "the Ungeziefer", "the golden apple").
-- Important Recurring Roles: Titles or roles that appear frequently (e.g., "the chief clerk", "the boarder").
+- Proper Nouns (e.g., "Gregor Samsa").
+- Unique Concepts or Objects (e.g., "the Ungeziefer").
+- Important Recurring Roles (e.g., "the chief clerk").
 
-**Exclude:**
-- Common, non-specific nouns (e.g., "bed", "door", "train").
-- Temporary or generic characters or objects.
-
-Do not translate or explain the terms. Provide a comma-separated list.
+**Exclude:** Common nouns.
+Provide a comma-separated list.
 
 **Text Segment to Analyze:**
 ---
 {segment_text}
 ---
-
 **Comma-separated list of key terms:**
 """
 
     TRANSLATE_KEY_TERMS = """
-You are the lead translator creating a definitive glossary for your team. For the following key terms, provide a single, contextually appropriate Korean translation that will be used consistently throughout the novel.
-
-The format MUST be a simple list, with each term on a new line:
-`Key Term: Korean Translation`
+You are creating a glossary. Provide a single, contextually appropriate Korean translation for each key term.
+The format MUST be: `Key Term: Korean Translation`
 
 **Key Terms to Translate:**
 {key_terms}
@@ -35,62 +57,53 @@ The format MUST be a simple list, with each term on a new line:
 """
 
     ANALYZE_STYLE_AND_TONE = """
-You are a literary analyst providing a style guide for a translator. Analyze the text segment below and provide brief, actionable guidelines for the Korean translation.
+You are a literary analyst. The core narrative voice for this book is **{core_narrative_voice}**.
+Your task is to identify ONLY deviations or specific details for the segment below.
+
+**DO NOT comment on the base narrative style.**
 
 **Text Segment:**
 ---
 {segment_text}
 ---
 
-**Translation Guidelines:**
-- **Overall Tone & Mood:** (Describe the feeling of the text. E.g., "Detached and observational, creating a sense of unease," or "Fast-paced and anxious.")
-- **Sentence Structure:** (Suggest a Korean sentence style. E.g., "Use longer, descriptive sentences (문어체) to match the author's prose," or "Employ short, simple sentences for clarity.")
-- **Vocabulary:** (Suggest word choice. E.g., "Prefer formal, slightly archaic vocabulary," or "Use modern, everyday language.")
-- **Dialogue Style (if any):**
-  - **[Character Name]'s Speech:** (Describe their manner of speaking and suggest a Korean speech level. E.g., "Speaks in short, panicked phrases. Use a polite but anxious 해요체.")
+**Analysis Output (provide only if there are specific deviations):**
+- **Tone/Mood Shift:** (e.g., "The tone becomes more frantic and panicked here.")
+- **Specific Character Dialogue:**
+  - **[Character Name]:** (Describe their speech style, e.g., "Speaks in short, clipped sentences. Use a blunt, informal speech level.")
+- **Literary Devices:** (e.g., "Contains a long, internal monologue. Maintain the established core voice.")
 """
 
     # Prompt for prompt_builder.py
     MAIN_TRANSLATION = """
-You are a master translator entrusted with the Korean translation of a critically acclaimed English novel. Your goal is to create a translation that is not only accurate but also preserves the unique literary voice of the original author.
+You are a master translator. Your work must be precise and absolutely consistent.
 
 **TRANSLATION PROTOCOL:**
-You must follow this protocol in a hierarchical manner. Adherence to this is critical.
 
----
-### **1. Glossary Terms (Mandatory)**
-You MUST use these exact translations for the following key terms. This is non-negotiable for project consistency.
+**RULE 1 (ABSOLUTE & NON-NEGOTIABLE): Core Narrative Voice**
+The established narrative voice for this entire novel is **{core_narrative_voice}**. All narration MUST strictly adhere to this style. This rule overrides all other suggestions or contextual temptations. For example, if the core voice is '해라체', every narrative sentence must end accordingly (e.g., -다, -까, -라).
+
+**RULE 2: Glossary Terms**
+You MUST use these exact translations for the following terms:
 {glossary_terms}
 
----
-### **2. Dynamic Style Guide (Mandatory)**
-You MUST adopt the specific style and tone described below for this segment.
+**RULE 3: Segment-Specific Style**
+Follow these dynamic guidelines for this segment ONLY:
 {dynamic_guidelines}
 
----
-### **3. Global Style Guide (Reference)**
-This is the general style for the entire novel. Use it as a baseline.
-{style_guide}
+**RULE 4: English Context**
+Use the previous English sentence for context, but NOT for style.
+- **Previous English Sentence:** {prev_segment_en}
 
 ---
-### **4. Immediate Context (Flow and Cohesion)**
-Ensure your translation flows seamlessly from the previously translated sentence.
-- **Previous English Sentence (for context):** {prev_segment_en}
-- **Previous Korean Translation (your starting point):** {prev_segment_ko}
-
----
-### **5. Source Text to Translate**
-This is the segment you need to translate now.
+**Source Text to Translate:**
 {source_segment}
-
 ---
+
 **YOUR TASK:**
-
-**Step 1: Pre-translation Analysis (Internal Monologue)**
-First, briefly explain how you will apply the protocol to the source text. For example: "The source text contains the term 'Chief Clerk,' which I must translate as '사무장'. The tone is observational, so I will use a formal, descriptive 문어체. The previous sentence ended in -다, so I will start this one accordingly."
-
-**Step 2: Final Korean Translation**
-Now, provide the final, polished Korean translation of the source text.
+1.  **Pre-translation Analysis:** State the core voice and how you will apply it.
+2.  **Final Korean Translation:** Provide the final, polished translation.
+3.  **Final Check:** Before outputting, verify that every narrative sentence strictly follows RULE 1.
 
 **[Pre-translation Analysis]:**
 <Your brief analysis here>

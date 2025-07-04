@@ -1,4 +1,5 @@
 import re
+import os
 from tqdm import tqdm
 from gemini_model import GeminiModel
 from prompt_builder import PromptBuilder
@@ -78,9 +79,15 @@ class TranslationEngine:
         Translates all segments in a given TranslationJob.
         """
         style_guide = config.get('style_guide', {})
+        core_narrative_voice = style_guide.get("core_narrative_voice", "해라체 (haerache)") # Fallback
         
-        prompt_log_filename = f"debug_prompts_{job.base_filename}.txt"
-        context_log_filename = f"context_log_{job.base_filename}.txt"
+        # Create directories for logs if they don't exist
+        os.makedirs('context_log', exist_ok=True)
+        os.makedirs('debug_prompts', exist_ok=True)
+
+        prompt_log_filename = os.path.join('debug_prompts', f"debug_prompts_{job.base_filename}.txt")
+        context_log_filename = os.path.join('context_log', f"context_log_{job.base_filename}.txt")
+        
         with open(prompt_log_filename, 'w', encoding='utf-8') as f:
             f.write(f"# PROMPT LOG FOR: {job.base_filename}\n\n")
         with open(context_log_filename, 'w', encoding='utf-8') as f:
@@ -89,10 +96,15 @@ class TranslationEngine:
         for i, segment_content in enumerate(tqdm(job.segments, desc="Translating Segments")):
             segment_index = i + 1
             print(f"\n\n--- Starting processing for Segment {segment_index}/{len(job.segments)} ---")
-            print(f"Segment starts with: '{segment_content[:70].strip()}...'
-")
+            print(f"Segment starts with: '{segment_content[:70].strip()}...'")
 
-            guidelines = self.dyn_config_builder.generate_guidelines(segment_content)
+            updated_glossary, prompt_guidelines = self.dyn_config_builder.generate_guidelines(
+                self.gemini_api,
+                segment_content,
+                core_narrative_voice,
+                job.glossary
+            )
+            job.glossary = updated_glossary
             
             immediate_context_en = get_segment_ending(job.get_previous_segment(i), max_chars=1500)
             immediate_context_ko = get_segment_ending(job.get_previous_translation(i), max_chars=500)
@@ -100,21 +112,20 @@ class TranslationEngine:
             # Build the final prompt using the hierarchical guide system
             prompt = self.prompt_builder.build_translation_prompt(
                 style_guide=style_guide,
-                glossary_terms=guidelines['glossary_terms'],
-                style_analysis=guidelines['style_analysis'],
+                core_narrative_voice=core_narrative_voice,
+                glossary_terms=prompt_guidelines['glossary_terms'],
+                style_analysis=prompt_guidelines['style_analysis'],
                 source_segment=segment_content,
-                prev_segment_en=immediate_context_en,
-                prev_segment_ko=immediate_context_ko
+                prev_segment_en=immediate_context_en
             )
 
             # Log the context used for debugging and review
             dynamic_guidelines_log = (
-                f"Key Term Translations:
-{guidelines['glossary_terms']}
+                f"""Key Term Translations:
+{prompt_guidelines['glossary_terms']}
 
-"
-                f"Style and Tone Analysis:
-{guidelines['style_analysis']}"
+Style and Tone Analysis:
+{prompt_guidelines['style_analysis']}"""
             )
             self._write_context_log(context_log_filename, segment_index, {
                 "static_rules": self._prepare_static_rules(config),
@@ -124,9 +135,7 @@ class TranslationEngine:
             })
 
             with open(prompt_log_filename, 'a', encoding='utf-8') as f:
-                f.write(f"--- PROMPT FOR SEGMENT {segment_index} ---
-
-")
+                f.write(f"--- PROMPT FOR SEGMENT {segment_index} ---\n\n")
                 f.write(prompt)
                 f.write("\n\n" + "="*50 + "\n\n")
 

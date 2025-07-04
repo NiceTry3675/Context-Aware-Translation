@@ -1,0 +1,25 @@
+{
+  "base_style": {
+    "narration_voice": "1st-person protagonist",
+    "overall_tone": "Colloquial, introspective, slightly cynical, observational, matter-of-fact.",
+    "default_speech_level": "문어체 (formal, literary)"
+  },
+  "character_profiles": {
+    "Narrator (Husband)": {
+      "description": "The protagonist of the story. He is observational, somewhat judgmental, and often uncomfortable with social situations. He is prone to internal monologue and speculation.",
+      "default_speech_style": "해요체 (polite, informal) when speaking to his wife, but often reverts to more direct or slightly awkward phrasing. His internal thoughts are more colloquial."
+    },
+    "Wife": {
+      "description": "The narrator's wife. She is more open and empathetic than the narrator, but also capable of bluntness and frustration. She acts as a bridge between the narrator and the blind man.",
+      "default_speech_style": "해요체 (polite, informal) with occasional use of 반말 (banmal) when expressing strong emotions or exasperation towards the narrator."
+    },
+    "Blind Man (Robert)": {
+      "description": "An old friend of the wife's. He is portrayed as generally good-natured and talkative, with a booming voice. He navigates the world with a certain confidence, despite his blindness.",
+      "default_speech_style": "해요체 (polite, informal) with occasional use of more formal or even slightly theatrical phrasing. His speech is characterized by its volume and assertiveness."
+    },
+    "Beulah": {
+      "description": "The deceased wife of the blind man. She is only described through the narrator's (and indirectly, the wife's) recollections. She is presented as someone who desired a traditional life and wedding, but faced hardship.",
+      "default_speech_style": "Not applicable, as she does not speak in the provided text."
+    }
+  }
+}

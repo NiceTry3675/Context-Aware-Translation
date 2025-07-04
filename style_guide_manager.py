@@ -2,10 +2,12 @@ import os
 import json
 import re
 from gemini_model import GeminiModel
+from prompt_manager import PromptManager
 
 class StyleGuideManager:
     """
-    Manages the creation, loading, and retrieval of novel-specific style guides.
+    Manages the creation, loading, and retrieval of novel-specific style guides,
+    now with a primary focus on defining a consistent core narrative voice.
     """
     def __init__(self, gemini_model: GeminiModel):
         self.model = gemini_model
@@ -30,28 +32,48 @@ class StyleGuideManager:
 
     def _generate_and_save_guide(self, novel_filepath: str, guide_path: str) -> dict:
         """
-        Generates a style guide by analyzing the beginning of a novel,
-        saves it as a JSON file, and returns the guide.
+        Generates a style guide using a robust, multi-step process.
         """
         try:
+            # Ensure UTF-8 is used for reading the novel
             with open(novel_filepath, 'r', encoding='utf-8') as f:
-                # Analyze a substantial chunk of the beginning for accurate style detection
-                novel_intro_text = f.read(20000)
+                sample_text = f.read(8000)
 
-            master_prompt = self._build_master_prompt(novel_intro_text)
+            # Step 1: Determine the narrative voice
+            print("Step 1: Determining narrative voice...")
+            voice_prompt = PromptManager.DETERMINE_NARRATIVE_VOICE.format(sample_text=sample_text)
+            narrative_voice = self.model.generate_text(voice_prompt).strip()
+            if "1st-person" not in narrative_voice and "3rd-person" not in narrative_voice:
+                raise ValueError(f"Failed to get a valid narrative voice. Got: {narrative_voice}")
+            print(f"Determined voice: {narrative_voice}")
+
+            # Step 2: Determine the speech level
+            print("Step 2: Determining speech level...")
+            speech_prompt = PromptManager.DETERMINE_SPEECH_LEVEL.format(
+                narrative_voice=narrative_voice,
+                sample_text=sample_text
+            )
+            # The response from the model is already a string, no need to decode
+            speech_level = self.model.generate_text(speech_prompt).strip()
             
-            print("Generating style guide with AI. This may take a moment...")
-            response_text = self.model.generate_text(master_prompt)
+            # Validate the response more strictly
+            valid_levels = ['해라체', '해요체', '하십시오체']
+            # Extract the Korean part only
+            match = re.search(r'([가-힣]+체)', speech_level)
+            if not match or match.group(1) not in valid_levels:
+                 raise ValueError(f"Failed to get a valid speech level. Got: {speech_level}")
             
-            # Extract the JSON part from the response
-            json_match = re.search(r"""```json
-({.*?})
-```""", response_text, re.DOTALL)
-            if not json_match:
-                raise ValueError("AI response did not contain a valid JSON block.")
+            clean_speech_level = match.group(1)
+            print(f"Determined speech level: {clean_speech_level}")
 
-            guide_data = json.loads(json_match.group(1))
+            # Step 3: Programmatically build the guide
+            guide_data = {
+                "narrative_voice": narrative_voice,
+                "core_narrative_voice": clean_speech_level,
+                "reasoning": "Style guide generated programmatically for robustness."
+            }
 
+            # Ensure UTF-8 is used for writing the JSON file
             with open(guide_path, 'w', encoding='utf-8') as f:
                 json.dump(guide_data, f, ensure_ascii=False, indent=2)
             
@@ -63,61 +85,10 @@ class StyleGuideManager:
             print("Falling back to a default style guide.")
             return self._get_default_guide()
 
-    def _build_master_prompt(self, novel_text: str) -> str:
-        """Builds the master prompt for the AI to generate the style guide."""
-        return f"""
-You are a distinguished literary critic and translation strategist. Your task is to analyze the provided introduction of a novel and generate a comprehensive 'Style Guide' in JSON format for its Korean translation.
-
-This guide will establish the foundational rules for the translation project.
-
-**Novel Introduction to Analyze:**
----
-{novel_text}
----
-
-**Your Task:**
-Based on the text, generate a JSON object with the following structure.
-
-```json
-{{
-  "base_style": {{
-    "narration_voice": "Describe the narrator's perspective (e.g., '1st-person protagonist', '3rd-person omniscient').",
-    "overall_tone": "Describe the overall tone and style in a few keywords (e.g., 'Cynical, colloquial, stream-of-consciousness').",
-    "default_speech_level": "Specify the default Korean speech level for narration (e.g., '해체 (banmal)', '문어체 (formal, literary)')."
-  }},
-  "character_profiles": {{
-    "[Character Name]": {{
-      "description": "A brief description of the character's role and personality.",
-      "default_speech_style": "Recommend a default Korean speech style (e.g., '해요체 (polite, informal)', '하게체 (authoritative but familiar)')."
-    }},
-    "[Another Character Name]": {{
-      "description": "...",
-      "default_speech_style": "..."
-    }}
-  }}
-}}
-```
-
-**Instructions:**
-1.  Identify the main narrator and key characters from the text.
-2.  Analyze their personalities, relationships, and speaking styles.
-3.  Fill in the JSON structure with your expert analysis.
-4.  **Crucially, output ONLY the JSON object enclosed in ```json ... ```.** Do not include any other text or explanation.
-"""
-
     def _get_default_guide(self) -> dict:
         """Returns a generic, default style guide."""
-        default_guide = {
-            "base_style": {
-                "narration_voice": "3rd-person",
-                "overall_tone": "Neutral, standard literary",
-                "default_speech_level": "문어체 (formal, literary)"
-            },
-            "character_profiles": {}
+        return {
+            "narrative_voice": "1st-person",
+            "core_narrative_voice": "해라체",
+            "reasoning": "Default fallback due to an error during generation."
         }
-        # Save a default file to prevent re-generation on every run for this novel
-        # The filename will be based on the novel that failed.
-        # This part is tricky as we don't have the novel name here.
-        # For simplicity, we'll just return the dict. A more robust solution
-        # might save a 'failed_guides.log' or similar.
-        return default_guide

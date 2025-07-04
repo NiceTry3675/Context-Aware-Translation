@@ -12,13 +12,9 @@ def load_config():
     if not gemini_api_key:
         raise ValueError("API key for Gemini must be set in .env file.")
 
-    glossary_path = 'config/glossary.json'
-    # Load JSON files
-    try:
-        with open(glossary_path, 'r', encoding='utf-8') as f:
-            glossary = json.load(f)
-    except FileNotFoundError as e:
-        raise FileNotFoundError(f"Configuration file not found: {e.filename}. Make sure config files exist.")
+    # Ensure the glossaries directory exists
+    os.makedirs('config/glossaries', exist_ok=True)
+    glossary_path = 'config/glossary.json' # This is now a legacy path, but we'll keep it for now.
 
     # Safety settings to be less restrictive
     safety_settings = [
@@ -40,7 +36,7 @@ def load_config():
         "gemini_model_name": 'gemini-2.5-flash-lite-preview-06-17',
         "safety_settings": safety_settings,
         "generation_config": generation_config,
-        "glossary_path": glossary_path, # Return path instead of content
+        "glossary_path": glossary_path, # This path will be modified by the engine to be novel-specific
     }
 
 if __name__ == '__main__':
@@ -48,9 +44,10 @@ if __name__ == '__main__':
     try:
         config = load_config()
         print("Configuration loaded successfully!")
-        print("Glossary entries:", len(config['glossary']))
-        print("Style guide characters:", len(config['style_guide']['characters']))
-        print("Cultural notes entries:", len(config['cultural_notes']))
+        # The following tests are now invalid as the loader doesn't load content directly
+        # print("Glossary entries:", len(config['glossary']))
+        # print("Style guide characters:", len(config['style_guide']['characters']))
+        # print("Cultural notes entries:", len(config['cultural_notes']))
         print("Gemini Model and Voyage Client initialized.")
     except (ValueError, FileNotFoundError) as e:
         print(f"Error: {e}")
