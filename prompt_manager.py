@@ -29,21 +29,24 @@ Provide only the chosen level and nothing else.
 
     # Prompts for dynamic_config_builder.py
     EXTRACT_KEY_TERMS = """
-Your task is to act as a data extractor. From the text segment below, identify and extract key terms crucial for consistency.
+Your task is to act as a data extractor. From the text segment below, identify and extract only proper nouns that could be confusing if translated inconsistently.
 
-**Focus on:**
-- Proper Nouns (e.g., "Gregor Samsa").
-- Unique Concepts or Objects (e.g., "the Ungeziefer").
-- Important Recurring Roles (e.g., "the chief clerk").
+**Focus exclusively on:**
+- People's names (e.g., "Gregor Samsa", "Anna").
+- Place names (e.g., "Prague").
+- Unique, named objects or concepts (e.g., "the Ungeziefer").
 
-**Exclude:** Common nouns.
-Provide a comma-separated list.
+**Do NOT extract:**
+- Common nouns (e.g., "father", "room", "apple").
+- Character roles unless they are used as a proper name (e.g., do not extract "the chief clerk", but extract "Chief Clerk" if used as a title).
+
+Provide a comma-separated list. If no proper nouns are found, leave it blank.
 
 **Text Segment to Analyze:**
 ---
 {segment_text}
 ---
-**Comma-separated list of key terms:**
+**Comma-separated list of proper nouns:**
 """
 
     TRANSLATE_KEY_TERMS = """

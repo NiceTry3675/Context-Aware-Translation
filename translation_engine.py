@@ -113,7 +113,7 @@ class TranslationEngine:
             prompt = self.prompt_builder.build_translation_prompt(
                 style_guide=style_guide,
                 core_narrative_voice=core_narrative_voice,
-                glossary_terms=prompt_guidelines['glossary_terms'],
+                full_glossary=job.glossary,  # Pass the entire updated glossary
                 style_analysis=prompt_guidelines['style_analysis'],
                 source_segment=segment_content,
                 prev_segment_en=immediate_context_en
