@@ -1,37 +1,52 @@
 import json
-from prompt_manager import PromptManager
 
 class PromptBuilder:
     """
     Builds the final translation prompt using a centralized template.
     """
-    def __init__(self):
-        self.template = PromptManager.MAIN_TRANSLATION
-        print("PromptBuilder initialized with template from PromptManager.")
-
-    def build_translation_prompt(self, style_guide: dict, core_narrative_voice: str, full_glossary: dict, style_analysis: str, source_segment: str, prev_segment_en: str) -> str:
+    def __init__(self, template: str):
         """
-        Builds the final prompt by filling the template with hierarchical context data.
+        Initializes the builder with a specific prompt template.
+        
+        Args:
+            template: The prompt template string (e.g., from PromptManager).
         """
-        # The main style guide is now just for reference, the core voice is the key.
-        style_guide_reference = json.dumps(style_guide, indent=2, ensure_ascii=False)
+        self.template = template
+        print("PromptBuilder initialized.")
 
-        # Format the full glossary into a string for the prompt
-        if full_glossary:
-            glossary_string = "\n".join([f"- {term}: {translation}" for term, translation in full_glossary.items()])
-        else:
-            glossary_string = "No glossary terms have been defined yet."
+    def build_translation_prompt(self, glossary: dict, character_styles: dict, source_segment: str, prev_segment_en: str, prev_segment_ko: str) -> str:
+        """
+        Builds the final prompt by filling the template with all necessary data.
+
+        Args:
+            glossary: The full, cumulative glossary.
+            character_styles: The full, cumulative character style dictionary.
+            source_segment: The source text to be translated.
+            prev_segment_en: The ending of the previous English segment for context.
+            prev_segment_ko: The ending of the previous Korean segment for context.
+
+        Returns:
+            The fully formatted prompt string ready for the AI model.
+        """
+        glossary_string = self._format_dict_for_prompt(glossary, "No glossary terms defined.")
+        character_styles_string = self._format_dict_for_prompt(character_styles, "No specific dialogue styles defined.")
 
         context_data = {
-            "core_narrative_voice": core_narrative_voice,
             "glossary_terms": glossary_string,
-            "dynamic_guidelines": style_analysis or "No specific style deviations for this segment.",
-            "style_guide": style_guide_reference,
+            "character_speech_styles": character_styles_string,
             "prev_segment_en": prev_segment_en or "N/A",
+            "prev_segment_ko": prev_segment_ko or "N/A",
             "source_segment": source_segment,
         }
 
         try:
             return self.template.format(**context_data)
         except KeyError as e:
-            raise KeyError(f"The placeholder {e} in the template was not found in the provided context data.")
+            raise KeyError(f"The placeholder '{{{e}}}' in the template was not found in the provided context data.")
+
+    def _format_dict_for_prompt(self, data: dict, default_text: str) -> str:
+        """Formats a dictionary into a newline-separated string for the prompt."""
+        if not data:
+            return f"- {default_text}"
+        
+        return "\n".join([f"- {key}: {value}" for key, value in data.items()])

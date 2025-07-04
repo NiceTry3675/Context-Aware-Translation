@@ -15,6 +15,7 @@ class TranslationJob:
         self.segments = self._create_segments_from_file(target_segment_size)
         self.translated_segments = []
         self.glossary = {}
+        self.character_styles = {}
         
         self.output_filename = os.path.join('translated_novel', f"{self.base_filename}_translated.txt")
         # Clear the output file at the start of the job
