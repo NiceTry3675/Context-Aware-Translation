@@ -1,14 +1,52 @@
 # CONTEXT LOG FOR: THE_CATCHER_IN_THE_RYE
 
+--- Core Narrative Style Defined ---
+A first-person, colloquial, and subjective narrative style, mirroring the informal and introspective tone of a teenage narrator ('해요체' with a distinctly youthful and colloquial flavor).
+==================================================
+
 --- CONTEXT FOR SEGMENT 1 ---
 
 ### Cumulative Glossary:
+- Agerstown: 에이저스타운
+- Anthony Wayne Avenue: 앤서니 웨인 애비뉴
+- Atlantic Monthly: 애틀랜틱 먼슬리
+- Caulfield: 콜필드
+- Christmas: 크리스마스
+- Christmas vacation: 크리스마스 방학
+- D.B.: 디비
+- David Copperfield: 데이비드 코퍼필드
+- December: 십이월
+- Dr. Thurmer: 서머 박사
+- Holden: 홀든
+- Hollywood: 할리우드
 - J.D. Salinger: J.D. 샐린저
-- MOTHER: 어머니
+- Jaguar: 재규어
+- McBurney School: 맥번니 스쿨
+- Mr. Zambesi: 잠베시 씨
+- Mrs. Spencer: 스펜서 부인
+- Navajo: 나바호
+- New York: 뉴욕
+- Paul Campbell: 폴 캠벨
+- Pencey Prep: 펜시 프렙
+- Pennsylvania: 펜실베이니아
+- Revolutionary War: 미국 독립 전쟁
+- Robert Tichener: 로버트 티처너
+- Route 204: 204번 국도
+- Saxon Hall: 색슨 홀
+- Selma Thurmer: 셀마 서머
+- Spencer: 스펜서
 - THE CATCHER IN THE RYE: 호밀밭의 파수꾼
+- The Secret Goldfish: 비밀 금붕어
+- Thomsen Hill: 톰슨 힐
+- Thurmer: 서머
+- Yellowstone Park: 옐로스톤 국립공원
 
 ### Cumulative Character Styles:
-- Empty
+- Holden->D.B.: 반말
+- Holden->Selma Thurmer: 반말
+- Holden->Mr. Zambesi: 반말
+- Holden->Mrs. Spencer: 존댓말
+- Holden->Mr. Spencer: 존댓말
 
 ### Immediate English Context (Previous Segment Ending):
 N/A
@@ -21,34 +59,39 @@ N/A
 --- CONTEXT FOR SEGMENT 2 ---
 
 ### Cumulative Glossary:
-- J.D. Salinger: J.D. 샐린저
-- MOTHER: 어머니
-- THE CATCHER IN THE RYE: 호밀밭의 파수꾼
 - Agerstown: 에이저스타운
 - Anthony Wayne Avenue: 앤서니 웨인 애비뉴
 - Atlantic Monthly: 애틀랜틱 먼슬리
 - Caulfield: 콜필드
+- Christmas: 크리스마스
+- Christmas vacation: 크리스마스 방학
 - D.B.: 디비
 - David Copperfield: 데이비드 코퍼필드
+- December: 십이월
 - Dr. Thurmer: 서머 박사
+- Holden: 홀든
 - Hollywood: 할리우드
+- J.D. Salinger: J.D. 샐린저
 - Jaguar: 재규어
-- McBurney School: 맥버니 스쿨
+- McBurney School: 맥번니 스쿨
 - Mr. Zambesi: 잠베시 씨
 - Mrs. Spencer: 스펜서 부인
+- Navajo: 나바호
 - New York: 뉴욕
 - Paul Campbell: 폴 캠벨
 - Pencey Prep: 펜시 프렙
 - Pennsylvania: 펜실베이니아
-- Revolutionary War: 독립 전쟁
-- Robert Tichener: 로버트 티체너
-- Route 204: 204번 도로
+- Revolutionary War: 미국 독립 전쟁
+- Robert Tichener: 로버트 티처너
+- Route 204: 204번 국도
 - Saxon Hall: 색슨 홀
 - Selma Thurmer: 셀마 서머
 - Spencer: 스펜서
-- The Secret Goldfish: 비밀 황금어
-- Thomsen Hill: 톰슨 언덕
-- Yellowstone Park: 옐로스톤 공원
+- THE CATCHER IN THE RYE: 호밀밭의 파수꾼
+- The Secret Goldfish: 비밀 금붕어
+- Thomsen Hill: 톰슨 힐
+- Thurmer: 서머
+- Yellowstone Park: 옐로스톤 국립공원
 
 ### Cumulative Character Styles:
 - Holden->D.B.: 반말
@@ -56,79 +99,170 @@ N/A
 - Holden->Mr. Zambesi: 반말
 - Holden->Mrs. Spencer: 존댓말
 - Holden->Mr. Spencer: 존댓말
+- Holden->Old Spencer: 반말
 
 ### Immediate English Context (Previous Segment Ending):
-THE CATCHER IN THE RYE
-by J.D. Salinger
- TO
- MY
- MOTHER
+it is.
+
+I know it."
+ Game, my ass.
+
+Some game.
+
+If you get on the side where all the hot-shots are, then
+it's a game, all right--I'll admit that.
+
+But if you get on the other side, where there aren't
+any hot-shots, then what's a game about it?
+
+Nothing.
+
+No game.
+
+"Has Dr.
+
+Thurmer written
+to your parents yet?" old Spencer asked me.
+
+"He said he was going to write them Monday."
+ "Have you yourself communicated with them?"
+ "No, sir, I haven't communicated with them, because I'll probably see them
+Wednesday night when I get home."
+ "And how do you think they'll take the news?"
+ "Well.
+
+.
+
+.
+
+they'll be pretty irritated about it," I said.
+
+"They really will.
+
+This is about
+the fourth school I've gone to." I shook my head.
+
+I shake my head quite a lot.
+
+"Boy!" I
+said.
+
+I also say "Boy!" quite a lot.
+
+Partly because I have a lousy vocabulary and partly
+because I act quite young for my age sometimes.
+
+I was sixteen then, and I'm seventeen
+now, and sometimes I act like I'm about thirteen.
+
+It's really ironical, because I'm six foot
+two and a half and I have gray hair.
+
+I really do.
+
+The one side of my head--the right side--
+is full of millions of gray hairs.
+
+I've had them ever since I was a kid.
+
+And yet I still act
+sometimes like I was only about twelve.
+
+Everybody says that, especially my father.
+
+It's
+partly true, too, but it isn't all true.
+
+People always think something's all true.
+
+I don't give a
+damn, except that I get bored sometimes when people tell me to act my age.
 
 ### Immediate Korean Context (Previous Segment Ending):
-호밀밭의 파수꾼
-J.D. 샐린저 작
-을
-나의
-어머니
-께
+짜증 나실 거예요." 제가 말했어요.
+
+"정말 그럴 거예요.
+
+여기 오는 게 벌써 네 번째 학교거든요." 저는 고개를 저었어요.
+
+저는 고개를 꽤 많이 져요.
+
+"얘야!" 제가 말했어요.
+
+저는 "얘야!"도 꽤 자주 말해요.
+
+부분적으로는 제가 어휘력이 형편없기 때문이고, 부분적으로는 제가 나이보다 훨씬 어리게 행동하기 때문이에요.
+
+그때 저는 열여섯 살이었고, 지금은 열일곱 살인데, 가끔은 열세 살처럼 행동해요.
+
+키가 6피트 2인치 반이고 흰머리가 있는데도 정말 아이러니하죠.
+
+정말 그래요.
+
+제 머리 한쪽, 오른쪽은 수백만 개의 흰머리로 가득해요.
+
+어릴 때부터 그랬어요.
+
+하지만 저는 여전히 가끔 열두 살처럼 행동해요.
+
+모두들 그렇게 말해요, 특히 제 아버지요.
+
+어느 정도는 사실이기도 하지만, 전부 다는 아니에요.
+
+사람들은 항상 무언가가 전부 사실이라고 생각해요.
+
+저는 신경 쓰지 않아요. 단지 사람들이 제 나이답게 행동하라고 말할 때 가끔 지루할 뿐이에요.
 
 ==================================================
 
 --- CONTEXT FOR SEGMENT 3 ---
 
 ### Cumulative Glossary:
-- J.D. Salinger: J.D. 샐린저
-- MOTHER: 어머니
-- THE CATCHER IN THE RYE: 호밀밭의 파수꾼
 - Agerstown: 에이저스타운
 - Anthony Wayne Avenue: 앤서니 웨인 애비뉴
 - Atlantic Monthly: 애틀랜틱 먼슬리
 - Caulfield: 콜필드
+- Christmas: 크리스마스
+- Christmas vacation: 크리스마스 방학
 - D.B.: 디비
 - David Copperfield: 데이비드 코퍼필드
+- December: 십이월
 - Dr. Thurmer: 서머 박사
+- Holden: 홀든
 - Hollywood: 할리우드
+- J.D. Salinger: J.D. 샐린저
 - Jaguar: 재규어
-- McBurney School: 맥버니 스쿨
+- McBurney School: 맥번니 스쿨
 - Mr. Zambesi: 잠베시 씨
 - Mrs. Spencer: 스펜서 부인
+- Navajo: 나바호
 - New York: 뉴욕
 - Paul Campbell: 폴 캠벨
 - Pencey Prep: 펜시 프렙
 - Pennsylvania: 펜실베이니아
-- Revolutionary War: 독립 전쟁
-- Robert Tichener: 로버트 티체너
-- Route 204: 204번 도로
+- Revolutionary War: 미국 독립 전쟁
+- Robert Tichener: 로버트 티처너
+- Route 204: 204번 국도
 - Saxon Hall: 색슨 홀
 - Selma Thurmer: 셀마 서머
 - Spencer: 스펜서
-- The Secret Goldfish: 비밀 황금어
-- Thomsen Hill: 톰슨 언덕
-- Yellowstone Park: 옐로스톤 공원
-- Africa: 아프리카
-- Beowulf: 베오울프
-- Cadillac: 캐딜락
-- Central Park: 센트럴 파크
-- Central Park South: 센트럴 파크 사우스
-- Eastern Hemisphere: 동반구
-- Edgar Marsalla: 에드거 마르살라
-- Egyptians: 이집트인
-- Elkton Hills: 엘크턴 힐스
-- Haas: 하스
-- Holden Caulfield: 홀든 콜필드
-- Isak Dinesen: 이삭 디네센
-- Jesus: 예수
-- Lord Randal My Son: 랜달 아들 경
-- Marsalla: 마르살라
-- Mr. Haas: 하스 씨
-- Ossenburger: 오센버거
-- Ossenburger Memorial Wing: 오센버거 기념관
-- Out of Africa: 아웃 오브 아프리카
-- Pencey: 펜시
+- THE CATCHER IN THE RYE: 호밀밭의 파수꾼
+- The Secret Goldfish: 비밀 금붕어
+- Thomsen Hill: 톰슨 힐
 - Thurmer: 서머
-- Vicks Nose Drops: 빅스 코 스프레이
-- Ward Stradlater: 워드 스트래들레이터
-- Whooton School: 후턴 학교
+- Yellowstone Park: 옐로스톤 국립공원
+- Ackley: 액클리
+- Bob: 밥
+- Eustacia Vye: 유스타시아 바이
+- Herb Gale: 허브 게일
+- Isak Dinesen: 이사크 디네센
+- Pencey: 펜시
+- Ring Lardner: 링 라드너
+- Robert Ackley: 로버트 액클리
+- Sally Hayes: 샐리 헤이스
+- Stradlater: 스트래들레이터
+- The Return of the Native: 귀향
+- Thomas Hardy: 토머스 하디
 
 ### Cumulative Character Styles:
 - Holden->D.B.: 반말
@@ -136,214 +270,154 @@ J.D. 샐린저 작
 - Holden->Mr. Zambesi: 반말
 - Holden->Mrs. Spencer: 존댓말
 - Holden->Mr. Spencer: 존댓말
-- Holden->Spencer: 반말
+- Holden->Old Spencer: 반말
+- Holden->Robert Ackley: 반말
+- Holden->Stradlater: 반말
 
 ### Immediate English Context (Previous Segment Ending):
-you get on the side where all the hot-shots are, then
-it's a game, all right--I'll admit that. But if you get on the other side, where there aren't
-any hot-shots, then what's a game about it? Nothing. No game. "Has Dr. Thurmer written
-to your parents yet?" old Spencer asked me. "He said he was going to write them Monday."
- "Have you yourself communicated with them?"
- "No, sir, I haven't communicated with them, because I'll probably see them
-Wednesday night when I get home."
- "And how do you think they'll take the news?"
- "Well. . . they'll be pretty irritated about it," I said. "They really will. This is about
-the fourth school I've gone to." I shook my head. I shake my head quite a lot. "Boy!" I
-said. I also say "Boy!" quite a lot. Partly because I have a lousy vocabulary and partly
-because I act quite young for my age sometimes. I was sixteen then, and I'm seventeen
-now, and sometimes I act like I'm about thirteen. It's really ironical, because I'm six foot
-two and a half and I have gray hair. I really do. The one side of my head--the right side--
-is full of millions of gray hairs. I've had them ever since I was a kid. And yet I still act
-sometimes like I was only about twelve. Everybody says that, especially my father. It's
-partly true, too, but it isn't all true. People always think something's all true. I don't give a
-damn, except that I get bored sometimes when people tell me to act my age. Sometimes I
-act a lot older than I am--I really do--but people never notice it.
+study hall in the academic
+building and he came up and made a speech.
+
+He said that the boy that had created the
+disturbance in chapel wasn't fit to go to Pencey.
+
+We tried to get old Marsalla to rip off
+another one, right while old Thurmer was making his speech, but be wasn't in the right
+mood.
+
+Anyway, that's where I lived at Pencey.
+
+Old Ossenburger Memorial Wing, in the
+new dorms.
+
+It was pretty nice to get back to my room, after I left old Spencer, because
+everybody was down at the game, and the heat was on in our room, for a change.
+
+It felt
+sort of cosy.
+
+I took off my coat and my tie and unbuttoned my shirt collar; and then I put
+on this hat that I'd bought in New York that morning.
+
+It was this red hunting hat, with one
+of those very, very long peaks.
+
+I saw it in the window of this sports store when we got out
+of the subway, just after I noticed I'd lost all the goddam foils.
+
+It only cost me a buck.
+
+The way I wore it, I swung the old peak way around to the back--very corny, I'll admit,
+but I liked it that way.
+
+I looked good in it that way.
+
+Then I got this book I was reading
+and sat down in my chair.
+
+There were two chairs in every room.
+
+I had one and my
+roommate, Ward Stradlater, had one.
+
+The arms were in sad shape, because everybody
+was always sitting on them, but they were pretty comfortable chairs.
+
+The book I was reading was this book I took out of the library by mistake.
+
+They
+gave me the wrong book, and I didn't notice it till I got back to my room.
 
 ### Immediate Korean Context (Previous Segment Ending):
-나는 머리를 흔들었어. 나는 머리를 꽤 많이 흔들어. "이런!" 내가 말했지. 나는 또한 "이런!"이라고 꽤 자주 말해. 부분적으로는 내가 어휘력이 좋지 않다는 것 때문이고, 부분적으로는 내가 가끔 내 나이보다 어리게 행동하기 때문이야. 나는 그때 열여섯이었고, 지금은 열일곱인데, 가끔 나는 내가 열세 살쯤 되는 것처럼 행동해. 내가 키가 6피트 2.5인치이고 머리카락이 은색인데도 말이야. 정말 아이러니해. 내 머리 한쪽, 오른쪽은 수백만 개의 은색 머리카락으로 가득 차 있어. 나는 어렸을 때부터 그랬어. 하지만 나는 여전히 가끔 내가 열두 살 정도 되는 것처럼 행동해. 모두가 그렇게 말해, 특히 내 아버지. 어느 정도는 사실이지만, 전부 사실은 아니야. 사람들은 항상 모든 것이 사실이라고 생각하지. 나는 상관없어, 단지 사람들이 내 나이대로 행동하라고 할 때 가끔 지루하다는 것만 빼면. 나는 가끔 내가 실제로 나보다 훨씬 더 어른스럽게 행동하지만, 사람들은 그걸 눈치채지 못해.
+코트와 넥타이를 벗고 셔츠 칼라 단추를 풀렀어요. 그리고 그날 아침 뉴욕에서 산 모자를 썼어요.
+
+아주, 아주 긴 챙이 달린 빨간 사냥 모자였어요.
+
+지하철에서 내리자마자 스포츠 용품 가게 창문에서 봤어요. 바로 제기랄 모든 칼을 잃어버렸다는 것을 알아차린 직후였죠.
+
+겨우 1달러밖에 안 들었어요.
+
+제가 쓰는 방식대로, 챙을 뒤로 아주 많이 넘겼어요. 아주 구식이죠, 인정하지만 그렇게 쓰는 게 좋았어요.
+
+그렇게 쓰니 멋져 보였어요.
+
+그리고는 제가 읽고 있던 책을 집어 들고 제 의자에 앉았어요.
+
+방마다 의자가 두 개씩 있었어요.
+
+저는 하나를 가지고 있었고 제 룸메이트인 워드 스트래들레이터도 하나를 가지고 있었어요.
+
+팔걸이는 엉망이었어요. 왜냐하면 모두들 항상 거기에 앉아 있었기 때문이죠. 하지만 꽤 편안한 의자였어요.
+
+제가 읽고 있던 책은 실수로 도서관에서 가져온 책이었어요.
+
+그들이 잘못된 책을 주었고, 저는 방에 돌아올 때까지 그것을 알아차리지 못했어요.
 
 ==================================================
 
 --- CONTEXT FOR SEGMENT 4 ---
 
 ### Cumulative Glossary:
-- J.D. Salinger: J.D. 샐린저
-- MOTHER: 어머니
-- THE CATCHER IN THE RYE: 호밀밭의 파수꾼
 - Agerstown: 에이저스타운
 - Anthony Wayne Avenue: 앤서니 웨인 애비뉴
 - Atlantic Monthly: 애틀랜틱 먼슬리
 - Caulfield: 콜필드
+- Christmas: 크리스마스
+- Christmas vacation: 크리스마스 방학
 - D.B.: 디비
 - David Copperfield: 데이비드 코퍼필드
+- December: 십이월
 - Dr. Thurmer: 서머 박사
+- Holden: 홀든
 - Hollywood: 할리우드
-- Jaguar: 재규어
-- McBurney School: 맥버니 스쿨
-- Mr. Zambesi: 잠베시 씨
-- Mrs. Spencer: 스펜서 부인
-- New York: 뉴욕
-- Paul Campbell: 폴 캠벨
-- Pencey Prep: 펜시 프렙
-- Pennsylvania: 펜실베이니아
-- Revolutionary War: 독립 전쟁
-- Robert Tichener: 로버트 티체너
-- Route 204: 204번 도로
-- Saxon Hall: 색슨 홀
-- Selma Thurmer: 셀마 서머
-- Spencer: 스펜서
-- The Secret Goldfish: 비밀 황금어
-- Thomsen Hill: 톰슨 언덕
-- Yellowstone Park: 옐로스톤 공원
-- Africa: 아프리카
-- Beowulf: 베오울프
-- Cadillac: 캐딜락
-- Central Park: 센트럴 파크
-- Central Park South: 센트럴 파크 사우스
-- Eastern Hemisphere: 동반구
-- Edgar Marsalla: 에드거 마르살라
-- Egyptians: 이집트인
-- Elkton Hills: 엘크턴 힐스
-- Haas: 하스
-- Holden Caulfield: 홀든 콜필드
-- Isak Dinesen: 이삭 디네센
-- Jesus: 예수
-- Lord Randal My Son: 랜달 아들 경
-- Marsalla: 마르살라
-- Mr. Haas: 하스 씨
-- Ossenburger: 오센버거
-- Ossenburger Memorial Wing: 오센버거 기념관
-- Out of Africa: 아웃 오브 아프리카
-- Pencey: 펜시
-- Thurmer: 서머
-- Vicks Nose Drops: 빅스 코 스프레이
-- Ward Stradlater: 워드 스트래들레이터
-- Whooton School: 후턴 학교
-- Ackley: 액클리
-- Eustacia Vye: 유스타샤 바이에
-- Herb Gale: 허브 게일
-- Of Human Bondage: 인간의 굴레
-- Ring Lardner: 링 라드너
-- Robert Ackley: 로버트 액클리
-- Sally Hayes: 샐리 헤이스
-- Somerset Maugham: 서머싯 몸
-- Stradlater: 스트래들레이터
-- The Return of the Native: 귀향
-- Thomas Hardy: 토머스 하디
-
-### Cumulative Character Styles:
-- Holden->D.B.: 반말
-- Holden->Selma Thurmer: 반말
-- Holden->Mr. Zambesi: 반말
-- Holden->Mrs. Spencer: 존댓말
-- Holden->Mr. Spencer: 존댓말
-- Holden->Spencer: 반말
-- Holden->Robert Ackley: 반말
-- Holden->Stradlater: 반말
-
-### Immediate English Context (Previous Segment Ending):
-and he came up and made a speech. He said that the boy that had created the
-disturbance in chapel wasn't fit to go to Pencey. We tried to get old Marsalla to rip off
-another one, right while old Thurmer was making his speech, but be wasn't in the right
-mood. Anyway, that's where I lived at Pencey. Old Ossenburger Memorial Wing, in the
-new dorms. It was pretty nice to get back to my room, after I left old Spencer, because
-everybody was down at the game, and the heat was on in our room, for a change. It felt
-sort of cosy. I took off my coat and my tie and unbuttoned my shirt collar; and then I put
-on this hat that I'd bought in New York that morning. It was this red hunting hat, with one
-of those very, very long peaks. I saw it in the window of this sports store when we got out
-of the subway, just after I noticed I'd lost all the goddam foils. It only cost me a buck. The way I wore it, I swung the old peak way around to the back--very corny, I'll admit,
-but I liked it that way. I looked good in it that way. Then I got this book I was reading
-and sat down in my chair. There were two chairs in every room. I had one and my
-roommate, Ward Stradlater, had one. The arms were in sad shape, because everybody
-was always sitting on them, but they were pretty comfortable chairs. The book I was reading was this book I took out of the library by mistake. They
-gave me the wrong book, and I didn't notice it till I got back to my room. They gave me
-Out of Africa, by Isak Dinesen.
-
-### Immediate Korean Context (Previous Segment Ending):
-넥타이를 벗고 셔츠 칼라를 풀었고, 그리고 그날 아침 뉴욕에서 산 모자를 썼어. 매우, 아주 긴 챙이 달린 빨간색 사냥 모자였지. 지하철에서 내리자마자 스포츠 용품점 창문에서 그걸 봤어. 바로 내가 망할 호일을 모두 잃어버렸다는 걸 알아챈 직후였지. 겨우 1달러밖에 안 들었어. 내가 그것을 쓰는 방식은, 챙을 뒤로 많이 돌려서 쓰는 거였어—아주 촌스럽긴 하지만 마음에 들었어. 그렇게 쓰니 보기 좋았어. 그러고 나서 내가 읽고 있던 책을 집어 의자에 앉았어. 방마다 의자가 두 개씩 있었어. 나는 하나를 가지고 있었고 내 룸메이트인 워드 스트래들레이터가 하나를 가지고 있었지. 팔걸이는 형편없는 상태였어. 왜냐면 모두가 거기에 앉아 있었기 때문이야. 하지만 꽤 편안한 의자였지. 내가 읽고 있던 책은 실수로 도서관에서 빌린 책이었어. 그들은 나에게 잘못된 책을 주었고, 나는 방에 돌아올 때까지 그걸 알아차리지 못했어. 그들은 나에게 이삭 디네센이 쓴 《아웃 오브 아프리카》를 주었지.
-
-==================================================
-
---- CONTEXT FOR SEGMENT 5 ---
-
-### Cumulative Glossary:
 - J.D. Salinger: J.D. 샐린저
-- MOTHER: 어머니
-- THE CATCHER IN THE RYE: 호밀밭의 파수꾼
-- Agerstown: 에이저스타운
-- Anthony Wayne Avenue: 앤서니 웨인 애비뉴
-- Atlantic Monthly: 애틀랜틱 먼슬리
-- Caulfield: 콜필드
-- D.B.: 디비
-- David Copperfield: 데이비드 코퍼필드
-- Dr. Thurmer: 서머 박사
-- Hollywood: 할리우드
 - Jaguar: 재규어
-- McBurney School: 맥버니 스쿨
+- McBurney School: 맥번니 스쿨
 - Mr. Zambesi: 잠베시 씨
 - Mrs. Spencer: 스펜서 부인
+- Navajo: 나바호
 - New York: 뉴욕
 - Paul Campbell: 폴 캠벨
 - Pencey Prep: 펜시 프렙
 - Pennsylvania: 펜실베이니아
-- Revolutionary War: 독립 전쟁
-- Robert Tichener: 로버트 티체너
-- Route 204: 204번 도로
+- Revolutionary War: 미국 독립 전쟁
+- Robert Tichener: 로버트 티처너
+- Route 204: 204번 국도
 - Saxon Hall: 색슨 홀
 - Selma Thurmer: 셀마 서머
 - Spencer: 스펜서
-- The Secret Goldfish: 비밀 황금어
-- Thomsen Hill: 톰슨 언덕
-- Yellowstone Park: 옐로스톤 공원
-- Africa: 아프리카
-- Beowulf: 베오울프
-- Cadillac: 캐딜락
-- Central Park: 센트럴 파크
-- Central Park South: 센트럴 파크 사우스
-- Eastern Hemisphere: 동반구
-- Edgar Marsalla: 에드거 마르살라
-- Egyptians: 이집트인
-- Elkton Hills: 엘크턴 힐스
-- Haas: 하스
-- Holden Caulfield: 홀든 콜필드
-- Isak Dinesen: 이삭 디네센
-- Jesus: 예수
-- Lord Randal My Son: 랜달 아들 경
-- Marsalla: 마르살라
-- Mr. Haas: 하스 씨
-- Ossenburger: 오센버거
-- Ossenburger Memorial Wing: 오센버거 기념관
-- Out of Africa: 아웃 오브 아프리카
-- Pencey: 펜시
+- THE CATCHER IN THE RYE: 호밀밭의 파수꾼
+- The Secret Goldfish: 비밀 금붕어
+- Thomsen Hill: 톰슨 힐
 - Thurmer: 서머
-- Vicks Nose Drops: 빅스 코 스프레이
-- Ward Stradlater: 워드 스트래들레이터
-- Whooton School: 후턴 학교
+- Yellowstone Park: 옐로스톤 국립공원
 - Ackley: 액클리
-- Eustacia Vye: 유스타샤 바이에
+- Bob: 밥
+- Eustacia Vye: 유스타시아 바이
 - Herb Gale: 허브 게일
-- Of Human Bondage: 인간의 굴레
+- Isak Dinesen: 이사크 디네센
+- Pencey: 펜시
 - Ring Lardner: 링 라드너
 - Robert Ackley: 로버트 액클리
 - Sally Hayes: 샐리 헤이스
-- Somerset Maugham: 서머싯 몸
 - Stradlater: 스트래들레이터
 - The Return of the Native: 귀향
 - Thomas Hardy: 토머스 하디
-- B.M.: 비엠
-- Brown Betty: 브라운 베티
-- Bud Thaw: 버드 소서
+- B.M.: B.M.
+- Bud Thaw: 버드 소방
 - Fitzgerald: 피츠제럴드
+- Howie Coyle: 하위 코일
 - Jane Gallagher: 제인 갤러거
-- Jean Gallagher: 진 갤러거
-- Jesus H. Christ: 예수 그리스도
+- Jean Gallagher: 장 갤러거
 - Mal Brossard: 말 브로사드
+- Oxford: 옥스퍼드
 - Phyllis Smith: 필리스 스미스
 - Shipley: 쉽리
-- Slaughter on Tenth Avenue: 텐스 애비뉴의 학살
+- Slaughter on Tenth Avenue: 10번가 학살
 - Song of India: 인도의 노래
 - Vitalis: 비탈리스
 - Western Hemisphere: 서반구
+- Ziegfeld Follies: 지그펠드 폴리스
 
 ### Cumulative Character Styles:
 - Holden->D.B.: 반말
@@ -351,608 +425,89 @@ Out of Africa, by Isak Dinesen.
 - Holden->Mr. Zambesi: 반말
 - Holden->Mrs. Spencer: 존댓말
 - Holden->Mr. Spencer: 존댓말
-- Holden->Spencer: 반말
+- Holden->Old Spencer: 반말
 - Holden->Robert Ackley: 반말
 - Holden->Stradlater: 반말
 - Holden->Ackley: 반말
 
 ### Immediate English Context (Previous Segment Ending):
-but he weighed about twice as much as I did. He had these very broad shoulders. "I won't stretch it." He went over to the closet in a big hurry. "How'sa boy,
-Ackley?" he said to Ackley. He was at least a pretty friendly guy, Stradlater. It was partly
-a phony kind of friendly, but at least he always said hello to Ackley and all. Ackley just sort of grunted when he said "How'sa boy?" He wouldn't answer him,
-but he didn't have guts enough not to at least grunt. Then he said to me, "I think I'll get
-going. See ya later."
- "Okay," I said. He never exactly broke your heart when he went back to his own
-room. Old Stradlater started taking off his coat and tie and all. "I think maybe I'll take a
-fast shave," he said. He had a pretty heavy beard. He really did. "Where's your date?" I asked him. "She's waiting in the Annex." He went out of the room with his toilet kit and
-towel under his arm. No shirt on or anything. He always walked around in his bare torso
-because he thought he had a damn good build. He did, too. I have to admit it. 4
+twice as much as I did.
+
+He had these very broad shoulders.
+
+"I won't stretch it." He went over to the closet in a big hurry.
+
+"How'sa boy,
+Ackley?" he said to Ackley.
+
+He was at least a pretty friendly guy, Stradlater.
+
+It was partly
+a phony kind of friendly, but at least he always said hello to Ackley and all.
+
+Ackley just sort of grunted when he said "How'sa boy?" He wouldn't answer him,
+but he didn't have guts enough not to at least grunt.
+
+Then he said to me, "I think I'll get
+going.
+
+See ya later."
+ "Okay," I said.
+
+He never exactly broke your heart when he went back to his own
+room.
+
+Old Stradlater started taking off his coat and tie and all.
+
+"I think maybe I'll take a
+fast shave," he said.
+
+He had a pretty heavy beard.
+
+He really did.
+
+"Where's your date?" I asked him.
+
+"She's waiting in the Annex." He went out of the room with his toilet kit and
+towel under his arm.
+
+No shirt on or anything.
+
+He always walked around in his bare torso
+because he thought he had a damn good build.
+
+He did, too.
+
+I have to admit it.
+
+4
  I didn't have anything special to do, so I went down to the can and chewed the rag
-with him while he was shaving. We were the only ones in the can, because everybody
-was still down at the game. It was hot as hell and the windows were all steamy. There
-were about ten washbowls, all right against the wall. Stradlater had the middle one. I sat
+with him while he was shaving.
+
+We were the only ones in the can, because everybody
+was still down at the game.
+
+It was hot as hell and the windows were all steamy.
+
+There
+were about ten washbowls, all right against the wall.
+
+Stradlater had the middle one.
+
+I sat
 down on the one right next to him and started turning the cold water on and off--this
 nervous habit I have.
 
 ### Immediate Korean Context (Previous Segment Ending):
-그가 자기 방으로 돌아갈 때 당신의 마음을 부수지는 않았다. 늙은 스트래들레이터는 코트와 넥타이를 벗기 시작했다. "빨리 면도 좀 해야 할 것 같아." 그가 말했다. 그는 꽤 굵은 수염을 가지고 있었다. 정말 그랬다. "데이트 상대는 어디 있어?" 내가 그에게 물었다. "별관에서 기다리고 있어." 그는 칫솔과 수건을 팔에 끼고 방을 나갔다. 셔츠도 안 입고 뭐 그런 식이었다. 그는 몸매가 아주 좋다고 생각했기 때문에 항상 맨 상의로 돌아다녔다. 정말 그랬다. 인정해야 한다. 나는 특별히 할 일이 없었기 때문에, 화장실에 가서 그가 면도하는 동안 수다를 떨었다. 우리가 화장실에 있는 유일한 사람이었다. 왜냐하면 모두가 아직 경기장에 있었기 때문이다. 몹시 더웠고 창문은 모두 김이 서려 있었다. 벽을 따라 세면대가 열 개쯤 있었다. 스트래들레이터는 가운데 것을 썼다. 나는 바로 그 옆에 있는 세면대에 앉아 차가운 물을 켰다 껐다 하기 시작했다—이것은 내가 가진 신경질적인 습관이다.
+방으로 돌아갔을 때 그는 절대로 당신의 마음을 아프게 하지 않았어요.
 
-==================================================
+스트래들레이터는 코트와 넥타이 등을 벗기 시작했어요. "빨리 면도해야 할 것 같아"라고 말했어요. 그는 꽤 굵은 수염을 가지고 있었어요. 정말 그랬어요.
 
---- CONTEXT FOR SEGMENT 6 ---
+"네 데이트는 어디 있어?"라고 물었어요.
 
-### Cumulative Glossary:
-- J.D. Salinger: J.D. 샐린저
-- MOTHER: 어머니
-- THE CATCHER IN THE RYE: 호밀밭의 파수꾼
-- Agerstown: 에이저스타운
-- Anthony Wayne Avenue: 앤서니 웨인 애비뉴
-- Atlantic Monthly: 애틀랜틱 먼슬리
-- Caulfield: 콜필드
-- D.B.: 디비
-- David Copperfield: 데이비드 코퍼필드
-- Dr. Thurmer: 서머 박사
-- Hollywood: 할리우드
-- Jaguar: 재규어
-- McBurney School: 맥버니 스쿨
-- Mr. Zambesi: 잠베시 씨
-- Mrs. Spencer: 스펜서 부인
-- New York: 뉴욕
-- Paul Campbell: 폴 캠벨
-- Pencey Prep: 펜시 프렙
-- Pennsylvania: 펜실베이니아
-- Revolutionary War: 독립 전쟁
-- Robert Tichener: 로버트 티체너
-- Route 204: 204번 도로
-- Saxon Hall: 색슨 홀
-- Selma Thurmer: 셀마 서머
-- Spencer: 스펜서
-- The Secret Goldfish: 비밀 황금어
-- Thomsen Hill: 톰슨 언덕
-- Yellowstone Park: 옐로스톤 공원
-- Africa: 아프리카
-- Beowulf: 베오울프
-- Cadillac: 캐딜락
-- Central Park: 센트럴 파크
-- Central Park South: 센트럴 파크 사우스
-- Eastern Hemisphere: 동반구
-- Edgar Marsalla: 에드거 마르살라
-- Egyptians: 이집트인
-- Elkton Hills: 엘크턴 힐스
-- Haas: 하스
-- Holden Caulfield: 홀든 콜필드
-- Isak Dinesen: 이삭 디네센
-- Jesus: 예수
-- Lord Randal My Son: 랜달 아들 경
-- Marsalla: 마르살라
-- Mr. Haas: 하스 씨
-- Ossenburger: 오센버거
-- Ossenburger Memorial Wing: 오센버거 기념관
-- Out of Africa: 아웃 오브 아프리카
-- Pencey: 펜시
-- Thurmer: 서머
-- Vicks Nose Drops: 빅스 코 스프레이
-- Ward Stradlater: 워드 스트래들레이터
-- Whooton School: 후턴 학교
-- Ackley: 액클리
-- Eustacia Vye: 유스타샤 바이에
-- Herb Gale: 허브 게일
-- Of Human Bondage: 인간의 굴레
-- Ring Lardner: 링 라드너
-- Robert Ackley: 로버트 액클리
-- Sally Hayes: 샐리 헤이스
-- Somerset Maugham: 서머싯 몸
-- Stradlater: 스트래들레이터
-- The Return of the Native: 귀향
-- Thomas Hardy: 토머스 하디
-- B.M.: 비엠
-- Brown Betty: 브라운 베티
-- Bud Thaw: 버드 소서
-- Fitzgerald: 피츠제럴드
-- Jane Gallagher: 제인 갤러거
-- Jean Gallagher: 진 갤러거
-- Jesus H. Christ: 예수 그리스도
-- Mal Brossard: 말 브로사드
-- Phyllis Smith: 필리스 스미스
-- Shipley: 쉽리
-- Slaughter on Tenth Avenue: 텐스 애비뉴의 학살
-- Song of India: 인도의 노래
-- Vitalis: 비탈리스
-- Western Hemisphere: 서반구
-- Allie: 앨리
-- Brossnad: 브로스나드
-- Cary Grant: 캐리 그랜트
-- Ed Banky: 에드 뱅키
-- Jane: 제인
-- Maine: 메인
-- Mal: 말
+"애넥스에서 기다리고 있어." 그는 화장품 세트와 수건을 팔 아래 끼고 방을 나갔어요. 셔츠도 입지 않았고요. 그는 몸이 아주 좋다고 생각했기 때문에 항상 상반신을 드러내고 돌아다녔어요. 정말 그랬죠. 인정해야 해요.
 
-### Cumulative Character Styles:
-- Holden->D.B.: 반말
-- Holden->Selma Thurmer: 반말
-- Holden->Mr. Zambesi: 반말
-- Holden->Mrs. Spencer: 존댓말
-- Holden->Mr. Spencer: 존댓말
-- Holden->Spencer: 반말
-- Holden->Robert Ackley: 반말
-- Holden->Stradlater: 반말
-- Holden->Ackley: 반말
-- Holden->Mal: 반말
-- Holden->Bus driver: 반말
-
-### Immediate English Context (Previous Segment Ending):
-the guys at Pencey that
-he hated their guts, and squeezing this big pimple on his chin. He didn't even use his
-handkerchief. I don't even think the bastard had a handkerchief, if you want to know the
-truth. I never saw him use one, anyway. 5
- We always had the same meal on Saturday nights at Pencey. It was supposed to
-be a big deal, because they gave you steak. I'll bet a thousand bucks the reason they did
-that was because a lot of guys' parents came up to school on Sunday, and old Thurmer
-probably figured everybody's mother would ask their darling boy what he had for dinner
-last night, and he'd say, "Steak." What a racket. You should've seen the steaks. They were
-these little hard, dry jobs that you could hardly even cut. You always got these very
-lumpy mashed potatoes on steak night, and for dessert you got Brown Betty, which
-nobody ate, except maybe the little kids in the lower school that didn't know any better--
-and guys like Ackley that ate everything. It was nice, though, when we got out of the dining room. There were about three
-inches of snow on the ground, and it was still coming down like a madman. It looked
-pretty as hell, and we all started throwing snowballs and horsing around all over the
-place. It was very childish, but everybody was really enjoying themselves. I didn't have a date or anything, so I and this friend of mine, Mal Brossard, that
-was on the wrestling team, decided we'd take a bus into Agerstown and have a hamburger
-and maybe see a lousy movie.
-
-### Immediate Korean Context (Previous Segment Ending):
-모든 어머니가 사랑하는 아들에게 어젯밤 저녁으로 뭘 먹었는지 물어보고, 아들이 "스테이크요"라고 대답할 것이라고 생각했기 때문에 그랬다고 백만 달러를 걸 수 있다. 무슨 사기인가. 스테이크를 봤어야 했다. 그것들은 아주 작고 딱딱하며 건조해서 거의 자를 수도 없었다. 스테이크 밤에는 항상 아주 울퉁불퉁한 으깬 감자가 나왔고, 디저트로 브라운 베티가 나왔는데, 그걸 먹는 사람은 아무도 없었다. 아랫학년의 어린 아이들이나 제대로 된 걸 모르는 녀석들—그리고 액클리처럼 뭐든 먹는 녀석들 말고는. 하지만 식당에서 나왔을 때는 좋았다. 땅에는 눈이 약 3인치 쌓여 있었고, 여전히 미친 듯이 내리고 있었다. 아주 예뻐 보였고, 우리는 모두 눈싸움을 하고 사방에서 장난을 치기 시작했다. 아주 유치했지만, 모두들 정말 즐거워했다. 나는 데이트 상대가 없었기 때문에, 레슬링 팀에 있던 내 친구 말 브로사드와 함께 에이저스타운으로 버스를 타고 가서 햄버거를 먹고 아마 형편없는 영화를 보기로 했다.
-
-==================================================
-
---- CONTEXT FOR SEGMENT 7 ---
-
-### Cumulative Glossary:
-- J.D. Salinger: J.D. 샐린저
-- MOTHER: 어머니
-- THE CATCHER IN THE RYE: 호밀밭의 파수꾼
-- Agerstown: 에이저스타운
-- Anthony Wayne Avenue: 앤서니 웨인 애비뉴
-- Atlantic Monthly: 애틀랜틱 먼슬리
-- Caulfield: 콜필드
-- D.B.: 디비
-- David Copperfield: 데이비드 코퍼필드
-- Dr. Thurmer: 서머 박사
-- Hollywood: 할리우드
-- Jaguar: 재규어
-- McBurney School: 맥버니 스쿨
-- Mr. Zambesi: 잠베시 씨
-- Mrs. Spencer: 스펜서 부인
-- New York: 뉴욕
-- Paul Campbell: 폴 캠벨
-- Pencey Prep: 펜시 프렙
-- Pennsylvania: 펜실베이니아
-- Revolutionary War: 독립 전쟁
-- Robert Tichener: 로버트 티체너
-- Route 204: 204번 도로
-- Saxon Hall: 색슨 홀
-- Selma Thurmer: 셀마 서머
-- Spencer: 스펜서
-- The Secret Goldfish: 비밀 황금어
-- Thomsen Hill: 톰슨 언덕
-- Yellowstone Park: 옐로스톤 공원
-- Africa: 아프리카
-- Beowulf: 베오울프
-- Cadillac: 캐딜락
-- Central Park: 센트럴 파크
-- Central Park South: 센트럴 파크 사우스
-- Eastern Hemisphere: 동반구
-- Edgar Marsalla: 에드거 마르살라
-- Egyptians: 이집트인
-- Elkton Hills: 엘크턴 힐스
-- Haas: 하스
-- Holden Caulfield: 홀든 콜필드
-- Isak Dinesen: 이삭 디네센
-- Jesus: 예수
-- Lord Randal My Son: 랜달 아들 경
-- Marsalla: 마르살라
-- Mr. Haas: 하스 씨
-- Ossenburger: 오센버거
-- Ossenburger Memorial Wing: 오센버거 기념관
-- Out of Africa: 아웃 오브 아프리카
-- Pencey: 펜시
-- Thurmer: 서머
-- Vicks Nose Drops: 빅스 코 스프레이
-- Ward Stradlater: 워드 스트래들레이터
-- Whooton School: 후턴 학교
-- Ackley: 액클리
-- Eustacia Vye: 유스타샤 바이에
-- Herb Gale: 허브 게일
-- Of Human Bondage: 인간의 굴레
-- Ring Lardner: 링 라드너
-- Robert Ackley: 로버트 액클리
-- Sally Hayes: 샐리 헤이스
-- Somerset Maugham: 서머싯 몸
-- Stradlater: 스트래들레이터
-- The Return of the Native: 귀향
-- Thomas Hardy: 토머스 하디
-- B.M.: 비엠
-- Brown Betty: 브라운 베티
-- Bud Thaw: 버드 소서
-- Fitzgerald: 피츠제럴드
-- Jane Gallagher: 제인 갤러거
-- Jean Gallagher: 진 갤러거
-- Jesus H. Christ: 예수 그리스도
-- Mal Brossard: 말 브로사드
-- Phyllis Smith: 필리스 스미스
-- Shipley: 쉽리
-- Slaughter on Tenth Avenue: 텐스 애비뉴의 학살
-- Song of India: 인도의 노래
-- Vitalis: 비탈리스
-- Western Hemisphere: 서반구
-- Allie: 앨리
-- Brossnad: 브로스나드
-- Cary Grant: 캐리 그랜트
-- Ed Banky: 에드 뱅키
-- Jane: 제인
-- Maine: 메인
-- Mal: 말
-- Ely: 엘리
-- Frederick Woodruff: 프레더릭 우드로프
-- Hoffman: 호프만
-- Holden: 홀든
-- Leahy: 리히
-- Mrs. Schmidt: 슈미트 부인
-- Spaulding: 스폴딩
-
-### Cumulative Character Styles:
-- Holden->D.B.: 반말
-- Holden->Selma Thurmer: 반말
-- Holden->Mr. Zambesi: 반말
-- Holden->Mrs. Spencer: 존댓말
-- Holden->Mr. Spencer: 존댓말
-- Holden->Spencer: 반말
-- Holden->Robert Ackley: 반말
-- Holden->Stradlater: 반말
-- Holden->Ackley: 반말
-- Holden->Mal: 반말
-- Holden->Bus driver: 반말
-- Holden->Frederick Woodruff: 반말
-
-### Immediate English Context (Previous Segment Ending):
-side of the head or something. It
-probably hurt him a little bit, but not as much as I wanted. It probably would've hurt him
-a lot, but I did it with my right hand, and I can't make a good fist with that hand. On
-account of that injury I told you about. Anyway, the next thing I knew, I was on the goddam floor and he was sitting on
-my chest, with his face all red. That is, he had his goddam knees on my chest, and he
-weighed about a ton. He had hold of my wrists, too, so I couldn't take another sock at
-him. I'd've killed him. "What the hell's the matter with you?" he kept saying, and his stupid race kept
-getting redder and redder. "Get your lousy knees off my chest," I told him. I was almost bawling. I really
-was. "Go on, get off a me, ya crumby bastard."
- He wouldn't do it, though. He kept holding onto my wrists and I kept calling him
-a sonuvabitch and all, for around ten hours. I can hardly even remember what all I said to
-him. I told him he thought he could give the time to anybody he felt like. I told him he
-didn't even care if a girl kept all her kings in the back row or not, and the reason he didn't
-care was because he was a goddam stupid moron. He hated it when you called a moron. All morons hate it when you call them a moron. "Shut up, now, Holden," he said with his big stupid red face. "just shut up, now."
- "You don't even know if her first name is Jane or Jean, ya goddam moron!"
- "Now, shut up, Holden, God damn it--I'm warning ya," he said--I really had him
-going.
-
-### Immediate Korean Context (Previous Segment Ending):
-"내 가슴에서 망할 무릎 좀 치워."라고 나는 말했다. 나는 거의 울고 있었다. 정말 그랬다. "가, 나한테서 떨어져, 너 이 더러운 망할 자식아." 하지만 그는 하지 않았다. 그는 내 손목을 계속 잡고 있었고 나는 약 열 시간 동안 그를 개자식이라고 계속 불렀다. 내가 그에게 무슨 말을 했는지 거의 기억나지 않는다. 나는 그가 원하는 누구에게나 데이트를 할 수 있다고 생각한다고 말했다. 나는 그가 소녀가 킹을 뒷줄에 보관하는지 아닌지 신경도 쓰지 않는다고 말했다. 그리고 그가 신경 쓰지 않은 이유는 그가 망할 멍청한 바보였기 때문이라고 말했다. 그는 당신이 바보라고 부르는 것을 싫어했다. 모든 바보는 당신이 바보라고 부르는 것을 싫어한다. "홀든, 이제 닥쳐."라고 그는 크고 멍청한 빨간 얼굴로 말했다. "이제 그냥 닥쳐." "네 이름이 제인인지 진인지조차 모르잖아, 이 망할 바보야!" "이제 닥쳐, 홀든, 젠장—경고하는 거야."라고 그는 말했다—나는 그를 정말 화나게 했다.
-
-==================================================
-
---- CONTEXT FOR SEGMENT 8 ---
-
-### Cumulative Glossary:
-- J.D. Salinger: J.D. 샐린저
-- MOTHER: 어머니
-- THE CATCHER IN THE RYE: 호밀밭의 파수꾼
-- Agerstown: 에이저스타운
-- Anthony Wayne Avenue: 앤서니 웨인 애비뉴
-- Atlantic Monthly: 애틀랜틱 먼슬리
-- Caulfield: 콜필드
-- D.B.: 디비
-- David Copperfield: 데이비드 코퍼필드
-- Dr. Thurmer: 서머 박사
-- Hollywood: 할리우드
-- Jaguar: 재규어
-- McBurney School: 맥버니 스쿨
-- Mr. Zambesi: 잠베시 씨
-- Mrs. Spencer: 스펜서 부인
-- New York: 뉴욕
-- Paul Campbell: 폴 캠벨
-- Pencey Prep: 펜시 프렙
-- Pennsylvania: 펜실베이니아
-- Revolutionary War: 독립 전쟁
-- Robert Tichener: 로버트 티체너
-- Route 204: 204번 도로
-- Saxon Hall: 색슨 홀
-- Selma Thurmer: 셀마 서머
-- Spencer: 스펜서
-- The Secret Goldfish: 비밀 황금어
-- Thomsen Hill: 톰슨 언덕
-- Yellowstone Park: 옐로스톤 공원
-- Africa: 아프리카
-- Beowulf: 베오울프
-- Cadillac: 캐딜락
-- Central Park: 센트럴 파크
-- Central Park South: 센트럴 파크 사우스
-- Eastern Hemisphere: 동반구
-- Edgar Marsalla: 에드거 마르살라
-- Egyptians: 이집트인
-- Elkton Hills: 엘크턴 힐스
-- Haas: 하스
-- Holden Caulfield: 홀든 콜필드
-- Isak Dinesen: 이삭 디네센
-- Jesus: 예수
-- Lord Randal My Son: 랜달 아들 경
-- Marsalla: 마르살라
-- Mr. Haas: 하스 씨
-- Ossenburger: 오센버거
-- Ossenburger Memorial Wing: 오센버거 기념관
-- Out of Africa: 아웃 오브 아프리카
-- Pencey: 펜시
-- Thurmer: 서머
-- Vicks Nose Drops: 빅스 코 스프레이
-- Ward Stradlater: 워드 스트래들레이터
-- Whooton School: 후턴 학교
-- Ackley: 액클리
-- Eustacia Vye: 유스타샤 바이에
-- Herb Gale: 허브 게일
-- Of Human Bondage: 인간의 굴레
-- Ring Lardner: 링 라드너
-- Robert Ackley: 로버트 액클리
-- Sally Hayes: 샐리 헤이스
-- Somerset Maugham: 서머싯 몸
-- Stradlater: 스트래들레이터
-- The Return of the Native: 귀향
-- Thomas Hardy: 토머스 하디
-- B.M.: 비엠
-- Brown Betty: 브라운 베티
-- Bud Thaw: 버드 소서
-- Fitzgerald: 피츠제럴드
-- Jane Gallagher: 제인 갤러거
-- Jean Gallagher: 진 갤러거
-- Jesus H. Christ: 예수 그리스도
-- Mal Brossard: 말 브로사드
-- Phyllis Smith: 필리스 스미스
-- Shipley: 쉽리
-- Slaughter on Tenth Avenue: 텐스 애비뉴의 학살
-- Song of India: 인도의 노래
-- Vitalis: 비탈리스
-- Western Hemisphere: 서반구
-- Allie: 앨리
-- Brossnad: 브로스나드
-- Cary Grant: 캐리 그랜트
-- Ed Banky: 에드 뱅키
-- Jane: 제인
-- Maine: 메인
-- Mal: 말
-- Ely: 엘리
-- Frederick Woodruff: 프레더릭 우드로프
-- Hoffman: 호프만
-- Holden: 홀든
-- Leahy: 리히
-- Mrs. Schmidt: 슈미트 부인
-- Spaulding: 스폴딩
-- Carl Luce: 칼 루스
-- David: 데이비드
-- Edmont: 에드몬트
-- Edmont Hotel: 에드몬트 호텔
-- Ernest Morrow: 어니스트 모로
-- Gloucester: 글로스터
-- Harry Fencer: 해리 펜서
-- Linda: 린다
-- Marcia: 마샤
-- Massachusetts: 매사추세츠
-- Mrs. Morrow: 모로 부인
-- New Yorker: 뉴요커
-- Newark: 뉴어크
-- Ninedieth Street: 90번가
-- Penn Station: 펜 스테이션
-- Phoebe: 피비
-- Rudolf Schmidt: 루돌프 슈미트
-- Taft: 태프트
-
-### Cumulative Character Styles:
-- Holden->D.B.: 반말
-- Holden->Selma Thurmer: 반말
-- Holden->Mr. Zambesi: 반말
-- Holden->Mrs. Spencer: 존댓말
-- Holden->Mr. Spencer: 존댓말
-- Holden->Spencer: 반말
-- Holden->Robert Ackley: 반말
-- Holden->Stradlater: 반말
-- Holden->Ackley: 반말
-- Holden->Mal: 반말
-- Holden->Bus driver: 반말
-- Holden->Frederick Woodruff: 반말
-- Holden->Lady: 존댓말
-- Holden->Rudolf Schmidt: 반말
-- Holden->Cab Driver: 반말
-
-### Immediate English Context (Previous Segment Ending):
-said
-he didn't much want to buy it. Finally he bought it, though. It cost about ninety bucks,
-and all he bought it for was twenty. He was sore because I'd woke him up. When I was all set to go, when I had my bags and all, I stood for a while next to
-the stairs and took a last look down the goddam corridor. I was sort of crying. I don't
-know why. I put my red hunting hat on, and turned the peak around to the back, the way I
-liked it, and then I yelled at the top of my goddam voice, "Sleep tight, ya morons!" I'll bet
-I woke up every bastard on the whole floor. Then I got the hell out. Some stupid guy had
-thrown peanut shells all over the stairs, and I damn near broke my crazy neck. 8
- It was too late to call up for a cab or anything, so I walked the whole way to the
-station. It wasn't too far, but it was cold as hell, and the snow made it hard for walking,
-and my Gladstones kept banging hell out of my legs. I sort of enjoyed the air and all,
-though. The only trouble was, the cold made my nose hurt, and right under my upper lip,
-where old Stradlater'd laid one on me. He'd smacked my lip right on my teeth, and it was
-pretty sore. My ears were nice and warm, though. That hat I bought had earlaps in it, and
-I put them on--I didn't give a damn how I looked. Nobody was around anyway. Everybody was in the sack. I was quite lucky when I got to the station, because I only had to wait about ten
-minutes for a train. While I waited, I got some snow in my hand and washed my face
-with it.
-
-### Immediate Korean Context (Previous Segment Ending):
-모든 개자식들을 깨웠을 것이다. 그러고 나서 나는 떠났다. 어떤 멍청이가 계단 전체에 땅콩 껍질을 던져 놓았고, 나는 거의 미친 듯이 목이 부러질 뻔했다. 8 택시를 부르기에는 너무 늦었기 때문에 나는 역까지 걸어갔다. 그다지 멀지는 않았지만, 지독히도 추웠고, 눈 때문에 걷기가 힘들었고, 내 글래드스톤 가방은 계속 다리에 부딪혔다. 하지만 나는 그 공기와 모든 것을 즐겼다. 유일한 문제는 추위 때문에 코가 아팠고, 윗입술 바로 아래, 늙은 스트래들레이터가 나를 때렸던 곳이었다. 그는 내 입술을 이빨에 바로 부딪혔고, 그것은 꽤 아팠다. 하지만 내 귀는 따뜻했다. 내가 산 모자에는 귀마개가 달려 있었고, 나는 그것을 착용했다—나는 내 모습이 어떻든 상관없었다. 어차피 아무도 주변에 없었다. 모두 잠들어 있었다. 역에 도착했을 때 나는 꽤 운이 좋았다. 왜냐하면 기차를 타기 위해 겨우 10분 정도만 기다리면 되었기 때문이다. 기다리는 동안, 나는 손에 눈을 좀 묻혀서 얼굴을 씻었다.
-
-==================================================
-
---- CONTEXT FOR SEGMENT 9 ---
-
-### Cumulative Glossary:
-- J.D. Salinger: J.D. 샐린저
-- MOTHER: 어머니
-- THE CATCHER IN THE RYE: 호밀밭의 파수꾼
-- Agerstown: 에이저스타운
-- Anthony Wayne Avenue: 앤서니 웨인 애비뉴
-- Atlantic Monthly: 애틀랜틱 먼슬리
-- Caulfield: 콜필드
-- D.B.: 디비
-- David Copperfield: 데이비드 코퍼필드
-- Dr. Thurmer: 서머 박사
-- Hollywood: 할리우드
-- Jaguar: 재규어
-- McBurney School: 맥버니 스쿨
-- Mr. Zambesi: 잠베시 씨
-- Mrs. Spencer: 스펜서 부인
-- New York: 뉴욕
-- Paul Campbell: 폴 캠벨
-- Pencey Prep: 펜시 프렙
-- Pennsylvania: 펜실베이니아
-- Revolutionary War: 독립 전쟁
-- Robert Tichener: 로버트 티체너
-- Route 204: 204번 도로
-- Saxon Hall: 색슨 홀
-- Selma Thurmer: 셀마 서머
-- Spencer: 스펜서
-- The Secret Goldfish: 비밀 황금어
-- Thomsen Hill: 톰슨 언덕
-- Yellowstone Park: 옐로스톤 공원
-- Africa: 아프리카
-- Beowulf: 베오울프
-- Cadillac: 캐딜락
-- Central Park: 센트럴 파크
-- Central Park South: 센트럴 파크 사우스
-- Eastern Hemisphere: 동반구
-- Edgar Marsalla: 에드거 마르살라
-- Egyptians: 이집트인
-- Elkton Hills: 엘크턴 힐스
-- Haas: 하스
-- Holden Caulfield: 홀든 콜필드
-- Isak Dinesen: 이삭 디네센
-- Jesus: 예수
-- Lord Randal My Son: 랜달 아들 경
-- Marsalla: 마르살라
-- Mr. Haas: 하스 씨
-- Ossenburger: 오센버거
-- Ossenburger Memorial Wing: 오센버거 기념관
-- Out of Africa: 아웃 오브 아프리카
-- Pencey: 펜시
-- Thurmer: 서머
-- Vicks Nose Drops: 빅스 코 스프레이
-- Ward Stradlater: 워드 스트래들레이터
-- Whooton School: 후턴 학교
-- Ackley: 액클리
-- Eustacia Vye: 유스타샤 바이에
-- Herb Gale: 허브 게일
-- Of Human Bondage: 인간의 굴레
-- Ring Lardner: 링 라드너
-- Robert Ackley: 로버트 액클리
-- Sally Hayes: 샐리 헤이스
-- Somerset Maugham: 서머싯 몸
-- Stradlater: 스트래들레이터
-- The Return of the Native: 귀향
-- Thomas Hardy: 토머스 하디
-- B.M.: 비엠
-- Brown Betty: 브라운 베티
-- Bud Thaw: 버드 소서
-- Fitzgerald: 피츠제럴드
-- Jane Gallagher: 제인 갤러거
-- Jean Gallagher: 진 갤러거
-- Jesus H. Christ: 예수 그리스도
-- Mal Brossard: 말 브로사드
-- Phyllis Smith: 필리스 스미스
-- Shipley: 쉽리
-- Slaughter on Tenth Avenue: 텐스 애비뉴의 학살
-- Song of India: 인도의 노래
-- Vitalis: 비탈리스
-- Western Hemisphere: 서반구
-- Allie: 앨리
-- Brossnad: 브로스나드
-- Cary Grant: 캐리 그랜트
-- Ed Banky: 에드 뱅키
-- Jane: 제인
-- Maine: 메인
-- Mal: 말
-- Ely: 엘리
-- Frederick Woodruff: 프레더릭 우드로프
-- Hoffman: 호프만
-- Holden: 홀든
-- Leahy: 리히
-- Mrs. Schmidt: 슈미트 부인
-- Spaulding: 스폴딩
-- Carl Luce: 칼 루스
-- David: 데이비드
-- Edmont: 에드몬트
-- Edmont Hotel: 에드몬트 호텔
-- Ernest Morrow: 어니스트 모로
-- Gloucester: 글로스터
-- Harry Fencer: 해리 펜서
-- Linda: 린다
-- Marcia: 마샤
-- Massachusetts: 매사추세츠
-- Mrs. Morrow: 모로 부인
-- New Yorker: 뉴요커
-- Newark: 뉴어크
-- Ninedieth Street: 90번가
-- Penn Station: 펜 스테이션
-- Phoebe: 피비
-- Rudolf Schmidt: 루돌프 슈미트
-- Taft: 태프트
-- Anne Louise Sherman: 앤 루이스 셔먼
-- Broadway: 브로드웨이
-- Eddie Birdsell: 에디 버드셀
-- Edmund Birdsell: 에드먼드 버드셀
-- Faith Cavendish: 페이스 캐번디시
-- Mr. Cawffle: 커플 씨
-- Princeton: 프린스턴
-- Sixty-fifth: 65번가
-- Stanford Arms Hotel: 스탠퍼드 암스 호텔
-
-### Cumulative Character Styles:
-- Holden->D.B.: 반말
-- Holden->Selma Thurmer: 반말
-- Holden->Mr. Zambesi: 반말
-- Holden->Mrs. Spencer: 존댓말
-- Holden->Mr. Spencer: 존댓말
-- Holden->Spencer: 반말
-- Holden->Robert Ackley: 반말
-- Holden->Stradlater: 반말
-- Holden->Ackley: 반말
-- Holden->Mal: 반말
-- Holden->Bus driver: 반말
-- Holden->Frederick Woodruff: 반말
-- Holden->Lady: 존댓말
-- Holden->Rudolf Schmidt: 반말
-- Holden->Cab Driver: 반말
-- Holden->Faith Cavendish: 반말
-
-### Immediate English Context (Previous Segment Ending):
-cover up the baldness. I'd rather be
-bald than do that. Anyway, what a gorgeous job for a guy around sixty-five years old. Carrying people's suitcases and waiting around for a tip. I suppose he wasn't too
-intelligent or anything, but it was terrible anyway. After he left, I looked out the window for a while, with my coat on and all. I didn't
-have anything else to do. You'd be surprised what was going on on the other side of the
-hotel. They didn't even bother to pull their shades down. I saw one guy, a gray-haired,
-very distinguished-looking guy with only his shorts on, do something you wouldn't
-believe me if I told you. First he put his suitcase on the bed. Then he took out all these
-women's clothes, and put them on. Real women's clothes--silk stockings, high-heeled
-shoes, brassiere, and one of those corsets with the straps hanging down and all. Then he
-put on this very tight black evening dress. I swear to God. Then he started walking up and
-down the room, taking these very small steps, the way a woman does, and smoking a
-cigarette and looking at himself in the mirror. He was all alone, too. Unless somebody
-was in the bathroom--I couldn't see that much. Then, in the window almost right over his,
-I saw a man and a woman squirting water out of their mouths at each other. It probably
-was highballs, not water, but I couldn't see what they had in their glasses. Anyway, first
-he'd take a swallow and squirt it all over her, then she did it to him--they took turns, for
-God's sake.
-
-### Immediate Korean Context (Previous Segment Ending):
-커튼조차 내리지 않았다. 나는 회색 머리의 아주 품위 있어 보이는 남자가 반바지만 입고 있는 것을 보았다. 그가 하는 행동은 믿지 못할 것이다. 먼저 침대에 여행 가방을 올려놓았다. 그러고 나서 여자 옷을 모두 꺼내 입었다. 진짜 여자 옷—실크 스타킹, 하이힐, 브래지어, 그리고 끈이 달린 코르셋 말이다. 그러고 나서 아주 꼭 끼는 검은색 이브닝드레스를 입었다. 맹세한다. 그러고 나서 그는 여자가 걷는 것처럼 아주 짧은 걸음으로 방을 오르내리며 담배를 피우고 거울에 비친 자신을 보았다. 그는 혼자였다. 욕실에 누군가 있지 않는 한—그것까지는 잘 보이지 않았다. 그러고 나서, 거의 바로 위 창문에서, 나는 한 남자와 한 여자가 서로에게서 물을 뿜어내는 것을 보았다. 아마도 물이 아니라 하이볼이었겠지만, 잔에 무엇이 들었는지 볼 수 없었다. 아무튼, 먼저 그는 한 모금을 마시고 그녀에게 모두 뿜었고, 그러고 나서 그녀는 그에게 그렇게 했다—그들은 번갈아 가며 했다. 신을 위해서였다.
+난 특별히 할 일이 없어서 화장실에 가서 면도하는 동안 그와 잡담을 했어요. 우리 둘만 화장실에 있었어요. 왜냐하면 모두들 아직 게임을 보러 갔었기 때문이죠. 지옥처럼 더웠고 창문은 모두 김이 서려 있었어요. 벽에 나란히 세면대가 열 개 정도 있었어요. 스트래들레이터는 가운데 것을 사용했어요. 저는 바로 옆에 있는 세면대에 앉아서 차가운 물을 켜고 끄기 시작했어요—제가 가진 신경질적인 습관이죠.
 
 ==================================================
 

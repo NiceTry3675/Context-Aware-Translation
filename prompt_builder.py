@@ -14,11 +14,13 @@ class PromptBuilder:
         self.template = template
         print("PromptBuilder initialized.")
 
-    def build_translation_prompt(self, glossary: dict, character_styles: dict, source_segment: str, prev_segment_en: str, prev_segment_ko: str) -> str:
+    def build_translation_prompt(self, core_narrative_style: str, style_deviation_info: str, glossary: dict, character_styles: dict, source_segment: str, prev_segment_en: str, prev_segment_ko: str) -> str:
         """
         Builds the final prompt by filling the template with all necessary data.
 
         Args:
+            core_narrative_style: The defined core style for the novel's narration.
+            style_deviation_info: Information about any style deviation in this segment.
             glossary: The full, cumulative glossary.
             character_styles: The full, cumulative character style dictionary.
             source_segment: The source text to be translated.
@@ -32,6 +34,8 @@ class PromptBuilder:
         character_styles_string = self._format_dict_for_prompt(character_styles, "No specific dialogue styles defined.")
 
         context_data = {
+            "core_narrative_style": core_narrative_style,
+            "style_deviation_info": style_deviation_info,
             "glossary_terms": glossary_string,
             "character_speech_styles": character_styles_string,
             "prev_segment_en": prev_segment_en or "N/A",

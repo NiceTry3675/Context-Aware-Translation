@@ -63,15 +63,28 @@ class TranslationEngine:
         with open(context_log_path, 'w', encoding='utf-8') as f:
             f.write(f"# CONTEXT LOG FOR: {job.base_filename}\n\n")
 
+        # Define the core narrative style using the first segment
+        if not job.segments:
+            print("No segments to translate. Exiting.")
+            return
+        core_narrative_style = self._define_core_style(job.segments[0])
+        
+        # Log the defined style
+        with open(context_log_path, 'a', encoding='utf-8') as f:
+            f.write(f"--- Core Narrative Style Defined ---\n")
+            f.write(f"{core_narrative_style}\n")
+            f.write("="*50 + "\n\n")
+
         for i, segment_content in enumerate(tqdm(job.segments, desc="Translating Segments")):
             segment_index = i + 1
             print(f"\n\n--- Processing Segment {segment_index}/{len(job.segments)} ---")
 
             # 1. Build dynamic guides using the orchestrated builder
-            updated_glossary, updated_styles = self.dyn_config_builder.build_dynamic_guides(
-                segment_content,
-                job.glossary,
-                job.character_styles
+            updated_glossary, updated_styles, style_deviation = self.dyn_config_builder.build_dynamic_guides(
+                segment_text=segment_content,
+                core_narrative_style=core_narrative_style,
+                current_glossary=job.glossary,
+                current_character_styles=job.character_styles
             )
             job.glossary = updated_glossary
             job.character_styles = updated_styles
@@ -81,6 +94,8 @@ class TranslationEngine:
             immediate_context_ko = get_segment_ending(job.get_previous_translation(i), max_chars=500)
             
             prompt = self.prompt_builder.build_translation_prompt(
+                core_narrative_style=core_narrative_style,
+                style_deviation_info=style_deviation,
                 glossary=job.glossary,
                 character_styles=job.character_styles,
                 source_segment=segment_content,
@@ -94,7 +109,8 @@ class TranslationEngine:
                 segment_index=segment_index,
                 job=job,
                 immediate_context_en=immediate_context_en,
-                immediate_context_ko=immediate_context_ko
+                immediate_context_ko=immediate_context_ko,
+                style_deviation=style_deviation
             )
             with open(prompt_log_path, 'a', encoding='utf-8') as f:
                 f.write(f"--- PROMPT FOR SEGMENT {segment_index} ---\n\n")
@@ -118,10 +134,25 @@ class TranslationEngine:
         print(f"Logs: {prompt_log_path}")
         print(f"Context: {context_log_path}")
 
-    def _write_context_log(self, log_path: str, segment_index: int, job: TranslationJob, immediate_context_en: str, immediate_context_ko: str):
+    def _define_core_style(self, sample_text: str) -> str:
+        """Analyzes the first segment to define the core narrative style for the novel."""
+        print("\n--- Defining Core Narrative Style... ---")
+        try:
+            prompt = PromptManager.DEFINE_NARRATIVE_STYLE.format(sample_text=sample_text)
+            style = self.gemini_api.generate_text(prompt)
+            print(f"Style defined as: {style}")
+            return style
+        except Exception as e:
+            print(f"Warning: Could not define narrative style. Falling back to default. Error: {e}")
+            return "A standard, neutral literary style ('평서체')."
+
+    def _write_context_log(self, log_path: str, segment_index: int, job: TranslationJob, immediate_context_en: str, immediate_context_ko: str, style_deviation: str):
         """Writes a human-readable summary of the context to a log file."""
         with open(log_path, 'a', encoding='utf-8') as f:
             f.write(f"--- CONTEXT FOR SEGMENT {segment_index} ---\n\n")
+
+            f.write("### Narrative Style Deviation:\n")
+            f.write(f"{style_deviation}\n\n")
             
             f.write("### Cumulative Glossary:\n")
             if job.glossary:

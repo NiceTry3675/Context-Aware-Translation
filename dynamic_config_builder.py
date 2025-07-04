@@ -1,4 +1,5 @@
 from gemini_model import GeminiModel
+from prompt_manager import PromptManager
 from glossary_manager import GlossaryManager
 from character_style_manager import CharacterStyleManager
 
@@ -28,7 +29,6 @@ class DynamicConfigBuilder:
 
     def _determine_protagonist(self, novel_name: str) -> str:
         """
-
         Determines the protagonist's name based on the novel's title.
         This is a simple heuristic and can be replaced with a more robust method.
         """
@@ -40,21 +40,24 @@ class DynamicConfigBuilder:
         # Default fallback
         return "protagonist"
 
-    def build_dynamic_guides(self, segment_text: str, current_glossary: dict, current_character_styles: dict) -> tuple[dict, dict]:
+    def build_dynamic_guides(self, segment_text: str, core_narrative_style: str, current_glossary: dict, current_character_styles: dict) -> tuple[dict, dict, str]:
         """
         Analyzes a text segment to build dynamic guidelines for translation.
 
         This method orchestrates the process:
-        1. Updates the glossary with new proper nouns found in the segment.
-        2. Updates the character style guide based on dialogue interactions.
+        1. Updates the glossary with new proper nouns.
+        2. Updates the character style guide based on dialogue.
+        3. Analyzes the segment for any narrative style deviations.
 
         Args:
             segment_text: The text content of the current segment.
+            core_narrative_style: The core narrative style defined for the novel.
             current_glossary: The glossary dictionary from the TranslationJob.
             current_character_styles: The character styles dictionary from the TranslationJob.
 
         Returns:
-            A tuple containing the updated glossary and the updated character styles.
+            A tuple containing the updated glossary, updated character styles,
+            and any style deviation information.
         """
         print("\n--- Building Dynamic Guides for Segment ---")
         
@@ -70,5 +73,30 @@ class DynamicConfigBuilder:
             current_character_styles
         )
 
+        # 3. Analyze for style deviations
+        style_deviation_info = self._analyze_style_deviation(
+            segment_text,
+            core_narrative_style
+        )
+
         print("--- Dynamic Guides Built Successfully ---")
-        return updated_glossary, updated_character_styles
+        return updated_glossary, updated_character_styles, style_deviation_info
+
+    def _analyze_style_deviation(self, segment_text: str, core_narrative_style: str) -> str:
+        """Analyzes the segment for deviations from the core narrative style."""
+        print("Analyzing for narrative style deviations...")
+        prompt = PromptManager.ANALYZE_NARRATIVE_DEVIATION.format(
+            core_narrative_style=core_narrative_style,
+            segment_text=segment_text
+        )
+        try:
+            response = self.model.generate_text(prompt)
+            if "N/A" in response:
+                print("No deviation found.")
+                return "N/A"
+            else:
+                print(f"Deviation found: {response}")
+                return response
+        except Exception as e:
+            print(f"Warning: Could not analyze style deviation. {e}")
+            return "N/A"}

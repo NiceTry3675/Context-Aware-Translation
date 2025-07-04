@@ -23,52 +23,65 @@ class TranslationJob:
             f.write("")
 
     def _create_segments_from_file(self, target_size: int) -> list[str]:
-        """Reads the source file and splits it into robust segments based on size."""
+        """
+        Reads the source file and splits it into robust segments.
+        This version uses a refined pre-processing step to correctly handle
+        long paragraphs without introducing extra newlines.
+        """
         print(f"Reading and segmenting file: {self.filepath}")
         with open(self.filepath, 'r', encoding='utf-8') as f:
             full_text = f.read()
 
-        # Split by paragraphs first to respect natural breaks
+        # 1. Split the text into paragraphs.
         paragraphs = [p.strip() for p in re.split(r'\n\s*\n', full_text) if p.strip()]
         
-        segments = []
-        current_segment_paras = []
-        current_length = 0
-
+        # 2. Pre-process: Break down very long paragraphs into sentence-based chunks.
+        processed_parts = []
         for para in paragraphs:
-            # If a single paragraph is much larger than the target size, split it.
-            if len(para) > target_size * 1.5: # Use a 1.5x multiplier to avoid splitting too eagerly
-                # First, add any preceding paragraphs to form a segment
-                if current_segment_paras:
-                    segments.append("\n\n".join(current_segment_paras))
-                    current_segment_paras, current_length = [], 0
-                
-                # Split the large paragraph by sentences
+            if len(para) > target_size * 1.5:
                 sentences = re.split(r'(?<=[.!?])\s+', para)
-                sub_segment_sentences = []
-                sub_segment_length = 0
+                
+                sub_chunk_sentences = []
+                sub_chunk_length = 0
                 for sentence in sentences:
-                    sub_segment_sentences.append(sentence)
-                    sub_segment_length += len(sentence)
-                    if sub_segment_length >= target_size:
-                        segments.append(" ".join(sub_segment_sentences))
-                        sub_segment_sentences, sub_segment_length = [], 0
-                if sub_segment_sentences: # Add the remainder
-                    segments.append(" ".join(sub_segment_sentences))
-                continue # Move to the next paragraph
+                    sub_chunk_sentences.append(sentence)
+                    sub_chunk_length += len(sentence)
+                    if sub_chunk_length >= target_size:
+                        # Join sentences within a chunk with a space.
+                        processed_parts.append(" ".join(sub_chunk_sentences))
+                        sub_chunk_sentences = []
+                        sub_chunk_length = 0
+                
+                if sub_chunk_sentences:
+                    processed_parts.append(" ".join(sub_chunk_sentences))
+            else:
+                # Keep normal-sized paragraphs as they are.
+                processed_parts.append(para)
 
-            # Add the current paragraph to the buffer
-            current_segment_paras.append(para)
-            current_length += len(para)
+        # 3. Group the processed parts (paragraphs and chunks) into final segments.
+        segments = []
+        current_segment_parts = []
+        current_length = 0
+        for part in processed_parts:
+            # If adding the next part would make the segment too large, finalize the current one.
+            # This prevents very large segments. A 1.2x multiplier provides some flexibility.
+            if current_segment_parts and (current_length + len(part)) > target_size * 1.2:
+                 segments.append("\n\n".join(current_segment_parts))
+                 current_segment_parts = []
+                 current_length = 0
 
-            # If the buffer exceeds the target size, create a new segment
+            current_segment_parts.append(part)
+            current_length += len(part)
+            
+            # Finalize if the target size is met or exceeded.
             if current_length >= target_size:
-                segments.append("\n\n".join(current_segment_paras))
-                current_segment_paras, current_length = [], 0
+                segments.append("\n\n".join(current_segment_parts))
+                current_segment_parts = []
+                current_length = 0
 
-        # Add any remaining paragraphs as the final segment
-        if current_segment_paras:
-            segments.append("\n\n".join(current_segment_paras))
+        # Add the last remaining parts as the final segment.
+        if current_segment_parts:
+            segments.append("\n\n".join(current_segment_parts))
         
         print(f"Text divided into {len(segments)} segments.")
         return segments
