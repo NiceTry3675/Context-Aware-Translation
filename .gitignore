@@ -14,7 +14,7 @@ venv/
 # IDE / Editor specific
 .vscode/
 .idea/
-
+.gemini/
 # Archives
 _archive/
 
