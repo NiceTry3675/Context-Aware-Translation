@@ -6,7 +6,7 @@ class TranslationJob:
     Represents a single translation job, responsible for handling the source text
     and storing the results.
     """
-    def __init__(self, filepath: str, target_segment_size: int = 30000):
+    def __init__(self, filepath: str, target_segment_size: int = 15000):
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"The file '{filepath}' does not exist.")
         
@@ -21,21 +21,53 @@ class TranslationJob:
             f.write("")
 
     def _create_segments_from_file(self, target_size: int) -> list[str]:
-        """Reads the source file and splits it into segments."""
+        """Reads the source file and splits it into robust segments based on size."""
         print(f"Reading and segmenting file: {self.filepath}")
         with open(self.filepath, 'r', encoding='utf-8') as f:
             full_text = f.read()
-        
+
+        # Split by paragraphs first to respect natural breaks
         paragraphs = [p.strip() for p in re.split(r'\n\s*\n', full_text) if p.strip()]
-        segments, current_segment_paras, current_length = [], [], 0
+        
+        segments = []
+        current_segment_paras = []
+        current_length = 0
+
         for para in paragraphs:
+            # If a single paragraph is much larger than the target size, split it.
+            if len(para) > target_size * 1.5: # Use a 1.5x multiplier to avoid splitting too eagerly
+                # First, add any preceding paragraphs to form a segment
+                if current_segment_paras:
+                    segments.append("\n\n".join(current_segment_paras))
+                    current_segment_paras, current_length = [], 0
+                
+                # Split the large paragraph by sentences
+                sentences = re.split(r'(?<=[.!?])\s+', para)
+                sub_segment_sentences = []
+                sub_segment_length = 0
+                for sentence in sentences:
+                    sub_segment_sentences.append(sentence)
+                    sub_segment_length += len(sentence)
+                    if sub_segment_length >= target_size:
+                        segments.append(" ".join(sub_segment_sentences))
+                        sub_segment_sentences, sub_segment_length = [], 0
+                if sub_segment_sentences: # Add the remainder
+                    segments.append(" ".join(sub_segment_sentences))
+                continue # Move to the next paragraph
+
+            # Add the current paragraph to the buffer
             current_segment_paras.append(para)
             current_length += len(para)
+
+            # If the buffer exceeds the target size, create a new segment
             if current_length >= target_size:
                 segments.append("\n\n".join(current_segment_paras))
                 current_segment_paras, current_length = [], 0
+
+        # Add any remaining paragraphs as the final segment
         if current_segment_paras:
             segments.append("\n\n".join(current_segment_paras))
+        
         print(f"Text divided into {len(segments)} segments.")
         return segments
 

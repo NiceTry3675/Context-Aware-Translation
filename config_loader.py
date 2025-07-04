@@ -12,12 +12,11 @@ def load_config():
     if not gemini_api_key:
         raise ValueError("API key for Gemini must be set in .env file.")
 
+    glossary_path = 'config/glossary.json'
     # Load JSON files
     try:
-        with open('config/glossary.json', 'r', encoding='utf-8') as f:
+        with open(glossary_path, 'r', encoding='utf-8') as f:
             glossary = json.load(f)
-        with open('config/style_guide.json', 'r', encoding='utf-8') as f:
-            style_guide = json.load(f)
     except FileNotFoundError as e:
         raise FileNotFoundError(f"Configuration file not found: {e.filename}. Make sure config files exist.")
 
@@ -41,8 +40,7 @@ def load_config():
         "gemini_model_name": 'gemini-2.5-flash-lite-preview-06-17',
         "safety_settings": safety_settings,
         "generation_config": generation_config,
-        "glossary": glossary,
-        "style_guide": style_guide,
+        "glossary_path": glossary_path, # Return path instead of content
     }
 
 if __name__ == '__main__':

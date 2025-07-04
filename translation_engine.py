@@ -5,12 +5,41 @@ from prompt_builder import PromptBuilder
 from dynamic_config_builder import DynamicConfigBuilder
 from translation_job import TranslationJob
 
-def get_segment_ending(segment_text: str, num_paragraphs: int = 2) -> str:
-    """Extracts the last few paragraphs from a segment."""
-    if not segment_text:
+def get_segment_ending(segment_text: str, max_chars: int = 500) -> str:
+    """
+    Extracts the very end of a text segment to be used as immediate context,
+    ensuring the length does not exceed max_chars and avoiding mid-word cuts.
+    """
+    if not segment_text or max_chars <= 0:
         return ""
-    paragraphs = [p.strip() for p in re.split(r'\n\s*\n', segment_text) if p.strip()]
-    return "\n\n".join(paragraphs[-num_paragraphs:])
+
+    # If the text is already short enough, return it as is.
+    if len(segment_text) <= max_chars:
+        return segment_text
+
+    # Take the last `max_chars` characters as a starting point.
+    context = segment_text[-max_chars:]
+
+    # Find the first space from the beginning of the truncated context
+    # to avoid starting with a partial word.
+    first_space_pos = context.find(' ')
+    if first_space_pos > -1:
+        # Return the text from the first full word onwards.
+        return context[first_space_pos+1:]
+    
+    # If no space is found (e.g., one very long word or CJK text), return the truncated context.
+    return context
+
+def _extract_translation_from_response(response: str) -> str:
+    """
+    Extracts the Korean translation from the structured response.
+    """
+    match = re.search(r"\[Korean Translation\]:\s*(.*)", response, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    else:
+        # Fallback if the model doesn't follow the format perfectly
+        return response.strip()
 
 class TranslationEngine:
     """
@@ -48,7 +77,7 @@ class TranslationEngine:
         """
         Translates all segments in a given TranslationJob.
         """
-        static_rules_text = self._prepare_static_rules(config)
+        style_guide = config.get('style_guide', {})
         
         prompt_log_filename = f"debug_prompts_{job.base_filename}.txt"
         context_log_filename = f"context_log_{job.base_filename}.txt"
@@ -60,34 +89,50 @@ class TranslationEngine:
         for i, segment_content in enumerate(tqdm(job.segments, desc="Translating Segments")):
             segment_index = i + 1
             print(f"\n\n--- Starting processing for Segment {segment_index}/{len(job.segments)} ---")
-            print(f"Segment starts with: '{segment_content[:70].strip()}...'\n")
+            print(f"Segment starts with: '{segment_content[:70].strip()}...'
+")
 
-            # The call to generate_guidelines_text is simplified back to its stable version
-            dynamic_guidelines_text = self.dyn_config_builder.generate_guidelines_text(segment_content)
+            guidelines = self.dyn_config_builder.generate_guidelines(segment_content)
             
-            immediate_context_en_text = get_segment_ending(job.get_previous_segment(i))
-            immediate_context_ko_text = get_segment_ending(job.get_previous_translation(i))
-            past_events_text = "Episodic memory feature is disabled."
+            immediate_context_en = get_segment_ending(job.get_previous_segment(i), max_chars=1500)
+            immediate_context_ko = get_segment_ending(job.get_previous_translation(i), max_chars=500)
 
-            context_data = {
-                "static_rules": static_rules_text,
-                "dynamic_guidelines": dynamic_guidelines_text,
-                "immediate_context_en": immediate_context_en_text or "N/A",
-                "immediate_context_ko": immediate_context_ko_text or "N/A",
-                "past_events": past_events_text,
-                "current_segment": segment_content
-            }
-            
-            self._write_context_log(context_log_filename, segment_index, context_data)
-            prompt = self.prompt_builder.create_prompt(context_data)
+            # Build the final prompt using the hierarchical guide system
+            prompt = self.prompt_builder.build_translation_prompt(
+                style_guide=style_guide,
+                glossary_terms=guidelines['glossary_terms'],
+                style_analysis=guidelines['style_analysis'],
+                source_segment=segment_content,
+                prev_segment_en=immediate_context_en,
+                prev_segment_ko=immediate_context_ko
+            )
+
+            # Log the context used for debugging and review
+            dynamic_guidelines_log = (
+                f"Key Term Translations:
+{guidelines['glossary_terms']}
+
+"
+                f"Style and Tone Analysis:
+{guidelines['style_analysis']}"
+            )
+            self._write_context_log(context_log_filename, segment_index, {
+                "static_rules": self._prepare_static_rules(config),
+                "dynamic_guidelines": dynamic_guidelines_log,
+                "immediate_context_en": immediate_context_en,
+                "immediate_context_ko": immediate_context_ko
+            })
 
             with open(prompt_log_filename, 'a', encoding='utf-8') as f:
-                f.write(f"--- PROMPT FOR SEGMENT {segment_index} ---\n\n")
+                f.write(f"--- PROMPT FOR SEGMENT {segment_index} ---
+
+")
                 f.write(prompt)
                 f.write("\n\n" + "="*50 + "\n\n")
 
             try:
-                translated_text = self.gemini_api.generate_text(prompt)
+                model_response = self.gemini_api.generate_text(prompt)
+                translated_text = _extract_translation_from_response(model_response)
                 print(f"Segment {segment_index} translated successfully.")
             except Exception as e:
                 print(f"Translation failed for segment {segment_index} after all retries. Skipping.")

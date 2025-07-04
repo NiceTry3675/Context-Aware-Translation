@@ -11,17 +11,27 @@ You MUST adhere to the following key principles without compromise:
 
 # CONTEXT & RULES FOR THIS SEGMENT
 
-### 1. Static Rules (Apply to the entire novel)
-{static_rules}
+### 1. Base Style Guide (Applies to the entire novel - foundational rules)
+This section provides the overarching style guidelines for the novel, automatically generated based on an initial analysis of the text. Adhere to these as the primary stylistic foundation.
 
-### 2. AI-Generated Guidelines (Specific to this segment)
+**Narration Style:**
+- **Narrator's Voice:** {base_narration_voice}
+- **Overall Tone:** {base_overall_tone}
+- **Default Narration Speech Level:** {base_default_speech_level}
+
+**Character Profiles (Default Speech Styles):**
+{character_profiles_text}
+
+### 2. AI-Generated Guidelines (Specific to this segment - situational adjustments)
+This section provides dynamic, segment-specific adjustments or nuances to the base style guide, based on the immediate context and emotional tone of this particular segment. These guidelines should be applied as fine-tuning on top of the base style.
+
 {dynamic_guidelines}
 
 ### 3. Immediate Context (For seamless flow)
 - **End of Previous English Segment:** 
-{immediate_context_en}
+{prev_segment_en}
 - **End of Previous Korean Translation:** 
-{immediate_context_ko}
+{prev_segment_ko}
 
 ---
 
@@ -33,5 +43,5 @@ Output ONLY the final rewritten Korean text. Do NOT add any titles, explanations
 
 **SOURCE TEXT SEGMENT:**
 ---
-{current_segment}
+{source_segment}
 ---

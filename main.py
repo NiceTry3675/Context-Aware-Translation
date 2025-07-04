@@ -6,6 +6,7 @@ from prompt_builder import PromptBuilder
 from dynamic_config_builder import DynamicConfigBuilder
 from translation_job import TranslationJob
 from translation_engine import TranslationEngine
+from style_guide_manager import StyleGuideManager
 
 def main():
     """
@@ -26,8 +27,14 @@ def main():
             safety_settings=config['safety_settings'],
             generation_config=config['generation_config']
         )
+        
+        # 2a. Automatically get or generate the style guide for the novel
+        style_manager = StyleGuideManager(gemini_api)
+        style_guide = style_manager.get_style_guide(args.filepath)
+        config['style_guide'] = style_guide # Add to config for easy access
+
         prompt_builder = PromptBuilder()
-        dyn_config_builder = DynamicConfigBuilder(gemini_api)
+        dyn_config_builder = DynamicConfigBuilder(gemini_api, config['glossary_path'])
         engine = TranslationEngine(gemini_api, prompt_builder, dyn_config_builder)
 
         # 3. Create a new translation job from the input file

@@ -20,8 +20,7 @@ _archive/
 
 # Translation output & logs
 translated_novel/
-debug_prompts_*.txt
-context_log_*.txt
+
 
 # Vector DB files (if re-enabled)
 vector_db/
