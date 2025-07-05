@@ -59,7 +59,7 @@ class DynamicConfigBuilder:
             A tuple containing the updated glossary, updated character styles,
             and any style deviation information.
         """
-        print("\n--- Building Dynamic Guides for Segment ---")
+        # print("\n--- Building Dynamic Guides for Segment ---")
         
         # 1. Update glossary
         updated_glossary = self.glossary_manager.update_glossary(
@@ -79,12 +79,12 @@ class DynamicConfigBuilder:
             core_narrative_style
         )
 
-        print("--- Dynamic Guides Built Successfully ---")
+        # print("--- Dynamic Guides Built Successfully ---")
         return updated_glossary, updated_character_styles, style_deviation_info
 
     def _analyze_style_deviation(self, segment_text: str, core_narrative_style: str) -> str:
         """Analyzes the segment for deviations from the core narrative style."""
-        print("Analyzing for narrative style deviations...")
+        # print("Analyzing for narrative style deviations...")
         prompt = PromptManager.ANALYZE_NARRATIVE_DEVIATION.format(
             core_narrative_style=core_narrative_style,
             segment_text=segment_text
@@ -92,11 +92,11 @@ class DynamicConfigBuilder:
         try:
             response = self.model.generate_text(prompt)
             if "N/A" in response:
-                print("No deviation found.")
+                # print("No deviation found.")
                 return "N/A"
             else:
-                print(f"Deviation found: {response}")
+                # print(f"Deviation found: {response}")
                 return response
         except Exception as e:
             print(f"Warning: Could not analyze style deviation. {e}")
-            return "N/A"}
+            return "N/A"

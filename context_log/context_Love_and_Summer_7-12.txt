@@ -1,0 +1,522 @@
+# CONTEXT LOG FOR: Love_and_Summer_7-12
+
+--- Core Narrative Style Defined ---
+**Analysis Report:**
+1.  **Narrative Perspective:** 3rd-person
+2.  **Primary Speech Level:** 해라체 (This is the most fitting for narrative descriptions and internal thoughts, maintaining a formal yet accessible tone. While dialogue might vary, the overall narrative voice leans towards descriptive and somewhat detached, aligning with 해라체.)
+3.  **Tone (Written/Spoken):** 문어체 (Literary/Written)
+==================================================
+
+--- CONTEXT FOR SEGMENT 1 ---
+
+### Narrative Style Deviation:
+A dream sequence begins with the line "Hours later Florian dreamed of the Zoo..." and continues to the end of the paragraph describing the dream's altered characters and content. This section shifts the narrative to a more subjective and surreal tone, deviating from the established descriptive style.
+
+### Cumulative Glossary:
+- Barchester: 바체스터
+- Bartolomeo: 바르톨로메오
+- Bernadette O’Keeffe: 베르나데트 오키프
+- Cadogan’s Vegetables and Floral: 카도건 채소 및 꽃집
+- Castledrummond: 캐슬드럼먼드
+- Cesare: 체사레
+- Credito Italiano: 이탈리아 신용은행
+- Edward Ashburnham: 에드워드 애쉬번햄
+- Enrico: 엔리코
+- Finland: 핀란드
+- Florian Kilderry: 플로리안 킬더리
+- Fogarty: 포가티
+- For Whom the Bell Tolls: 누구를 위하여 종은 울리나
+- Gabriel Conroy: 가브리엘 콘로이
+- Genoa: 제노바
+- George Anthony: 조지 앤서니
+- Giovanni: 지오반니
+- Gloria: 글로리아
+- Heathcliff: 히스클리프
+- Ingrid Bergman: 잉그리드 버그먼
+- Isabella: 이사벨라
+- Jessie: 제시
+- Joseph Paul Connulty: 조지프 폴 콘널티
+- Kissane: 키세인
+- Lisquin: 리스퀸
+- Miss Havisham: 미스 하비셤
+- Mr McGovern: 맥거번 씨
+- Mr Verloc: 베를로크 씨
+- Netherfield Park: 네더필드 공원
+- Noeleen Fahy: 놀린 페이
+- Norwegian: 노르웨이의
+- Number 4 The Square: 광장 4번지
+- Orpen Wren: 오르펜 렌
+- Pietro Pallotta: 피에트로 팔로타
+- Rathmoye: 래스모이
+- Rose Mary Darty: 로즈 메리 다티
+- Santa Lucia: 산타 루치아
+- Scandinavia: 스칸디나비아
+- Shelhanagh: 셸라너
+- Signor Canepaci: 카네파치 씨
+- Sweden: 스웨덴
+- The Beautiful and the Damned: 낙원의 새들
+
+### Cumulative Character Styles:
+- protagonist->Book dealer: 반말
+- protagonist->Girl in Rathmoye: 반말
+
+### Immediate English Context (Previous Segment Ending):
+N/A
+
+### Immediate Korean Context (Previous Segment Ending):
+N/A
+
+==================================================
+
+--- CONTEXT FOR SEGMENT 2 ---
+
+### Narrative Style Deviation:
+A clear deviation occurs within the text segment.
+
+**Description of Deviation:**
+The segment beginning with "'Your daughter’s a hooer,' her greeting was when her husband came in from the back bar of the public house, the smell of burning sheets still in the air." is a flashback, shifting to a significantly more emotionally charged and colloquial tone, reflecting the raw, accusatory dialogue of the mother. This contrasts sharply with the established narrative's formal, detached, and descriptive **문어체** (literary/written) style. The focus here is on direct, harsh speech and a recounting of past events with a different emotional valence.
+
+**Location of Deviation:**
+The deviation begins with the line: "‘Your daughter’s a hooer,’ her greeting was when her husband came in from the back bar of the public house, the smell of burning sheets still in the air."
+
+### Cumulative Glossary:
+- Barchester: 바체스터
+- Bartolomeo: 바르톨로메오
+- Bernadette O’Keeffe: 베르나데트 오키프
+- Cadogan’s Vegetables and Floral: 카도건 채소 및 꽃집
+- Castledrummond: 캐슬드럼먼드
+- Cesare: 체사레
+- Credito Italiano: 이탈리아 신용은행
+- Edward Ashburnham: 에드워드 애쉬번햄
+- Enrico: 엔리코
+- Finland: 핀란드
+- Florian Kilderry: 플로리안 킬더리
+- Fogarty: 포가티
+- For Whom the Bell Tolls: 누구를 위하여 종은 울리나
+- Gabriel Conroy: 가브리엘 콘로이
+- Genoa: 제노바
+- George Anthony: 조지 앤서니
+- Giovanni: 지오반니
+- Gloria: 글로리아
+- Heathcliff: 히스클리프
+- Ingrid Bergman: 잉그리드 버그먼
+- Isabella: 이사벨라
+- Jessie: 제시
+- Joseph Paul Connulty: 조지프 폴 콘널티
+- Kissane: 키세인
+- Lisquin: 리스퀸
+- Miss Havisham: 미스 하비셤
+- Mr McGovern: 맥거번 씨
+- Mr Verloc: 베를로크 씨
+- Netherfield Park: 네더필드 공원
+- Noeleen Fahy: 놀린 페이
+- Norwegian: 노르웨이의
+- Number 4 The Square: 광장 4번지
+- Orpen Wren: 오르펜 렌
+- Pietro Pallotta: 피에트로 팔로타
+- Rathmoye: 래스모이
+- Rose Mary Darty: 로즈 메리 다티
+- Santa Lucia: 산타 루치아
+- Scandinavia: 스칸디나비아
+- Shelhanagh: 셸라너
+- Signor Canepaci: 카네파치 씨
+- Sweden: 스웨덴
+- The Beautiful and the Damned: 낙원의 새들
+- Annunciation: 수태고지
+- Arthur Tetlow: 아서 테틀로
+- Bernadette: 버나뎃
+- Bisto: 비스토
+- Cashel Street: 캐셜 스트리트
+- Cheltenham: 첼트넘
+- Clover Meats: 클로버 미트
+- Coliseum: 콜로세움
+- Dillahan: 딜라한
+- Drummond’s Seeds: 드러먼드 씨앗
+- Ellie: 엘리
+- Father Millane: 밀레인 신부
+- Florian: 플로리안
+- Ford: 포드
+- George: 조지
+- George Anthony St John: 조지 앤서니 세인트 존
+- Ghirlandaio: 기를란다요
+- Gohery: 고헤리
+- Hennessy: 헤네시
+- Her Majesty’s Sloop The Serpent: 해럴드 함대 연방 제1함대 뱀호
+- Ireland: 아일랜드
+- Joseph Paul: 조지프 폴
+- Lady Eliza: 엘라이자 부인
+- Limerick: 리머릭
+- Mabel Thynne: 메이블 씬
+- Mac’s Hairdressing: 맥스 미용실
+- Magourtey: 매거티
+- Matthew Street: 매튜 스트리트
+- McGovern’s: 맥거번네
+- Miss Burke: 버크 양
+- Miss Connulty: 코널티 양
+- Morpeth Terrace: 모펫 테라스
+- Mr Clancy: 클랜시 씨
+- Mrs Dillahan: 딜라한 부인
+- Sheffield: 셰필드
+- Square: 광장
+- St Johns: 세인트 존스
+- The Paddocks: 패독스
+
+### Cumulative Character Styles:
+- protagonist->Book dealer: 반말
+- protagonist->Girl in Rathmoye: 반말
+- protagonist->Bernadette O'Keeffe: 반말
+- protagonist->Orpen Wren: 반말
+- protagonist->Mr Clancy: 반말
+- protagonist->Florian: 반말
+
+### Immediate English Context (Previous Segment Ending):
+Bernadette. The imperiousness was the mother’s, although the daughter did not know it or she would have changed her ways. Her employer’s sister was a sinister woman in Bernadette’s opinion.
+
+She passed into the public house and through the long street bar, no one at present in charge of it. There were drinkers at the far end, two men who were always there in the mornings, who never greeted her when she came in, or spoke to her when she passed close to them, whose names she did not know or wish toknow.
+
+‘Good morning,’ she said in the back bar, and her employer rose from the small round table where they did their business and she sat down at it. He poured her a 7-Up.
+
+They were alone. There never was anyone else in the back bar when she came, or even later in the day; and in the evenings the street bar was still preferred. At that time the priests frequented the back bar, and Mr McGovern because it was convenient, and Fogarty from the courthouse to play cards if there was anyone to play with.
+
+Bernadette spread out the papers she had brought, the cheques to be signed kept to one side. For a long time this had been a morning routine, the 7-Up, and
+
+watching while the top of her employer’s ballpoint was removed, his signature inscribed. This declaration of his identity was as meticulous and tidy as he was himself, a man who resp ected restraint, who never raised his voice or displayed anger, who lost nothing because he would not let himself lose things. Bernadette loved him.
+
+### Immediate Korean Context (Previous Segment Ending):
+않았으며, 그녀는 그들의 이름을 모르거나 알고 싶어 하지도 않았다.
+
+"좋은 아침입니다." 그녀가 뒷바에서 말했고, 그녀의 고용주는 그들이 사업을 하던 작은 둥근 테이블에서 일어섰고 그녀는 거기에 앉았다. 그는 그녀에게 7-업을 한 잔 따라주었다.
+
+그들은 혼자였다. 그녀가 올 때나 심지어 하루 중 나중에도 뒷바에는 아무도 없었다. 그리고 저녁에는 스트리트 바가 여전히 선호되었다. 그때 신부들이 뒷바를 자주 찾았고, 맥거번 씨는 편리하기 때문에, 그리고 법원에서 온 포가티는 함께 놀 사람이 있다면 카드 놀이를 했다.
+
+베르나데트는 가져온 서류들을 펼쳤고, 서명할 수표는 한쪽에 놓였다. 오랫동안 이것은 아침 일과였다. 7-업과
+
+고용주의 볼펜 뚜껑이 열리는 것을 지켜보며 그의 서명이 새겨졌다. 그의 정체성에 대한 이 선언은 그 자신만큼이나 세심하고 깔끔했다. 절제를 존중하고, 목소리를 높이거나 분노를 표현하지 않으며, 결코 무언가를 잃지 않는 남자였다. 베르나데트는 그를 사랑했다.
+
+==================================================
+
+--- CONTEXT FOR SEGMENT 3 ---
+
+### Narrative Style Deviation:
+The text segment contains a clear deviation in narrative style beginning with the line: "I dreamed about you," he said.
+
+**Description of Deviation:** This line marks the beginning of a new section (marked by the number "11" shortly after) which shifts the narrative perspective and focus. While the previous sections were primarily focused on Ellie Dillahan's internal thoughts and interactions with Florian Kilderry, section 11 shifts to the perspective of Miss Connulty, observing the scene from a window. This change in viewpoint, combined with a more analytical and judgmental tone regarding Ellie and Florian, represents a structural shift in the narrative's observational focus.
+
+Furthermore, the passage detailing Miss Connulty's thoughts about Ellie's life, her husband, and her perception of Florian as a "suave photographer" and "plunderer" introduces a more explicitly judgmental and concerned tone than the preceding sections. This judgmental tone is sustained as Miss Connulty discusses the situation with her brother, Joseph Paul, revealing a more complex and layered character perspective than previously established. The subsequent dialogue between Miss Connulty and Joseph Paul about the picture house and the man's description also represents a shift in the conversational dynamic and information delivery, moving from Ellie's internal experiences to external observations and gossip.
+
+### Cumulative Glossary:
+- Barchester: 바체스터
+- Bartolomeo: 바르톨로메오
+- Bernadette O’Keeffe: 베르나데트 오키프
+- Cadogan’s Vegetables and Floral: 카도건 채소 및 꽃집
+- Castledrummond: 캐슬드럼먼드
+- Cesare: 체사레
+- Credito Italiano: 이탈리아 신용은행
+- Edward Ashburnham: 에드워드 애쉬번햄
+- Enrico: 엔리코
+- Finland: 핀란드
+- Florian Kilderry: 플로리안 킬더리
+- Fogarty: 포가티
+- For Whom the Bell Tolls: 누구를 위하여 종은 울리나
+- Gabriel Conroy: 가브리엘 콘로이
+- Genoa: 제노바
+- George Anthony: 조지 앤서니
+- Giovanni: 지오반니
+- Gloria: 글로리아
+- Heathcliff: 히스클리프
+- Ingrid Bergman: 잉그리드 버그먼
+- Isabella: 이사벨라
+- Jessie: 제시
+- Joseph Paul Connulty: 조지프 폴 콘널티
+- Kissane: 키세인
+- Lisquin: 리스퀸
+- Miss Havisham: 미스 하비셤
+- Mr McGovern: 맥거번 씨
+- Mr Verloc: 베를로크 씨
+- Netherfield Park: 네더필드 공원
+- Noeleen Fahy: 놀린 페이
+- Norwegian: 노르웨이의
+- Number 4 The Square: 광장 4번지
+- Orpen Wren: 오르펜 렌
+- Pietro Pallotta: 피에트로 팔로타
+- Rathmoye: 래스모이
+- Rose Mary Darty: 로즈 메리 다티
+- Santa Lucia: 산타 루치아
+- Scandinavia: 스칸디나비아
+- Shelhanagh: 셸라너
+- Signor Canepaci: 카네파치 씨
+- Sweden: 스웨덴
+- The Beautiful and the Damned: 낙원의 새들
+- Annunciation: 수태고지
+- Arthur Tetlow: 아서 테틀로
+- Bernadette: 버나뎃
+- Bisto: 비스토
+- Cashel Street: 캐셜 스트리트
+- Cheltenham: 첼트넘
+- Clover Meats: 클로버 미트
+- Coliseum: 콜로세움
+- Dillahan: 딜라한
+- Drummond’s Seeds: 드러먼드 씨앗
+- Ellie: 엘리
+- Father Millane: 밀레인 신부
+- Florian: 플로리안
+- Ford: 포드
+- George: 조지
+- George Anthony St John: 조지 앤서니 세인트 존
+- Ghirlandaio: 기를란다요
+- Gohery: 고헤리
+- Hennessy: 헤네시
+- Her Majesty’s Sloop The Serpent: 해럴드 함대 연방 제1함대 뱀호
+- Ireland: 아일랜드
+- Joseph Paul: 조지프 폴
+- Lady Eliza: 엘라이자 부인
+- Limerick: 리머릭
+- Mabel Thynne: 메이블 씬
+- Mac’s Hairdressing: 맥스 미용실
+- Magourtey: 매거티
+- Matthew Street: 매튜 스트리트
+- McGovern’s: 맥거번네
+- Miss Burke: 버크 양
+- Miss Connulty: 코널티 양
+- Morpeth Terrace: 모펫 테라스
+- Mr Clancy: 클랜시 씨
+- Mrs Dillahan: 딜라한 부인
+- Sheffield: 셰필드
+- Square: 광장
+- St Johns: 세인트 존스
+- The Paddocks: 패독스
+- Boyce: 보이즈
+- Boyces: 보이즈 씨
+- Cloonhill: 클룬힐
+- Cnocrea: 크노크리아
+- Corbally’s: 코발리의
+- Crilly: 크릴리
+- Dempsey: 뎀프시
+- Dublin: 더블린
+- Ellie Dillahan: 엘리 딜라한
+- Hallowe’en: 할로윈
+- Hurley Lane: 헐리 레인
+- Kilaney: 킬레이니
+- Magennis Street: 마게니스 스트리트
+- Miss Batesriff: 베이츠리프 양
+- Mr Macready: 맥크레디 씨
+- Vauxhall: 복솔
+- Wexford: 웩스퍼드
+- William: 윌리엄
+
+### Cumulative Character Styles:
+- protagonist->Book dealer: 반말
+- protagonist->Girl in Rathmoye: 반말
+- protagonist->Bernadette O'Keeffe: 반말
+- protagonist->Orpen Wren: 반말
+- protagonist->Mr Clancy: 존댓말
+- protagonist->Florian: 반말
+- protagonist->Florian Kilderry: 반말
+- protagonist->Husband: 존댓말
+
+### Immediate English Context (Previous Segment Ending):
+hesitation, a moment of doubt, bewilderment, before the old man again found his way in the conversation.
+
+‘I have the coal ordered,’ he said.
+
+‘Of course, but all the same it might be better if you went on looking after these papers yourself.’
+
+‘The little table beneath the portrait of Lady Eliza is where the papers were always kept. The little table that opens out. Well, you’d know.’
+
+‘Just for the time-being, maybe you wouldn’t mind continuing to look afterthem?’
+
+‘We’ve had the time-being, sir. The longest time-being there ever was known in Ireland.’
+
+Florian saw the girl then. She was cycling slowly across the Square in the distance. Her blue dress drew his attention, the same dress she’d been wearing before and when he dreamed about her. She passed Bodell’s Bar and turned into a street a few yards on.
+
+‘If you wouldn’t mind,’ he said, ‘another day would be more convenient for me to take the papers.’
+
+They were accepted then, when again Florian held them out.
+
+‘I’ve lent them a few times, sir, because of the interest in the family. But I’ll keep them by me since it’s your instruction. Where I live these days is Morpeth Terrace, the second house along. It does me rightly.’
+
+Florian nodded. In the drawer of that same table, he was reminded, was the catalogue of the library, complete and clearly written out, two thousand and fifty-nine volumes. In case it should ever be mislaid there was a copy in the smaller of the two upstairs drawing-rooms, in the Limerick writing-desk.
+
+### Immediate Korean Context (Previous Segment Ending):
+그 소녀를 보았다. 그녀는 멀리 광장을 천천히 자전거로 건너고 있었다. 그녀의 파란색 드레스가 그의 주의를 끌었고, 그녀가 전에 입었던 것과 같은 드레스였고, 그가 그녀를 꿈꿀 때 입었던 드레스였다. 그녀는 보델 바를 지나 몇 야드 떨어진 거리에 있는 거리에 들어섰다.
+
+"괜찮으시다면," 그가 말했다, "다른 날에 제가 서류를 가져가는 것이 더 편리할 것 같아요."
+
+플로리안이 다시 서류를 내밀었을 때 그들은 그것을 받아들였다.
+
+"가족에 대한 관심 때문에 몇 번 빌려줬어요, 선생님. 하지만 선생님의 지시이기 때문에 제가 가지고 있겠어요. 요즘 제가 사는 곳은 모펫 테라스예요, 안쪽으로 두 번째 집이에요. 거기서 잘 지내고 있어요."
+
+플로리안은 고개를 끄덕였다. 그는 그와 같은 탁자의 서랍에 도서관 목록이 완성되어 명확하게 쓰여 있다는 것을 상기했다. 이천오십구 권이었다. 혹시라도 잘못될 경우를 대비하여 두 개의 위층 응접실 중 더 작은 것에, 리머릭 책상에 사본이 있었다.
+
+==================================================
+
+--- CONTEXT FOR SEGMENT 4 ---
+
+### Narrative Style Deviation:
+A clear deviation occurs when the text shifts to **a letter written by the protagonist to Sister Ambrose**. This begins with the line, "She wrote to Sister Ambrose, saying she was sorry she hadn’t written at Christmas, saying she was all right." The style of this section is characterized by its personal address, confession, and an introspective tone, which marks a departure from the established narrative's descriptive and somewhat detached approach.
+
+Additionally, there are **fragments of what appear to be quotes or remembered dialogue presented in italics**, which stand out from the main narrative flow. These are:
+
+*   'I’m lucky myself,’ she’d said, and had meant it, for she had never developed the habit of lying.
+*   ‘I’m sorry,’ she apologized later when she couldn’t give him children, and he said it didn’t matter.
+*   ‘You’ve given me enough,’ he said.
+*   ‘A bit of a blade,’ he said, explaining the puncture. ‘Vicious little edge to it.’
+*   ‘I see we have the raddle powder.’
+*   ‘No harm. Did you ever notice hook springs in English’s? D’you know do they keep them?’
+*   ‘I’ll ask.’
+*   ‘He’d do anything for you,’ a woman she didn’t know had said to her at the wedding celebration, as if that should be said, as if it was too easy to take him for granted.
+*   ‘I think you maybe told me that.’
+*   ‘I’m sorry.’
+*   ‘Arrah, no.’
+*   ‘We cut the road pasture,’ he said when he had finished what was on his plate. ‘I had Corrigan’s lads over.’
+*   ‘You’re off your food, Ellie,’ he said. ‘A bit.’
+*   ‘I noticed.’
+*   ‘Contrary as he is, he’s nearly ready to part with it.’
+*   ‘We’ll mark that day,Ellie.’
+*   ‘Sit down and rest yourself,’ her husband said. ‘Sit down and listen to this.’
+*   ‘I’ve the accounts to look at, though.’
+*   ‘We are delighted, a note recorded in one,that you are to marry and we give thanks for yourcontentment on the farm. In another there was news of a journey to Lough Derg, and of the Fermoy Retreat. ‘We are here for you if ever you feel called to join us,’ she remembered Sister Ambrose saying on the evening of the day that had been chosen as her birthday. ‘And never forget that we are here for you in other ways too.’
+*   ‘Our sins are Hiswounds, hard black italic type declared, beneath the bleeding figure.His agony was for us.
+*   ‘I used go to old-time myself,’ her husband said, and she guessed he’d gone with his other wife and hadn’t wanted to since because of what had happened.
+
+### Cumulative Glossary:
+- Barchester: 바체스터
+- Bartolomeo: 바르톨로메오
+- Bernadette O’Keeffe: 베르나데트 오키프
+- Cadogan’s Vegetables and Floral: 카도건 채소 및 꽃집
+- Castledrummond: 캐슬드럼먼드
+- Cesare: 체사레
+- Credito Italiano: 이탈리아 신용은행
+- Edward Ashburnham: 에드워드 애쉬번햄
+- Enrico: 엔리코
+- Finland: 핀란드
+- Florian Kilderry: 플로리안 킬더리
+- Fogarty: 포가티
+- For Whom the Bell Tolls: 누구를 위하여 종은 울리나
+- Gabriel Conroy: 가브리엘 콘로이
+- Genoa: 제노바
+- George Anthony: 조지 앤서니
+- Giovanni: 지오반니
+- Gloria: 글로리아
+- Heathcliff: 히스클리프
+- Ingrid Bergman: 잉그리드 버그먼
+- Isabella: 이사벨라
+- Jessie: 제시
+- Joseph Paul Connulty: 조지프 폴 콘널티
+- Kissane: 키세인
+- Lisquin: 리스퀸
+- Miss Havisham: 미스 하비셤
+- Mr McGovern: 맥거번 씨
+- Mr Verloc: 베를로크 씨
+- Netherfield Park: 네더필드 공원
+- Noeleen Fahy: 놀린 페이
+- Norwegian: 노르웨이의
+- Number 4 The Square: 광장 4번지
+- Orpen Wren: 오르펜 렌
+- Pietro Pallotta: 피에트로 팔로타
+- Rathmoye: 래스모이
+- Rose Mary Darty: 로즈 메리 다티
+- Santa Lucia: 산타 루치아
+- Scandinavia: 스칸디나비아
+- Shelhanagh: 셸라너
+- Signor Canepaci: 카네파치 씨
+- Sweden: 스웨덴
+- The Beautiful and the Damned: 낙원의 새들
+- Annunciation: 수태고지
+- Arthur Tetlow: 아서 테틀로
+- Bernadette: 버나뎃
+- Bisto: 비스토
+- Cashel Street: 캐셜 스트리트
+- Cheltenham: 첼트넘
+- Clover Meats: 클로버 미트
+- Coliseum: 콜로세움
+- Dillahan: 딜라한
+- Drummond’s Seeds: 드러먼드 씨앗
+- Ellie: 엘리
+- Father Millane: 밀레인 신부
+- Florian: 플로리안
+- Ford: 포드
+- George: 조지
+- George Anthony St John: 조지 앤서니 세인트 존
+- Ghirlandaio: 기를란다요
+- Gohery: 고헤리
+- Hennessy: 헤네시
+- Her Majesty’s Sloop The Serpent: 해럴드 함대 연방 제1함대 뱀호
+- Ireland: 아일랜드
+- Joseph Paul: 조지프 폴
+- Lady Eliza: 엘라이자 부인
+- Limerick: 리머릭
+- Mabel Thynne: 메이블 씬
+- Mac’s Hairdressing: 맥스 미용실
+- Magourtey: 매거티
+- Matthew Street: 매튜 스트리트
+- McGovern’s: 맥거번네
+- Miss Burke: 버크 양
+- Miss Connulty: 코널티 양
+- Morpeth Terrace: 모펫 테라스
+- Mr Clancy: 클랜시 씨
+- Mrs Dillahan: 딜라한 부인
+- Sheffield: 셰필드
+- Square: 광장
+- St Johns: 세인트 존스
+- The Paddocks: 패독스
+- Boyce: 보이즈
+- Boyces: 보이즈 씨
+- Cloonhill: 클룬힐
+- Cnocrea: 크노크리아
+- Corbally’s: 코발리의
+- Crilly: 크릴리
+- Dempsey: 뎀프시
+- Dublin: 더블린
+- Ellie Dillahan: 엘리 딜라한
+- Hallowe’en: 할로윈
+- Hurley Lane: 헐리 레인
+- Kilaney: 킬레이니
+- Magennis Street: 마게니스 스트리트
+- Miss Batesriff: 베이츠리프 양
+- Mr Macready: 맥크레디 씨
+- Vauxhall: 복솔
+- Wexford: 웩스퍼드
+- William: 윌리엄
+- Corrigan's: 코리건네
+- English's: 잉글리시네
+- Fermoy Retreat: 퍼모이 피난처
+- Gahagan: 가하건
+- Lahinch: 라힌치
+- Lough Derg: 더그 호수
+- McGovern's: 맥거번네
+- Sister Ambrose: 암브로즈 수녀
+
+### Cumulative Character Styles:
+- protagonist->Book dealer: 반말
+- protagonist->Girl in Rathmoye: 반말
+- protagonist->Bernadette O'Keeffe: 반말
+- protagonist->Orpen Wren: 반말
+- protagonist->Mr Clancy: 존댓말
+- protagonist->Florian: 반말
+- protagonist->Florian Kilderry: 반말
+- protagonist->Husband: 존댓말
+- protagonist->Sister Ambrose: 존댓말
+
+### Immediate English Context (Previous Segment Ending):
+with her, this man would be off with Ellie Dillahan, she said, and then she went away.
+
+12
+
+Ellie held the tyre lever in place; he’d shown her how. For five or six inches the tyre had been released from the wheel’s rim and two other levers were holding it there. He worked one of them with his foot, coaxing the tyre, and when he wasn’t successful sliding the other closer to the one she still held. Further inches of the tyre’s grip were released. ‘We have it now,’ he said.
+
+He ran the lever along, then pulled the tube out. He had jacked the Vauxhall up and taken the wheel off without her help, calling her only a few minutes ago. He’d filled a basin with water. She watched while he pumped the tube up and found the puncture. ‘I’ll manage now,’ he said.
+
+In the crab-apple orchard she scattered grain and the hens came rushing to her. She hadn’t been aware that she didn’t love her husband. Love hadn’t come into it, had never begun in a way that was different from the love spoken of so often by the nuns at Cloonhill, its brightly visible sign burning perpetually, as it did above the kitchen doorway in the farmhouse, as it had for the woman who once had scoured the saucepans that now were hers, and for other women before that. She closed the hens in and cut two lettuces on her way back to the yard. She picked the best of the chives.
+
+The wheel had been replaced, the jack wound down. ‘Thanks for that,’ her husband said as she went by. He had that way with him, of thanking her.
+
+### Immediate Korean Context (Previous Segment Ending):
+그는 복솔을 들어 올리고 그녀의 도움 없이 바퀴를 풀었으며, 몇 분 전에 그녀를 불렀다. 그는 세면대에 물을 채웠다. 그녀는 그가 튜브에 바람을 넣고 펑크 난 곳을 찾는 것을 지켜보았다. "이제 제가 할게요." 그가 말했다.
+
+야생 사과 과수원에서 그녀는 곡물을 뿌렸고 암탉들이 그녀에게 달려들었다. 그녀는 남편을 사랑하지 않는다는 것을 알지 못했다. 사랑은 거기에 없었다. 그것은 수녀들이 클룬힐에서 자주 말하는 사랑과는 다르게 시작된 적이 없었다. 그것의 밝게 보이는 표시는 농가의 부엌 문 위에서처럼 영원히 타고 있었고, 지금은 그녀의 것이 된 냄비들을 문질렀던 여자에게 그랬던 것처럼, 그리고 그 이전의 다른 여자들에게도 그랬다. 그녀는 암탉들을 안에 가두고 마당으로 돌아오는 길에 상추 두 개를 썰었다. 그녀는 부추의 가장 좋은 것을 땄다.
+
+바퀴가 교체되었고, 잭이 내려졌다. "고마워요." 그녀가 지나갈 때 남편이 말했다. 그는 그녀에게 감사하는 그런 태도를 가지고 있었다.
+
+==================================================
+

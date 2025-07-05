@@ -12,24 +12,25 @@ class GlossaryManager:
         Extracts proper nouns from the segment, translates new ones,
         and returns the updated glossary.
         """
-        print("\nUpdating Glossary...")
+        # print("\nUpdating Glossary...")
         extracted_terms = self._extract_proper_nouns(segment_text)
         if not extracted_terms:
-            print("No new proper nouns found in this segment.")
+            # print("No new proper nouns found in this segment.")
             return current_glossary
 
         new_terms = [term for term in extracted_terms if term not in current_glossary]
         if not new_terms:
-            print("All extracted nouns are already in the glossary.")
+            # print("All extracted nouns are already in the glossary.")
             return current_glossary
             
-        print(f"Found {len(new_terms)} new proper nouns to translate: {', '.join(new_terms)}")
+        # encoded_new_terms = [term.encode('cp949', 'replace').decode('cp949') for term in new_terms]
+        # print(f"Found {len(new_terms)} new proper nouns to translate: {', '.join(encoded_new_terms)}")
         translated_terms = self._translate_terms(new_terms)
 
         updated_glossary = current_glossary.copy()
         updated_glossary.update(translated_terms)
         
-        print("Glossary updated.")
+        # print("Glossary updated.")
         return updated_glossary
 
     def _extract_proper_nouns(self, segment_text: str) -> list[str]:

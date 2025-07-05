@@ -77,7 +77,7 @@ class TranslationEngine:
 
         for i, segment_content in enumerate(tqdm(job.segments, desc="Translating Segments")):
             segment_index = i + 1
-            print(f"\n\n--- Processing Segment {segment_index}/{len(job.segments)} ---")
+            # print(f"\n\n--- Processing Segment {segment_index}/{len(job.segments)} ---")
 
             # 1. Build dynamic guides using the orchestrated builder
             updated_glossary, updated_styles, style_deviation = self.dyn_config_builder.build_dynamic_guides(
@@ -121,7 +121,7 @@ class TranslationEngine:
             try:
                 model_response = self.gemini_api.generate_text(prompt)
                 translated_text = _extract_translation_from_response(model_response)
-                print(f"Segment {segment_index} translated successfully.")
+                # print(f"Segment {segment_index} translated successfully.")
             except Exception as e:
                 print(f"Translation failed for segment {segment_index}. Skipping. Error: {e}")
                 translated_text = f"[TRANSLATION_FAILED: {e}]"
@@ -131,8 +131,8 @@ class TranslationEngine:
 
         print(f"\n--- Translation Complete! ---")
         print(f"Output: {job.output_filename}")
-        print(f"Logs: {prompt_log_path}")
-        print(f"Context: {context_log_path}")
+        # print(f"Logs: {prompt_log_path}")
+        # print(f"Context: {context_log_path}")
 
     def _define_core_style(self, sample_text: str) -> str:
         """Analyzes the first segment to define the core narrative style for the novel."""
