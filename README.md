@@ -8,7 +8,6 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.9%2B-blue?logo=python&logoColor=white" alt="Python Version">
-  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License">
   <a href="https://github.com/NiceTry3675/Context-Aware-Translation">
     <img src="https://img.shields.io/badge/GitHub-Repository-black?logo=github" alt="GitHub Repository">
   </a>
