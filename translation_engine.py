@@ -88,26 +88,33 @@ class TranslationEngine:
             )
             job.glossary = updated_glossary
             job.character_styles = updated_styles
+
+            # 2. Filter glossary for the current segment
+            contextual_glossary = {
+                key: value for key, value in job.glossary.items() 
+                if re.search(r'\b' + re.escape(key) + r'\b', segment_content, re.IGNORECASE)
+            }
             
-            # 2. Build the final prompt
+            # 3. Build the final prompt
             immediate_context_en = get_segment_ending(job.get_previous_segment(i), max_chars=1500)
             immediate_context_ko = get_segment_ending(job.get_previous_translation(i), max_chars=500)
             
             prompt = self.prompt_builder.build_translation_prompt(
                 core_narrative_style=core_narrative_style,
                 style_deviation_info=style_deviation,
-                glossary=job.glossary,
+                glossary=contextual_glossary, # Use the filtered glossary
                 character_styles=job.character_styles,
                 source_segment=segment_content,
                 prev_segment_en=immediate_context_en,
                 prev_segment_ko=immediate_context_ko
             )
 
-            # 3. Log the context and prompt for debugging
+            # 4. Log the context and prompt for debugging
             self._write_context_log(
                 log_path=context_log_path,
                 segment_index=segment_index,
                 job=job,
+                contextual_glossary=contextual_glossary,
                 immediate_context_en=immediate_context_en,
                 immediate_context_ko=immediate_context_ko,
                 style_deviation=style_deviation
@@ -117,7 +124,7 @@ class TranslationEngine:
                 f.write(prompt)
                 f.write("\n\n" + "="*50 + "\n\n")
 
-            # 4. Generate translation
+            # 5. Generate translation
             try:
                 model_response = self.gemini_api.generate_text(prompt)
                 translated_text = _extract_translation_from_response(model_response)
@@ -126,7 +133,7 @@ class TranslationEngine:
                 print(f"Translation failed for segment {segment_index}. Skipping. Error: {e}")
                 translated_text = f"[TRANSLATION_FAILED: {e}]"
             
-            # 5. Save the result
+            # 6. Save the result
             job.append_translated_segment(translated_text)
 
         print(f"\n--- Translation Complete! ---")
@@ -146,15 +153,23 @@ class TranslationEngine:
             print(f"Warning: Could not define narrative style. Falling back to default. Error: {e}")
             return "A standard, neutral literary style ('평서체')."
 
-    def _write_context_log(self, log_path: str, segment_index: int, job: TranslationJob, immediate_context_en: str, immediate_context_ko: str, style_deviation: str):
+    def _write_context_log(self, log_path: str, segment_index: int, job: TranslationJob, contextual_glossary: dict, immediate_context_en: str, immediate_context_ko: str, style_deviation: str):
         """Writes a human-readable summary of the context to a log file."""
         with open(log_path, 'a', encoding='utf-8') as f:
             f.write(f"--- CONTEXT FOR SEGMENT {segment_index} ---\n\n")
 
             f.write("### Narrative Style Deviation:\n")
             f.write(f"{style_deviation}\n\n")
+
+            f.write("### Contextual Glossary (For This Segment):\n")
+            if contextual_glossary:
+                for key, value in contextual_glossary.items():
+                    f.write(f"- {key}: {value}\n")
+            else:
+                f.write("- None relevant to this segment.\n")
+            f.write("\n")
             
-            f.write("### Cumulative Glossary:\n")
+            f.write("### Cumulative Glossary (Full):\n")
             if job.glossary:
                 for key, value in job.glossary.items():
                     f.write(f"- {key}: {value}\n")
