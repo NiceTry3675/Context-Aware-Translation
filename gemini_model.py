@@ -38,8 +38,13 @@ class GeminiModel:
                 if response and hasattr(response, 'text') and response.text:
                     return response.text.strip()
                 else:
-                    # This handles cases where the API returns a valid but empty response
-                    raise ValueError("API returned an empty or invalid response.")
+                    # Check for prompt feedback if no text is returned
+                    if response and hasattr(response, 'prompt_feedback') and response.prompt_feedback.block_reason:
+                        block_reason = response.prompt_feedback.block_reason
+                        raise ValueError(f"Prompt blocked by safety settings. Block reason: {block_reason}")
+                    else:
+                        # This handles cases where the API returns a valid but empty response
+                        raise ValueError("API returned an empty or invalid response.")
             except Exception as e:
                 print(f"\nAPI call failed on attempt {attempt + 1}/{max_retries}. Error: {e}")
                 if attempt < max_retries - 1:

@@ -2,72 +2,45 @@
 
 --- PROMPT FOR SEGMENT 1 ---
 
-# ROLE & CORE PRINCIPLES
-You are an expert professional rewriter and literary translator. Your mission is to take the source text provided below and rewrite it into the target language (Korean) as naturally as possible, as if it was originally conceived and written in that language.
+You are a master translator specializing in literature. Your task is to translate the following text segment into Korean, focusing on capturing the original's literary nuance and style. Please follow these guidelines to ensure consistency and quality.
 
-You MUST adhere to the following key principles without compromise:
-
-- **Uncompromising Fidelity & No Censorship:** Rewrite ALL content with complete fidelity to the original's meaning, intent, tone, emotional nuance, and detail, including explicit or sensitive material. No censorship or alteration is permitted.
-- **Natural & Idiomatic Expression:** Prioritize rewriting that sounds completely natural and idiomatic to native Korean speakers.
-- **"Original Script" Quality:** The result MUST feel like an original Korean script, free of any "translation-ese".
-
----
-
-# CONTEXT & RULES FOR THIS SEGMENT
-
-### 1. Static Rules (Apply to the entire novel)
-Global Style: Translate the narration in a formal, literary style (문어체). Avoid overly academic or stiff expressions. The tone should be immersive and engaging for a novel reader.
-
-### 2. AI-Generated Guidelines (Specific to this segment)
-Key Term Translations:
-Gregor Samsa: 그레고르 잠자
-
-Style and Tone Analysis:
-### 1. Narration Style
-
-* **Overall Tone:** The narrative tone is predominantly objective and observational, though tinged with Gregor's internal anxieties and growing despair. It's a third-person narrative that intimately reveals Gregor's thoughts and feelings, creating a sense of both distance and empathy.  The style can be described as 문어체 (formal written style) with elements of psychological realism.
-
-* **Key Literary Devices:**  The key literary device is Gregor's internal monologue, which directly conveys his thoughts and anxieties.  The description is highly detailed and realistic, bordering on the grotesque in its depiction of Gregor's transformation.  Irony is subtly present in the juxtaposition of Gregor's inner turmoil with the mundane details of his room and his job.
+**GUIDELINE 1: Core Narrative Style (기본 서술)**
+- The core narrative style for this novel is defined below. This is the default style you MUST follow for standard narration.
+**Analysis Report:**
+1.  **Narrative Perspective:** 3rd-person
+2.  **Primary Speech Level:** 해라체 (for internal thoughts/narration), 해요체 (for dialogue with family)
+3.  **Tone (Written/Spoken):** 문어체 (Literary/Written)
 
 
-### 2. Dialogue Guidelines
+**GUIDELINE 2: Segment-Specific Style Deviation (세그먼트 내 예외 스타일)**
+- **Please pay close attention to this guideline for this specific segment.**
+- An analysis suggests this segment may contain a special style. You should prioritize the following instruction.
+- If the instruction is "N/A", this guideline2 MUST be ignored.
+- **Deviation Instruction:** N/A
 
-* **Character: Gregor Samsa (Self)**
-    * **Speaking to:** Self
-    * **Context/Emotion:**  The emotional context shifts throughout the segment. Initially, there is confusion and bewildered fear ("What's happened to me?"). This transitions to frustration and physical discomfort as he struggles to move.  Finally, it evolves into despair, resentment towards his job, and a resigned acceptance of his situation, punctuated by fleeting moments of hope for the future.
-    * **Recommended Speech Style:** Primarily use an informal yet somewhat literary 해요체 (haeyo style) for his internal monologue, reflecting his private thoughts and anxieties.  The tone should shift subtly to reflect his changing emotions—more panicked and fragmented initially, then increasingly despondent and resigned as the passage progresses.  Avoid overly colloquialisms unless they genuinely reflect the character's mental state at a specific moment.  The inner monologue should feel natural and intimate.
+**GUIDELINE 3: Glossary (용어집)**
+- For consistency, please use these exact Korean translations for all terms in this list.
+- No glossary terms defined.
 
+**GUIDELINE 4: Protagonist's Dialogue (주인공 대화)**
+- The protagonist's speech should generally follow these established styles.
+- However, you have the autonomy to deviate if the immediate context (e.g., a moment of extreme anger, intimacy, or sarcasm) makes the established style unnatural.
+- Gregor->Mother: 존댓말
+- Gregor->Father: 존댓말
+- Gregor->Sister: 존댓말
+- Gregor->Chief Clerk: 존댓말
 
-* **Character: No other characters speak in this segment.**
+**GUIDELINE 5: Other Characters' Dialogue (기타 인물 대화)**
+- For all other characters, or if a specific interaction is not in the list above, please translate their dialogue naturally based on the context of the scene.
 
-
-**Additional Notes for the Translator:**
-
-* **Maintaining Consistency:**  The translator should strive for consistency in vocabulary and sentence structure throughout the translation to ensure a unified narrative voice.  The use of literary techniques such as imagery and metaphor should be carefully considered to maintain the original's evocative power.
-
-* **Contextual Awareness:** The translator should be mindful of the cultural context of the story (early 20th-century Europe) and adapt the language accordingly, avoiding anachronisms or overly modern expressions. The setting and Gregor's occupation (traveling salesman) should be reflected in the language.
-
-* **Word Choice:**  Careful attention should be paid to the selection of vocabulary to capture the nuances of Gregor's emotional state and the grotesque nature of his transformation.  The translator should avoid overly simplistic or euphemistic language, opting instead for words that accurately convey the unsettling reality of the situation.  Words related to his physical transformation should be chosen carefully to reflect his increasing discomfort and alienation.
-
-* **Sentence Structure:**  The original text utilizes a mix of short, declarative sentences and longer, more descriptive passages. The translator should try to preserve this variation in sentence structure to maintain the dynamic rhythm of the narrative.
-
-* **Vermin Translation:** The translation of "vermin" is crucial.  It should accurately convey the sense of disgust and dehumanization associated with the term, while also avoiding overly simplistic or crude equivalents.  Consider using a more literary and evocative term instead of a purely biological one.
-
-### 3. Immediate Context (For seamless flow)
-- **End of Previous English Segment:** 
-N/A
-- **End of Previous Korean Translation:** 
-N/A
+**GUIDELINE 6: Context is Key**
+- Use the previous sentences for immediate context and style continuity.
+- **Previous language Sentence:** N/A
+- **Previous Korean Translation:** N/A
+- Your new translation should flow naturally from the previous Korean translation.
 
 ---
-
-# TASK
-Based on all the principles and context provided, rewrite the entire following English text segment into Korean.
-**IMPORTANT:** Do NOT repeat or re-translate any text provided in the context sections (Immediate Context). Your task is to translate ONLY the new "SOURCE TEXT SEGMENT".
-
-Output ONLY the final rewritten Korean text. Do NOT add any titles, explanations, or other content.
-
-**SOURCE TEXT SEGMENT:**
+**Translate the following text into Korean, adhering to the guidelines above:**
 ---
 I
 
@@ -312,6 +285,76 @@ Gregor’s sister whispered to him to let him know: “Gregor, the chief
 clerk is here.” “Yes, I know”, said Gregor to himself; but without
 daring to raise his voice loud enough for his sister to hear him.
 
+
+==================================================
+
+--- PROMPT FOR SEGMENT 2 ---
+
+You are a master translator specializing in literature. Your task is to translate the following text segment into Korean, focusing on capturing the original's literary nuance and style. Please follow these guidelines to ensure consistency and quality.
+
+**GUIDELINE 1: Core Narrative Style (기본 서술)**
+- The core narrative style for this novel is defined below. This is the default style you MUST follow for standard narration.
+**Analysis Report:**
+1.  **Narrative Perspective:** 3rd-person
+2.  **Primary Speech Level:** 해라체 (for internal thoughts/narration), 해요체 (for dialogue with family)
+3.  **Tone (Written/Spoken):** 문어체 (Literary/Written)
+
+
+**GUIDELINE 2: Segment-Specific Style Deviation (세그먼트 내 예외 스타일)**
+- **Please pay close attention to this guideline for this specific segment.**
+- An analysis suggests this segment may contain a special style. You should prioritize the following instruction.
+- If the instruction is "N/A", this guideline2 MUST be ignored.
+- **Deviation Instruction:** N/A
+
+**GUIDELINE 3: Glossary (용어집)**
+- For consistency, please use these exact Korean translations for all terms in this list.
+- No glossary terms defined.
+
+**GUIDELINE 4: Protagonist's Dialogue (주인공 대화)**
+- The protagonist's speech should generally follow these established styles.
+- However, you have the autonomy to deviate if the immediate context (e.g., a moment of extreme anger, intimacy, or sarcasm) makes the established style unnatural.
+- Gregor->Mother: 존댓말
+- Gregor->Father: 존댓말
+- Gregor->Sister: 존댓말
+- Gregor->Chief Clerk: 존댓말
+
+**GUIDELINE 5: Other Characters' Dialogue (기타 인물 대화)**
+- For all other characters, or if a specific interaction is not in the list above, please translate their dialogue naturally based on the context of the scene.
+
+**GUIDELINE 6: Context is Key**
+- Use the previous sentences for immediate context and style continuity.
+- **Previous language Sentence:** at least a couple of hours
+in the morning on company business? Was it really not enough to let one
+of the trainees make enquiries—assuming enquiries were even
+necessary—did the chief clerk have to come himself, and did they have
+to show the whole, innocent family that this was so suspicious that
+only the chief clerk could be trusted to have the wisdom to investigate
+it? And more because these thoughts had made him upset than through any
+proper decision, he swang himself with all his force out of the bed.
+There was a loud thump, but it wasn’t really a loud noise. His fall was
+softened a little by the carpet, and Gregor’s back was also more
+elastic than he had thought, which made the sound muffled and not too
+noticeable. He had not held his head carefully enough, though, and hit
+it as he fell; annoyed and in pain, he turned it and rubbed it against
+the carpet.
+
+“Something’s fallen down in there”, said the chief clerk in the room on
+the left. Gregor tried to imagine whether something of the sort that
+had happened to him today could ever happen to the chief clerk too; you
+had to concede that it was possible. But as if in gruff reply to this
+question, the chief clerk’s firm footsteps in his highly polished boots
+could now be heard in the adjoining room. From the room on his right,
+Gregor’s sister whispered to him to let him know: “Gregor, the chief
+clerk is here.” “Yes, I know”, said Gregor to himself; but without
+daring to raise his voice loud enough for his sister to hear him.
+- **Previous Korean Translation:** 결정보다는, 그는 모든 힘을 다해 침대에서 몸을 흔들었다. 큰 쿵 소리가 났지만, 실제로 큰 소리는 아니었다. 그의 낙하는 카펫 때문에 조금 완화되었고, 그레고르의 등도 그가 생각했던 것보다 더 탄력적이었고, 그래서 소리가 둔탁하고 너무 눈에 띄지 않았다. 하지만 그는 머리를 충분히 조심스럽게 들지 않았고, 떨어질 때 머리를 부딪혔다. 짜증과 고통 속에서 그는 머리를 돌려 카펫에 문질렀다.
+
+"저 안에 뭔가 떨어졌군," 왼쪽 방에서 점장이 말했다. 그레고르는 오늘 그에게 일어난 일과 같은 일이 점장에게도 일어날 수 있을지 상상하려 했다. 그것은 가능하다고 인정해야 했다. 하지만 마치 이 질문에 대한 거친 대답처럼, 점장의 잘 닦인 구두를 신은 단호한 발걸음이 이제 옆방에서 들렸다. 오른쪽 방에서, 그레고르의 여동생이 그에게 속삭였다. "그레고르, 점장님이 와 계셔." "네, 알아요," 그레고르가 자신에게 말했지만, 여동생이 들을 수 있을 만큼 큰 목소리를 낼 용기를 내지는 못했다.
+- Your new translation should flow naturally from the previous Korean translation.
+
+---
+**Translate the following text into Korean, adhering to the guidelines above:**
+---
 “Gregor”, said his father now from the room to his left, “the chief
 clerk has come round and wants to know why you didn’t leave on the
 early train. We don’t know what to say to him. And anyway, he wants to
@@ -545,97 +588,46 @@ trip, and that’s when we feel the harmful effects of what’s been going
 on without even knowing what caused them. Please, don’t go away, at
 least first say something to show that you grant that I’m at least
 partly right!”
----
 
 
 ==================================================
 
---- PROMPT FOR SEGMENT 2 ---
+--- PROMPT FOR SEGMENT 3 ---
 
-# ROLE & CORE PRINCIPLES
-You are an expert professional rewriter and literary translator. Your mission is to take the source text provided below and rewrite it into the target language (Korean) as naturally as possible, as if it was originally conceived and written in that language.
+You are a master translator specializing in literature. Your task is to translate the following text segment into Korean, focusing on capturing the original's literary nuance and style. Please follow these guidelines to ensure consistency and quality.
 
-You MUST adhere to the following key principles without compromise:
-
-- **Uncompromising Fidelity & No Censorship:** Rewrite ALL content with complete fidelity to the original's meaning, intent, tone, emotional nuance, and detail, including explicit or sensitive material. No censorship or alteration is permitted.
-- **Natural & Idiomatic Expression:** Prioritize rewriting that sounds completely natural and idiomatic to native Korean speakers.
-- **"Original Script" Quality:** The result MUST feel like an original Korean script, free of any "translation-ese".
-
----
-
-# CONTEXT & RULES FOR THIS SEGMENT
-
-### 1. Static Rules (Apply to the entire novel)
-Global Style: Translate the narration in a formal, literary style (문어체). Avoid overly academic or stiff expressions. The tone should be immersive and engaging for a novel reader.
-
-### 2. AI-Generated Guidelines (Specific to this segment)
-Key Term Translations:
-Gregor: 그레고르
-chief clerk: 부장
-
-Style and Tone Analysis:
-### 1. Narration Style
-
-*   **Overall Tone:** The narrative tone is primarily objective and descriptive, focusing on Gregor's actions and the reactions of those around him.  It maintains a sense of detached observation, even amidst the escalating chaos and Gregor's internal anxieties.  There is a subtle undercurrent of suspense and growing horror.  The style leans towards 문어체 (literary style) due to its detailed descriptions and complex sentence structures.
-
-*   **Key Literary Devices:**  The story employs a significant amount of internal monologue, revealing Gregor's thoughts and anxieties.  The description of the chief clerk's actions uses subtle irony, highlighting his fear and disgust through seemingly insignificant details (protruding lips, trembling shoulders, gradual retreat). The use of imagery, particularly concerning Gregor's transformation and his movements, is crucial to maintaining the unsettling atmosphere.
+**GUIDELINE 1: Core Narrative Style (기본 서술)**
+- The core narrative style for this novel is defined below. This is the default style you MUST follow for standard narration.
+**Analysis Report:**
+1.  **Narrative Perspective:** 3rd-person
+2.  **Primary Speech Level:** 해라체 (for internal thoughts/narration), 해요체 (for dialogue with family)
+3.  **Tone (Written/Spoken):** 문어체 (Literary/Written)
 
 
-### 2. Dialogue Guidelines
+**GUIDELINE 2: Segment-Specific Style Deviation (세그먼트 내 예외 스타일)**
+- **Please pay close attention to this guideline for this specific segment.**
+- An analysis suggests this segment may contain a special style. You should prioritize the following instruction.
+- If the instruction is "N/A", this guideline2 MUST be ignored.
+- **Deviation Instruction:** N/A
 
-*   **Character: Gregor Samsa**
-    *   **Speaking to:** Mother
-    *   **Context/Emotion:**  Initially, Gregor speaks gently and calmly to his mother ("Mother, mother"), showing concern and attempting to reassure her. This is contrasted by the involuntary snapping of his jaws, revealing his frustration and the difficulty of his situation.  The context is one of escalating panic and desperation, but his attempts to communicate remain largely compassionate.
-    *   **Recommended Speech Style:**  Use a soft and gentle 해요체 (informal polite speech) when speaking to his mother. The underlying desperation can be conveyed through the choice of vocabulary and sentence structure, rather than a shift to a harsher speech level. The snapping of his jaws could be conveyed through onomatopoeia or descriptive language rather than direct dialogue.
+**GUIDELINE 3: Glossary (용어집)**
+- For consistency, please use these exact Korean translations for all terms in this list.
+- Gregor: 그레고르
 
-*   **Character: Mother**
-    *   **Speaking to:** No one directly addressed in this segment, but her cries are implicitly directed at those around her for help.
-    *   **Context/Emotion:**  Initially engrossed in her own thoughts, her reaction to Gregor's appearance is one of pure terror and instinctive flight. Her cries of "Help, for pity's sake, Help!" reflect intense fear and panic.
-    *   **Recommended Speech Style:** Use a panicked and high-pitched  해요체 (informal polite speech) for her cries.  The choice of words should reflect the immediate, unthinking nature of her fear.  Her exclamation is not directed to a specific person, making 해요체 appropriate.
+**GUIDELINE 4: Protagonist's Dialogue (주인공 대화)**
+- The protagonist's speech should generally follow these established styles.
+- However, you have the autonomy to deviate if the immediate context (e.g., a moment of extreme anger, intimacy, or sarcasm) makes the established style unnatural.
+- Gregor->Mother: 존댓말
+- Gregor->Father: 존댓말
+- Gregor->Sister: 존댓말
+- Gregor->Chief Clerk: 존댓말
 
-*   **Character: Chief Clerk**
-    *   **Speaking to:** No direct dialogue from the chief clerk in this segment.
-    *   **Context/Emotion:**  His actions speak volumes: he is terrified and disgusted by Gregor's transformation. His hasty retreat and frantic gestures convey his extreme fear.
-    *   **Recommended Speech Style:**  No direct dialogue necessitates this section, but his unspoken fear and disgust could be reflected in the narration through descriptive language that emphasizes his physical reactions and lack of words.
+**GUIDELINE 5: Other Characters' Dialogue (기타 인물 대화)**
+- For all other characters, or if a specific interaction is not in the list above, please translate their dialogue naturally based on the context of the scene.
 
-*   **Character: Father**
-    *   **Speaking to:** No direct dialogue from the father in this segment.
-    *   **Context/Emotion:** Reacts to the mother's screaming by rushing to her side, showing concern and protectiveness. This implies his own shock and horror at the situation, though he doesn't speak in this excerpt.
-    *   **Recommended Speech Style:** Similar to the Chief Clerk, no dialogue necessitates this section.  His actions and implied feelings can be conveyed through descriptive narrative.
-
-
-**Note:** Maintaining consistency in tense and aspect is crucial throughout the translation.  The translator should carefully consider the subtle shifts in Gregor's emotional state and reflect these in the choice of vocabulary and sentence structure in Korean. The overall tone should remain consistent with the original's blend of objective description and psychological insight.
-
-### 3. Immediate Context (For seamless flow)
-- **End of Previous English Segment:** 
-So Gregor did not go into the room, but leant against the inside of the
-other door which was still held bolted in place. In this way only half
-of his body could be seen, along with his head above it which he leant
-over to one side as he peered out at the others. Meanwhile the day had
-become much lighter; part of the endless, grey-black building on the
-other side of the street—which was a hospital—could be seen quite
-clearly with the austere and regular line of windows piercing its
-façade; the rain was still falling, now throwing down large, individual
-droplets which hit the ground one at a time. The washing up from
-breakfast lay on the table; there was so much of it because, for
-Gregor’s father, breakfast was the most important meal of the day and
-he would stretch it out for several hours as he sat reading a number of
-different newspapers. On the wall exactly opposite there was photograph
-of Gregor when he was a lieutenant in the army, his sword in his hand
-and a carefree smile on his face as he called forth respect for his
-uniform and bearing. The door to the entrance hall was open and as the
-front door of the flat was also open he could see onto the landing and
-the stairs where they began their way down below.
-
-“Now, then”, said Gregor, well aware that he was the only one to have
-kept calm, “I’ll get dressed straight away now, pack up my samples and
-set off. Will you please just let me leave? You can see”, he said to
-the chief clerk, “that I’m not stubborn and I like to do my job; being
-a commercial traveller is arduous but without travelling I couldn’t
-earn my living. So where are you going, in to the office? Yes? Will you
-report everything accurately, then? It’s quite possible for someone to
-be temporarily unable to work, but that’s just the right time to
-remember what’s been achieved in the past and consider that later on,
+**GUIDELINE 6: Context is Key**
+- Use the previous sentences for immediate context and style continuity.
+- **Previous language Sentence:** and consider that later on,
 once the difficulty has been removed, he will certainly work with all
 the more diligence and concentration. You’re well aware that I’m
 seriously in debt to our employer as well as having to look after my
@@ -658,20 +650,11 @@ trip, and that’s when we feel the harmful effects of what’s been going
 on without even knowing what caused them. Please, don’t go away, at
 least first say something to show that you grant that I’m at least
 partly right!”
-- **End of Previous Korean Translation:** 
-반대로 그레고르는 훨씬 더 차분해졌다. 그들은 더 이상 그의 말을 이해할 수 없었지만, 그에게는 충분히 명확하게 들렸다—아마 그의 귀가 그 소리에 익숙해졌을 것이다. 그들은 그에게 무언가 잘못되었다는 것을 깨달았고, 도울 준비가 되어 있었다. 그의 상황에 대한 첫 번째 반응은 자신감 있고 현명했고, 그것은 그를 더 기분 좋게 만들었다. 그는 자신이 사람들 사이로 다시 끌려 들어왔다고 느꼈고, 의사와 자물쇠 수리공에게서 그는 위대하고 놀라운 업적을 기대했다—비록 그가 그들을 실제로 구분하지는 못했지만. 다음에 무슨 말이 나올지가 중요했기 때문에, 목소리를 최대한 명확하게 하기 위해 그는 조금 기침을 했지만, 너무 크게 하지 않도록 조심했다. 인간이 기침하는 방식과 다를 수도 있고, 그는 더 이상 그것을 스스로 판단할 수 없다는 것을 확신하지 못했기 때문이다. 한편, 옆 방은 매우 조용해졌다. 아마 부모님은 주임 사무원과 함께 식탁에 앉아 속삭이고 있거나, 아니면 모두 문에 바싹 붙어 듣고 있을 것이다.
-
-그레고르는 의자를 이용하여 문으로 천천히 몸을 밀었다. 거기에 도착하자 그는 의자를 놓고 문에 몸을 던졌고, 다리 끝의 접착력을 이용하여 문에 똑바로 서 있었다. 그는 노력으로 인한 피로를 회복하기 위해 잠시 쉬었다가, 입으로 자물쇠의 열쇠를 돌리는 일에 착수했다. 그는 불행히도 적절한 이빨이 없는 것 같았다—그렇다면 어떻게 열쇠를 잡을 수 있을까?—하지만 이빨이 없는 것은 물론 매우 강력한 턱으로 보충되었다. 턱을 사용하여 그는 갈색 액체가 그의 입에서 나와 열쇠 위로 흘러 바닥으로 떨어지는 것을 무시하고 열쇠를 돌리기 시작할 수 있었다. “들어봐,” 옆 방에 있는 주임 사무원이 말했다. “그가 열쇠를 돌리고 있어.” 그레고르는 이 말에 큰 격려를 받았다. 하지만 그들 모두가 그를 불러야 했다. 아버지와 어머니도 마찬가지다. “잘했어, 그레고르,” 그들은 외쳐야 했다. “계속해, 자물쇠를 잡아!” 그리고 그들이 그의 노력을 흥분해서 따라오고 있다
+- **Previous Korean Translation:** 엄청난 임금을 받고 편하게 지낸다고 생각합니다. 그것은 단지 편견일 뿐이지만, 그들은 그렇게 생각할 특별한 이유는 없습니다. 하지만 선생님께서는 직원들보다 더 나은 시야를 가지고 계십니다. 사실, 제가 비밀스럽게 말씀드리자면, 사장님 자신보다도 더 나은 시야를 가지고 계십니다. 그와 같은 사업가는 직원들에 대해 실수하고 그들이 마땅히 받아야 하는 것보다 더 가혹하게 판단하기가 매우 쉽습니다. 그리고 우리는 여행자들이 거의 일 년 내내 사무실 밖에 있다는 것을 잘 알고 계시니, 우리는 소문과 우연, 그리고 근거 없는 불평에 쉽게 희생될 수 있습니다. 그리고 그런 것들로부터 자신을 방어하는 것은 거의 불가능합니다. 우리는 보통 그런 것들에 대해 듣지도 못하거나, 듣더라도 지친 여행에서 집으로 돌아왔을 때이며, 무엇이 원인이었는지도 모른 채 그 영향으로 고통받을 때입니다. 제발, 떠나지 마세요. 적어도 제가 어느 정도는 옳다는 것을 인정한다는 것을 보여주는 말이라도 해 주십시오!”
+- Your new translation should flow naturally from the previous Korean translation.
 
 ---
-
-# TASK
-Based on all the principles and context provided, rewrite the entire following English text segment into Korean.
-**IMPORTANT:** Do NOT repeat or re-translate any text provided in the context sections (Immediate Context). Your task is to translate ONLY the new "SOURCE TEXT SEGMENT".
-
-Output ONLY the final rewritten Korean text. Do NOT add any titles, explanations, or other content.
-
-**SOURCE TEXT SEGMENT:**
+**Translate the following text into Korean, adhering to the guidelines above:**
 ---
 But the chief clerk had turned away as soon as Gregor had started to
 speak, and, with protruding lips, only stared back at him over his
@@ -928,6 +911,73 @@ into a bin, closed it with its wooden lid, and carried everything out.
 She had hardly turned her back before Gregor came out again from under
 the couch and stretched himself.
 
+
+==================================================
+
+--- PROMPT FOR SEGMENT 4 ---
+
+You are a master translator specializing in literature. Your task is to translate the following text segment into Korean, focusing on capturing the original's literary nuance and style. Please follow these guidelines to ensure consistency and quality.
+
+**GUIDELINE 1: Core Narrative Style (기본 서술)**
+- The core narrative style for this novel is defined below. This is the default style you MUST follow for standard narration.
+**Analysis Report:**
+1.  **Narrative Perspective:** 3rd-person
+2.  **Primary Speech Level:** 해라체 (for internal thoughts/narration), 해요체 (for dialogue with family)
+3.  **Tone (Written/Spoken):** 문어체 (Literary/Written)
+
+
+**GUIDELINE 2: Segment-Specific Style Deviation (세그먼트 내 예외 스타일)**
+- **Please pay close attention to this guideline for this specific segment.**
+- An analysis suggests this segment may contain a special style. You should prioritize the following instruction.
+- If the instruction is "N/A", this guideline2 MUST be ignored.
+- **Deviation Instruction:** N/A
+
+**GUIDELINE 3: Glossary (용어집)**
+- For consistency, please use these exact Korean translations for all terms in this list.
+- Gregor: 그레고르
+- Charlottenstrasse: 샤를로텐 거리
+
+**GUIDELINE 4: Protagonist's Dialogue (주인공 대화)**
+- The protagonist's speech should generally follow these established styles.
+- However, you have the autonomy to deviate if the immediate context (e.g., a moment of extreme anger, intimacy, or sarcasm) makes the established style unnatural.
+- Gregor->Mother: 존댓말
+- Gregor->Father: 존댓말
+- Gregor->Sister: 존댓말
+- Gregor->Chief Clerk: 존댓말
+
+**GUIDELINE 5: Other Characters' Dialogue (기타 인물 대화)**
+- For all other characters, or if a specific interaction is not in the list above, please translate their dialogue naturally based on the context of the scene.
+
+**GUIDELINE 6: Context is Key**
+- Use the previous sentences for immediate context and style continuity.
+- **Previous language Sentence:** cut his finger slightly with a knife, he thought of how his finger
+had still hurt the day before yesterday. “Am I less sensitive than I
+used to be, then?”, he thought, and was already sucking greedily at the
+cheese which had immediately, almost compellingly, attracted him much
+more than the other foods on the newspaper. Quickly one after another,
+his eyes watering with pleasure, he consumed the cheese, the vegetables
+and the sauce; the fresh foods, on the other hand, he didn’t like at
+all, and even dragged the things he did want to eat a little way away
+from them because he couldn’t stand the smell. Long after he had
+finished eating and lay lethargic in the same place, his sister slowly
+turned the key in the lock as a sign to him that he should withdraw. He
+was immediately startled, although he had been half asleep, and he
+hurried back under the couch. But he needed great self-control to stay
+there even for the short time that his sister was in the room, as
+eating so much food had rounded out his body a little and he could
+hardly breathe in that narrow space. Half suffocating, he watched with
+bulging eyes as his sister unselfconsciously took a broom and swept up
+the left-overs, mixing them in with the food he had not even touched at
+all as if it could not be used any more. She quickly dropped it all
+into a bin, closed it with its wooden lid, and carried everything out.
+She had hardly turned her back before Gregor came out again from under
+the couch and stretched himself.
+- **Previous Korean Translation:** 그가 먹고 싶어 하는 것들을 냄새를 견딜 수 없어서 조금 멀리 끌어당기기까지 했다. 그가 먹는 것을 끝내고 같은 장소에 나른하게 누워 있은 지 오래되었을 때, 그의 여동생은 그가 물러나야 한다는 신호로 천천히 열쇠를 돌렸다. 그는 즉시 깜짝 놀랐지만, 그는 반쯤 졸고 있었고, 그는 서둘러 소파 밑으로 돌아갔다. 하지만 여동생이 방에 있는 짧은 시간 동안에도 그곳에 머물기 위해서는 엄청난 자기 통제가 필요했다. 왜냐하면 그렇게 많은 음식을 먹어서 그의 몸이 약간 둥글어졌고 그 좁은 공간에서 숨쉬기조차 어려웠기 때문이다. 반쯤 질식하면서, 그는 부풀어 오른 눈으로 여동생이 태연하게 빗자루를 가져다가 남은 것들을 쓸어 담고, 그가 전혀 만지지도 않은 음식과 섞는 것을 지켜보았다. 마치 더 이상 사용할 수 없는 것처럼. 그녀는 그것을 모두 재빨리 쓰레기통에 버리고, 나무 뚜껑으로 닫고, 모든 것을 가지고 나갔다. 그녀가 등을 돌리자마자 그레고르는 소파 밑에서 다시 나와 몸을 늘렸다.
+- Your new translation should flow naturally from the previous Korean translation.
+
+---
+**Translate the following text into Korean, adhering to the guidelines above:**
+---
 This was how Gregor received his food each day now, once in the morning
 while his parents and the maid were still asleep, and the second time
 after everyone had eaten their meal at midday as his parents would
@@ -1143,122 +1193,7 @@ day of course, but one day a week, perhaps; she could understand
 everything much better than his sister who, for all her courage, was
 still just a child after all, and really might not have had an adult’s
 appreciation of the burdensome job she had taken on.
----
 
-
-==================================================
-
---- PROMPT FOR SEGMENT 3 ---
-
-# ROLE & CORE PRINCIPLES
-You are an expert professional rewriter and literary translator. Your mission is to take the source text provided below and rewrite it into the target language (Korean) as naturally as possible, as if it was originally conceived and written in that language.
-
-You MUST adhere to the following key principles without compromise:
-
-- **Uncompromising Fidelity & No Censorship:** Rewrite ALL content with complete fidelity to the original's meaning, intent, tone, emotional nuance, and detail, including explicit or sensitive material. No censorship or alteration is permitted.
-- **Natural & Idiomatic Expression:** Prioritize rewriting that sounds completely natural and idiomatic to native Korean speakers.
-- **"Original Script" Quality:** The result MUST feel like an original Korean script, free of any "translation-ese".
-
----
-
-# CONTEXT & RULES FOR THIS SEGMENT
-
-### 1. Static Rules (Apply to the entire novel)
-Global Style: Translate the narration in a formal, literary style (문어체). Avoid overly academic or stiff expressions. The tone should be immersive and engaging for a novel reader.
-
-### 2. AI-Generated Guidelines (Specific to this segment)
-Key Term Translations:
-Gregor: 그레고르
-father: 아버지
-maid: 하녀
-mother: 어머니
-sister: 누나/언니/여동생
-
-Style and Tone Analysis:
-### 1. Narration Style
-
-*   **Overall Tone:** The narrative tone is predominantly objective and descriptive, bordering on melancholic.  It maintains a detached, almost clinical observation of Gregor's situation and his family's reactions, yet subtly conveys the pathos of his condition and the family's struggle. The narrative voice avoids overt judgment, allowing the reader to draw their own conclusions.  This can be described as a subdued (절제된) and slightly somber (침울한) 문어체 (formal written style).
-
-*   **Key Literary Devices:** The key literary device is the use of detailed, almost microscopic description, particularly regarding Gregor's movements and the family's actions. This meticulous description builds a sense of claustrophobia and emphasizes the physical limitations imposed on Gregor.  The narrative also subtly employs irony, contrasting Gregor's internal state (his attempts at self-entertainment, his desire to see his mother) with the external reality (his insect form, his family's anxieties).  Internal monologue is present, particularly from Gregor's perspective.
-
-
-### 2. Dialogue Guidelines
-
-*   **Character: Gregor's Sister**
-    *   **Speaking to:** Mother, implicitly to Gregor
-    *   **Context/Emotion:**  Practical and somewhat strained, attempting to reassure her mother and manage the situation around Gregor.  She shows a mix of concern for her mother and practicality in dealing with the situation.
-    *   **Recommended Speech Style:** Use a relatively informal 해요체 (haeyo style), reflecting her close relationship with her mother and the stressful domestic situation.  The tone should be calm and reassuring to her mother, yet subtly tinged with underlying anxiety.  Avoid excessively formal language.
-
-*   **Character: Gregor's Mother**
-    *   **Speaking to:** Sister, implicitly to Gregor
-    *   **Speaking to:** (Implicitly to Gregor)
-    *   **Context/Emotion:** Her initial joy at seeing Gregor is quickly replaced by a mixture of pity, concern, and a deep sense of helplessness.  She expresses a maternal protectiveness and reluctance to alter Gregor's room. Her speech reflects her emotional turmoil and a hesitant, almost whispered tone when speaking implicitly to Gregor, suggesting a mixture of fear and empathy.
-    *   **Recommended Speech Style:** Use a hesitant and gentle 해요체 (haeyo style) when speaking to her daughter.  When addressing Gregor (implicitly), employ a very soft, almost whispered tone, reflecting her deep concern and uncertainty about his understanding.  The sentence structure should be simpler and more emotionally charged than her dialogue with her daughter.  The overall tone should convey maternal warmth and deep empathy, even amidst her fear and uncertainty.  Consider using softer sentence-ending particles like요 (yo) and 어요 (eoyo) to further emphasize the gentleness and hesitancy.
-
-*   **Character: No other characters directly speak in this segment.**  However, the narrative voice itself reflects the emotional weight of the scene, which should be carefully rendered in Korean.
-
-### 3. Immediate Context (For seamless flow)
-- **End of Previous English Segment:** 
-One day, about a month after Gregor’s transformation when his sister no
-longer had any particular reason to be shocked at his appearance, she
-came into the room a little earlier than usual and found him still
-staring out the window, motionless, and just where he would be most
-horrible. In itself, his sister’s not coming into the room would have
-been no surprise for Gregor as it would have been difficult for her to
-immediately open the window while he was still there, but not only did
-she not come in, she went straight back and closed the door behind her,
-a stranger would have thought he had threatened her and tried to bite
-her. Gregor went straight to hide himself under the couch, of course,
-but he had to wait until midday before his sister came back and she
-seemed much more uneasy than usual. It made him realise that she still
-found his appearance unbearable and would continue to do so, she
-probably even had to overcome the urge to flee when she saw the little
-bit of him that protruded from under the couch. One day, in order to
-spare her even this sight, he spent four hours carrying the bedsheet
-over to the couch on his back and arranged it so that he was completely
-covered and his sister would not be able to see him even if she bent
-down. If she did not think this sheet was necessary then all she had to
-do was take it off again, as it was clear enough that it was no
-pleasure for Gregor to cut himself off so completely. She left the
-sheet where it was. Gregor even thought he glimpsed a look of gratitude
-one time when he carefully looked out from under the sheet to see how
-his sister liked the new arrangement.
-
-For the first fourteen days, Gregor’s parents could not bring
-themselves to come into the room to see him. He would often hear them
-say how they appreciated all the new work his sister was doing even
-though, before, they had seen her as a girl who was somewhat useless
-and frequently been annoyed with her. But now the two of them, father
-and mother, would often both wait outside the door of Gregor’s room
-while his sister tidied up in there, and as soon as she went out again
-she would have to tell them exactly how everything looked, what Gregor
-had eaten, how he had behaved this time and whether, perhaps, any
-slight improvement could be seen. His mother also wanted to go in and
-visit Gregor relatively soon but his father and sister at first
-persuaded her against it. Gregor listened very closely to all this, and
-approved fully. Later, though, she had to be held back by force, which
-made her call out: “Let me go and see Gregor, he is my unfortunate son!
-Can’t you understand I have to see him?”, and Gregor would think to
-himself that maybe it would be better if his mother came in, not every
-day of course, but one day a week, perhaps; she could understand
-everything much better than his sister who, for all her courage, was
-still just a child after all, and really might not have had an adult’s
-appreciation of the burdensome job she had taken on.
-- **End of Previous Korean Translation:** 
-그는 종종 밤새도록 거기에 누워 잠을 자지 않고 몇 시간 동안 가죽을 긁었다. 아니면 의자를 창가로 밀고, 창틀 위로 올라가, 의자에 기대어 창밖을 내다보는 수고를 할 수도 있었다. 그는 이것을 통해 큰 자유를 느꼈지만, 지금 하는 것은 분명히 경험하는 것보다 기억하는 것이 더 많았다. 이런 방식으로 실제로 보는 것이 매일 점점 더 흐릿해지고 있었기 때문이다. 매우 가까운 것조차도 말이다. 그는 길 건너 병원의 늘 있는 전망을 저주하곤 했지만, 이제는 전혀 볼 수 없었고, 자신이 도시 한가운데에 있지만 조용한 거리인 샬로텐슈트라세에 살고 있다는 것을 알지 못했다면, 그는 회색 하늘과 회색 땅이 불가분하게 섞여 있는 황량한 황야를 창밖으로 내다보고 있다고 생각했을 것이다. 관찰력이 뛰어난 여동생은 의자를 두 번만 보면 방을 정리한 후 항상 창가의 정확한 위치로 다시 밀어 넣었고, 그 후로는 창문의 안쪽 창문도 열어 두었다.
-
-그레고르가 여동생과 이야기하고 그를 위해 해야 할 모든 일에 대해 감사할 수 있었다면 더 견디기 쉬웠을 텐데, 그렇지 않아서 고통스러웠다. 여동생은 당연히 가능한 한 그것이 번거로운 일이 아니라고 가장하려고 노력했고, 시간이 지날수록 물론 더 잘 할 수 있었지만, 시간이 지남에 따라 그레고르도 그것을 더 잘 간파할 수 있었다. 이제 그녀가 방에 들어올 때마다 매우 불쾌해졌다. 그녀가 들어오자마자 그녀는 재빨리 문을 닫았다. 아무도 그레고르의 방을 들여다보는 것을 겪지 않도록 하기 위해서였다. 그런 다음 그녀는 곧바로 창문으로 가서 마치 숨이 막히는 것처럼 서둘러 열었다. 춥더라도 그녀는 창문
-
----
-
-# TASK
-Based on all the principles and context provided, rewrite the entire following English text segment into Korean.
-**IMPORTANT:** Do NOT repeat or re-translate any text provided in the context sections (Immediate Context). Your task is to translate ONLY the new "SOURCE TEXT SEGMENT".
-
-Output ONLY the final rewritten Korean text. Do NOT add any titles, explanations, or other content.
-
-**SOURCE TEXT SEGMENT:**
----
 Gregor’s wish to see his mother was soon realised. Out of consideration
 for his parents, Gregor wanted to avoid being seen at the window during
 the day, the few square meters of the floor did not give him much room
@@ -1317,6 +1252,76 @@ room exactly the way it was before so that when Gregor comes back to us
 again he’ll find everything unchanged and he’ll be able to forget the
 time in between all the easier”.
 
+
+==================================================
+
+--- PROMPT FOR SEGMENT 5 ---
+
+You are a master translator specializing in literature. Your task is to translate the following text segment into Korean, focusing on capturing the original's literary nuance and style. Please follow these guidelines to ensure consistency and quality.
+
+**GUIDELINE 1: Core Narrative Style (기본 서술)**
+- The core narrative style for this novel is defined below. This is the default style you MUST follow for standard narration.
+**Analysis Report:**
+1.  **Narrative Perspective:** 3rd-person
+2.  **Primary Speech Level:** 해라체 (for internal thoughts/narration), 해요체 (for dialogue with family)
+3.  **Tone (Written/Spoken):** 문어체 (Literary/Written)
+
+
+**GUIDELINE 2: Segment-Specific Style Deviation (세그먼트 내 예외 스타일)**
+- **Please pay close attention to this guideline for this specific segment.**
+- An analysis suggests this segment may contain a special style. You should prioritize the following instruction.
+- If the instruction is "N/A", this guideline2 MUST be ignored.
+- **Deviation Instruction:** A clear deviation occurs when Gregor's father's appearance is described. The narrative shifts from the established 문어체 (Literary/Written) to a more descriptive and almost visually detailed style, reminiscent of a **vivid character portrait**. This is characterized by a focus on physical attributes and specific details of clothing and demeanor that are more typical of a **visual narrative or a character sketch** rather than the established analytical and internal-focused tone.
+
+Specifically, the deviation begins with the line: "He was standing up straight enough now; dressed in a smart blue uniform with gold buttons, the sort worn by the employees at the banking institute; above the high, stiff collar of the coat his strong double-chin emerged; under the bushy eyebrows, his piercing, dark eyes looked out fresh and alert; his normally unkempt white hair was combed down painfully close to his scalp."
+
+**GUIDELINE 3: Glossary (용어집)**
+- For consistency, please use these exact Korean translations for all terms in this list.
+- Gregor: 그레고르
+- Grete: 그레테
+
+**GUIDELINE 4: Protagonist's Dialogue (주인공 대화)**
+- The protagonist's speech should generally follow these established styles.
+- However, you have the autonomy to deviate if the immediate context (e.g., a moment of extreme anger, intimacy, or sarcasm) makes the established style unnatural.
+- Gregor->Mother: 존댓말
+- Gregor->Father: 존댓말
+- Gregor->Sister: 존댓말
+- Gregor->Chief Clerk: 존댓말
+
+**GUIDELINE 5: Other Characters' Dialogue (기타 인물 대화)**
+- For all other characters, or if a specific interaction is not in the list above, please translate their dialogue naturally based on the context of the scene.
+
+**GUIDELINE 6: Context is Key**
+- Use the previous sentences for immediate context and style continuity.
+- **Previous language Sentence:** pair of
+feeble women to be heaving about, but Gregor listened as they pushed it
+from its place, his sister always taking on the heaviest part of the
+work for herself and ignoring her mother’s warnings that she would
+strain herself. This lasted a very long time. After labouring at it for
+fifteen minutes or more his mother said it would be better to leave the
+chest where it was, for one thing it was too heavy for them to get the
+job finished before Gregor’s father got home and leaving it in the
+middle of the room it would be in his way even more, and for another
+thing it wasn’t even sure that taking the furniture away would really
+be any help to him. She thought just the opposite; the sight of the
+bare walls saddened her right to her heart; and why wouldn’t Gregor
+feel the same way about it, he’d been used to this furniture in his
+room for a long time and it would make him feel abandoned to be in an
+empty room like that. Then, quietly, almost whispering as if wanting
+Gregor (whose whereabouts she did not know) to hear not even the tone
+of her voice, as she was convinced that he did not understand her
+words, she added “and by taking the furniture away, won’t it seem like
+we’re showing that we’ve given up all hope of improvement and we’re
+abandoning him to cope for himself? I think it’d be best to leave the
+room exactly the way it was before so that when Gregor comes back to us
+again he’ll find everything unchanged and he’ll be able to forget the
+time in between all the easier”.
+- **Previous Korean Translation:** 방 한가운데 두면 그에게 더 방해가 될 것이라는 점이었다. 그리고 다른 한 가지 이유는 가구를 치우는 것이 그에게 정말 도움이 될지 확실하지 않다는 것이었다. 그녀는 정반대라고 생각했다. 텅 빈 벽을 보는 것은 그녀의 마음에 슬픔을 안겨주었고, 그레고르도 그렇게 느끼지 않을 이유가 없었다. 그는 오랫동안 자신의 방에서 이 가구에 익숙해져 있었고, 그런 빈 방에 있는 것은 그를 버려진 것처럼 느끼게 할 것이었다. 그러자 그녀는 거의 속삭이듯이, 그레고르(그가 어디 있는지 몰랐음)가 목소리의 톤조차 듣지 못하게 하려는 듯이, 그가 그녀의 말을 이해하지 못한다고 확신했기 때문에, 그녀는 덧붙였다. "그리고 가구를 치우면, 우리는 개선의 희망을 모두 포기하고 그가 스스로 대처하도록 내버려두는 것처럼 보이지 않을까요? 나는 그레고르가 우리에게 돌아왔을 때 모든 것이 변하지 않은 것을 발견하고 그 사이의 시간을 더 쉽게 잊을 수 있도록 방을 이전과 똑같이 두는 것이 가장 좋다고 생각해요."
+- Your new translation should flow naturally from the previous Korean translation.
+
+---
+**Translate the following text into Korean, adhering to the guidelines above:**
+---
 Hearing these words from his mother made Gregor realise that the lack
 of any direct human communication, along with the monotonous life led
 by the family during these two months, must have made him confused—he
@@ -1525,7 +1530,6 @@ one after another to the ground, stumbling over the skirts she pushed
 herself to his father, her arms around him, uniting herself with him
 totally—now Gregor lost his ability to see anything—her hands behind
 his father’s head begging him to spare Gregor’s life.
----
 
 
 ==================================================

@@ -40,7 +40,7 @@ class DynamicConfigBuilder:
         # Default fallback
         return "protagonist"
 
-    def build_dynamic_guides(self, segment_text: str, core_narrative_style: str, current_glossary: dict, current_character_styles: dict) -> tuple[dict, dict, str]:
+    def build_dynamic_guides(self, segment_text: str, core_narrative_style: str, current_glossary: dict, current_character_styles: dict, job_base_filename: str, segment_index: int) -> tuple[dict, dict, str]:
         """
         Analyzes a text segment to build dynamic guidelines for translation.
 
@@ -70,7 +70,9 @@ class DynamicConfigBuilder:
         # 2. Update character styles
         updated_character_styles = self.character_style_manager.update_styles(
             segment_text,
-            current_character_styles
+            current_character_styles,
+            job_base_filename,
+            segment_index
         )
 
         # 3. Analyze for style deviations

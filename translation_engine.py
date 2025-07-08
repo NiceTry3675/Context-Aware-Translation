@@ -84,7 +84,9 @@ class TranslationEngine:
                 segment_text=segment_content,
                 core_narrative_style=core_narrative_style,
                 current_glossary=job.glossary,
-                current_character_styles=job.character_styles
+                current_character_styles=job.character_styles,
+                job_base_filename=job.base_filename,
+                segment_index=segment_index
             )
             job.glossary = updated_glossary
             job.character_styles = updated_styles

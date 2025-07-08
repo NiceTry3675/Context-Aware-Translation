@@ -1,11 +1,15 @@
 import argparse
 import traceback
 import os
+import sys
+import io
 from config_loader import load_config
 from gemini_model import GeminiModel
 from dynamic_config_builder import DynamicConfigBuilder
 from translation_job import TranslationJob
 from translation_engine import TranslationEngine
+
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 def main():
     """

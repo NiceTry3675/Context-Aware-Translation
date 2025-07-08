@@ -1,3 +1,4 @@
+import os
 from gemini_model import GeminiModel
 from prompt_manager import PromptManager
 
@@ -9,7 +10,7 @@ class CharacterStyleManager:
         # In a more advanced system, the protagonist's name could be identified dynamically.
         self.protagonist_name = protagonist_name
 
-    def update_styles(self, segment_text: str, current_styles: dict) -> dict:
+    def update_styles(self, segment_text: str, current_styles: dict, job_base_filename: str, segment_index: int) -> dict:
         """
         Analyzes the segment to determine who the protagonist speaks to
         and what speech level is used, then returns the updated styles.
@@ -42,6 +43,18 @@ class CharacterStyleManager:
             return updated_styles
 
         except Exception as e:
-            print(f"Warning: Could not analyze character styles. {e}")
+            error_message = str(e)
+            print(f"Warning: Could not analyze character styles. {error_message}")
+            
+            if "PROHIBITED_CONTENT" in error_message.upper():
+                debug_prompts_dir = "debug_prompts"
+                os.makedirs(debug_prompts_dir, exist_ok=True)
+                error_log_path = os.path.join(debug_prompts_dir, f"error_character_style_{job_base_filename}_{segment_index}.txt")
+                with open(error_log_path, 'w', encoding='utf-8') as f:
+                    f.write(f"# PROHIBITED CONTENT ERROR LOG FOR CHARACTER STYLE ANALYSIS - SEGMENT {segment_index}\n\n")
+                    f.write(f"--- SOURCE SEGMENT ---\n{segment_text}\n\n")
+                    f.write(f"--- FULL PROMPT ---\n{prompt}")
+                print(f"Problematic character style prompt for segment {segment_index} saved to: {error_log_path}")
+            
             return current_styles
 
