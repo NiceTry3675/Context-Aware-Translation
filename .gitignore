@@ -31,7 +31,7 @@ source_novel/*
 translated_novel/*
 
 # But exclude specific example files from being ignored
-!context_log/context_log_Metamorphosis.txt
+!context_log/context_Metamorphosis.txt
 !debug_prompts/prompts_Metamorphosis.txt
 !source_novel/Metamorphosis.txt
 !translated_novel/Metamorphosis_translated.txt

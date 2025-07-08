@@ -1,0 +1,231 @@
+# CONTEXT LOG FOR: Metamorphosis
+
+--- Core Narrative Style Defined ---
+**Analysis Report:**
+1.  **Narrative Perspective:** 3rd-person
+2.  **Primary Speech Level:** 해라체 (for internal thoughts/narration), 해요체 (for dialogue with family)
+3.  **Tone (Written/Spoken):** 문어체 (Literary/Written)
+==================================================
+
+--- CONTEXT FOR SEGMENT 1 ---
+
+### Narrative Style Deviation:
+N/A
+
+### Contextual Glossary (For This Segment):
+- None relevant to this segment.
+
+### Cumulative Glossary (Full):
+- Empty
+
+### Cumulative Character Styles:
+- Gregor->Mother: 존댓말
+- Gregor->Father: 존댓말
+- Gregor->Sister: 존댓말
+- Gregor->Chief Clerk: 존댓말
+
+### Immediate language Context (Previous Segment Ending):
+N/A
+
+### Immediate Korean Context (Previous Segment Ending):
+N/A
+
+==================================================
+
+--- CONTEXT FOR SEGMENT 2 ---
+
+### Narrative Style Deviation:
+N/A
+
+### Contextual Glossary (For This Segment):
+- None relevant to this segment.
+
+### Cumulative Glossary (Full):
+- Empty
+
+### Cumulative Character Styles:
+- Gregor->Mother: 존댓말
+- Gregor->Father: 존댓말
+- Gregor->Sister: 존댓말
+- Gregor->Chief Clerk: 존댓말
+
+### Immediate language Context (Previous Segment Ending):
+at least a couple of hours
+in the morning on company business? Was it really not enough to let one
+of the trainees make enquiries—assuming enquiries were even
+necessary—did the chief clerk have to come himself, and did they have
+to show the whole, innocent family that this was so suspicious that
+only the chief clerk could be trusted to have the wisdom to investigate
+it? And more because these thoughts had made him upset than through any
+proper decision, he swang himself with all his force out of the bed.
+There was a loud thump, but it wasn’t really a loud noise. His fall was
+softened a little by the carpet, and Gregor’s back was also more
+elastic than he had thought, which made the sound muffled and not too
+noticeable. He had not held his head carefully enough, though, and hit
+it as he fell; annoyed and in pain, he turned it and rubbed it against
+the carpet.
+
+“Something’s fallen down in there”, said the chief clerk in the room on
+the left. Gregor tried to imagine whether something of the sort that
+had happened to him today could ever happen to the chief clerk too; you
+had to concede that it was possible. But as if in gruff reply to this
+question, the chief clerk’s firm footsteps in his highly polished boots
+could now be heard in the adjoining room. From the room on his right,
+Gregor’s sister whispered to him to let him know: “Gregor, the chief
+clerk is here.” “Yes, I know”, said Gregor to himself; but without
+daring to raise his voice loud enough for his sister to hear him.
+
+### Immediate Korean Context (Previous Segment Ending):
+결정보다는, 그는 모든 힘을 다해 침대에서 몸을 흔들었다. 큰 쿵 소리가 났지만, 실제로 큰 소리는 아니었다. 그의 낙하는 카펫 때문에 조금 완화되었고, 그레고르의 등도 그가 생각했던 것보다 더 탄력적이었고, 그래서 소리가 둔탁하고 너무 눈에 띄지 않았다. 하지만 그는 머리를 충분히 조심스럽게 들지 않았고, 떨어질 때 머리를 부딪혔다. 짜증과 고통 속에서 그는 머리를 돌려 카펫에 문질렀다.
+
+"저 안에 뭔가 떨어졌군," 왼쪽 방에서 점장이 말했다. 그레고르는 오늘 그에게 일어난 일과 같은 일이 점장에게도 일어날 수 있을지 상상하려 했다. 그것은 가능하다고 인정해야 했다. 하지만 마치 이 질문에 대한 거친 대답처럼, 점장의 잘 닦인 구두를 신은 단호한 발걸음이 이제 옆방에서 들렸다. 오른쪽 방에서, 그레고르의 여동생이 그에게 속삭였다. "그레고르, 점장님이 와 계셔." "네, 알아요," 그레고르가 자신에게 말했지만, 여동생이 들을 수 있을 만큼 큰 목소리를 낼 용기를 내지는 못했다.
+
+==================================================
+
+--- CONTEXT FOR SEGMENT 3 ---
+
+### Narrative Style Deviation:
+N/A
+
+### Contextual Glossary (For This Segment):
+- Gregor: 그레고르
+
+### Cumulative Glossary (Full):
+- Gregor: 그레고르
+
+### Cumulative Character Styles:
+- Gregor->Mother: 존댓말
+- Gregor->Father: 존댓말
+- Gregor->Sister: 존댓말
+- Gregor->Chief Clerk: 존댓말
+
+### Immediate language Context (Previous Segment Ending):
+and consider that later on,
+once the difficulty has been removed, he will certainly work with all
+the more diligence and concentration. You’re well aware that I’m
+seriously in debt to our employer as well as having to look after my
+parents and my sister, so that I’m trapped in a difficult situation,
+but I will work my way out of it again. Please don’t make things any
+harder for me than they are already, and don’t take sides against me at
+the office. I know that nobody likes the travellers. They think we earn
+an enormous wage as well as having a soft time of it. That’s just
+prejudice but they have no particular reason to think better of it. But
+you, sir, you have a better overview than the rest of the staff, in
+fact, if I can say this in confidence, a better overview than the boss
+himself—it’s very easy for a businessman like him to make mistakes
+about his employees and judge them more harshly than he should. And
+you’re also well aware that we travellers spend almost the whole year
+away from the office, so that we can very easily fall victim to gossip
+and chance and groundless complaints, and it’s almost impossible to
+defend yourself from that sort of thing, we don’t usually even hear
+about them, or if at all it’s when we arrive back home exhausted from a
+trip, and that’s when we feel the harmful effects of what’s been going
+on without even knowing what caused them. Please, don’t go away, at
+least first say something to show that you grant that I’m at least
+partly right!”
+
+### Immediate Korean Context (Previous Segment Ending):
+엄청난 임금을 받고 편하게 지낸다고 생각합니다. 그것은 단지 편견일 뿐이지만, 그들은 그렇게 생각할 특별한 이유는 없습니다. 하지만 선생님께서는 직원들보다 더 나은 시야를 가지고 계십니다. 사실, 제가 비밀스럽게 말씀드리자면, 사장님 자신보다도 더 나은 시야를 가지고 계십니다. 그와 같은 사업가는 직원들에 대해 실수하고 그들이 마땅히 받아야 하는 것보다 더 가혹하게 판단하기가 매우 쉽습니다. 그리고 우리는 여행자들이 거의 일 년 내내 사무실 밖에 있다는 것을 잘 알고 계시니, 우리는 소문과 우연, 그리고 근거 없는 불평에 쉽게 희생될 수 있습니다. 그리고 그런 것들로부터 자신을 방어하는 것은 거의 불가능합니다. 우리는 보통 그런 것들에 대해 듣지도 못하거나, 듣더라도 지친 여행에서 집으로 돌아왔을 때이며, 무엇이 원인이었는지도 모른 채 그 영향으로 고통받을 때입니다. 제발, 떠나지 마세요. 적어도 제가 어느 정도는 옳다는 것을 인정한다는 것을 보여주는 말이라도 해 주십시오!”
+
+==================================================
+
+--- CONTEXT FOR SEGMENT 4 ---
+
+### Narrative Style Deviation:
+N/A
+
+### Contextual Glossary (For This Segment):
+- Gregor: 그레고르
+- Charlottenstrasse: 샤를로텐 거리
+
+### Cumulative Glossary (Full):
+- Gregor: 그레고르
+- Charlottenstrasse: 샤를로텐 거리
+
+### Cumulative Character Styles:
+- Gregor->Mother: 존댓말
+- Gregor->Father: 존댓말
+- Gregor->Sister: 존댓말
+- Gregor->Chief Clerk: 존댓말
+
+### Immediate language Context (Previous Segment Ending):
+cut his finger slightly with a knife, he thought of how his finger
+had still hurt the day before yesterday. “Am I less sensitive than I
+used to be, then?”, he thought, and was already sucking greedily at the
+cheese which had immediately, almost compellingly, attracted him much
+more than the other foods on the newspaper. Quickly one after another,
+his eyes watering with pleasure, he consumed the cheese, the vegetables
+and the sauce; the fresh foods, on the other hand, he didn’t like at
+all, and even dragged the things he did want to eat a little way away
+from them because he couldn’t stand the smell. Long after he had
+finished eating and lay lethargic in the same place, his sister slowly
+turned the key in the lock as a sign to him that he should withdraw. He
+was immediately startled, although he had been half asleep, and he
+hurried back under the couch. But he needed great self-control to stay
+there even for the short time that his sister was in the room, as
+eating so much food had rounded out his body a little and he could
+hardly breathe in that narrow space. Half suffocating, he watched with
+bulging eyes as his sister unselfconsciously took a broom and swept up
+the left-overs, mixing them in with the food he had not even touched at
+all as if it could not be used any more. She quickly dropped it all
+into a bin, closed it with its wooden lid, and carried everything out.
+She had hardly turned her back before Gregor came out again from under
+the couch and stretched himself.
+
+### Immediate Korean Context (Previous Segment Ending):
+그가 먹고 싶어 하는 것들을 냄새를 견딜 수 없어서 조금 멀리 끌어당기기까지 했다. 그가 먹는 것을 끝내고 같은 장소에 나른하게 누워 있은 지 오래되었을 때, 그의 여동생은 그가 물러나야 한다는 신호로 천천히 열쇠를 돌렸다. 그는 즉시 깜짝 놀랐지만, 그는 반쯤 졸고 있었고, 그는 서둘러 소파 밑으로 돌아갔다. 하지만 여동생이 방에 있는 짧은 시간 동안에도 그곳에 머물기 위해서는 엄청난 자기 통제가 필요했다. 왜냐하면 그렇게 많은 음식을 먹어서 그의 몸이 약간 둥글어졌고 그 좁은 공간에서 숨쉬기조차 어려웠기 때문이다. 반쯤 질식하면서, 그는 부풀어 오른 눈으로 여동생이 태연하게 빗자루를 가져다가 남은 것들을 쓸어 담고, 그가 전혀 만지지도 않은 음식과 섞는 것을 지켜보았다. 마치 더 이상 사용할 수 없는 것처럼. 그녀는 그것을 모두 재빨리 쓰레기통에 버리고, 나무 뚜껑으로 닫고, 모든 것을 가지고 나갔다. 그녀가 등을 돌리자마자 그레고르는 소파 밑에서 다시 나와 몸을 늘렸다.
+
+==================================================
+
+--- CONTEXT FOR SEGMENT 5 ---
+
+### Narrative Style Deviation:
+A clear deviation occurs when Gregor's father's appearance is described. The narrative shifts from the established 문어체 (Literary/Written) to a more descriptive and almost visually detailed style, reminiscent of a **vivid character portrait**. This is characterized by a focus on physical attributes and specific details of clothing and demeanor that are more typical of a **visual narrative or a character sketch** rather than the established analytical and internal-focused tone.
+
+Specifically, the deviation begins with the line: "He was standing up straight enough now; dressed in a smart blue uniform with gold buttons, the sort worn by the employees at the banking institute; above the high, stiff collar of the coat his strong double-chin emerged; under the bushy eyebrows, his piercing, dark eyes looked out fresh and alert; his normally unkempt white hair was combed down painfully close to his scalp."
+
+### Contextual Glossary (For This Segment):
+- Gregor: 그레고르
+- Grete: 그레테
+
+### Cumulative Glossary (Full):
+- Gregor: 그레고르
+- Charlottenstrasse: 샤를로텐 거리
+- Grete: 그레테
+
+### Cumulative Character Styles:
+- Gregor->Mother: 존댓말
+- Gregor->Father: 존댓말
+- Gregor->Sister: 존댓말
+- Gregor->Chief Clerk: 존댓말
+
+### Immediate language Context (Previous Segment Ending):
+pair of
+feeble women to be heaving about, but Gregor listened as they pushed it
+from its place, his sister always taking on the heaviest part of the
+work for herself and ignoring her mother’s warnings that she would
+strain herself. This lasted a very long time. After labouring at it for
+fifteen minutes or more his mother said it would be better to leave the
+chest where it was, for one thing it was too heavy for them to get the
+job finished before Gregor’s father got home and leaving it in the
+middle of the room it would be in his way even more, and for another
+thing it wasn’t even sure that taking the furniture away would really
+be any help to him. She thought just the opposite; the sight of the
+bare walls saddened her right to her heart; and why wouldn’t Gregor
+feel the same way about it, he’d been used to this furniture in his
+room for a long time and it would make him feel abandoned to be in an
+empty room like that. Then, quietly, almost whispering as if wanting
+Gregor (whose whereabouts she did not know) to hear not even the tone
+of her voice, as she was convinced that he did not understand her
+words, she added “and by taking the furniture away, won’t it seem like
+we’re showing that we’ve given up all hope of improvement and we’re
+abandoning him to cope for himself? I think it’d be best to leave the
+room exactly the way it was before so that when Gregor comes back to us
+again he’ll find everything unchanged and he’ll be able to forget the
+time in between all the easier”.
+
+### Immediate Korean Context (Previous Segment Ending):
+방 한가운데 두면 그에게 더 방해가 될 것이라는 점이었다. 그리고 다른 한 가지 이유는 가구를 치우는 것이 그에게 정말 도움이 될지 확실하지 않다는 것이었다. 그녀는 정반대라고 생각했다. 텅 빈 벽을 보는 것은 그녀의 마음에 슬픔을 안겨주었고, 그레고르도 그렇게 느끼지 않을 이유가 없었다. 그는 오랫동안 자신의 방에서 이 가구에 익숙해져 있었고, 그런 빈 방에 있는 것은 그를 버려진 것처럼 느끼게 할 것이었다. 그러자 그녀는 거의 속삭이듯이, 그레고르(그가 어디 있는지 몰랐음)가 목소리의 톤조차 듣지 못하게 하려는 듯이, 그가 그녀의 말을 이해하지 못한다고 확신했기 때문에, 그녀는 덧붙였다. "그리고 가구를 치우면, 우리는 개선의 희망을 모두 포기하고 그가 스스로 대처하도록 내버려두는 것처럼 보이지 않을까요? 나는 그레고르가 우리에게 돌아왔을 때 모든 것이 변하지 않은 것을 발견하고 그 사이의 시간을 더 쉽게 잊을 수 있도록 방을 이전과 똑같이 두는 것이 가장 좋다고 생각해요."
+
+==================================================
+
