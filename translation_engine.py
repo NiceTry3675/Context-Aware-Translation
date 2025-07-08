@@ -130,8 +130,18 @@ class TranslationEngine:
                 translated_text = _extract_translation_from_response(model_response)
                 # print(f"Segment {segment_index} translated successfully.")
             except Exception as e:
-                print(f"Translation failed for segment {segment_index}. Skipping. Error: {e}")
-                translated_text = f"[TRANSLATION_FAILED: {e}]"
+                error_message = str(e)
+                print(f"Translation failed for segment {segment_index}. Error: {error_message}")
+                translated_text = f"[TRANSLATION_FAILED: {error_message}]"
+                
+                # Log the problematic prompt and content
+                if "PROHIBITED_CONTENT" in error_message.upper():
+                    error_log_path = os.path.join(prompt_log_dir, f"error_prompt_{job.base_filename}_{segment_index}.txt")
+                    with open(error_log_path, 'w', encoding='utf-8') as f:
+                        f.write(f"# PROHIBITED CONTENT ERROR LOG FOR SEGMENT {segment_index}\n\n")
+                        f.write(f"--- SOURCE SEGMENT ---\n{segment_content}\n\n")
+                        f.write(f"--- FULL PROMPT ---\n{prompt}")
+                    print(f"Problematic prompt for segment {segment_index} saved to: {error_log_path}")
             
             # 6. Save the result
             job.append_translated_segment(translated_text)
@@ -185,7 +195,7 @@ class TranslationEngine:
                 f.write("- Empty\n")
             f.write("\n")
 
-            f.write("### Immediate English Context (Previous Segment Ending):\n")
+            f.write("### Immediate language Context (Previous Segment Ending):\n")
             f.write(f"{immediate_context_en or 'N/A'}\n\n")
 
             f.write("### Immediate Korean Context (Previous Segment Ending):\n")

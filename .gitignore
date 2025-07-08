@@ -19,8 +19,22 @@ venv/
 _archive/
 
 # Translation output & logs
-translated_novel/
 
 
 # Vector DB files (if re-enabled)
 vector_db/
+
+# Ignore all files in data directories by default
+context_log/*
+debug_prompts/*
+source_novel/*
+translated_novel/*
+
+# But exclude specific example files from being ignored
+!context_log/context_log_Metamorphosis.txt
+!debug_prompts/debug_prompts_Metamorphosis.txt
+!source_novel/Metamorphosis.txt
+!translated_novel/Metamorphosis_translated.txt
+
+# Also keep the directory structure for empty folders that might result
+!*/.gitkeep
