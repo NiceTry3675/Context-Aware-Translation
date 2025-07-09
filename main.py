@@ -6,7 +6,8 @@ import io
 from config_loader import load_config
 from gemini_model import GeminiModel
 from dynamic_config_builder import DynamicConfigBuilder
-from translation_job import TranslationJob
+from text_translation_job import TextTranslationJob
+from epub_translation_job import EpubTranslationJob
 from translation_engine import TranslationEngine
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -37,8 +38,12 @@ def main():
         
         print(f"\n--- Starting translation for: {os.path.basename(args.filepath)} ---")
 
-        # 3. Create a new translation job from the input file
-        translation_job = TranslationJob(args.filepath)
+        # 3. Determine which job handler to use based on file extension
+        _, extension = os.path.splitext(args.filepath.lower())
+        if extension == '.epub':
+            translation_job = EpubTranslationJob(args.filepath)
+        else:
+            translation_job = TextTranslationJob(args.filepath)
 
         # 4. Initialize the main dynamic config builder and the translation engine
         novel_name = translation_job.base_filename
