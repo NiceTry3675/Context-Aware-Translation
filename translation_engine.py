@@ -145,11 +145,14 @@ class TranslationEngine:
                         f.write(f"--- FULL PROMPT ---\n{prompt}")
                     print(f"Problematic prompt for segment {segment_index} saved to: {error_log_path}")
             
-            # 6. Save the result
+            # 6. Save the result to memory
             job.append_translated_segment(translated_text)
 
+        # 7. Save the final output file
+        job.save_final_output()
+
         print(f"\n--- Translation Complete! ---")
-        print(f"Output: {job.output_filename}")
+        print(f"Output written to: {job.output_filename}")
         # print(f"Logs: {prompt_log_path}")
         # print(f"Context: {context_log_path}")
 
