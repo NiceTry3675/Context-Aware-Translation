@@ -1,5 +1,6 @@
 import os
 import re
+from file_parser import parse_document
 
 class TranslationJob:
     """
@@ -18,19 +19,28 @@ class TranslationJob:
         self.character_styles = {}
         
         self.output_filename = os.path.join('translated_novel', f"{self.base_filename}_translated.txt")
+        
+        # Ensure the output directory exists
+        output_dir = os.path.dirname(self.output_filename)
+        os.makedirs(output_dir, exist_ok=True)
+        
         # Clear the output file at the start of the job
         with open(self.output_filename, 'w', encoding='utf-8') as f:
             f.write("")
 
     def _create_segments_from_file(self, target_size: int) -> list[str]:
         """
-        Reads the source file and splits it into robust segments.
+        Reads the source file using the parser and splits the text into robust segments.
         This version uses a refined pre-processing step to correctly handle
         long paragraphs without introducing extra newlines.
         """
-        print(f"Reading and segmenting file: {self.filepath}")
-        with open(self.filepath, 'r', encoding='utf-8') as f:
-            full_text = f.read()
+        print(f"Parsing and segmenting file: {self.filepath}")
+        try:
+            full_text = parse_document(self.filepath)
+        except ValueError as e:
+            print(f"[ERROR] {e}")
+            # Return an empty list of segments if parsing fails
+            return []
 
         # 1. Split the text into paragraphs.
         paragraphs = [p.strip() for p in re.split(r'\n\s*\n', full_text) if p.strip()]

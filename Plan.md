@@ -16,7 +16,7 @@ To develop and launch a commercial web service that provides professional-grade,
 
 | Priority | Feature/Task | Description | Status |
 | :---: | :--- | :--- | :---: |
-| **High** | **Contextual Glossary Injection** | Modify the prompt building process to only include glossary terms relevant to the current source segment. This will optimize prompt size, reduce token consumption, and potentially improve contextual focus. | 📝 To Do |
+| **High** | **Contextual Glossary Injection** | Modify the prompt building process to only include glossary terms relevant to the current source segment. This will optimize prompt size, reduce token consumption, and potentially improve contextual focus. | solve! |
 | **High** | **Web Service Architecture Plan** | Design the full-stack architecture for the web service. This includes selecting the tech stack (e.g., FastAPI/Django for backend, React/Vue for frontend), database schema for users and projects, and planning for user authentication and file management. | 📝 To Do |
 | Medium | **Expanded File Format Support** | Implement parsers for various document types beyond `.txt`. Prioritize common formats like `.docx`, `.epub`, and `.md`. The system should be able to extract clean text from these files for translation. | 📝 To Do |
 | Medium | **Initial Backend Scaffolding** | Develop the basic backend API endpoints required for the service (e.g., user registration/login, file upload, start translation job, check job status). | 📝 To Do |
