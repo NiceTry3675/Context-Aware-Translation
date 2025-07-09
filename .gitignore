@@ -41,3 +41,6 @@ translated_novel/*
 
 # Backup files
 *.tar.gz
+
+# Error logs
+error.txt
