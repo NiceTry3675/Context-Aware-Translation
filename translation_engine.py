@@ -4,7 +4,7 @@ from tqdm import tqdm
 from gemini_model import GeminiModel
 from prompt_builder import PromptBuilder
 from dynamic_config_builder import DynamicConfigBuilder
-from translation_job import TranslationJob
+from base_translation_job import BaseTranslationJob
 from prompt_manager import PromptManager
 
 def get_segment_ending(segment_text: str, max_chars: int) -> str:
@@ -45,7 +45,7 @@ class TranslationEngine:
         self.dyn_config_builder = dyn_config_builder
         self.prompt_builder = PromptBuilder(PromptManager.MAIN_TRANSLATION)
 
-    def translate_job(self, job: TranslationJob):
+    def translate_job(self, job: BaseTranslationJob):
         """
         Translates all segments in a given TranslationJob.
         """
@@ -165,7 +165,7 @@ class TranslationEngine:
             print(f"Warning: Could not define narrative style. Falling back to default. Error: {e}")
             return "A standard, neutral literary style ('평서체')."
 
-    def _write_context_log(self, log_path: str, segment_index: int, job: TranslationJob, contextual_glossary: dict, immediate_context_en: str, immediate_context_ko: str, style_deviation: str):
+    def _write_context_log(self, log_path: str, segment_index: int, job: BaseTranslationJob, contextual_glossary: dict, immediate_context_en: str, immediate_context_ko: str, style_deviation: str):
         """Writes a human-readable summary of the context to a log file."""
         with open(log_path, 'a', encoding='utf-8') as f:
             f.write(f"--- CONTEXT FOR SEGMENT {segment_index} ---\n\n")
