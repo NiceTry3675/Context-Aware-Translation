@@ -67,7 +67,7 @@ class TranslationEngine:
         if not job.segments:
             print("No segments to translate. Exiting.")
             return
-        core_narrative_style = self._define_core_style(job.segments[0])
+        core_narrative_style = self._define_core_style(job.segments[0].text)
         
         # Log the defined style
         with open(context_log_path, 'a', encoding='utf-8') as f:
@@ -75,8 +75,9 @@ class TranslationEngine:
             f.write(f"{core_narrative_style}\n")
             f.write("="*50 + "\n\n")
 
-        for i, segment_content in enumerate(tqdm(job.segments, desc="Translating Segments")):
+        for i, segment_info in enumerate(tqdm(job.segments, desc="Translating Segments")):
             segment_index = i + 1
+            segment_content = segment_info.text
             # print(f"\n\n--- Processing Segment {segment_index}/{len(job.segments)} ---")
 
             # 1. Build dynamic guides using the orchestrated builder
@@ -146,12 +147,12 @@ class TranslationEngine:
                     print(f"Problematic prompt for segment {segment_index} saved to: {error_log_path}")
             
             # 6. Save the result
-            job.append_translated_segment(translated_text)
+            job.append_translated_segment(translated_text, segment_info)
+
+        job.save_final_output()
 
         print(f"\n--- Translation Complete! ---")
         print(f"Output: {job.output_filename}")
-        # print(f"Logs: {prompt_log_path}")
-        # print(f"Context: {context_log_path}")
 
     def _define_core_style(self, sample_text: str) -> str:
         """Analyzes the first segment to define the core narrative style for the novel."""
