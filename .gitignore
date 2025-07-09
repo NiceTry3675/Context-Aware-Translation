@@ -44,3 +44,9 @@ translated_novel/*
 
 # Error logs
 error.txt
+
+# Uploaded files
+uploads/
+
+# Database files
+database.db

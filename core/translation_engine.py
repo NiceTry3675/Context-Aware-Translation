@@ -1,11 +1,11 @@
 import re
 import os
 from tqdm import tqdm
-from gemini_model import GeminiModel
-from prompt_builder import PromptBuilder
-from dynamic_config_builder import DynamicConfigBuilder
-from translation_job import TranslationJob
-from prompt_manager import PromptManager
+from .gemini_model import GeminiModel
+from .prompt_builder import PromptBuilder
+from .dynamic_config_builder import DynamicConfigBuilder
+from .translation_job import TranslationJob
+from .prompt_manager import PromptManager
 
 def get_segment_ending(segment_text: str, max_chars: int) -> str:
     """

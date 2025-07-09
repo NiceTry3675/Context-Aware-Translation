@@ -1,5 +1,5 @@
-from gemini_model import GeminiModel
-from prompt_manager import PromptManager
+from .gemini_model import GeminiModel
+from .prompt_manager import PromptManager
 
 class GlossaryManager:
     """Manages the glossary for a translation job."""

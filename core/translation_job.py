@@ -3,7 +3,7 @@ import re
 import ebooklib
 from ebooklib import epub
 from bs4 import BeautifulSoup
-from file_parser import parse_document
+from .file_parser import parse_document
 
 class SegmentInfo:
     """A simple class to hold segment data and its context."""

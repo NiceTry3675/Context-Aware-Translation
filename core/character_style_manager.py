@@ -1,6 +1,6 @@
 import os
-from gemini_model import GeminiModel
-from prompt_manager import PromptManager
+from .gemini_model import GeminiModel
+from .prompt_manager import PromptManager
 
 class CharacterStyleManager:
     """Manages the protagonist's dialogue style towards other characters."""

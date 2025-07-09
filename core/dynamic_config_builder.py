@@ -1,7 +1,7 @@
-from gemini_model import GeminiModel
-from prompt_manager import PromptManager
-from glossary_manager import GlossaryManager
-from character_style_manager import CharacterStyleManager
+from .gemini_model import GeminiModel
+from .prompt_manager import PromptManager
+from .glossary_manager import GlossaryManager
+from .character_style_manager import CharacterStyleManager
 
 class DynamicConfigBuilder:
     """
