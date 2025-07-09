@@ -38,3 +38,6 @@ translated_novel/*
 
 # Also keep the directory structure for empty folders that might result
 !*/.gitkeep
+
+# Backup files
+*.tar.gz

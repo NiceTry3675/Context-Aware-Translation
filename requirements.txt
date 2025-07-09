@@ -6,3 +6,6 @@ EbookLib
 Markdown
 beautifulsoup4
 PyMuPDF
+fastapi
+uvicorn[standard]
+clerk-backend-api
