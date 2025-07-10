@@ -83,8 +83,9 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
         crud.update_job_status(db, job_id, "COMPLETED")
         print(f"--- [BACKGROUND] Translation finished for Job ID: {job_id}, File: {filename} ---")
     except Exception as e:
-        crud.update_job_status(db, job_id, "FAILED")
-        print(f"--- [BACKGROUND] An unexpected error occurred during translation for Job ID: {job_id}, File: {filename} ---")
+        error_message = f"An unexpected error occurred: {str(e)}"
+        crud.update_job_status(db, job_id, "FAILED", error_message=error_message)
+        print(f"--- [BACKGROUND] {error_message} for Job ID: {job_id}, File: {filename} ---")
         traceback.print_exc()
     finally:
         db.close()
@@ -100,6 +101,11 @@ async def create_upload_file(
     api_key: str = Form(...),
     db: Session = Depends(get_db)
 ):
+    # 1. API 키 유효성 검사 먼저 수행
+    if not GeminiModel.validate_api_key(api_key):
+        raise HTTPException(status_code=400, detail="Invalid API Key. Please check your key and try again.")
+
+    # 2. 유효한 키일 경우에만 파일 저장 및 작업 생성 진행
     file_path = f"uploads/{file.filename}"
     try:
         with open(file_path, "wb") as buffer:
@@ -110,7 +116,7 @@ async def create_upload_file(
     job_create = schemas.TranslationJobCreate(filename=file.filename)
     db_job = crud.create_translation_job(db, job_create)
     
-    # 백그라운드 작업에 api_key를 전달합니다.
+    # 3. 백그라운드 작업에 api_key 전달
     background_tasks.add_task(run_translation_in_background, db_job.id, file_path, file.filename, api_key)
     
     return db_job

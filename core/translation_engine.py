@@ -118,14 +118,26 @@ class TranslationEngine:
                 f.write(prompt)
                 f.write("\n\n" + "="*50 + "\n\n")
 
+            # 5. Generate translation with retry logic
+            translated_text = ""
             try:
-                model_response = self.gemini_api.generate_text(prompt)
+                # The gemini_model's generate_text will handle retries for retriable errors
+                # and will immediately raise an exception for non-retriable ones.
+                model_response = self.gemini_api.generate_text(prompt) 
                 translated_text = _extract_translation_from_response(model_response)
             except Exception as e:
                 error_message = str(e)
                 print(f"Translation failed for segment {segment_index}. Error: {error_message}")
                 translated_text = f"[TRANSLATION_FAILED: {error_message}]"
                 
+                # If it's a non-retriable error, we want to stop the entire job.
+                if "API key not valid" in error_message or "PermissionDenied" in error_message or "InvalidArgument" in error_message:
+                    print("Non-retriable error detected. Aborting the entire translation job.")
+                    # We re-raise the exception to be caught by the top-level handler in main.py
+                    # which will then mark the entire job as FAILED.
+                    raise e
+                
+                # For other errors (e.g., network, temporary issues), we just log it and continue.
                 if "PROHIBITED_CONTENT" in error_message.upper():
                     error_log_path = os.path.join(prompt_log_dir, f"error_prompt_{job.base_filename}_{segment_index}.txt")
                     with open(error_log_path, 'w', encoding='utf-8') as f:
@@ -133,7 +145,8 @@ class TranslationEngine:
                         f.write(f"--- SOURCE SEGMENT ---\n{segment_info.text}\n\n")
                         f.write(f"--- FULL PROMPT ---\n{prompt}")
                     print(f"Problematic prompt for segment {segment_index} saved to: {error_log_path}")
-            
+
+            # 6. Save the result
             job.append_translated_segment(translated_text, segment_info)
 
         job.save_final_output()

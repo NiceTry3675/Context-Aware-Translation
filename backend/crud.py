@@ -11,7 +11,7 @@ def create_translation_job(db: Session, job: schemas.TranslationJobCreate):
     db.refresh(db_job)
     return db_job
 
-def update_job_status(db: Session, job_id: int, status: str):
+def update_job_status(db: Session, job_id: int, status: str, error_message: str | None = None):
     db_job = get_job(db, job_id)
     if db_job:
         db_job.status = status
@@ -19,6 +19,7 @@ def update_job_status(db: Session, job_id: int, status: str):
             db_job.progress = 100
         elif status == "FAILED":
             db_job.progress = -1 # -1 to indicate an error state
+            db_job.error_message = error_message
         db.commit()
         db.refresh(db_job)
     return db_job

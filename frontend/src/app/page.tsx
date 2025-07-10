@@ -10,6 +10,7 @@ interface Job {
   progress: number;
   created_at: string;
   completed_at: string | null;
+  error_message: string | null;
 }
 
 export default function Home() {
@@ -199,7 +200,7 @@ export default function Home() {
       {/* Jobs Table Section */}
       <div className="mt-12 w-full max-w-4xl">
         <h2 className="text-2xl font-semibold text-gray-700 mb-4 text-center">Translation Jobs</h2>
-        <div className="bg-white shadow-md rounded-lg overflow-hidden">
+        <div className="bg-white shadow-md rounded-lg">
           <table className="min-w-full leading-normal">
             <thead>
               <tr>
@@ -234,23 +235,35 @@ export default function Home() {
                         </div>
                       </div>
                     ) : (
-                      <span
-                        className={`relative inline-block px-3 py-1 font-semibold leading-tight ${
-                          job.status === 'COMPLETED' ? 'text-green-900' :
-                          job.status === 'FAILED' ? 'text-red-900' :
-                          'text-yellow-900'
-                        }`}
-                      >
+                      <div className="flex items-center">
                         <span
-                          aria-hidden
-                          className={`absolute inset-0 ${
-                            job.status === 'COMPLETED' ? 'bg-green-200' :
-                            job.status === 'FAILED' ? 'bg-red-200' :
-                            'bg-yellow-200'
-                          } opacity-50 rounded-full`}
-                        ></span>
-                        <span className="relative">{job.status}</span>
-                      </span>
+                          className={`relative inline-block px-3 py-1 font-semibold leading-tight ${
+                            job.status === 'COMPLETED' ? 'text-green-900' :
+                            job.status === 'FAILED' ? 'text-red-900' :
+                            'text-yellow-900'
+                          }`}
+                        >
+                          <span
+                            aria-hidden
+                            className={`absolute inset-0 ${
+                              job.status === 'COMPLETED' ? 'bg-green-200' :
+                              job.status === 'FAILED' ? 'bg-red-200' :
+                              'bg-yellow-200'
+                            } opacity-50 rounded-full`}
+                          ></span>
+                          <span className="relative">{job.status}</span>
+                        </span>
+                        {job.status === 'FAILED' && job.error_message && (
+                          <div className="relative ml-2 group">
+                            <svg className="w-5 h-5 text-gray-500 cursor-pointer" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 p-3 text-sm text-white bg-gray-800 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-normal">
+                              {job.error_message}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </td>
                   <td className="px-5 py-4 border-b border-gray-200 bg-white text-sm">

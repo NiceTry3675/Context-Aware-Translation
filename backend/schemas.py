@@ -13,6 +13,7 @@ class TranslationJob(TranslationJobBase):
     progress: int
     created_at: datetime.datetime
     completed_at: datetime.datetime | None = None
+    error_message: str | None = None
 
     class Config:
         from_attributes = True
