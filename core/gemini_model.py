@@ -1,6 +1,7 @@
 import time
 import google.generativeai as genai
 from google.api_core import exceptions as google_exceptions
+from .exceptions import ProhibitedException
 
 class GeminiModel:
     """
@@ -54,13 +55,30 @@ class GeminiModel:
                 else:
                     if response and hasattr(response, 'prompt_feedback') and response.prompt_feedback.block_reason:
                         block_reason = response.prompt_feedback.block_reason
-                        # This is a non-retriable error
-                        raise google_exceptions.InvalidArgument(f"Prompt blocked by safety settings. Reason: {block_reason}")
+                        # This is a non-retriable error - raise ProhibitedException
+                        raise ProhibitedException(
+                            message=f"Prompt blocked by safety settings. Reason: {block_reason}",
+                            prompt=prompt,
+                            api_response=str(response.prompt_feedback) if hasattr(response, 'prompt_feedback') else None,
+                            api_call_type="text_generation"
+                        )
                     else:
                         raise ValueError("API returned an empty or invalid response.")
 
+            except ProhibitedException:
+                # Re-raise ProhibitedException without retrying
+                raise
+                
             except (google_exceptions.PermissionDenied, google_exceptions.InvalidArgument) as e:
-                # Non-retriable errors: Invalid API key, bad request, safety blocks.
+                # Check if this is actually a content safety block
+                error_str = str(e).upper()
+                if "PROHIBITED" in error_str or "SAFETY" in error_str or "BLOCKED" in error_str:
+                    raise ProhibitedException(
+                        message=str(e),
+                        prompt=prompt,
+                        api_call_type="text_generation"
+                    )
+                # Other non-retriable errors: Invalid API key, bad request.
                 # We should not retry these.
                 print(f"\nNon-retriable API error: {e}")
                 raise e # Re-raise the exception to be caught by the translation engine

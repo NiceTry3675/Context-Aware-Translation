@@ -1,6 +1,8 @@
 import os
 from .gemini_model import GeminiModel
 from .prompt_manager import PromptManager
+from .exceptions import ProhibitedException
+from .error_logger import prohibited_content_logger
 
 class CharacterStyleManager:
     """Manages the protagonist's dialogue style towards other characters."""
@@ -42,19 +44,21 @@ class CharacterStyleManager:
             # print("Character styles updated.")
             return updated_styles
 
+        except ProhibitedException as e:
+            # Handle prohibited content using the centralized logger
+            log_path = prohibited_content_logger.log_simple_prohibited_content(
+                api_call_type="character_style_analysis",
+                prompt=prompt,
+                source_text=segment_text,
+                error_message=str(e),
+                job_filename=job_base_filename,
+                segment_index=segment_index,
+                context={"protagonist_name": self.protagonist_name}
+            )
+            print(f"Warning: Character style analysis blocked by safety settings. Log saved to: {log_path}")
+            return current_styles
+            
         except Exception as e:
-            error_message = str(e)
-            print(f"Warning: Could not analyze character styles. {error_message}")
-            
-            if "PROHIBITED_CONTENT" in error_message.upper():
-                debug_prompts_dir = "debug_prompts"
-                os.makedirs(debug_prompts_dir, exist_ok=True)
-                error_log_path = os.path.join(debug_prompts_dir, f"error_character_style_{job_base_filename}_{segment_index}.txt")
-                with open(error_log_path, 'w', encoding='utf-8') as f:
-                    f.write(f"# PROHIBITED CONTENT ERROR LOG FOR CHARACTER STYLE ANALYSIS - SEGMENT {segment_index}\n\n")
-                    f.write(f"--- SOURCE SEGMENT ---\n{segment_text}\n\n")
-                    f.write(f"--- FULL PROMPT ---\n{prompt}")
-                print(f"Problematic character style prompt for segment {segment_index} saved to: {error_log_path}")
-            
+            print(f"Warning: Could not analyze character styles. {e}")
             return current_styles
 

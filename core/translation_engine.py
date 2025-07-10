@@ -6,6 +6,8 @@ from .prompt_builder import PromptBuilder
 from .dynamic_config_builder import DynamicConfigBuilder
 from .translation_job import TranslationJob
 from .prompt_manager import PromptManager
+from .exceptions import ProhibitedException
+from .error_logger import prohibited_content_logger
 from backend import crud  # Import crud to use its functions
 from sqlalchemy.orm import Session
 
@@ -59,7 +61,7 @@ class TranslationEngine:
         if not job.segments:
             print("No segments to translate. Exiting.")
             return
-        core_narrative_style = self._define_core_style(job.segments[0].text)
+        core_narrative_style = self._define_core_style(job.segments[0].text, job.base_filename)
         
         with open(context_log_path, 'a', encoding='utf-8') as f:
             f.write(f"--- Core Narrative Style Defined ---\n")
@@ -125,6 +127,18 @@ class TranslationEngine:
                 # and will immediately raise an exception for non-retriable ones.
                 model_response = self.gemini_api.generate_text(prompt) 
                 translated_text = _extract_translation_from_response(model_response)
+            except ProhibitedException as e:
+                # Handle prohibited content using the centralized logger
+                e.source_text = segment_info.text
+                e.context = {
+                    'segment_index': segment_index,
+                    'glossary': contextual_glossary,
+                    'character_styles': job.character_styles,
+                    'style_deviation': style_deviation
+                }
+                log_path = prohibited_content_logger.log_prohibited_content(e, job.base_filename, segment_index)
+                print(f"Translation blocked by safety settings for segment {segment_index}. Log saved to: {log_path}")
+                translated_text = f"[TRANSLATION_BLOCKED: Content safety filter triggered]"
             except Exception as e:
                 error_message = str(e)
                 print(f"Translation failed for segment {segment_index}. Error: {error_message}")
@@ -136,15 +150,6 @@ class TranslationEngine:
                     # We re-raise the exception to be caught by the top-level handler in main.py
                     # which will then mark the entire job as FAILED.
                     raise e
-                
-                # For other errors (e.g., network, temporary issues), we just log it and continue.
-                if "PROHIBITED_CONTENT" in error_message.upper():
-                    error_log_path = os.path.join(prompt_log_dir, f"error_prompt_{job.base_filename}_{segment_index}.txt")
-                    with open(error_log_path, 'w', encoding='utf-8') as f:
-                        f.write(f"# PROHIBITED CONTENT ERROR LOG FOR SEGMENT {segment_index}\n\n")
-                        f.write(f"--- SOURCE SEGMENT ---\n{segment_info.text}\n\n")
-                        f.write(f"--- FULL PROMPT ---\n{prompt}")
-                    print(f"Problematic prompt for segment {segment_index} saved to: {error_log_path}")
 
             # 6. Save the result
             job.append_translated_segment(translated_text, segment_info)
@@ -154,7 +159,7 @@ class TranslationEngine:
         print(f"\n--- Translation Complete! ---")
         print(f"Output: {job.output_filename}")
 
-    def _define_core_style(self, sample_text: str) -> str:
+    def _define_core_style(self, sample_text: str, job_base_filename: str = "unknown") -> str:
         """Analyzes the first segment to define the core narrative style for the novel."""
         print("\n--- Defining Core Narrative Style... ---")
         try:
@@ -162,6 +167,18 @@ class TranslationEngine:
             style = self.gemini_api.generate_text(prompt)
             print(f"Style defined as: {style}")
             return style
+        except ProhibitedException as e:
+            # Log the prohibited content error
+            log_path = prohibited_content_logger.log_simple_prohibited_content(
+                api_call_type="core_style_definition",
+                prompt=prompt,
+                source_text=sample_text,
+                error_message=str(e),
+                job_filename=job_base_filename
+            )
+            print(f"Warning: Core style definition blocked by safety settings. Log saved to: {log_path}")
+            print("Falling back to default narrative style.")
+            return "A standard, neutral literary style ('평서체')."
         except Exception as e:
             print(f"Warning: Could not define narrative style. Falling back to default. Error: {e}")
             return "A standard, neutral literary style ('평서체')."

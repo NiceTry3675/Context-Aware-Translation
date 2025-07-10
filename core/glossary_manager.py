@@ -1,11 +1,14 @@
 from .gemini_model import GeminiModel
 from .prompt_manager import PromptManager
+from .exceptions import ProhibitedException
+from .error_logger import prohibited_content_logger
 
 class GlossaryManager:
     """Manages the glossary for a translation job."""
 
-    def __init__(self, model: GeminiModel):
+    def __init__(self, model: GeminiModel, job_filename: str = "unknown"):
         self.model = model
+        self.job_filename = job_filename
 
     def update_glossary(self, segment_text: str, current_glossary: dict) -> dict:
         """
@@ -40,6 +43,17 @@ class GlossaryManager:
             response = self.model.generate_text(prompt)
             # Return a sorted list of unique, non-empty terms
             return sorted(list(set([term.strip() for term in response.split(',') if term.strip()])))
+        except ProhibitedException as e:
+            # Log the prohibited content error
+            log_path = prohibited_content_logger.log_simple_prohibited_content(
+                api_call_type="glossary_extraction",
+                prompt=prompt,
+                source_text=segment_text,
+                error_message=str(e),
+                job_filename=self.job_filename
+            )
+            print(f"Warning: Glossary extraction blocked by safety settings. Log saved to: {log_path}")
+            return []
         except Exception as e:
             print(f"Warning: Could not extract proper nouns. {e}")
             return []
@@ -56,6 +70,17 @@ class GlossaryManager:
                     if key in terms:
                         translated_dict[key] = value
             return translated_dict
+        except ProhibitedException as e:
+            # Log the prohibited content error
+            log_path = prohibited_content_logger.log_simple_prohibited_content(
+                api_call_type="glossary_translation",
+                prompt=prompt,
+                source_text=', '.join(terms),
+                error_message=str(e),
+                job_filename=self.job_filename
+            )
+            print(f"Warning: Glossary translation blocked by safety settings. Log saved to: {log_path}")
+            return {}
         except Exception as e:
             print(f"Warning: Could not translate key terms. {e}")
             return {}

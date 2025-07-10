@@ -2,6 +2,8 @@ from .gemini_model import GeminiModel
 from .prompt_manager import PromptManager
 from .glossary_manager import GlossaryManager
 from .character_style_manager import CharacterStyleManager
+from .exceptions import ProhibitedException
+from .error_logger import prohibited_content_logger
 
 class DynamicConfigBuilder:
     """
@@ -23,7 +25,6 @@ class DynamicConfigBuilder:
         # or passed in from a configuration file. For now, we can assume a default.
         protagonist_name = self._determine_protagonist(novel_name)
         
-        self.glossary_manager = GlossaryManager(model)
         self.character_style_manager = CharacterStyleManager(model, protagonist_name)
         print(f"DynamicConfigBuilder initialized for '{novel_name}' with protagonist '{protagonist_name}'.")
 
@@ -61,8 +62,9 @@ class DynamicConfigBuilder:
         """
         # print("\n--- Building Dynamic Guides for Segment ---")
         
-        # 1. Update glossary
-        updated_glossary = self.glossary_manager.update_glossary(
+        # 1. Update glossary - create manager with job filename
+        glossary_manager = GlossaryManager(self.model, job_base_filename)
+        updated_glossary = glossary_manager.update_glossary(
             segment_text,
             current_glossary
         )
@@ -78,13 +80,15 @@ class DynamicConfigBuilder:
         # 3. Analyze for style deviations
         style_deviation_info = self._analyze_style_deviation(
             segment_text,
-            core_narrative_style
+            core_narrative_style,
+            job_base_filename,
+            segment_index
         )
 
         # print("--- Dynamic Guides Built Successfully ---")
         return updated_glossary, updated_character_styles, style_deviation_info
 
-    def _analyze_style_deviation(self, segment_text: str, core_narrative_style: str) -> str:
+    def _analyze_style_deviation(self, segment_text: str, core_narrative_style: str, job_base_filename: str = "unknown", segment_index: int = None) -> str:
         """Analyzes the segment for deviations from the core narrative style."""
         # print("Analyzing for narrative style deviations...")
         prompt = PromptManager.ANALYZE_NARRATIVE_DEVIATION.format(
@@ -99,6 +103,19 @@ class DynamicConfigBuilder:
             else:
                 # print(f"Deviation found: {response}")
                 return response
+        except ProhibitedException as e:
+            # Log the prohibited content error
+            log_path = prohibited_content_logger.log_simple_prohibited_content(
+                api_call_type="style_deviation_analysis",
+                prompt=prompt,
+                source_text=segment_text,
+                error_message=str(e),
+                job_filename=job_base_filename,
+                segment_index=segment_index,
+                context={"core_narrative_style": core_narrative_style}
+            )
+            print(f"Warning: Style deviation analysis blocked by safety settings. Log saved to: {log_path}")
+            return "N/A"
         except Exception as e:
             print(f"Warning: Could not analyze style deviation. {e}")
             return "N/A"
