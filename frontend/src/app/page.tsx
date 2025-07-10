@@ -52,7 +52,7 @@ export default function Home() {
           const response = await fetch(`${API_URL}/status/${job.id}`);
           if (!response.ok) return job;
           return response.json();
-        } catch (_e) { // 사용하지 않는 변수는 _로 시작
+        } catch { // 변수 선언 자체를 생략
           return job;
         }
       })
@@ -297,7 +297,6 @@ export default function Home() {
       <footer className="w-full max-w-4xl mt-16 pt-8 border-t border-gray-200 text-center">
         <h3 className="text-xl font-semibold text-gray-700 mb-4">이 서비스가 마음에 드셨나요?</h3>
         <p className="text-gray-600 mb-6">
-          냥번역은 개인 개발자가 운영하는 오픈소스 프로젝트입니다. <br />
           여러분의 소중한 후원은 서비스 유지 및 기능 개선에 큰 힘이 됩니다.
         </p>
         <div className="flex justify-center items-center gap-4">
