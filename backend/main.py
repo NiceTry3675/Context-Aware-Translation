@@ -2,6 +2,7 @@ import shutil
 import os
 import traceback
 from fastapi import FastAPI, File, UploadFile, BackgroundTasks, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -27,7 +28,22 @@ def get_db():
     finally:
         db.close()
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI()
+
+# CORS 설정
+origins = [
+    "http://localhost:3000",  # Next.js 개발 서버
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def run_translation_in_background(job_id: int, file_path: str, filename: str):
     """
