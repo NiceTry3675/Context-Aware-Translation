@@ -18,8 +18,8 @@ from core.dynamic_config_builder import DynamicConfigBuilder
 from core.translation_job import TranslationJob
 from core.translation_engine import TranslationEngine
 
-# Create the database tables
-models.Base.metadata.create_all(bind=engine)
+# Create the database tables (deactivated for now to debug deployment)
+# models.Base.metadata.create_all(bind=engine)
 
 # Dependency to get a database session
 def get_db():
