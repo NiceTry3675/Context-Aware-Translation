@@ -288,6 +288,38 @@ export default function Home() {
           </table>
         </div>
       </div>
+
+      {/* Footer/Sponsorship Section */}
+      <footer className="w-full max-w-4xl mt-16 pt-8 border-t border-gray-200 text-center">
+        <h3 className="text-xl font-semibold text-gray-700 mb-4">이 서비스가 마음에 드셨나요?</h3>
+        <p className="text-gray-600 mb-6">
+          냥번역은 개인 개발자가 운영하는 오픈소스 프로젝트입니다. <br />
+          여러분의 소중한 후원은 서비스 유지 및 기능 개선에 큰 힘이 됩니다.
+        </p>
+        <div className="flex justify-center items-center gap-4">
+          <a 
+            href="https://qr.kakaopay.com/FKyvPWbom" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center px-5 py-3 text-base font-medium text-gray-900 bg-yellow-300 rounded-lg hover:bg-yellow-400 focus:ring-4 focus:ring-yellow-200"
+          >
+            {/* Placeholder for KakaoPay Icon */}
+            <span className="text-lg">💰</span>
+            <span className="ml-2">카카오페이로 커피 사주기</span>
+          </a>
+          <a 
+            href="https://coff.ee/nicetry3675" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center px-5 py-3 text-base font-medium text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 focus:ring-4 focus:ring-gray-100"
+          >
+            {/* Placeholder for BMC Icon */}
+            <span className="text-lg">☕</span>
+            <span className="ml-2">Buy Me a Coffee</span>
+          </a>
+        </div>
+      </footer>
+
     </main>
   );
 }
