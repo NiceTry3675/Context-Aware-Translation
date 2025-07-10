@@ -13,6 +13,7 @@ interface Job {
 
 export default function Home() {
   // 상태 관리
+  const [apiKey, setApiKey] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -21,50 +22,49 @@ export default function Home() {
   // 백엔드 API의 기본 URL
   const API_URL = "http://localhost:8000";
 
+  // 컴포넌트가 처음 마운트될 때 localStorage에서 API 키를 불러옵니다.
+  useEffect(() => {
+    const storedApiKey = localStorage.getItem('geminiApiKey');
+    if (storedApiKey) {
+      setApiKey(storedApiKey);
+    }
+  }, []);
+
+  // apiKey 상태가 변경될 때마다 localStorage에 저장합니다.
+  useEffect(() => {
+    if (apiKey) {
+      localStorage.setItem('geminiApiKey', apiKey);
+    }
+  }, [apiKey]);
+
   // 진행 중인 작업의 상태를 주기적으로 가져오는 함수
   const pollJobStatus = async () => {
-    // jobs 상태가 배열인지 확인
-    if (!Array.isArray(jobs)) {
-      console.error("Jobs is not an array:", jobs);
-      return;
-    }
+    if (!Array.isArray(jobs) || jobs.length === 0) return;
   
     const processingJobs = jobs.filter(job => job.status === 'PROCESSING' || job.status === 'PENDING');
     if (processingJobs.length === 0) return;
 
-    // 각 작업의 최신 상태를 가져옵니다.
     const updatedJobs = await Promise.all(
       processingJobs.map(async (job) => {
         try {
           const response = await fetch(`${API_URL}/status/${job.id}`);
-          if (!response.ok) {
-            // 오류 발생 시 기존 작업 상태를 유지
-            console.error(`Failed to fetch status for job ${job.id}`);
-            return job;
-          }
+          if (!response.ok) return job;
           return response.json();
         } catch (e) {
-          console.error(`Error fetching status for job ${job.id}:`, e);
-          return job; // 오류 발생 시 기존 작업 상태를 유지
+          return job;
         }
       })
     );
 
-    // 전체 작업 목록을 업데이트합니다.
     setJobs(currentJobs =>
       currentJobs.map(job => updatedJobs.find(updated => updated.id === job.id) || job)
     );
   };
 
-  // 3초마다 상태 폴링을 실행합니다.
   useEffect(() => {
-    const interval = setInterval(() => {
-      pollJobStatus();
-    }, 3000);
-
-    // 컴포넌트가 언마운트될 때 인터벌을 정리합니다.
+    const interval = setInterval(pollJobStatus, 3000);
     return () => clearInterval(interval);
-  }, [jobs]); // jobs 배열이 변경될 때마다 effect를 다시 실행합니다.
+  }, [jobs]);
 
   // 파일 업로드 처리 함수
   const handleUpload = async (e: FormEvent) => {
@@ -73,12 +73,17 @@ export default function Home() {
       setError("Please select a file to upload.");
       return;
     }
+    if (!apiKey) {
+      setError("Please enter your Gemini API Key.");
+      return;
+    }
 
     setUploading(true);
     setError(null);
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("api_key", apiKey); // API 키를 함께 전송
 
     try {
       const response = await fetch(`${API_URL}/uploadfile/`, {
@@ -92,9 +97,8 @@ export default function Home() {
       }
 
       const newJob: Job = await response.json();
-      // 새 작업을 기존 작업 목록의 맨 앞에 추가합니다.
       setJobs([newJob, ...jobs]);
-      setFile(null); // 파일 선택 초기화
+      setFile(null);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -108,6 +112,22 @@ export default function Home() {
         <h1 className="text-4xl font-bold text-gray-800 mb-8 text-center w-full">
           Context-Aware Novel Translator
         </h1>
+      </div>
+
+      <div className="w-full max-w-2xl p-8 bg-white rounded-lg shadow-md mb-8">
+        <div className="mb-6">
+            <label htmlFor="api-key" className="block mb-2 text-sm font-medium text-gray-700">
+              Your Gemini API Key
+            </label>
+            <input
+              type="password"
+              id="api-key"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="Enter your API key here"
+              className="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 text-sm focus:ring-blue-500 focus:border-blue-500"
+            />
+        </div>
       </div>
 
       <div className="w-full max-w-2xl p-8 bg-white rounded-lg shadow-md">
@@ -125,7 +145,7 @@ export default function Home() {
           </div>
           <button
             type="submit"
-            disabled={!file || uploading}
+            disabled={!file || uploading || !apiKey}
             className="w-full px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
           >
             {uploading ? 'Uploading...' : 'Translate'}
@@ -148,6 +168,9 @@ export default function Home() {
                 </th>
                 <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Submitted
+                </th>
+                <th className="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -180,6 +203,17 @@ export default function Home() {
                     <p className="text-gray-900 whitespace-no-wrap">
                       {new Date(job.created_at).toLocaleString()}
                     </p>
+                  </td>
+                  <td className="px-5 py-4 border-b border-gray-200 bg-white text-sm">
+                    {job.status === 'COMPLETED' && (
+                      <a
+                        href={`${API_URL}/download/${job.id}`}
+                        download
+                        className="text-indigo-600 hover:text-indigo-900"
+                      >
+                        Download
+                      </a>
+                    )}
                   </td>
                 </tr>
               ))}
