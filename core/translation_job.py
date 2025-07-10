@@ -93,8 +93,12 @@ class TranslationJob:
     def _save_as_text(self):
         """Saves the translated segments as a single .txt file."""
         with open(self.output_filename, 'w', encoding='utf-8') as f:
-            for segment in self.translated_segments:
-                f.write(segment.text + "="*20 + "\n\n")
+            for i, segment in enumerate(self.translated_segments):
+                # Write the translated text, ensuring it ends with a newline
+                f.write(segment.text.strip() + "\n")
+                # Add the separator, but not for the very last segment
+                if i < len(self.translated_segments) - 1:
+                    f.write("="*20 + "\n\n")
 
     def _save_as_epub(self):
         """Saves the translated content as a very simple, single-chapter EPUB."""

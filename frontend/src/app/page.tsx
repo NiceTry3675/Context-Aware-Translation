@@ -7,6 +7,7 @@ interface Job {
   id: number;
   filename: string;
   status: string;
+  progress: number;
   created_at: string;
   completed_at: string | null;
 }
@@ -108,12 +109,56 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center p-12 bg-gray-50">
-      <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm lg:flex">
-        <h1 className="text-4xl font-bold text-gray-800 mb-8 text-center w-full">
-          Context-Aware Novel Translator
-        </h1>
+      
+      {/* Header Section */}
+      <div className="text-center w-full max-w-4xl mb-16">
+        <div className="flex justify-center items-center mb-2">
+          <h1 className="text-5xl sm:text-6xl font-extrabold text-gray-800">
+            냥번역
+          </h1>
+          <span className="ml-3 px-2 py-1 text-xs font-semibold text-white bg-gray-700 rounded-full">
+            beta
+          </span>
+        </div>
+        <p className="mt-2 text-base sm:text-lg text-gray-500 tracking-wider">
+          <span className="font-bold text-blue-500">C</span>ontext-
+          <span className="font-bold text-green-500">A</span>ware 
+          <span className="font-bold text-red-500"> T</span>ranslator
+        </p>
       </div>
 
+      {/* Features Section */}
+      <div className="w-full max-w-4xl text-center mb-16">
+        <h2 className="text-3xl font-bold text-gray-800 mb-4">냥번역은 무엇이 다른가요?</h2>
+        <p className="text-lg text-gray-600 max-w-3xl mx-auto">
+          단순한 번역기를 넘어, 소설의 맛을 살리는 데 집중했습니다. 일반 생성형 AI 번역에서 발생하는 고질적인 문제들을 해결하여, 처음부터 끝까지 일관성 있는 고품질 번역을 경험할 수 있습니다.
+        </p>
+        <div className="mt-10 grid md:grid-cols-3 gap-8">
+          <div className="p-6 bg-white rounded-lg shadow-lg">
+            <div className="flex justify-center items-center mb-4 w-12 h-12 rounded-full bg-blue-100 mx-auto">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 12h6m-6-4h6"></path></svg>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">문맥 유지</h3>
+            <p className="text-gray-600">소설 전체의 분위기와 등장인물의 말투를 학습하여, 챕터가 넘어가도 번역 품질이 흔들리지 않습니다.</p>
+          </div>
+          <div className="p-6 bg-white rounded-lg shadow-lg">
+            <div className="flex justify-center items-center mb-4 w-12 h-12 rounded-full bg-green-100 mx-auto">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2h1a2 2 0 002-2v-1a2 2 0 012-2h1.945M7.955 16.588l1.414-1.414M16.045 16.588l-1.414-1.414M12 21a9 9 0 110-18 9 9 0 010 18z"></path></svg>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">용어 일관성</h3>
+            <p className="text-gray-600">고유명사나 특정 용어가 번역될 때마다 달라지는 문제를 해결했습니다. 중요한 단어는 항상 동일하게 번역됩니다.</p>
+          </div>
+          <div className="p-6 bg-white rounded-lg shadow-lg">
+            <div className="flex justify-center items-center mb-4 w-12 h-12 rounded-full bg-red-100 mx-auto">
+               <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">스타일 유지</h3>
+            <p className="text-gray-600">작가 특유의 문체나 작품의 스타일을 학습하여, 원작의 느낌을 최대한 살린 번역을 제공합니다.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Input Section */}
       <div className="w-full max-w-2xl p-8 bg-white rounded-lg shadow-md mb-8">
         <div className="mb-6">
             <label htmlFor="api-key" className="block mb-2 text-sm font-medium text-gray-700">
@@ -128,9 +173,6 @@ export default function Home() {
               className="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 text-sm focus:ring-blue-500 focus:border-blue-500"
             />
         </div>
-      </div>
-
-      <div className="w-full max-w-2xl p-8 bg-white rounded-lg shadow-md">
         <form onSubmit={handleUpload}>
           <div className="mb-6">
             <label htmlFor="file" className="block mb-2 text-sm font-medium text-gray-700">
@@ -154,8 +196,9 @@ export default function Home() {
         {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
       </div>
 
+      {/* Jobs Table Section */}
       <div className="mt-12 w-full max-w-4xl">
-        <h2 className="text-2xl font-semibold text-gray-700 mb-4">Translation Jobs</h2>
+        <h2 className="text-2xl font-semibold text-gray-700 mb-4 text-center">Translation Jobs</h2>
         <div className="bg-white shadow-md rounded-lg overflow-hidden">
           <table className="min-w-full leading-normal">
             <thead>
@@ -181,23 +224,34 @@ export default function Home() {
                     <p className="text-gray-900 whitespace-no-wrap">{job.filename}</p>
                   </td>
                   <td className="px-5 py-4 border-b border-gray-200 bg-white text-sm">
-                    <span
-                      className={`relative inline-block px-3 py-1 font-semibold leading-tight ${
-                        job.status === 'COMPLETED' ? 'text-green-900' :
-                        job.status === 'FAILED' ? 'text-red-900' :
-                        'text-yellow-900'
-                      }`}
-                    >
+                    {job.status === 'PROCESSING' && job.progress > 0 ? (
+                      <div className="w-full bg-gray-200 rounded-full h-4">
+                        <div
+                          className="bg-blue-500 h-4 rounded-full text-xs font-medium text-blue-100 text-center p-0.5 leading-none"
+                          style={{ width: `${job.progress}%` }}
+                        >
+                          {job.progress}%
+                        </div>
+                      </div>
+                    ) : (
                       <span
-                        aria-hidden
-                        className={`absolute inset-0 ${
-                          job.status === 'COMPLETED' ? 'bg-green-200' :
-                          job.status === 'FAILED' ? 'bg-red-200' :
-                          'bg-yellow-200'
-                        } opacity-50 rounded-full`}
-                      ></span>
-                      <span className="relative">{job.status}</span>
-                    </span>
+                        className={`relative inline-block px-3 py-1 font-semibold leading-tight ${
+                          job.status === 'COMPLETED' ? 'text-green-900' :
+                          job.status === 'FAILED' ? 'text-red-900' :
+                          'text-yellow-900'
+                        }`}
+                      >
+                        <span
+                          aria-hidden
+                          className={`absolute inset-0 ${
+                            job.status === 'COMPLETED' ? 'bg-green-200' :
+                            job.status === 'FAILED' ? 'bg-red-200' :
+                            'bg-yellow-200'
+                          } opacity-50 rounded-full`}
+                        ></span>
+                        <span className="relative">{job.status}</span>
+                      </span>
+                    )}
                   </td>
                   <td className="px-5 py-4 border-b border-gray-200 bg-white text-sm">
                     <p className="text-gray-900 whitespace-no-wrap">

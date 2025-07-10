@@ -78,7 +78,7 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
         translation_job = TranslationJob(file_path)
         novel_name = translation_job.base_filename
         dyn_config_builder = DynamicConfigBuilder(gemini_api, novel_name)
-        engine = TranslationEngine(gemini_api, dyn_config_builder)
+        engine = TranslationEngine(gemini_api, dyn_config_builder, db=db, job_id=job_id)
         engine.translate_job(translation_job)
         crud.update_job_status(db, job_id, "COMPLETED")
         print(f"--- [BACKGROUND] Translation finished for Job ID: {job_id}, File: {filename} ---")

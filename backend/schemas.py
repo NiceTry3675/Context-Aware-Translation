@@ -10,6 +10,7 @@ class TranslationJobCreate(TranslationJobBase):
 class TranslationJob(TranslationJobBase):
     id: int
     status: str
+    progress: int
     created_at: datetime.datetime
     completed_at: datetime.datetime | None = None
 
