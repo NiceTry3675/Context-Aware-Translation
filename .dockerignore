@@ -1,0 +1,38 @@
+# Git files
+.git
+.gitignore
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Python virtual environment
+venv/
+venv_old/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE / Editor specific
+.vscode/
+.idea/
+.gemini/
+
+# Environment variables file
+.env
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Log and temporary files
+log.txt
+error.txt
+*.tar.gz
+database.db
+run_server.py
+commit_message.txt

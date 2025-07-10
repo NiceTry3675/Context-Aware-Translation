@@ -8,5 +8,5 @@ beautifulsoup4
 PyMuPDF
 fastapi
 uvicorn[standard]
-clerk-backend-api
 python-multipart
+SQLAlchemy
