@@ -135,7 +135,7 @@ def get_job_status(
 @app.get("/download/{job_id}")
 def download_translated_file(job_id: int, db: Session = Depends(get_db)):
     """
-    Downloads the translated file for a completed job.
+    Downloads the translated file for a completed job, handling different file types.
     """
     db_job = crud.get_job(db, job_id=job_id)
     if db_job is None:
@@ -144,11 +144,28 @@ def download_translated_file(job_id: int, db: Session = Depends(get_db)):
     if db_job.status != "COMPLETED":
         raise HTTPException(status_code=400, detail="Translation is not completed yet.")
 
+    # Determine the output filename and media type based on the original file's extension
     base, ext = os.path.splitext(db_job.filename)
-    translated_filename = f"{base}_translated.txt"
+    
+    if ext.lower() == '.epub':
+        translated_filename = f"{base}_translated.epub"
+        media_type = 'application/epub+zip'
+    else:
+        translated_filename = f"{base}_translated.txt"
+        media_type = 'text/plain'
+        
     file_path = os.path.join("translated_novel", translated_filename)
 
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Translated file not found.")
+        # Fallback for cases where the output might be a .txt even if input was epub
+        # This can happen if the epub translation logic changes.
+        fallback_filename = f"{base}_translated.txt"
+        fallback_path = os.path.join("translated_novel", fallback_filename)
+        if os.path.exists(fallback_path):
+            file_path = fallback_path
+            translated_filename = fallback_filename
+            media_type = 'text/plain'
+        else:
+            raise HTTPException(status_code=404, detail="Translated file not found.")
 
-    return FileResponse(path=file_path, filename=translated_filename, media_type='text/plain')
+    return FileResponse(path=file_path, filename=translated_filename, media_type=media_type)
