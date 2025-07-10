@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useCallback } from 'react';
 
 // 작업(Job) 데이터의 타입을 정의합니다.
 interface Job {
@@ -22,7 +22,7 @@ export default function Home() {
   const [uploading, setUploading] = useState(false);
 
   // 백엔드 API의 기본 URL
-  const API_URL = "http://localhost:8000";
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
   // 컴포넌트가 처음 마운트될 때 localStorage에서 API 키를 불러옵니다.
   useEffect(() => {
@@ -40,7 +40,7 @@ export default function Home() {
   }, [apiKey]);
 
   // 진행 중인 작업의 상태를 주기적으로 가져오는 함수
-  const pollJobStatus = async () => {
+  const pollJobStatus = useCallback(async () => {
     if (!Array.isArray(jobs) || jobs.length === 0) return;
   
     const processingJobs = jobs.filter(job => job.status === 'PROCESSING' || job.status === 'PENDING');
@@ -52,7 +52,7 @@ export default function Home() {
           const response = await fetch(`${API_URL}/status/${job.id}`);
           if (!response.ok) return job;
           return response.json();
-        } catch (e) {
+        } catch (_e) { // 사용하지 않는 변수는 _로 시작
           return job;
         }
       })
@@ -61,12 +61,12 @@ export default function Home() {
     setJobs(currentJobs =>
       currentJobs.map(job => updatedJobs.find(updated => updated.id === job.id) || job)
     );
-  };
+  }, [jobs, API_URL]); // API_URL도 의존성에 추가
 
   useEffect(() => {
     const interval = setInterval(pollJobStatus, 3000);
     return () => clearInterval(interval);
-  }, [jobs]);
+  }, [pollJobStatus]); // 의존성 배열에 pollJobStatus 추가
 
   // 파일 업로드 처리 함수
   const handleUpload = async (e: FormEvent) => {
@@ -99,10 +99,14 @@ export default function Home() {
       }
 
       const newJob: Job = await response.json();
-      setJobs([newJob, ...jobs]);
+      setJobs(prevJobs => [newJob, ...prevJobs]);
       setFile(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unknown error occurred.");
+      }
     } finally {
       setUploading(false);
     }
@@ -293,6 +297,7 @@ export default function Home() {
       <footer className="w-full max-w-4xl mt-16 pt-8 border-t border-gray-200 text-center">
         <h3 className="text-xl font-semibold text-gray-700 mb-4">이 서비스가 마음에 드셨나요?</h3>
         <p className="text-gray-600 mb-6">
+          냥번역은 개인 개발자가 운영하는 오픈소스 프로젝트입니다. <br />
           여러분의 소중한 후원은 서비스 유지 및 기능 개선에 큰 힘이 됩니다.
         </p>
         <div className="flex justify-center items-center gap-4">
