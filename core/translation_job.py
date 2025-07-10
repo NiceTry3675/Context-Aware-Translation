@@ -60,22 +60,123 @@ class TranslationJob:
         return self._create_segments_from_plain_text(full_text, target_size)
 
     def _create_segments_from_plain_text(self, text: str, target_size: int) -> list[SegmentInfo]:
-        """Helper function to segment a block of text."""
-        paragraphs = [p.strip() for p in re.split(r'\n\s*\n', text) if p.strip()]
+        """Helper function to segment a block of text with sentence-aware splitting."""
+        # First, normalize paragraphs by merging hard-wrapped lines
+        normalized_paragraphs = []
+        
+        # Split by double newlines (actual paragraph boundaries)
+        raw_paragraphs = re.split(r'\n\s*\n', text)
+        
+        for raw_para in raw_paragraphs:
+            if not raw_para.strip():
+                continue
+                
+            # Within each paragraph, merge lines that are likely hard-wrapped
+            lines = raw_para.strip().split('\n')
+            merged_lines = []
+            current_line = ""
+            
+            for i, line in enumerate(lines):
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                # Check if this line should be merged with the previous one
+                # A line should be merged if the previous line doesn't end with
+                # sentence-ending punctuation (including quotes after punctuation)
+                should_merge = False
+                if current_line:
+                    # Check if previous line ends with sentence terminator
+                    ends_with_terminator = re.search(r'[.!?]["\']*$', current_line)
+                    # Also check for special cases like titles (Mr., Dr., etc.)
+                    ends_with_abbrev = re.search(r'\b(Mr|Mrs|Dr|Ms|Prof|Sr|Jr)\.$', current_line)
+                    
+                    if not ends_with_terminator or ends_with_abbrev:
+                        should_merge = True
+                
+                if should_merge:
+                    current_line += " " + line
+                else:
+                    if current_line:
+                        merged_lines.append(current_line)
+                    current_line = line
+            
+            if current_line:
+                merged_lines.append(current_line)
+            
+            # Join the merged lines back into a paragraph
+            normalized_para = " ".join(merged_lines)
+            if normalized_para:
+                normalized_paragraphs.append(normalized_para)
         
         segments = []
         current_segment_text = ""
-        for para in paragraphs:
-            if len(current_segment_text) + len(para) > target_size and current_segment_text:
-                segments.append(SegmentInfo(current_segment_text))
-                current_segment_text = ""
-            current_segment_text += para + "\n\n"
         
-        if current_segment_text:
-            segments.append(SegmentInfo(current_segment_text))
+        for para in normalized_paragraphs:
+            # If adding this paragraph would exceed target size
+            if len(current_segment_text) + len(para) > target_size and current_segment_text:
+                # Save current segment and start new one
+                segments.append(SegmentInfo(current_segment_text.strip()))
+                current_segment_text = ""
+            
+            # If the paragraph itself is larger than target size, split by sentences
+            if len(para) > target_size:
+                # More robust sentence splitting that handles abbreviations and edge cases
+                # This pattern looks for sentence endings followed by space and capital letter
+                # but excludes common abbreviations
+                sentences = self._split_into_sentences(para)
+                
+                for sentence in sentences:
+                    if len(current_segment_text) + len(sentence) > target_size and current_segment_text:
+                        segments.append(SegmentInfo(current_segment_text.strip()))
+                        current_segment_text = ""
+                    current_segment_text += sentence + " "
+                current_segment_text = current_segment_text.strip() + "\n\n"
+            else:
+                # Add the whole paragraph
+                current_segment_text += para + "\n\n"
+        
+        if current_segment_text.strip():
+            segments.append(SegmentInfo(current_segment_text.strip()))
             
         print(f"Text divided into {len(segments)} segments.")
+        
+        # Debug: Show first few characters of each segment
+        for i, seg in enumerate(segments[:3]):  # Show first 3 segments
+            preview = seg.text[:100].replace('\n', ' ')
+            if len(seg.text) > 100:
+                preview += "..."
+            print(f"  Segment {i+1}: {preview}")
+        
         return segments
+
+    def _split_into_sentences(self, text: str) -> list[str]:
+        """Split text into sentences with better handling of edge cases."""
+        # Common abbreviations that shouldn't end sentences
+        abbreviations = {'Mr', 'Mrs', 'Dr', 'Ms', 'Prof', 'Sr', 'Jr', 'Ph.D', 'M.D', 'B.A', 
+                        'M.A', 'D.D.S', 'Ph', 'Inc', 'Corp', 'Co', 'Ltd', 'etc', 'vs', 'i.e', 'e.g'}
+        
+        # First, protect abbreviations by replacing their periods temporarily
+        protected_text = text
+        for abbr in abbreviations:
+            protected_text = protected_text.replace(f"{abbr}.", f"{abbr}@@@")
+        
+        # Split on sentence boundaries
+        # This regex looks for periods, exclamation marks, or question marks
+        # followed by a space and then a capital letter or quote
+        sentences = re.split(r'(?<=[.!?])\s+(?=["\'A-Z])', protected_text)
+        
+        # Handle edge case where the last sentence might not have a following capital
+        if not sentences:
+            sentences = [protected_text]
+        
+        # Restore the periods in abbreviations
+        sentences = [s.replace('@@@', '.') for s in sentences]
+        
+        # Clean up and filter out empty sentences
+        sentences = [s.strip() for s in sentences if s.strip()]
+        
+        return sentences
 
     def append_translated_segment(self, translated_text: str, original_segment: SegmentInfo):
         """Appends a translated segment text along with its original context."""
