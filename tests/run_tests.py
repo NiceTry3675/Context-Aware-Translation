@@ -76,9 +76,9 @@ def main():
     # Summary
     print("\n" + "="*60)
     if success:
-        print("All tests passed! ✓")
+        print("All tests passed! OK")
     else:
-        print("Some tests failed! ✗")
+        print("Some tests failed! FAIL")
     print("="*60 + "\n")
     
     sys.exit(0 if success else 1)

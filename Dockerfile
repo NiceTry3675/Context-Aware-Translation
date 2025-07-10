@@ -13,11 +13,15 @@ ENV PYTHONUNBUFFERED=1
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-# 5. 애플리케이션 코드 복사
+# 5. Create necessary directories
+# Create directories for file uploads and translated outputs.
+RUN mkdir -p uploads translated_novel
+
+# 6. 애플리케이션 코드 복사
 COPY . .
 
-# 6. 포트 노출
+# 7. 포트 노출
 EXPOSE 8000
 
-# 7. 애플리케이션 실행
+# 8. 애플리케이션 실행
 CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
