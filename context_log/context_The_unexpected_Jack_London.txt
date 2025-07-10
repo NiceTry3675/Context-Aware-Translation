@@ -1,160 +1,28 @@
 # CONTEXT LOG FOR: The_unexpected_Jack_London
 
+--- Core Narrative Style Defined ---
+A standard, neutral literary style ('평서체').
+==================================================
+
 --- CONTEXT FOR SEGMENT 1 ---
 
-### Cumulative Glossary:
-- Alaska: 알래스카
-- British Columbia: 브리티시 컬럼비아
-- Chilcoot Pass: 칠코트 고개
-- Colorado: 콜로라도
-- Dakotas: 다코타
-- Dawson: 도슨
-- Dutchy: 더치
-- Dyea: 다이야
-- Edith: 이디스
-- Edith Nelson: 이디스 넬슨
-- Edith Whittlesey: 이디스 휘틀지
-- England: 영국
-- Hans: 한스
-- Hans Nelson: 한스 넬슨
-- Harkey: 하키
-- Idaho: 아이다호
-- Irish: 아일랜드인
-- Jack London: 잭 런던
-- Klondike: 클론다이크
-- Latuya Bay: 라투야 만
-- Michael Dennin: 마이클 데닌
-- Oregon: 오리건
-- Siwash: 시와시
-- Siwashes: 시와시들
-- Skaguay: 스캐그웨이
-- Texan: 텍사스 사람
-- The Unexpected: 예기치 못한 것
+### Narrative Style Deviation:
+N/A
+
+### Contextual Glossary (For This Segment):
+- None relevant to this segment.
+
+### Cumulative Glossary (Full):
+- Empty
 
 ### Cumulative Character Styles:
-- protagonist->Michael Dennin: 반말
-- protagonist->Harkey: 반말
-- protagonist->Dutchy: 반말
+- Empty
 
-### Immediate English Context (Previous Segment Ending):
+### Immediate language Context (Previous Segment Ending):
 N/A
 
 ### Immediate Korean Context (Previous Segment Ending):
 N/A
-
-==================================================
-
---- CONTEXT FOR SEGMENT 2 ---
-
-### Cumulative Glossary:
-- Alaska: 알래스카
-- British Columbia: 브리티시 컬럼비아
-- Chilcoot Pass: 칠코트 고개
-- Colorado: 콜로라도
-- Dakotas: 다코타
-- Dawson: 도슨
-- Dutchy: 더치
-- Dyea: 다이야
-- Edith: 이디스
-- Edith Nelson: 이디스 넬슨
-- Edith Whittlesey: 이디스 휘틀지
-- England: 영국
-- Hans: 한스
-- Hans Nelson: 한스 넬슨
-- Harkey: 하키
-- Idaho: 아이다호
-- Irish: 아일랜드인
-- Jack London: 잭 런던
-- Klondike: 클론다이크
-- Latuya Bay: 라투야 만
-- Michael Dennin: 마이클 데닌
-- Oregon: 오리건
-- Siwash: 시와시
-- Siwashes: 시와시들
-- Skaguay: 스캐그웨이
-- Texan: 텍사스 사람
-- The Unexpected: 예기치 못한 것
-- Dennin: 데닌
-- Negook: 네국
-- St. Vitus: 성 비투스
-
-### Cumulative Character Styles:
-- protagonist->Michael Dennin: 반말
-- protagonist->Harkey: 반말
-- protagonist->Dutchy: 반말
-- protagonist->Hans: 반말
-- protagonist->Dennin: 반말
-- protagonist->Negook: 존댓말
-
-### Immediate English Context (Previous Segment Ending):
-a sound that was half roar, half bellow. The whirl of the two bodies had already started, and still roaring, or bellowing, he pursued this whirl down the room, overtaking it when it fell to the floor.
-
-Hans hurled himself upon the prostrate man, striking madly with his fists. They were sledge-like blows, and when Edith felt Dennin’s body relax she loosed her grip and rolled clear. She lay on the floor, panting and watching. The fury of blows continued to rain down. Dennin did not seem to mind the blows. He did not even move. Then it dawned upon her that he was unconscious. She cried out to Hans to stop. She cried out again. But he paid no heed to her voice. She caught him by the arm, but her clinging to it merely impeded his effort.
-
-It was no reasoned impulse that stirred her to do what she then did. Nor was it a sense of pity, nor obedience to the “Thou shalt not” of religion. Rather was it some sense of law, an ethic of her race and early environment, that compelled her to interpose her body between her husband and the helpless murderer. It was not until Hans knew he was striking his wife that he ceased. He allowed himself to be shoved away by her in much the same way that a ferocious but obedient dog allows itself to be shoved away by its master. The analogy went even farther. Deep in his throat, in an animal-like way, Hans’s rage still rumbled, and several times he made as though to spring back upon his prey and was only prevented by the woman’s swiftly interposed body.
-
-### Immediate Korean Context (Previous Segment Ending):
-그녀는 그가 의식을 잃었다는 것을 깨달았다. 그녀는 한스에게 멈추라고 소리쳤다. 그녀는 다시 소리쳤다. 하지만 그는 그녀의 목소리에 귀를 기울이지 않았다. 그녀는 그의 팔을 잡았지만, 그녀의 매달림은 그의 노력을 방해할 뿐이었다.
-
-그녀가 했던 일을 그녀를 움직인 것은 이성적인 충동이 아니었다. 연민의 감정이나 종교의 "살인하지 말라"는 계명에 대한 복종도 아니었다. 오히려 그것은 어떤 법칙의 감각, 그녀의 인종과 초기 환경의 윤리였고, 그녀의 남편과 무력한 살인자 사이에 자신의 몸을 끼워 넣도록 강요했다. 한스가 아내를 때리고 있다는 것을 알게 되었을 때 비로소 그는 멈췄다. 그는 거칠지만 복종적인 개가 주인에게 밀려나는 것과 거의 같은 방식으로 그녀가 그를 밀어내는 것을 허락했다. 비유는 더 멀리 나아갔다. 그의 목구멍 깊은 곳에서, 동물처럼, 한스의 분노가 여전히 으르렁거렸고, 그는 몇 번이나 먹이에게 다시 달려들려는 듯했지만, 여자의 재빨리 끼어든 몸에 의해서만 제지되었다.
-
-==================================================
-
---- CONTEXT FOR SEGMENT 3 ---
-
-### Cumulative Glossary:
-- Alaska: 알래스카
-- British Columbia: 브리티시 컬럼비아
-- Chilcoot Pass: 칠코트 고개
-- Colorado: 콜로라도
-- Dakotas: 다코타
-- Dawson: 도슨
-- Dutchy: 더치
-- Dyea: 다이야
-- Edith: 이디스
-- Edith Nelson: 이디스 넬슨
-- Edith Whittlesey: 이디스 휘틀지
-- England: 영국
-- Hans: 한스
-- Hans Nelson: 한스 넬슨
-- Harkey: 하키
-- Idaho: 아이다호
-- Irish: 아일랜드인
-- Jack London: 잭 런던
-- Klondike: 클론다이크
-- Latuya Bay: 라투야 만
-- Michael Dennin: 마이클 데닌
-- Oregon: 오리건
-- Siwash: 시와시
-- Siwashes: 시와시들
-- Skaguay: 스캐그웨이
-- Texan: 텍사스 사람
-- The Unexpected: 예기치 못한 것
-- Dennin: 데닌
-- Negook: 네국
-- St. Vitus: 성 비투스
-- Australia: 호주
-- Hadikwan: 하디크완
-- Ireland: 아일랜드
-
-### Cumulative Character Styles:
-- protagonist->Michael Dennin: 반말
-- protagonist->Harkey: 반말
-- protagonist->Dutchy: 반말
-- protagonist->Hans: 반말
-- protagonist->Dennin: 반말
-- protagonist->Negook: 반말
-- protagonist->Hadikwan: 반말
-
-### Immediate English Context (Previous Segment Ending):
-conduct, as she conceived it, lay in keeping him a prisoner until he could be turned over for trial before a proper tribunal. But now entered Hans, and she saw that his sanity and his salvation were involved. Nor was she long in discovering that her own strength and endurance had become part of the problem. She was breaking down under the strain. Her left arm had developed involuntary jerkings and twitchings. She spilled her food from her spoon, and could place no reliance in her afflicted arm. She judged it to be a form of St. Vitus’s dance, and she feared the extent to which its ravages might go. What if she broke down? And the vision she had of the possible future, when the cabin might contain only Dennin and Hans, was an added horror.
-
-After the third day, Dennin had begun to talk. His first question had been, “What are you going to do with me?” And this question he repeated daily and many times a day. And always Edith replied that he would assuredly be dealt with according to law. In turn, she put a daily question to him,—“Why did you do it?” To this he never replied. Also, he received the question with out-bursts of anger, raging and straining at the rawhide that bound him and threatening her with what he would do when he got loose, which he said he was sure to do sooner or later. At such times she cocked both triggers of the gun, prepared to meet him with leaden death if he should burst loose, herself trembling and palpitating and dizzy from the tension and shock.
-
-### Immediate Korean Context (Previous Segment Ending):
-숟가락에서 음식을 흘렸고, 아픈 팔에 의존할 수 없었다. 그녀는 그것이 성 비투스병의 한 형태라고 판단했고, 그 파괴가 어디까지 갈지 두려워했다. 만약 그녀가 무너지면 어떻게 될까? 그리고 오두막에 데닌과 한스만 남게 될 수도 있다는 그녀의 미래 비전은 추가적인 공포였다.
-
-사흘 후, 데닌은 말하기 시작했다. 그의 첫 질문은 "나를 어떻게 할 건가요?"였고, 그는 매일 수십 번씩 이 질문을 반복했다. 그리고 이디스는 언제나 그가 법에 따라 처리될 것이라고 대답했다. 차례로, 그녀는 매일 그에게 질문을 던졌다. "왜 그랬어요?" 이에 그는 결코 대답하지 않았다. 또한 그는 분노 폭발과 함께 질문을 받았고, 묶인 가죽끈을 휘두르며 맹렬히 날뛰었고, 언젠가 풀려나면 어떻게 할 것인지 그녀에게 위협했으며, 그는 결국 풀려날 것이라고 말했다. 그런 때 그녀는 총의 두 방아쇠를 당겨, 그가 풀려나면 납덩이 죽음으로 맞설 준비를 했고, 긴장과 충격으로 자신은 떨리고 쿵쾅거리고 어지러웠다.
 
 ==================================================
 
