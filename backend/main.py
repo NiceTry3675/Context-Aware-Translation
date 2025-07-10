@@ -34,6 +34,7 @@ app = FastAPI()
 # CORS 설정
 origins = [
     "http://localhost:3000",  # Next.js 개발 서버
+    "https://context-aware-translation.vercel.app", # Vercel 배포 주소
 ]
 
 app.add_middleware(
