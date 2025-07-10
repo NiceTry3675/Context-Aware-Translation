@@ -1,13 +1,16 @@
 import re
 import os
+import time
 from tqdm import tqdm
 from .gemini_model import GeminiModel
 from .prompt_builder import PromptBuilder
 from .dynamic_config_builder import DynamicConfigBuilder
 from .translation_job import TranslationJob
 from .prompt_manager import PromptManager
-from .exceptions import ProhibitedException
-from .error_logger import prohibited_content_logger
+from .errors import ProhibitedException
+from .errors import prohibited_content_logger
+from .retry_decorator import retry_on_prohibited_segment
+from .prompt_sanitizer import PromptSanitizer
 from backend import crud  # Import crud to use its functions
 from sqlalchemy.orm import Session
 
@@ -122,27 +125,61 @@ class TranslationEngine:
 
             # 5. Generate translation with retry logic
             translated_text = ""
-            try:
-                # The gemini_model's generate_text will handle retries for retriable errors
-                # and will immediately raise an exception for non-retriable ones.
-                model_response = self.gemini_api.generate_text(prompt) 
-                translated_text = _extract_translation_from_response(model_response)
-            except ProhibitedException as e:
-                # Handle prohibited content using the centralized logger
-                e.source_text = segment_info.text
-                e.context = {
-                    'segment_index': segment_index,
-                    'glossary': contextual_glossary,
-                    'character_styles': job.character_styles,
-                    'style_deviation': style_deviation
-                }
-                log_path = prohibited_content_logger.log_prohibited_content(e, job.base_filename, segment_index)
-                print(f"Translation blocked by safety settings for segment {segment_index}. Log saved to: {log_path}")
-                translated_text = f"[TRANSLATION_BLOCKED: Content safety filter triggered]"
-            except Exception as e:
-                error_message = str(e)
-                print(f"Translation failed for segment {segment_index}. Error: {error_message}")
-                translated_text = f"[TRANSLATION_FAILED: {error_message}]"
+            soft_retry_attempts = 3
+            original_prompt = prompt
+            
+            for retry_attempt in range(soft_retry_attempts + 1):
+                try:
+                    if retry_attempt > 0:
+                        # Create softer prompt for retry
+                        prompt = PromptSanitizer.create_softer_prompt(original_prompt, retry_attempt)
+                        print(f"\nRetrying with softer prompt (attempt {retry_attempt}/{soft_retry_attempts})...")
+                        time.sleep(2)  # Brief delay between retries
+                    
+                    # The gemini_model's generate_text will handle retries for retriable errors
+                    # and will immediately raise an exception for non-retriable ones.
+                    model_response = self.gemini_api.generate_text(prompt) 
+                    translated_text = _extract_translation_from_response(model_response)
+                    
+                    if retry_attempt > 0:
+                        print(f"Successfully translated with softer prompt on attempt {retry_attempt}")
+                    break  # Success, exit retry loop
+                    
+                except ProhibitedException as e:
+                    if retry_attempt < soft_retry_attempts:
+                        # Will retry with softer prompt
+                        print(f"\nProhibitedException caught: {e}")
+                        print("Will retry with a softer prompt...")
+                        continue
+                    else:
+                        # All retries exhausted
+                        # Handle prohibited content using the centralized logger
+                        e.source_text = segment_info.text
+                        e.context = {
+                            'segment_index': segment_index,
+                            'glossary': contextual_glossary,
+                            'character_styles': job.character_styles,
+                            'style_deviation': style_deviation,
+                            'soft_retry_attempts': soft_retry_attempts
+                        }
+                        log_path = prohibited_content_logger.log_prohibited_content(e, job.base_filename, segment_index)
+                        print(f"\nAll soft retry attempts failed. Translation blocked for segment {segment_index}.")
+                        print(f"Log saved to: {log_path}")
+                        
+                        # Try minimal prompt as last resort
+                        try:
+                            print("Attempting minimal prompt as last resort...")
+                            minimal_prompt = PromptSanitizer.create_minimal_prompt(segment_info.text, "Korean")
+                            model_response = self.gemini_api.generate_text(minimal_prompt)
+                            translated_text = _extract_translation_from_response(model_response)
+                            print("Successfully translated with minimal prompt.")
+                        except:
+                            translated_text = f"[TRANSLATION_BLOCKED: Content safety filter triggered]"
+
+                except Exception as e:
+                    error_message = str(e)
+                    print(f"Translation failed for segment {segment_index}. Error: {error_message}")
+                    translated_text = f"[TRANSLATION_FAILED: {error_message}]"
                 
                 # If it's a non-retriable error, we want to stop the entire job.
                 if "API key not valid" in error_message or "PermissionDenied" in error_message or "InvalidArgument" in error_message:

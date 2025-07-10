@@ -32,6 +32,7 @@ def load_config():
         "gemini_model_name": 'gemini-2.5-flash-lite-preview-06-17',
         "safety_settings": safety_settings,
         "generation_config": generation_config,
+        "enable_soft_retry": True,  # Enable retry with softer prompts for ProhibitedException
     }
 
 if __name__ == '__main__':

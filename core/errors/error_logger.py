@@ -5,7 +5,7 @@ import os
 import json
 from datetime import datetime
 from typing import Optional, Dict, Any
-from .exceptions import ProhibitedException
+from .api_errors import ProhibitedException
 
 
 class ProhibitedContentLogger:

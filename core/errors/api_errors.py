@@ -1,8 +1,11 @@
 """
-Custom exceptions for the Context-Aware Translation system.
+API-related exceptions for the Context-Aware Translation system.
 """
 
-class ProhibitedException(Exception):
+from .base import TranslationError
+
+
+class ProhibitedException(TranslationError):
     """
     Exception raised when the Gemini API blocks content due to safety settings.
     
@@ -28,10 +31,16 @@ class ProhibitedException(Exception):
             api_response: The raw API response or error details
             api_call_type: Type of API call (e.g., 'translation', 'glossary', 'style_analysis')
         """
-        super().__init__(message)
+        super().__init__(
+            message,
+            prompt=prompt,
+            source_text=source_text,
+            api_response=api_response,
+            api_call_type=api_call_type,
+            **(context or {})
+        )
         self.prompt = prompt
         self.source_text = source_text
-        self.context = context or {}
         self.api_response = api_response
         self.api_call_type = api_call_type
         
@@ -41,3 +50,19 @@ class ProhibitedException(Exception):
         if self.api_call_type:
             return f"[{self.api_call_type}] {base_msg}"
         return base_msg
+    
+    def to_dict(self):
+        """
+        Convert the exception to a dictionary for logging or API responses.
+        
+        Returns:
+            dict: A dictionary containing detailed error information
+        """
+        data = super().to_dict()
+        data.update({
+            'prompt': self.prompt,
+            'source_text': self.source_text,
+            'api_response': self.api_response,
+            'api_call_type': self.api_call_type
+        })
+        return data

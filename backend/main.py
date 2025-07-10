@@ -61,7 +61,8 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
             api_key=api_key, # 프론트엔드로부터 직접 받은 키
             model_name=config['gemini_model_name'],
             safety_settings=config['safety_settings'],
-            generation_config=config['generation_config']
+            generation_config=config['generation_config'],
+            enable_soft_retry=config.get('enable_soft_retry', True)
         )
         # ------------------------------------
 

@@ -1,16 +1,24 @@
 import time
 import google.generativeai as genai
 from google.api_core import exceptions as google_exceptions
-from .exceptions import ProhibitedException
+from .errors import ProhibitedException
+from .retry_decorator import retry_with_softer_prompt
 
 class GeminiModel:
     """
     A wrapper class for the Google Gemini API to handle text generation,
     including configuration, API calls, and retry logic.
     """
-    def __init__(self, api_key: str, model_name: str, safety_settings: list, generation_config: dict):
+    def __init__(self, api_key: str, model_name: str, safety_settings: list, generation_config: dict, enable_soft_retry: bool = True):
         """
         Initializes the Gemini model client.
+        
+        Args:
+            api_key: The API key for Gemini
+            model_name: The model name to use
+            safety_settings: Safety settings for the model
+            generation_config: Generation configuration
+            enable_soft_retry: Whether to enable retry with softer prompts for ProhibitedException
         """
         if not api_key:
             raise ValueError("API key cannot be empty.")
@@ -20,7 +28,8 @@ class GeminiModel:
             safety_settings=safety_settings,
             generation_config=generation_config
         )
-        print(f"GeminiModel initialized with model: {model_name}")
+        self.enable_soft_retry = enable_soft_retry
+        print(f"GeminiModel initialized with model: {model_name}, soft_retry: {enable_soft_retry}")
 
     @staticmethod
     def validate_api_key(api_key: str) -> bool:
@@ -46,6 +55,17 @@ class GeminiModel:
         """
         Generates text using the Gemini API, with a built-in retry mechanism
         that distinguishes between retriable and non-retriable errors.
+        
+        If enable_soft_retry is True, will also retry ProhibitedException with softer prompts.
+        """
+        if self.enable_soft_retry:
+            return self._generate_text_with_soft_retry(prompt, max_retries)
+        else:
+            return self._generate_text_base(prompt, max_retries)
+    
+    def _generate_text_base(self, prompt: str, max_retries: int = 3) -> str:
+        """
+        Base text generation method without soft retry logic.
         """
         for attempt in range(max_retries):
             try:
@@ -94,3 +114,11 @@ class GeminiModel:
                     raise Exception(f"All {max_retries} API call attempts failed.") from e
         
         return "" # Should not be reached
+    
+    @retry_with_softer_prompt(max_retries=3, delay=2.0)
+    def _generate_text_with_soft_retry(self, prompt: str, max_retries: int = 3) -> str:
+        """
+        Text generation with soft retry logic for ProhibitedException.
+        The decorator will automatically retry with softer prompts.
+        """
+        return self._generate_text_base(prompt, max_retries)
