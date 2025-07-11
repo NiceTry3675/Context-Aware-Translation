@@ -32,19 +32,20 @@ class GeminiModel:
         print(f"GeminiModel initialized with model: {model_name}, soft_retry: {enable_soft_retry}")
 
     @staticmethod
-    def validate_api_key(api_key: str) -> bool:
+    def validate_api_key(api_key: str, model_name: str = "gemini-1.5-flash") -> bool:
         """
-        Validates the provided API key by making a lightweight call to the Gemini API.
+        Validates the provided API key by checking if the specified model can be accessed.
         Returns True if valid, False otherwise.
         """
         if not api_key:
             return False
         try:
             genai.configure(api_key=api_key)
-            # A lightweight, inexpensive call to list models
-            genai.list_models()
+            # Check if the specific model is available and accessible with the key
+            genai.get_model(f'models/{model_name}')
             return True
-        except (google_exceptions.PermissionDenied, google_exceptions.InvalidArgument):
+        except (google_exceptions.PermissionDenied, google_exceptions.InvalidArgument, google_exceptions.NotFound):
+            # PermissionDenied/InvalidArgument for bad keys, NotFound for invalid model names
             return False
         except Exception:
             # For other potential issues like network errors, we can be lenient

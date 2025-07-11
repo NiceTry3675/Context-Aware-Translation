@@ -45,7 +45,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def run_translation_in_background(job_id: int, file_path: str, filename: str, api_key: str):
+def run_translation_in_background(job_id: int, file_path: str, filename: str, api_key: str, model_name: str):
     """
     This function contains the long-running translation logic
     and will be executed in the background.
@@ -54,13 +54,13 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
     db = SessionLocal() # Get a new session for the background task
     try:
         crud.update_job_status(db, job_id, "PROCESSING")
-        print(f"--- [BACKGROUND] Starting translation for Job ID: {job_id}, File: {filename} ---")
+        print(f"--- [BACKGROUND] Starting translation for Job ID: {job_id}, File: {filename}, Model: {model_name} ---")
         
         # --- 현재: 사용자 제공 API 키 사용 ---
-        config = load_config() # .env에서 API 키 외의 다른 설정들을 불러옴
+        config = load_config() 
         gemini_api = GeminiModel(
             api_key=api_key, # 프론트엔드로부터 직접 받은 키
-            model_name=config['gemini_model_name'],
+            model_name=model_name, # 사용자 선택 모델 사용
             safety_settings=config['safety_settings'],
             generation_config=config['generation_config'],
             enable_soft_retry=config.get('enable_soft_retry', True)
@@ -101,11 +101,12 @@ async def create_upload_file(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     api_key: str = Form(...),
+    model_name: str = Form("gemini-1.5-flash"), # 기본값 설정
     db: Session = Depends(get_db)
 ):
     # 1. API 키 유효성 검사 먼저 수행
-    if not GeminiModel.validate_api_key(api_key):
-        raise HTTPException(status_code=400, detail="Invalid API Key. Please check your key and try again.")
+    if not GeminiModel.validate_api_key(api_key, model_name=model_name):
+        raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model. Please check your key and selected model.")
 
     # 2. 유효한 키일 경우에만 파일 저장 및 작업 생성 진행
     file_path = f"uploads/{file.filename}"
@@ -118,8 +119,8 @@ async def create_upload_file(
     job_create = schemas.TranslationJobCreate(filename=file.filename)
     db_job = crud.create_translation_job(db, job_create)
     
-    # 3. 백그라운드 작업에 api_key 전달
-    background_tasks.add_task(run_translation_in_background, db_job.id, file_path, file.filename, api_key)
+    # 3. 백그라운드 작업에 api_key와 model_name 전달
+    background_tasks.add_task(run_translation_in_background, db_job.id, file_path, file.filename, api_key, model_name)
     
     return db_job
 

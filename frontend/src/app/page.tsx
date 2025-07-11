@@ -20,6 +20,13 @@ export default function Home() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash-lite-preview-06-17");
+
+  const modelOptions = [
+    { value: "gemini-2.5-flash-lite-preview-06-17", label: "Flash Lite (Fastest)" },
+    { value: "gemini-2.5-flash", label: "Flash (Recommended)" },
+    { value: "gemini-2.5-pro", label: "Pro (Highest Quality)" },
+  ];
 
   // 백엔드 API의 기본 URL
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -120,7 +127,8 @@ export default function Home() {
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("api_key", apiKey); // API 키를 함께 전송
+    formData.append("api_key", apiKey);
+    formData.append("model_name", selectedModel); // 선택된 모델 추가
 
     try {
       const response = await fetch(`${API_URL}/uploadfile/`, {
@@ -231,6 +239,28 @@ export default function Home() {
             />
         </div>
         <form onSubmit={handleUpload}>
+          <div className="mb-6">
+            <label className="block mb-3 text-sm font-medium text-gray-700">
+              Select Translation Model
+            </label>
+            <div className="flex w-full bg-gray-200 rounded-lg p-1">
+              {modelOptions.map(option => (
+                <button
+                  type="button"
+                  key={option.value}
+                  onClick={() => setSelectedModel(option.value)}
+                  className={`w-full px-3 py-2 text-sm font-semibold rounded-md transition-colors duration-200 ${
+                    selectedModel === option.value
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'bg-transparent text-gray-500 hover:bg-gray-300'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="mb-6">
             <label htmlFor="file" className="block mb-2 text-sm font-medium text-gray-700">
               Upload your novel (.txt, .epub, .docx)
