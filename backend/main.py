@@ -36,7 +36,11 @@ def get_db():
 app = FastAPI()
 
 # CORS 설정
-origins = ["*"] # 임시로 모든 출처 허용
+origins = [
+    "http://localhost:3000",  # Next.js 개발 서버
+    "https://context-aware-translation.vercel.app", # Vercel 배포 주소
+    "https://context-aware-translation-git-main-cat-rans.vercel.app" # Vercel 프리뷰 주소
+]
 
 app.add_middleware(
     CORSMiddleware,
@@ -214,10 +218,6 @@ async def analyze_style(
 @app.get("/")
 def read_root():
     return {"message": "Translation Service Backend is running!"}
-
-@app.get("/test")
-def test_cors():
-    return {"message": "CORS test successful!"}
 
 
 import json
