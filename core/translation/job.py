@@ -61,53 +61,44 @@ class TranslationJob:
 
     def _create_segments_from_plain_text(self, text: str, target_size: int) -> list[SegmentInfo]:
         """Helper function to segment a block of text with sentence-aware splitting."""
-        # First, normalize paragraphs by merging hard-wrapped lines
-        normalized_paragraphs = []
-        
         # Split by double newlines (actual paragraph boundaries)
         raw_paragraphs = re.split(r'\n\s*\n', text)
         
-        for raw_para in raw_paragraphs:
-            if not raw_para.strip():
+        # Process paragraphs to handle hard-wrapped text properly
+        normalized_paragraphs = []
+        for para in raw_paragraphs:
+            if not para.strip():
                 continue
-                
-            # Within each paragraph, merge lines that are likely hard-wrapped
-            lines = raw_para.strip().split('\n')
-            merged_lines = []
-            current_line = ""
+            
+            # Process lines within paragraph
+            lines = para.strip().split('\n')
+            processed_lines = []
+            current_sentence = ""
             
             for i, line in enumerate(lines):
                 line = line.strip()
                 if not line:
                     continue
-                    
-                # Check if this line should be merged with the previous one
-                # A line should be merged if the previous line doesn't end with
-                # sentence-ending punctuation (including quotes after punctuation)
-                should_merge = False
-                if current_line:
-                    # Check if previous line ends with sentence terminator
-                    ends_with_terminator = re.search(r'[.!?]["\']*$', current_line)
-                    # Also check for special cases like titles (Mr., Dr., etc.)
-                    ends_with_abbrev = re.search(r'\b(Mr|Mrs|Dr|Ms|Prof|Sr|Jr)\.$', current_line)
-                    
-                    if not ends_with_terminator or ends_with_abbrev:
-                        should_merge = True
                 
-                if should_merge:
-                    current_line += " " + line
+                if current_sentence:
+                    # Check if previous accumulated text ends with sentence terminator
+                    if re.search(r'[.!?]["\']*$', current_sentence):
+                        # Previous sentence is complete
+                        processed_lines.append(current_sentence)
+                        current_sentence = line
+                    else:
+                        # Continue accumulating (hard-wrapped line)
+                        current_sentence += " " + line
                 else:
-                    if current_line:
-                        merged_lines.append(current_line)
-                    current_line = line
+                    current_sentence = line
             
-            if current_line:
-                merged_lines.append(current_line)
+            # Add final sentence
+            if current_sentence:
+                processed_lines.append(current_sentence)
             
-            # Join the merged lines back into a paragraph
-            normalized_para = " ".join(merged_lines)
-            if normalized_para:
-                normalized_paragraphs.append(normalized_para)
+            # Join sentences with newlines to preserve sentence boundaries
+            normalized_para = "\n".join(processed_lines)
+            normalized_paragraphs.append(normalized_para)
         
         segments = []
         current_segment_text = ""
@@ -121,16 +112,17 @@ class TranslationJob:
             
             # If the paragraph itself is larger than target size, split by sentences
             if len(para) > target_size:
-                # More robust sentence splitting that handles abbreviations and edge cases
-                # This pattern looks for sentence endings followed by space and capital letter
-                # but excludes common abbreviations
-                sentences = self._split_into_sentences(para)
+                # The paragraph already has sentence boundaries preserved as newlines
+                sentences = para.split('\n')
                 
                 for sentence in sentences:
+                    sentence = sentence.strip()
+                    if not sentence:
+                        continue
                     if len(current_segment_text) + len(sentence) > target_size and current_segment_text:
                         segments.append(SegmentInfo(current_segment_text.strip()))
                         current_segment_text = ""
-                    current_segment_text += sentence + " "
+                    current_segment_text += sentence + "\n"
                 current_segment_text = current_segment_text.strip() + "\n\n"
             else:
                 # Add the whole paragraph
@@ -151,12 +143,29 @@ class TranslationJob:
         return segments
 
     def _split_into_sentences(self, text: str) -> list[str]:
-        """Split text into sentences with better handling of edge cases."""
+        """Split text into sentences while preserving line breaks that indicate sentence boundaries."""
         # Common abbreviations that shouldn't end sentences
         abbreviations = {'Mr', 'Mrs', 'Dr', 'Ms', 'Prof', 'Sr', 'Jr', 'Ph.D', 'M.D', 'B.A', 
                         'M.A', 'D.D.S', 'Ph', 'Inc', 'Corp', 'Co', 'Ltd', 'etc', 'vs', 'i.e', 'e.g'}
         
-        # First, protect abbreviations by replacing their periods temporarily
+        # Split by line breaks first
+        lines = text.split('\n')
+        all_sentences = []
+        
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+                
+            # Process each line for sentence boundaries
+            sentences_in_line = self._split_block_into_sentences(line, abbreviations)
+            all_sentences.extend(sentences_in_line)
+        
+        return all_sentences
+    
+    def _split_block_into_sentences(self, text: str, abbreviations: set) -> list[str]:
+        """Split a block of text into sentences."""
+        # Protect abbreviations by replacing their periods temporarily
         protected_text = text
         for abbr in abbreviations:
             protected_text = protected_text.replace(f"{abbr}.", f"{abbr}@@@")
@@ -195,11 +204,11 @@ class TranslationJob:
         """Saves the translated segments as a single .txt file."""
         with open(self.output_filename, 'w', encoding='utf-8') as f:
             for i, segment in enumerate(self.translated_segments):
-                # Write the translated text, ensuring it ends with a newline
-                f.write(segment.text.strip() + "\n")
+                # Write the translated text, preserving original formatting
+                f.write(segment.text)
                 # Add the separator, but not for the very last segment
                 if i < len(self.translated_segments) - 1:
-                    f.write("="*20 + "\n\n")
+                    f.write("\n" + "="*20 + "\n\n")
 
     def _save_as_epub(self):
         """Saves the translated content as a very simple, single-chapter EPUB."""
