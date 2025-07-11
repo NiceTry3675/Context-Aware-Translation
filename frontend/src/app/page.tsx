@@ -34,6 +34,7 @@ export default function Home() {
   const [analysisError, setAnalysisError] = useState<string>('');
   const [styleData, setStyleData] = useState<StyleData | null>(null);
   const [showStyleForm, setShowStyleForm] = useState<boolean>(false); // 팝업 대신 인라인 폼 표시 여부
+  const [devMode, setDevMode] = useState<boolean>(false); // 개발자 모드 상태
 
   const modelOptions = [
     {
@@ -56,12 +57,14 @@ export default function Home() {
   // 백엔드 API의 기본 URL
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-  // 컴포넌트가 처음 마운트될 때 localStorage에서 API 키를 불러옵니다.
+  // 컴포넌트가 처음 마운트될 때 localStorage에서 API 키와 개발자 모드를 불러옵니다.
   useEffect(() => {
     const storedApiKey = localStorage.getItem('geminiApiKey');
     if (storedApiKey) {
       setApiKey(storedApiKey);
     }
+    const isDevMode = localStorage.getItem('devMode') === 'true';
+    setDevMode(isDevMode);
   }, []);
 
   // apiKey 상태가 변경될 때마다 localStorage에 저장합니다.
@@ -513,6 +516,12 @@ export default function Home() {
                         >
                           Download
                         </a>
+                      )}
+                      {devMode && (job.status === 'COMPLETED' || job.status === 'FAILED') && (
+                        <>
+                          <a href={`${API_URL}/download/logs/${job.id}/prompts`} download className="text-xs text-gray-500 hover:text-gray-700">Prompts</a>
+                          <a href={`${API_URL}/download/logs/${job.id}/context`} download className="text-xs text-gray-500 hover:text-gray-700">Context</a>
+                        </>
                       )}
                       <div className="relative group">
                         <button

@@ -54,8 +54,9 @@ class TranslationEngine:
         os.makedirs(prompt_log_dir, exist_ok=True)
         os.makedirs(context_log_dir, exist_ok=True)
         
-        prompt_log_path = os.path.join(prompt_log_dir, f"prompts_{job.base_filename}.txt")
-        context_log_path = os.path.join(context_log_dir, f"context_{job.base_filename}.txt")
+        # job_id를 파일명에 포함하여 고유성 보장
+        prompt_log_path = os.path.join(prompt_log_dir, f"prompts_job_{self.job_id}_{job.base_filename}.txt")
+        context_log_path = os.path.join(context_log_dir, f"context_job_{self.job_id}_{job.base_filename}.txt")
 
         with open(prompt_log_path, 'w', encoding='utf-8') as f:
             f.write(f"# PROMPT LOG FOR: {job.base_filename}\n\n")

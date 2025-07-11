@@ -296,3 +296,25 @@ def download_translated_file(job_id: int, db: Session = Depends(get_db)):
             raise HTTPException(status_code=404, detail="Translated file not found.")
 
     return FileResponse(path=file_path, filename=translated_filename, media_type=media_type)
+
+@app.get("/download/logs/{job_id}/{log_type}")
+def download_log_file(job_id: int, log_type: str, db: Session = Depends(get_db)):
+    """
+    Downloads the specified log file (prompts or context) for a given job.
+    """
+    db_job = crud.get_job(db, job_id=job_id)
+    if db_job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if log_type not in ["prompts", "context"]:
+        raise HTTPException(status_code=400, detail="Invalid log type specified. Must be 'prompts' or 'context'.")
+
+    base, _ = os.path.splitext(db_job.filename)
+    log_dir = "debug_prompts" if log_type == "prompts" else "context_log"
+    log_filename = f"{log_type}_job_{job_id}_{base}.txt"
+    log_path = os.path.join(log_dir, log_filename)
+
+    if not os.path.exists(log_path):
+        raise HTTPException(status_code=404, detail=f"{log_type.capitalize()} log file not found.")
+
+    return FileResponse(path=log_path, filename=log_filename, media_type="text/plain")
