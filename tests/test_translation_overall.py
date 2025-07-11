@@ -7,12 +7,12 @@ from sqlalchemy.orm import Session
 # Add the parent directory to the path to import core modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.config_loader import load_config
-from core.gemini_model import GeminiModel
-from core.dynamic_config_builder import DynamicConfigBuilder
-from core.translation_job import TranslationJob
-from core.translation_engine import TranslationEngine
-from core.file_parser import parse_document
+from core.config.loader import load_config
+from core.translation.models.gemini import GeminiModel
+from core.config.builder import DynamicConfigBuilder
+from core.translation.job import TranslationJob
+from core.translation.engine import TranslationEngine
+from core.utils.file_parser import parse_document
 
 class TestOverallTranslation(unittest.TestCase):
     """Test the overall translation functionality with a 20,000 character sample."""
@@ -121,7 +121,7 @@ class TestOverallTranslation(unittest.TestCase):
         """Test API key validation before translation."""
         
         # Test with invalid API key
-        with patch('core.gemini_model.GeminiModel.validate_api_key') as mock_validate:
+        with patch('core.translation.models.gemini.GeminiModel.validate_api_key') as mock_validate:
             mock_validate.return_value = False
             
             # Verify that invalid API key is detected
@@ -129,7 +129,7 @@ class TestOverallTranslation(unittest.TestCase):
             self.assertFalse(is_valid)
         
         # Test with valid API key
-        with patch('core.gemini_model.GeminiModel.validate_api_key') as mock_validate:
+        with patch('core.translation.models.gemini.GeminiModel.validate_api_key') as mock_validate:
             mock_validate.return_value = True
             
             # Verify that valid API key passes

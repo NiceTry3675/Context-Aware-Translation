@@ -1,7 +1,7 @@
-from .gemini_model import GeminiModel
-from .prompt_manager import PromptManager
-from .errors import ProhibitedException
-from .errors import prohibited_content_logger
+from ..translation.models.gemini import GeminiModel
+from ..prompts.manager import PromptManager
+from ..errors import ProhibitedException
+from ..errors import prohibited_content_logger
 
 class GlossaryManager:
     """Manages the glossary for a translation job."""

@@ -1,9 +1,9 @@
-from .gemini_model import GeminiModel
-from .prompt_manager import PromptManager
-from .glossary_manager import GlossaryManager
-from .character_style_manager import CharacterStyleManager
-from .errors import ProhibitedException
-from .errors import prohibited_content_logger
+from ..translation.models.gemini import GeminiModel
+from ..prompts.manager import PromptManager
+from .glossary import GlossaryManager
+from .character_style import CharacterStyleManager
+from ..errors import ProhibitedException
+from ..errors import prohibited_content_logger
 
 class DynamicConfigBuilder:
     """

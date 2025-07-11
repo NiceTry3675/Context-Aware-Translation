@@ -2,15 +2,15 @@ import re
 import os
 import time
 from tqdm import tqdm
-from .gemini_model import GeminiModel
-from .prompt_builder import PromptBuilder
-from .dynamic_config_builder import DynamicConfigBuilder
-from .translation_job import TranslationJob
-from .prompt_manager import PromptManager
-from .errors import ProhibitedException
-from .errors import prohibited_content_logger
-from .retry_decorator import retry_on_prohibited_segment
-from .prompt_sanitizer import PromptSanitizer
+from .models.gemini import GeminiModel
+from ..prompts.builder import PromptBuilder
+from ..config.builder import DynamicConfigBuilder
+from .job import TranslationJob
+from ..prompts.manager import PromptManager
+from ..errors import ProhibitedException
+from ..errors import prohibited_content_logger
+from ..utils.retry import retry_on_prohibited_segment
+from ..prompts.sanitizer import PromptSanitizer
 from backend import crud  # Import crud to use its functions
 from sqlalchemy.orm import Session
 

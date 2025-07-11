@@ -12,11 +12,11 @@ from . import models, schemas, crud
 from .database import engine, SessionLocal
 
 # Import core logic
-from core.config_loader import load_config
-from core.gemini_model import GeminiModel
-from core.dynamic_config_builder import DynamicConfigBuilder
-from core.translation_job import TranslationJob
-from core.translation_engine import TranslationEngine
+from core.config.loader import load_config
+from core.translation.models.gemini import GeminiModel
+from core.config.builder import DynamicConfigBuilder
+from core.translation.job import TranslationJob
+from core.translation.engine import TranslationEngine
 
 # Create the database tables
 models.Base.metadata.create_all(bind=engine)

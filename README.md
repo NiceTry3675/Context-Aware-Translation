@@ -26,24 +26,45 @@
 - **🎨 스타일 편차 감지**: 각 세그먼트의 문체가 소설의 핵심 서사 스타일에서 벗어나는 경우(예: 편지, 시 등) 이를 감지하고 번역에 반영합니다.
 - **⚙️ 유연한 프롬프트 시스템**: 중앙화된 프롬프트 템플릿을 사용하여 번역 요청 프롬프트를 동적으로 생성합니다.
 - **🔍 로그 및 디버깅**: 번역 과정에서 생성된 프롬프트와 문맥 정보를 로그 파일로 저장하여 디버깅 및 분석을 용이하게 합니다.
+- **📄 다양한 파일 형식 지원**: TXT, DOCX, EPUB, PDF, Markdown 파일 형식을 지원합니다.
 
 ## 📂 프로젝트 구조
 
 ```
-trans/
-├───.gitignore
-├───main.py                 # 🚀 프로그램의 메인 실행 파일
-├───translation_engine.py   # 🧠 번역 프로세스를 총괄하는 엔진
-├───translation_job.py      # 📦 번역할 소설 파일과 세그먼트, 결과물을 관리
-├───gemini_model.py         # 🤖 Google Gemini API와의 통신을 담당
-├───prompt_builder.py       # 📝 번역 프롬프트를 동적으로 생성
-├───prompt_manager.py       # 📜 프롬프트 템플릿을 관리
-├───prompt_template.md      # 📄 번역 요청에 사용될 프롬프트 템플릿
-├───dynamic_config_builder.py # 🛠️ 동적 가이드(용어, 문체)를 구축
-├───config_loader.py        # 🔑 API 키 등 환경 설정을 로드
-├───requirements.txt        # libs
-├───source_novel/           # 📖 번역할 원본 소설 파일
-└───translated_novel/       # 📚 번역된 결과물이 저장되는 폴더
+Context-Aware-Translation/
+├── backend/                # 🌐 FastAPI 백엔드 서버
+│   ├── main.py            # API 엔드포인트
+│   ├── models.py          # 데이터베이스 모델
+│   └── crud.py            # 데이터베이스 작업
+├── frontend/              # 💻 Next.js 프론트엔드
+│   ├── app/               # Next.js 앱 라우터
+│   └── public/            # 정적 파일
+├── core/                  # 🧠 핵심 번역 엔진
+│   ├── translation/       # 번역 로직
+│   │   ├── engine.py      # 번역 프로세스 오케스트레이션
+│   │   ├── job.py         # 번역 작업 관리
+│   │   └── models/
+│   │       └── gemini.py  # Gemini API 인터페이스
+│   ├── config/            # 설정 및 상태 관리
+│   │   ├── builder.py     # 동적 설정 구축
+│   │   ├── loader.py      # 설정 로더
+│   │   ├── glossary.py    # 용어집 관리
+│   │   └── character_style.py # 캐릭터 스타일 관리
+│   ├── prompts/           # 프롬프트 처리
+│   │   ├── builder.py     # 프롬프트 구성
+│   │   ├── manager.py     # 템플릿 관리
+│   │   └── sanitizer.py   # 콘텐츠 정제
+│   ├── utils/             # 유틸리티
+│   │   ├── file_parser.py # 파일 파싱 (TXT, DOCX, EPUB, PDF)
+│   │   └── retry.py       # 재시도 데코레이터
+│   └── errors/            # 에러 처리
+├── source_novel/          # 📖 번역할 원본 소설 파일
+├── translated_novel/      # 📚 번역된 결과물
+├── tests/                 # 🧪 테스트 파일
+├── prompt_template.md     # 📄 번역 프롬프트 템플릿
+├── requirements.txt       # 🐍 Python 의존성
+├── package.json          # 📦 Node.js 의존성
+└── docker-compose.yml    # 🐳 Docker 설정
 ```
 
 ## 🛠️ 설치 방법
@@ -81,11 +102,23 @@ trans/
     -   번역할 소설 텍스트 파일(`*.txt`)을 `source_novel` 디렉토리에 추가합니다.
 
 2.  **번역 실행**:
-    -   `main.py`를 실행하며 번역할 파일의 경로를 인자로 전달합니다.
+
+    **CLI 직접 실행**:
     ```bash
     # 예시: source_novel 폴더에 있는 my_novel.txt 파일을 번역
-    python main.py "source_novel/my_novel.txt"
+    python -m core.main "source_novel/my_novel.txt"
     ```
+
+    **웹 인터페이스 사용**:
+    ```bash
+    # 백엔드 서버 실행
+    uvicorn backend.main:app --reload --port 8000
+    
+    # 프론트엔드 실행 (새 터미널에서)
+    cd frontend
+    npm run dev
+    ```
+    브라우저에서 `http://localhost:3000` 접속
 
 3.  **결과 확인**:
     -   번역이 완료되면 `translated_novel` 디렉토리에 `[원본 파일명]_translated.txt` 형식으로 결과 파일이 생성됩니다.
@@ -98,7 +131,11 @@ trans/
     -   `google-generativeai`: Google Gemini API
     -   `python-dotenv`: 환경 변수 관리
     -   `tqdm`: 진행 상태 표시 바
--   **AI Model**: `Gemini 2.5 Flash Lite` (또는 `config_loader.py`에서 설정된 다른 모델)
+-   **AI Model**: `Gemini 2.5 Flash` (또는 `core/config/loader.py`에서 설정된 다른 모델)
+-   **Backend Framework**: FastAPI, SQLAlchemy
+-   **Frontend Framework**: Next.js 15, TypeScript, Tailwind CSS v4
+-   **Database**: PostgreSQL
+-   **Deployment**: Docker, Docker Compose
 
 ---
 

@@ -5,8 +5,8 @@ Retry decorator for handling ProhibitedException with progressively softer promp
 import functools
 import time
 from typing import Callable, Any, Optional
-from .errors import ProhibitedException
-from .prompt_sanitizer import PromptSanitizer
+from ..errors import ProhibitedException
+from ..prompts.sanitizer import PromptSanitizer
 
 
 def retry_with_softer_prompt(max_retries: int = 3, delay: float = 2.0):

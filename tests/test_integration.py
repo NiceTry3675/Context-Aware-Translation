@@ -6,12 +6,12 @@ from datetime import datetime
 # Add the parent directory to the path to import core modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.config_loader import load_config
-from core.gemini_model import GeminiModel
-from core.dynamic_config_builder import DynamicConfigBuilder
-from core.translation_job import TranslationJob
-from core.translation_engine import TranslationEngine
-from core.file_parser import parse_document
+from core.config.loader import load_config
+from core.translation.models.gemini import GeminiModel
+from core.config.builder import DynamicConfigBuilder
+from core.translation.job import TranslationJob
+from core.translation.engine import TranslationEngine
+from core.utils.file_parser import parse_document
 from backend.database import SessionLocal
 from backend import crud
 
