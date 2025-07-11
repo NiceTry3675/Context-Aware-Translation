@@ -105,9 +105,29 @@ Context-Aware-Translation/
 
     **CLI 직접 실행**:
     ```bash
-    # 예시: source_novel 폴더에 있는 my_novel.txt 파일을 번역
-    python -m core.main "source_novel/my_novel.txt"
+    # 기본 사용법 (API 키는 환경변수로 설정)
+    python -m core.main source_novel/my_novel.txt
+    
+    # 출력 파일명 지정
+    python -m core.main source_novel/my_novel.txt translated_output.txt
+    
+    # API 키 직접 전달
+    python -m core.main source_novel/my_novel.txt -k YOUR_API_KEY
+    
+    # 세그먼트 크기 조정 (기본값: 10000)
+    python -m core.main source_novel/my_novel.txt -s 15000
+    
+    # 상세 출력 모드
+    python -m core.main source_novel/my_novel.txt -v
+    
+    # 또는 간편 스크립트 사용
+    ./translate source_novel/my_novel.txt [output.txt] [-k API_KEY] [-v]
     ```
+    
+    **CLI 옵션**:
+    - `-k, --api-key`: Google Gemini API 키 (환경변수 GEMINI_API_KEY로도 설정 가능)
+    - `-s, --segment-size`: 번역 세그먼트 크기 (기본값: 10000)
+    - `-v, --verbose`: 상세 진행 상황 출력
 
     **웹 인터페이스 사용**:
     ```bash
