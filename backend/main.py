@@ -36,10 +36,7 @@ def get_db():
 app = FastAPI()
 
 # CORS 설정
-origins = [
-    "http://localhost:3000",  # Next.js 개발 서버
-    "https://context-aware-translation.vercel.app", # Vercel 배포 주소
-]
+origins = ["*"] # 임시로 모든 출처 허용
 
 app.add_middleware(
     CORSMiddleware,
