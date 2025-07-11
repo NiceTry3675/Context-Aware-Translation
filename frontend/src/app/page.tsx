@@ -39,6 +39,41 @@ export default function Home() {
     }
   }, [apiKey]);
 
+  // 페이지 로드 시 localStorage에서 작업 목록을 불러옵니다.
+  useEffect(() => {
+    const loadJobs = async () => {
+      const storedJobIdsString = localStorage.getItem('jobIds');
+      if (!storedJobIdsString) return;
+
+      const storedJobIds = JSON.parse(storedJobIdsString);
+      if (!Array.isArray(storedJobIds) || storedJobIds.length === 0) return;
+
+      try {
+        const fetchedJobs: Job[] = await Promise.all(
+          storedJobIds.map(async (id: number) => {
+            const response = await fetch(`${API_URL}/status/${id}`);
+            if (response.ok) {
+              return response.json();
+            }
+            // 서버에서 찾을 수 없는 작업은 목록에서 제거합니다.
+            return null;
+          })
+        );
+
+        const validJobs = fetchedJobs
+          .filter((job): job is Job => job !== null)
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+        setJobs(validJobs);
+      } catch (error) {
+        console.error("Failed to load jobs from storage:", error);
+        // 문제가 발생하면 저장된 ID를 지워 문제를 방지합니다.
+        localStorage.removeItem('jobIds');
+      }
+    };
+    loadJobs();
+  }, []); // 빈 배열 의존성으로 마운트 시 한 번만 실행합니다.
+
   // 진행 중인 작업의 상태를 주기적으로 가져오는 함수
   const pollJobStatus = useCallback(async () => {
     if (!Array.isArray(jobs) || jobs.length === 0) return;
@@ -100,6 +135,12 @@ export default function Home() {
 
       const newJob: Job = await response.json();
       setJobs(prevJobs => [newJob, ...prevJobs]);
+      
+      // 새로운 작업 ID를 localStorage에 저장합니다.
+      const storedJobIds = JSON.parse(localStorage.getItem('jobIds') || '[]');
+      const newJobIds = [newJob.id, ...storedJobIds];
+      localStorage.setItem('jobIds', JSON.stringify(newJobIds));
+
       setFile(null);
     } catch (err) {
       if (err instanceof Error) {
@@ -110,6 +151,17 @@ export default function Home() {
     } finally {
       setUploading(false);
     }
+  };
+
+  // 작업 목록에서 특정 작업을 제거하는 함수
+  const handleDelete = (jobId: number) => {
+    // UI에서 즉시 제거
+    setJobs(prevJobs => prevJobs.filter(job => job.id !== jobId));
+
+    // localStorage에서 ID 제거
+    const storedJobIds = JSON.parse(localStorage.getItem('jobIds') || '[]');
+    const newJobIds = storedJobIds.filter((id: number) => id !== jobId);
+    localStorage.setItem('jobIds', JSON.stringify(newJobIds));
   };
 
   return (
@@ -204,7 +256,7 @@ export default function Home() {
       {/* Jobs Table Section */}
       <div className="mt-12 w-full max-w-4xl">
         <h2 className="text-2xl font-semibold text-gray-700 mb-4 text-center">Translation Jobs</h2>
-        <div className="bg-white shadow-md rounded-lg">
+        <div className="overflow-x-auto bg-white shadow-md rounded-lg">
           <table className="min-w-full leading-normal">
             <thead>
               <tr>
@@ -276,15 +328,28 @@ export default function Home() {
                     </p>
                   </td>
                   <td className="px-5 py-4 border-b border-gray-200 bg-white text-sm">
-                    {job.status === 'COMPLETED' && (
-                      <a
-                        href={`${API_URL}/download/${job.id}`}
-                        download
-                        className="text-indigo-600 hover:text-indigo-900"
-                      >
-                        Download
-                      </a>
-                    )}
+                    <div className="flex items-center space-x-4">
+                      {job.status === 'COMPLETED' && (
+                        <a
+                          href={`${API_URL}/download/${job.id}`}
+                          download
+                          className="text-indigo-600 hover:text-indigo-900 font-semibold"
+                        >
+                          Download
+                        </a>
+                      )}
+                      <div className="relative group">
+                        <button
+                          onClick={() => handleDelete(job.id)}
+                          className="text-gray-400 hover:text-red-600 transition-colors"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-800 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">
+                          Remove from list
+                        </div>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               ))}
