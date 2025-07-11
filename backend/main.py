@@ -215,6 +215,11 @@ async def analyze_style(
 def read_root():
     return {"message": "Translation Service Backend is running!"}
 
+@app.get("/test")
+def test_cors():
+    return {"message": "CORS test successful!"}
+
+
 import json
 
 @app.post("/uploadfile/", response_model=schemas.TranslationJob)
