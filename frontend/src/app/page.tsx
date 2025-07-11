@@ -23,9 +23,21 @@ export default function Home() {
   const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash-lite-preview-06-17");
 
   const modelOptions = [
-    { value: "gemini-2.5-flash-lite-preview-06-17", label: "Flash Lite (Fastest)" },
-    { value: "gemini-2.5-flash", label: "Flash (Recommended)" },
-    { value: "gemini-2.5-pro", label: "Pro (Highest Quality)" },
+    {
+      value: "gemini-2.5-flash-lite-preview-06-17",
+      label: "Flash Lite (추천)",
+      description: "가장 빠르고 경제적입니다. 전체적인 흐름을 빠르게 훑어보거나 초벌 번역에 적합합니다."
+    },
+    {
+      value: "gemini-2.5-flash",
+      label: "Flash",
+      description: "속도와 품질의 균형을 맞춘 모델입니다. 대부분의 소설 번역에서 안정적인 결과물을 제공합니다."
+    },
+    {
+      value: "gemini-2.5-pro",
+      label: "Pro",
+      description: "가장 강력한 성능을 지녔지만, 비용과 속도 부담이 있습니다. 문학 작품의 섬세한 뉘앙스까지 살리는 최고 품질을 원할 때 사용하세요."
+    },
   ];
 
   // 백엔드 API의 기본 URL
@@ -225,59 +237,63 @@ export default function Home() {
 
       {/* Input Section */}
       <div className="w-full max-w-2xl p-8 bg-white rounded-lg shadow-md mb-8">
+        
+        {/* Model Selection Section */}
+        <div className="mb-8">
+          <label className="block mb-3 text-lg font-bold text-gray-800">
+            1. 번역 모델 선택
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {modelOptions.map(option => (
+              <div
+                key={option.value}
+                onClick={() => setSelectedModel(option.value)}
+                className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
+                  selectedModel === option.value
+                    ? 'border-blue-500 bg-blue-50 shadow-md'
+                    : 'border-gray-300 bg-white hover:border-gray-400 hover:bg-gray-50'
+                }`}
+              >
+                <h4 className="font-semibold text-gray-800">{option.label}</h4>
+                <p className="text-xs text-gray-500 mt-1">{option.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* API Key & Upload Section */}
         <div className="mb-6">
-            <label htmlFor="api-key" className="block mb-2 text-sm font-medium text-gray-700">
-              Your Gemini API Key
+            <label htmlFor="api-key" className="block mb-2 text-lg font-bold text-gray-800">
+              2. Gemini API 키 입력
             </label>
             <input
               type="password"
               id="api-key"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter your API key here"
-              className="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 text-sm focus:ring-blue-500 focus:border-blue-500"
+              placeholder="API 키를 여기에 입력하세요"
+              className="block w-full p-3 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 text-sm focus:ring-blue-500 focus:border-blue-500"
             />
         </div>
+        
         <form onSubmit={handleUpload}>
           <div className="mb-6">
-            <label className="block mb-3 text-sm font-medium text-gray-700">
-              Select Translation Model
-            </label>
-            <div className="flex w-full bg-gray-200 rounded-lg p-1">
-              {modelOptions.map(option => (
-                <button
-                  type="button"
-                  key={option.value}
-                  onClick={() => setSelectedModel(option.value)}
-                  className={`w-full px-3 py-2 text-sm font-semibold rounded-md transition-colors duration-200 ${
-                    selectedModel === option.value
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'bg-transparent text-gray-500 hover:bg-gray-300'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <label htmlFor="file" className="block mb-2 text-sm font-medium text-gray-700">
-              Upload your novel (.txt, .epub, .docx)
+            <label htmlFor="file" className="block mb-2 text-lg font-bold text-gray-800">
+              3. 소설 파일 업로드
             </label>
             <input
               type="file"
               id="file"
               onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
             />
           </div>
           <button
             type="submit"
             disabled={!file || uploading || !apiKey}
-            className="w-full px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            className="w-full px-4 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all font-bold text-base"
           >
-            {uploading ? 'Uploading...' : 'Translate'}
+            {uploading ? '업로드 중...' : '번역 시작'}
           </button>
         </form>
         {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
