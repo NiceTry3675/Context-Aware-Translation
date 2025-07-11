@@ -51,58 +51,77 @@ Context-Aware-Translation/
 └── Dockerfile              # 🐳 Docker 설정
 ```
 
-## 🛠️ 설치 및 실행 방법
+## 🛠️ 설치 및 설정
 
-### 1. 사전 준비
+1.  **사전 준비**:
+    -   Python 3.9+
+    -   Node.js 및 npm
+    -   Git
 
--   Python 3.9+
--   Node.js 및 npm
--   Git
+2.  **프로젝트 클론 및 의존성 설치**:
+    ```bash
+    # 저장소 복제
+    git clone https://github.com/NiceTry3675/Context-Aware-Translation.git
+    cd Context-Aware-Translation
 
-### 2. 프로젝트 클론 및 설정
+    # Python 가상 환경 생성 및 활성화
+    python -m venv venv
+    # Windows: venv\Scripts\activate | macOS/Linux: source venv/bin/activate
 
-```bash
-# 저장소 복제
-git clone https://github.com/NiceTry3675/Context-Aware-Translation.git
-cd Context-Aware-Translation
+    # Python 의존성 설치
+    pip install -r requirements.txt
 
-# Python 가상 환경 생성 및 활성화
-python -m venv venv
-# Windows: venv\Scripts\activate | macOS/Linux: source venv/bin/activate
+    # Node.js 의존성 설치
+    npm install
+    ```
 
-# Python 의존성 설치
-pip install -r requirements.txt
+3.  **환경 변수 설정**:
+    -   프로젝트 루트 디렉토리에 `.env` 파일을 생성합니다.
+    -   **웹 UI 사용 시**: Gemini API 키는 웹 화면에서 직접 입력하므로 `.env` 파일에 추가할 필요가 없습니다.
+    -   **CLI 사용 시**: 아래와 같이 Gemini API 키를 추가합니다.
+        ```.env
+        GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+        ```
+    -   **데이터베이스 설정**: 로컬 개발 시 PostgreSQL 대신 SQLite(`database.db`)를 사용하려면, `.env` 파일에 `DATABASE_URL`을 추가하지 않거나 주석 처리하세요.
 
-# Node.js 의존성 설치
-npm install
-```
+## ▶️ 실행 방법
 
-### 3. 환경 변수 설정
-
-프로젝트 루트 디렉토리에 `.env` 파일을 생성하고, 로컬 DB를 사용하려면 아래 내용을 비워두거나 주석 처리합니다.
-
-```.env
-# .env
-
-# 로컬 개발 시 PostgreSQL 대신 SQLite(database.db)를 사용하려면 아래 줄을 주석 처리하세요.
-# DATABASE_URL="postgresql://user:pass@host:port/db"
-```
-
-### 4. 실행
+### 웹 인터페이스 (권장)
 
 각각 다른 터미널에서 아래 명령어를 실행합니다.
 
-1.  **백엔드 서버 실행:**
+1.  **백엔드 서버 실행**:
     ```bash
     uvicorn backend.main:app --reload --port 8000
     ```
 
-2.  **프론트엔드 서버 실행:**
+2.  **프론트엔드 서버 실행**:
     ```bash
     npm run dev
     ```
 
 이제 브라우저에서 `http://localhost:3000`에 접속하여 서비스를 사용할 수 있습니다.
+
+### CLI (명령줄)
+
+1.  **원본 소설 준비**:
+    -   번역할 소설 파일을 `source_novel` 디렉토리에 추가합니다.
+
+2.  **번역 실행**:
+    ```bash
+    # 기본 사용법 (API 키는 .env 파일 또는 환경변수로 설정)
+    python -m core.main "source_novel/my_novel.txt"
+    
+    # 출력 파일명 지정
+    python -m core.main "source_novel/my_novel.txt" "translated_output.txt"
+    
+    # API 키 직접 전달
+    python -m core.main "source_novel/my_novel.txt" -k "YOUR_API_KEY"
+    ```
+    -   더 많은 옵션은 `python -m core.main --help`로 확인할 수 있습니다.
+
+3.  **결과 확인**:
+    -   번역이 완료되면 `translated_novel` 디렉토리에 결과 파일이 생성됩니다.
 
 ## 💻 기술 스택
 
@@ -115,5 +134,5 @@ npm install
 ---
 
 <p align="center">
-  Made with ❤️ by NiceTry3675
+  Made with ❤️ by NiceTry3675 and sorryhyun
 </p>
