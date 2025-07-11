@@ -13,6 +13,13 @@ interface Job {
   error_message: string | null;
 }
 
+// 스타일 데이터 타입을 정의합니다.
+interface StyleData {
+  narrative_perspective: string;
+  primary_speech_level: string;
+  tone: string;
+}
+
 export default function Home() {
   // 상태 관리
   const [apiKey, setApiKey] = useState<string>('');
@@ -21,6 +28,12 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string>("gemini-2.5-flash-lite-preview-06-17");
+
+  // 새로운 상태 추가
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [analysisError, setAnalysisError] = useState<string>('');
+  const [styleData, setStyleData] = useState<StyleData | null>(null);
+  const [showStyleForm, setShowStyleForm] = useState<boolean>(false); // 팝업 대신 인라인 폼 표시 여부
 
   const modelOptions = [
     {
@@ -122,25 +135,72 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [pollJobStatus]); // 의존성 배열에 pollJobStatus 추가
 
-  // 파일 업로드 처리 함수
-  const handleUpload = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!file) {
-      setError("Please select a file to upload.");
+  // 파일 선택 시 스타일 분석을 시작하는 함수
+  const handleFileChange = async (selectedFile: File | null) => {
+    if (!selectedFile) {
+      setFile(null);
       return;
     }
+
+    setFile(selectedFile);
+
     if (!apiKey) {
-      setError("Please enter your Gemini API Key.");
+      setError("API 키를 먼저 입력해주세요.");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalysisError('');
+    setError(null);
+    setStyleData(null);
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('api_key', apiKey);
+    formData.append('model_name', selectedModel);
+
+    try {
+      const response = await fetch(`${API_URL}/api/v1/analyze-style`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || '스타일 분석에 실패했습니다.');
+      }
+
+      const analyzedStyle = await response.json();
+      setStyleData(analyzedStyle);
+      setShowStyleForm(true); // 분석 성공 시 인라인 폼 표시
+
+    } catch (err) {
+      if (err instanceof Error) {
+        setAnalysisError(err.message);
+      } else {
+        setAnalysisError("알 수 없는 오류가 발생했습니다.");
+      }
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // 최종 번역을 시작하는 함수 (기존 handleUpload 로직 재활용)
+  const handleStartTranslation = async () => {
+    if (!file || !styleData) {
+      setError("번역을 시작할 파일과 스타일 정보가 필요합니다.");
       return;
     }
 
     setUploading(true);
     setError(null);
+    setShowStyleForm(false); // 번역 시작 시 폼 닫기
 
     const formData = new FormData();
     formData.append("file", file);
     formData.append("api_key", apiKey);
-    formData.append("model_name", selectedModel); // 선택된 모델 추가
+    formData.append("model_name", selectedModel);
+    formData.append("style_data", JSON.stringify(styleData));
 
     try {
       const response = await fetch(`${API_URL}/uploadfile/`, {
@@ -156,12 +216,12 @@ export default function Home() {
       const newJob: Job = await response.json();
       setJobs(prevJobs => [newJob, ...prevJobs]);
       
-      // 새로운 작업 ID를 localStorage에 저장합니다.
       const storedJobIds = JSON.parse(localStorage.getItem('jobIds') || '[]');
       const newJobIds = [newJob.id, ...storedJobIds];
       localStorage.setItem('jobIds', JSON.stringify(newJobIds));
 
-      setFile(null);
+      setFile(null); // 작업 제출 후 파일 선택 초기화
+
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -170,6 +230,18 @@ export default function Home() {
       }
     } finally {
       setUploading(false);
+    }
+  };
+
+  // 스타일 수정을 취소하는 함수
+  const handleCancelStyleEdit = () => {
+    setShowStyleForm(false);
+    setFile(null);
+    setStyleData(null);
+    // 파일 입력 필드도 초기화
+    const fileInput = document.getElementById('file') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
     }
   };
 
@@ -276,27 +348,85 @@ export default function Home() {
             />
         </div>
         
-        <form onSubmit={handleUpload}>
-          <div className="mb-6">
+        <div className="mb-6">
             <label htmlFor="file" className="block mb-2 text-lg font-bold text-gray-800">
               3. 소설 파일 업로드
             </label>
             <input
               type="file"
               id="file"
-              onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
+              onChange={(e) => handleFileChange(e.target.files ? e.target.files[0] : null)}
               className="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              disabled={isAnalyzing || uploading}
             />
+        </div>
+        {isAnalyzing && (
+          <div className="text-center text-blue-600">
+            <p>파일을 분석하여 핵심 서사 스타일을 추출하고 있습니다...</p>
           </div>
-          <button
-            type="submit"
-            disabled={!file || uploading || !apiKey}
-            className="w-full px-4 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all font-bold text-base"
-          >
-            {uploading ? '업로드 중...' : '번역 시작'}
-          </button>
-        </form>
+        )}
+        {analysisError && <p className="mt-4 text-sm text-red-600">{analysisError}</p>}
         {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {analysisError && <p className="mt-4 text-sm text-red-600">{analysisError}</p>}
+        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+
+        {/* --- 인라인 스타일 수정 폼 --- */}
+        <div className={`transition-all duration-500 ease-in-out overflow-hidden ${showStyleForm ? 'max-h-screen mt-8' : 'max-h-0'}`}>
+          {styleData && (
+            <div className="p-6 border-t-2 border-dashed border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900 mb-4">
+                4. 핵심 서사 스타일 확인 및 수정
+              </h3>
+              <p className="text-sm text-gray-700 mb-6">AI가 분석한 소설의 핵심 스타일입니다. 번역의 일관성을 위해 이 스타일을 기준으로 사용합니다. 필요하다면 직접 수정할 수 있습니다.</p>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-800">서사 관점 (Narrative Perspective)</label>
+                  <input 
+                    type="text"
+                    value={styleData.narrative_perspective}
+                    onChange={(e) => setStyleData({...styleData, narrative_perspective: e.target.value})}
+                    className="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-800">주요 말투 (Primary Speech Level)</label>
+                  <input 
+                    type="text"
+                    value={styleData.primary_speech_level}
+                    onChange={(e) => setStyleData({...styleData, primary_speech_level: e.target.value})}
+                    className="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-800">글의 톤 (Tone)</label>
+                  <input 
+                    type="text"
+                    value={styleData.tone}
+                    onChange={(e) => setStyleData({...styleData, tone: e.target.value})}
+                    className="mt-1 block w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-8 flex justify-end space-x-4">
+                <button 
+                  onClick={handleCancelStyleEdit}
+                  className="px-6 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-semibold"
+                >
+                  취소
+                </button>
+                <button 
+                  onClick={handleStartTranslation}
+                  disabled={uploading}
+                  className="px-6 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 font-bold"
+                >
+                  {uploading ? '번역 요청 중...' : '이 스타일로 번역 시작'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Jobs Table Section */}

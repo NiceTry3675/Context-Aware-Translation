@@ -37,12 +37,13 @@ class TranslationEngine:
     """
     Orchestrates the entire translation process, segment by segment.
     """
-    def __init__(self, gemini_api: GeminiModel, dyn_config_builder: DynamicConfigBuilder, db: Session, job_id: int):
+    def __init__(self, gemini_api: GeminiModel, dyn_config_builder: DynamicConfigBuilder, db: Session, job_id: int, initial_core_style: str = None):
         self.gemini_api = gemini_api
         self.dyn_config_builder = dyn_config_builder
         self.prompt_builder = PromptBuilder(PromptManager.MAIN_TRANSLATION)
         self.db = db
         self.job_id = job_id
+        self.initial_core_style = initial_core_style
 
     def translate_job(self, job: TranslationJob):
         """
@@ -64,7 +65,16 @@ class TranslationEngine:
         if not job.segments:
             print("No segments to translate. Exiting.")
             return
-        core_narrative_style = self._define_core_style(job.segments[0].text, job.base_filename)
+
+        core_narrative_style = ""
+        if self.initial_core_style:
+            # 사용자가 제공한 포맷팅된 스타일을 그대로 사용
+            print("\n--- Using User-Defined Core Narrative Style... ---")
+            core_narrative_style = self.initial_core_style
+            print(f"Style defined as: {core_narrative_style}")
+        else:
+            # 기존 방식대로 스타일 분석
+            core_narrative_style = self._define_core_style(job.segments[0].text, job.base_filename)
         
         with open(context_log_path, 'a', encoding='utf-8') as f:
             f.write(f"--- Core Narrative Style Defined ---\n")
