@@ -122,7 +122,8 @@ class TranslationEngine:
                 character_styles=job.character_styles,
                 source_segment=segment_info.text,
                 prev_segment_en=immediate_context_en,
-                prev_segment_ko=immediate_context_ko
+                prev_segment_ko=immediate_context_ko,
+                protagonist_name=self.dyn_config_builder.character_style_manager.protagonist_name
             )
 
             self._write_context_log(

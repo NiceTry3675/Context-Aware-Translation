@@ -96,12 +96,15 @@ style_analysis:
     **Deviation Instruction:**
 
   define_narrative_style: |
-    You are an expert literary analyst specializing in translation. Your task is to analyze the provided text and define its core narrative style for a Korean translation LLM. The output must be a practical, actionable style guide.
+    You are an expert literary analyst specializing in translation. Your task is to analyze the provided text to define the **core NARRATIVE style (for text outside of quotes)** for a Korean translation LLM. The output must be a practical, actionable guide for the narrator's voice.
 
     **Analysis Report Template:**
-    1.  **Primary Speech Level & Ending Style:** (e.g., 해체, with endings like `-다`, `-했어`, `-거야`)
-    2.  **Core Tone & Keywords (3-5 words):** (e.g., Casual, Introspective, Dry -> 일상적, 내성적, 건조함)
-    3.  **Key Stylistic Rule (The "Golden Rule"):** (A single, crucial instruction for the translator LLM. e.g., "Translate like a monologue spoken to a close friend." or "Keep sentences short and direct.")
+    1.  **Protagonist Name:** (The single most central character's name. If unclear, state "Unknown".)
+    2.  **Narration Style & Endings (서술 문체 및 어미):**
+        - **Description:** (A brief description of the narrator's voice. e.g., "A neutral, third-person observer's voice." or "The protagonist's inner monologue, speaking to themselves.")
+        - **Ending Style:** (The Korean sentence ending style for narration. Almost always `해라체 (e.g., -다, -했다)`)
+    3.  **Core Tone & Keywords (전체 분위기):** (3-5 words describing the overall mood of the text. e.g., Detached, Melancholic -> 초연함, 우울함)
+    4.  **Key Stylistic Rule (The "Golden Rule"):** (An overarching rule for the novel's feel and rhythm. e.g., "Keep narrative sentences short and impactful." or "Use descriptive, poetic language for scenery.")
 
     **Sample Text:**
     ---
@@ -109,7 +112,9 @@ style_analysis:
     ---
 
     **Instructions:**
-    Analyze the sample text and fill out the report. Be concise and provide actionable advice.
+    - Analyze the sample text and fill out the report above.
+    - **Crucially, focus ONLY on the narrative voice, not the dialogue inside quotes.**
+    - Be concise and actionable.
 
     **Analysis Report:**
 
@@ -118,14 +123,14 @@ translation:
     You are an expert literary translator. Your mission is to translate the following text into natural, fluent Korean, strictly adhering to the guidelines below.
 
     **GUIDELINE 1: Core Narrative Style (기본 서술)**
-    - This is the default style for all narration unless overridden by Guideline 2. Your narrative translation **must** reflect these three elements:
+    - This defines the **default style for all NARRATION (text outside of "…")**. You must follow it strictly, unless overridden by Guideline 2.
     ---
     {core_narrative_style}
     ---
-    - **How to apply:**
-        - **1. Speech Level & Endings:** Consistently use the specified Korean speech level and representative sentence endings.
-        - **2. Tone & Keywords:** Your word choice and sentence structure must create the atmosphere described by these keywords.
-        - **3. The Golden Rule:** This is your **most important instruction**. It defines the core feeling of the narration and should guide all your stylistic decisions.
+    - **How to Apply:**
+        - You **MUST** use the **`Narration Style & Endings`** defined above for all narrative text.
+        - This includes dialogue tags like "he said" (e.g., `..."라고 그는 말했다.` not `...라고 그는 말했어요.`).
+        - The **`Core Tone & Keywords`** and **`Golden Rule`** should influence your word choice and sentence rhythm throughout the entire translation.
 
     **GUIDELINE 2: Segment-Specific Style Deviation (세그먼트 내 예외 스타일)**
     - **Pay close attention.** This instruction **overrides** Guideline 1 if it is not "N/A".

@@ -28,7 +28,7 @@ class GlossaryManager:
             
         # encoded_new_terms = [term.encode('cp949', 'replace').decode('cp949') for term in new_terms]
         # print(f"Found {len(new_terms)} new proper nouns to translate: {', '.join(encoded_new_terms)}")
-        translated_terms = self._translate_terms(new_terms)
+        translated_terms = self._translate_terms(new_terms, segment_text)
 
         updated_glossary = current_glossary.copy()
         updated_glossary.update(translated_terms)
@@ -58,9 +58,12 @@ class GlossaryManager:
             print(f"Warning: Could not extract proper nouns. {e}")
             return []
 
-    def _translate_terms(self, terms: list[str]) -> dict:
+    def _translate_terms(self, terms: list[str], segment_text: str) -> dict:
         """Translates a list of terms and returns a dictionary."""
-        prompt = PromptManager.GLOSSARY_TRANSLATE_TERMS.format(key_terms=', '.join(terms))
+        prompt = PromptManager.GLOSSARY_TRANSLATE_TERMS.format(
+            key_terms=', '.join(terms),
+            segment_text=segment_text
+        )
         try:
             response = self.model.generate_text(prompt)
             translated_dict = {}

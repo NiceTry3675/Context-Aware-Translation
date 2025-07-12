@@ -14,7 +14,7 @@ class PromptBuilder:
         self.template = template
         print("PromptBuilder initialized.")
 
-    def build_translation_prompt(self, core_narrative_style: str, style_deviation_info: str, glossary: dict, character_styles: dict, source_segment: str, prev_segment_en: str, prev_segment_ko: str) -> str:
+    def build_translation_prompt(self, core_narrative_style: str, style_deviation_info: str, glossary: dict, character_styles: dict, source_segment: str, prev_segment_en: str, prev_segment_ko: str, protagonist_name: str) -> str:
         """
         Builds the final prompt by filling the template with all necessary data.
 
@@ -41,6 +41,7 @@ class PromptBuilder:
             "prev_segment_en": prev_segment_en or "N/A",
             "prev_segment_ko": prev_segment_ko or "N/A",
             "source_segment": source_segment,
+            "protagonist_name": protagonist_name,
         }
 
         try:

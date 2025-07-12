@@ -37,9 +37,10 @@ interface Job {
 }
 
 interface StyleData {
-  narrative_perspective: string;
-  primary_speech_level: string;
-  tone: string;
+  protagonist_name: string;
+  narration_style_endings: string;
+  tone_keywords: string;
+  stylistic_rule: string;
 }
 
 const modelOptions = [
@@ -367,24 +368,40 @@ export default function Home() {
           <CardContent sx={{ borderTop: 1, borderColor: 'divider', mt: 2 }}>
             <Typography variant="h5" component="h3" gutterBottom>4. 핵심 서사 스타일 확인 및 수정</Typography>
             <Typography color="text.secondary" mb={3}>AI가 분석한 소설의 핵심 스타일입니다. 필요하다면 직접 수정할 수 있습니다.</Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <TextField 
-                  label="서사 관점" 
-                  value={styleData.narrative_perspective} 
-                  onChange={(e) => setStyleData(prev => prev ? { ...prev, narrative_perspective: e.target.value } : null)} 
-                  fullWidth 
+                  label="1. 주인공 이름" 
+                  value={styleData.protagonist_name} 
+                  onChange={(e) => setStyleData(prev => prev ? { ...prev, protagonist_name: e.target.value } : null)} 
+                  fullWidth
+                  variant="outlined"
                 />
                 <TextField 
-                  label="주요 말투" 
-                  value={styleData.primary_speech_level} 
-                  onChange={(e) => setStyleData(prev => prev ? { ...prev, primary_speech_level: e.target.value } : null)} 
-                  fullWidth 
+                  label="2. 서술 문체 및 어미" 
+                  value={styleData.narration_style_endings} 
+                  onChange={(e) => setStyleData(prev => prev ? { ...prev, narration_style_endings: e.target.value } : null)} 
+                  fullWidth
+                  multiline
+                  rows={4}
+                  variant="outlined"
                 />
                 <TextField 
-                  label="글의 톤" 
-                  value={styleData.tone} 
-                  onChange={(e) => setStyleData(prev => prev ? { ...prev, tone: e.target.value } : null)} 
-                  fullWidth 
+                  label="3. 핵심 톤과 키워드 (전체 분위기)" 
+                  value={styleData.tone_keywords} 
+                  onChange={(e) => setStyleData(prev => prev ? { ...prev, tone_keywords: e.target.value } : null)} 
+                  fullWidth
+                  multiline
+                  rows={3}
+                  variant="outlined"
+                />
+                <TextField 
+                  label="4. 가장 중요한 스타일 규칙 (Golden Rule)" 
+                  value={styleData.stylistic_rule} 
+                  onChange={(e) => setStyleData(prev => prev ? { ...prev, stylistic_rule: e.target.value } : null)} 
+                  fullWidth
+                  multiline
+                  rows={3}
+                  variant="outlined"
                 />
             </Box>
             <CardActions sx={{ justifyContent: 'flex-end', mt: 3, p: 0 }}>
