@@ -2,88 +2,106 @@
 
 glossary:
   extract_nouns: |
-    Your task is to act as a data extractor. From the text segment below, identify and extract only proper nouns that could be confusing if translated inconsistently.
+    You are a highly precise data extraction bot. Your sole function is to identify and extract unique proper nouns from the provided text segment.
 
-    **CRITICAL RULES:**
-    1.  **EXTRACT ONLY FROM THE PROVIDED TEXT.** Do not invent or infer any names or terms that are not explicitly written in the text.
-    2.  **FOCUS EXCLUSIVELY ON:**
-        - People's names (e.g., "John Doe", "Jane Smith").
-        - Place names (e.g., "Springfield").
-        - Unique, named objects or concepts (e.g., "the Monolith").
-    3.  **STRICTLY EXCLUDE:**
-        - Common nouns (e.g., "father", "room", "apple").
-        - Roles unless used as a proper name (e.g., extract "Chief Clerk" but not "the chief clerk").
+    **Extraction Rules:**
+    1.  **Source:** Extract **only** from the text provided below. Do not add external knowledge.
+    2.  **Target:** Focus **exclusively** on proper nouns:
+        - People's names (e.g., "John Doe")
+        - Place names (e.g., "New York")
+        - Organizations (e.g., "Stark Industries")
+        - Unique, capitalized concepts/objects (e.g., "the Tesseract")
+    3.  **Exclusions:** **Strictly ignore** common nouns, even if capitalized at the start of a sentence (e.g., "Mother", "Room").
+    4.  **Formatting:**
+        - The output must be a **unique, comma-separated list**.
+        - Remove duplicates. "John" and "John" should appear only once.
+        - Normalize the case (e.g., "The Monolith" -> "Monolith").
+        - **No extra text.** Do not write "Here is the list:" or any other explanation.
 
-    If no proper nouns are found in the text, you MUST return an empty string.
+    If no proper nouns are found, return a single "N/A" instead of an empty string.
 
-    **Text Segment to Analyze:**
+    **Text Segment:**
     ---
     {segment_text}
     ---
-    **Comma-separated list of proper nouns found ONLY in the text above:**
+    **Output:**
+
 
   translate_terms: |
-    You are creating a glossary for a novel translation. Provide a single, contextually appropriate Korean translation for each term.
-    The format MUST be: `Key Term: Korean Translation`
-    Each entry must be on a new line.
+    You are a glossary specialist for a literary translation. Your task is to provide a single, contextually appropriate Korean translation for each term, using the original text for context.
+
+    **CRITICAL:** The translation must be consistent. If a term has a common, established translation (e.g., in movies, other books), prefer that.
+
+    **Original Text Context:**
+    ---
+    {segment_text}
+    ---
 
     **Terms to Translate:**
     {key_terms}
+
+    **Formatting Rules:**
+    - Format: `English Term: 한국어 번역`
+    - One entry per line.
+    - No other text or explanation.
 
     **Output:**
 
 character_style:
   analyze_dialogue: |
-    You are an expert in Korean dialogue and social context. Your task is to analyze the speech style of the protagonist, **{protagonist_name}**, towards other characters in the following text segment.
+    You are a specialist in Korean sociolinguistics. Your task is to analyze the dialogue of the protagonist, **{protagonist_name}**, and define the precise speech style they use towards other characters in this segment.
 
     **Analysis Instructions:**
-    1.  **Identify Interactions:** Find every instance where the protagonist, **{protagonist_name}**, speaks directly to another character.
-    2.  **Determine Speech Style:** For each interaction, determine the appropriate Korean speech style (존댓말 or 반말).
-    3.  **Consider Context:** Base your decision on the relationship between the characters, the situation, and standard Korean social etiquette. For example, a person would typically use 존댓말 to their boss or parents.
-    4.  **Format Output:** List only the characters the protagonist speaks to. The format MUST be `Character Name: Speech Style`. Each on a new line.
-    5.  **No Dialogue:** If the protagonist does not speak to anyone in this segment, or if it's impossible to tell, you MUST respond with "N/A".
+    1.  **Identify Interactions:** Find every instance where **{protagonist_name}** speaks directly to another character.
+    2.  **Determine Speech Style:** For each interaction, choose the most fitting Korean speech style from the options below. Base your decision on the context (relationship, situation, power dynamics).
+        *   `반말`: For close friends, younger people, or subordinates.
+        *   `해요체 (존댓말)`: For polite but informal situations (e.g., colleagues, friendly seniors).
+        *   `하십시오체 (존댓말)`: For formal, official, or highly respectful situations (e.g., a formal presentation, speaking to a king).
+    3.  **Format Output:**
+        - The output must be a list in the format: `Character Name: Speech Style`
+        - Each entry must be on a new line.
+        - **No extra text or explanations.**
+    4.  **No Dialogue:** If the protagonist does not speak to anyone, or if the interaction is unclear, respond **only with "N/A"**.
 
     **Text Segment to Analyze:**
     ---
     {segment_text}
     ---
 
-    **Analysis of {protagonist_name}'s Speech Style:**
+    **Dialogue Style Analysis for {protagonist_name}:**
 
 style_analysis:
   narrative_deviation: |
-    You are a literary analyst. The established core narrative style for this novel is:
+    You are a highly perceptive literary analyst. Your task is to detect any significant stylistic deviation within a given text segment, comparing it against the novel's established core style.
+
+    **Established Core Narrative Style:**
     ---
     {core_narrative_style}
     ---
-
-    Your task is to analyze the following text **segment** to see if it contains any parts that deviate from the core style.
-    This is just a piece of the full text, so focus on clear structural changes **within the segment**.
-
-    **Consider looking for:**
-    - A letter, diary entry, or poem that starts *within* this segment.
-    - A dream sequence with a distinctly different tone.
-    - A direct quote from another source.
-
-    **Instructions:**
-    - If a clear deviation exists, **describe the deviation AND specify where it starts** (e.g., "A letter begins with the line 'My Dearest,'. It should be translated in a more formal style.", "A dream sequence starts here, use a hazy and surreal tone.").
-    - If there is no deviation, please respond with "N/A".
-
+    
     **Text Segment to Analyze:**
     ---
     {segment_text}
     ---
 
-    **Analysis of Style Deviation:**
+    **Your Task:**
+    Analyze the text segment for any clear deviations (e.g., a letter, dream sequence, poem, formal announcement).
+    - If a deviation exists, provide a **concise, actionable instruction** for the translation LLM in the format below.
+    - If no deviation is found, respond **only with "N/A"**.
+
+    **Deviation Instruction Format:**
+    - **Starts with:** [The first few words of the deviating part]
+    - **Instruction:** [A direct command for the translator. e.g., "Translate this part in a formal, polite style (하십시오체).", "Use a fragmented and surreal tone for this dream sequence."]
+
+    **Deviation Instruction:**
 
   define_narrative_style: |
-    You are a master literary analyst. Your task is to analyze the provided text and define its core narrative style for Korean translation by filling out the following report.
-    Your suggestions should be concise and use the specified terms.
+    You are an expert literary analyst specializing in translation. Your task is to analyze the provided text and define its core narrative style for a Korean translation LLM. The output must be a practical, actionable style guide.
 
     **Analysis Report Template:**
-    1.  **Narrative Perspective:** (Suggest one: 1st-person, 3rd-person)
-    2.  **Primary Speech Level:** (Suggest the most fitting: 해라체, 해요체, 하오체, 하십시오체, 해체 etc.)
-    3.  **Tone (Written/Spoken):** (Suggest one: 문어체 (Literary/Written), 구어체 (Colloquial/Spoken))
+    1.  **Primary Speech Level & Ending Style:** (e.g., 해체, with endings like `-다`, `-했어`, `-거야`)
+    2.  **Core Tone & Keywords (3-5 words):** (e.g., Casual, Introspective, Dry -> 일상적, 내성적, 건조함)
+    3.  **Key Stylistic Rule (The "Golden Rule"):** (A single, crucial instruction for the translator LLM. e.g., "Translate like a monologue spoken to a close friend." or "Keep sentences short and direct.")
 
     **Sample Text:**
     ---
@@ -91,32 +109,41 @@ style_analysis:
     ---
 
     **Instructions:**
-    Fill out the report based on your analysis of the sample text.
+    Analyze the sample text and fill out the report. Be concise and provide actionable advice.
 
     **Analysis Report:**
 
 translation:
   main: |
-    You are a master translator specializing in literature. Your task is to translate the following text segment into Korean, focusing on capturing the original's literary nuance and style. Please follow these guidelines to ensure consistency and quality.
+    You are an expert literary translator. Your mission is to translate the following text into natural, fluent Korean, strictly adhering to the guidelines below.
 
     **GUIDELINE 1: Core Narrative Style (기본 서술)**
-    - The core narrative style for this novel is defined below. This is the default style you MUST follow for standard narration.
+    - This is the default style for all narration unless overridden by Guideline 2. Your narrative translation **must** reflect these three elements:
+    ---
     {core_narrative_style}
-
+    ---
+    - **How to apply:**
+        - **1. Speech Level & Endings:** Consistently use the specified Korean speech level and representative sentence endings.
+        - **2. Tone & Keywords:** Your word choice and sentence structure must create the atmosphere described by these keywords.
+        - **3. The Golden Rule:** This is your **most important instruction**. It defines the core feeling of the narration and should guide all your stylistic decisions.
 
     **GUIDELINE 2: Segment-Specific Style Deviation (세그먼트 내 예외 스타일)**
-    - **Please pay close attention to this guideline for this specific segment.**
-    - An analysis suggests this segment may contain a special style. You should prioritize the following instruction.
-    - If the instruction is "N/A", this guideline2 MUST be ignored.
+    - **Pay close attention.** This instruction **overrides** Guideline 1 if it is not "N/A".
+    - You must prioritize the following instruction for this specific segment.
     - **Deviation Instruction:** {style_deviation_info}
 
     **GUIDELINE 3: Glossary (용어집)**
-    - For consistency, please use these exact Korean translations for all terms in this list.
+    - For consistency, you must use these exact Korean translations for all terms in this list.
     {glossary_terms}
 
-    **GUIDELINE 4: Protagonist's Dialogue (주인공 대화)**
-    - The protagonist's speech should generally follow these established styles.
-    - However, you have the autonomy to deviate if the immediate context (e.g., a moment of extreme anger, intimacy, or sarcasm) makes the established style unnatural.
+    **GUIDELINE 4: {protagonist_name}'s Dialogue (주인공 대화)**
+    - For the {protagonist_name}'s dialogue, you should use the specific Korean speech style defined for each character interaction below.
+    - **`해요체`** is a polite but informal style.
+    - **`하십시오체`** is a formal and highly respectful style.
+    - **`반말`** is an informal style for close relationships.
+    - You may only deviate if the immediate context (e.g., a sudden emotional outburst) makes the established style completely unnatural.
+
+    **{protagonist_name}'s Dialogue Styles:**
     {character_speech_styles}
 
     **GUIDELINE 5: Other Characters' Dialogue (기타 인물 대화)**
@@ -124,11 +151,13 @@ translation:
 
     **GUIDELINE 6: Context is Key**
     - Use the previous sentences for immediate context and style continuity.
-    - **Previous language Sentence:** {prev_segment_en}
-    - **Previous Korean Translation:** {prev_segment_ko}
+    - **Previous Source Sentence:**
+      {prev_segment_en}
+    - **Previous Korean Translation:**
+      {prev_segment_ko}
     - Your new translation should flow naturally from the previous Korean translation.
 
-    ---
-    **Translate the following text into Korean, adhering to the guidelines above:**
+    **Translate the following text into Korean, adhering to all guidelines above:**
     ---
     {source_segment}
+    ---
