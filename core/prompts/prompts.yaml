@@ -99,7 +99,7 @@ style_analysis:
     You are an expert literary analyst specializing in translation. Your task is to analyze the provided text to define the **core NARRATIVE style (for text outside of quotes)** for a Korean translation LLM. The output must be a practical, actionable guide for the narrator's voice.
 
     **Analysis Report Template:**
-    1.  **Protagonist Name:** (The single most central character's name. If unclear, state "Unknown".)
+    1.  **Protagonist Name:** (The single most central character's name. If unclear, state "Protagonist".)
     2.  **Narration Style & Endings (서술 문체 및 어미):**
         - **Description:** (A brief description of the narrator's voice. e.g., "A neutral, third-person observer's voice." or "The protagonist's inner monologue, speaking to themselves.")
         - **Ending Style:** (The Korean sentence ending style for narration. Almost always `해라체 (e.g., -다, -했다)`)
