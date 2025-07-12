@@ -22,7 +22,7 @@ character_style:
 
 style_analysis:
   narrative_deviation: # Prompt for detecting style deviations
-  define_narrative_style: # Prompt for defining the core narrative style
+  define_narrative_style: # Prompt for defining the protagonist's name and the core narrative style
 
 translation:
   main: # Main translation prompt template
