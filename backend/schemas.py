@@ -35,3 +35,17 @@ class TranslationUsageLog(TranslationUsageLogBase):
 
     class Config:
         from_attributes = True
+
+class AnnouncementBase(BaseModel):
+    message: str
+    is_active: bool = True
+
+class AnnouncementCreate(AnnouncementBase):
+    pass
+
+class Announcement(AnnouncementBase):
+    id: int
+    created_at: datetime.datetime
+
+    class Config:
+        from_attributes = True
