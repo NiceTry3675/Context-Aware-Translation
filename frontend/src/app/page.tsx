@@ -5,13 +5,12 @@ import {
   Container, Box, Typography, TextField, Button, CircularProgress, Alert,
   Card, CardContent, CardActions, IconButton, Tooltip, Chip,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-  LinearProgress, ToggleButtonGroup, ToggleButton
+  LinearProgress, ToggleButtonGroup, ToggleButton, InputAdornment, Link
 } from '@mui/material';
 import {
   UploadFile as UploadFileIcon,
   Delete as DeleteIcon,
   Download as DownloadIcon,
-  Info as InfoIcon,
   Coffee as CoffeeIcon,
   Email as EmailIcon,
   CheckCircle as CheckCircleIcon,
@@ -20,10 +19,18 @@ import {
   AccountTree as AccountTreeIcon,
   Spellcheck as SpellcheckIcon,
   Style as StyleIcon,
-  Description as DescriptionIcon, // 로그 아이콘
-  Chat as ChatIcon // 프롬프트 아이콘
+  Description as DescriptionIcon,
+  Chat as ChatIcon,
+
+  Person as PersonIcon,
+  TextFields as TextFieldsIcon,
+  Palette as PaletteIcon,
+  Gavel as GavelIcon,
+  OpenInNew as OpenInNewIcon,
+  AutoStories as AutoStoriesIcon,
+  MenuBook as MenuBookIcon,
 } from '@mui/icons-material';
-import theme from '../theme'; // Import the custom theme
+import theme from '../theme';
 
 // --- Type Definitions ---
 interface Job {
@@ -37,26 +44,33 @@ interface Job {
 }
 
 interface StyleData {
-  narrative_perspective: string;
-  primary_speech_level: string;
-  tone: string;
+  protagonist_name: string;
+  narration_style_endings: string;
+  tone_keywords: string;
+  stylistic_rule: string;
 }
 
 const modelOptions = [
     {
       value: "gemini-2.5-flash-lite-preview-06-17",
-      label: "Flash Lite",
-      description: "가장 빠르고 경제적입니다. 초벌 번역에 적합합니다."
+      label: "Flash Lite (추천)",
+      description: "가장 빠른 속도와 저렴한 비용으로 빠르게 결과물을 확인하고 싶을 때 적합합니다.",
+      chip: "속도",
+      chipColor: "primary" as "primary" | "success" | "info" | "error",
     },
     {
       value: "gemini-2.5-flash",
       label: "Flash",
-      description: "속도와 품질의 균형을 맞춘 모델입니다."
+      description: "준수한 품질과 합리적인 속도의 균형을 원할 때 가장 이상적인 선택입니다.",
+      chip: "균형",
+      chipColor: "info" as "primary" | "success" | "info" | "error",
     },
     {
       value: "gemini-2.5-pro",
       label: "Pro",
-      description: "최고 품질을 원할 때 사용하세요."
+      description: "최고 수준의 문학적 번역 품질을 원하신다면 선택하세요. (느리고 비쌀 수 있음)",
+      chip: "품질",
+      chipColor: "error" as "primary" | "success" | "info" | "error",
     },
 ];
 
@@ -64,7 +78,7 @@ const featureItems = [
   {
     icon: <AccountTreeIcon sx={{ fontSize: 40 }} />,
     title: "문맥 유지",
-    text: "소설 전체의 분위기와 등장인물의 말투를 학습하여, 챕터가 넘어가도 번역 품질이 흔들리지 않습니다.",
+    text: "소설 전체의 분위기와 등장인물의 말투를 분석하여, 챕터가 넘어가도 번역 품질이 흔들리지 않습니다.",
     color: theme.palette.primary.main,
   },
   {
@@ -80,6 +94,17 @@ const featureItems = [
     color: theme.palette.info.main,
   },
 ];
+
+const formatDuration = (start: string, end: string | null): string => {
+  if (!end) return '';
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const seconds = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
+  if (seconds < 60) return `${seconds}초`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}분 ${remainingSeconds}초`;
+};
 
 
 // --- Main Component ---
@@ -110,6 +135,28 @@ export default function Home() {
     if (apiKey) localStorage.setItem('geminiApiKey', apiKey);
   }, [apiKey]);
 
+  const handleModelChange = (newValue: string) => {
+    if (!newValue) return;
+
+    const previousModel = selectedModel;
+    setSelectedModel(newValue);
+
+    if (newValue === 'gemini-2.5-pro') {
+      const confirmation = window.confirm(
+        "⚠️ Pro 모델 경고 ⚠️\n\n" +
+        "Pro 모델은 최고의 번역 품질을 제공하지만, 다음과 같은 단점이 있을 수 있습니다:\n\n" +
+        "1. 번역 속도가 매우 느립니다.\n" +
+        "2. API 비용이 다른 모델보다 훨씬 비쌉니다.\n" +
+        "3. 현재 서비스는 베타 버전으로, 긴 작업 중 서버가 중단될 수 있습니다.\n\n" +
+        "계속 진행하시겠습니까?"
+      );
+
+      if (!confirmation) {
+        setSelectedModel(previousModel);
+      }
+    }
+  };
+  
   useEffect(() => {
     const loadJobs = async () => {
       const storedJobIdsString = localStorage.getItem('jobIds');
@@ -314,18 +361,22 @@ export default function Home() {
           <ToggleButtonGroup
             value={selectedModel}
             exclusive
-            onChange={(_, newValue) => { if (newValue) setSelectedModel(newValue); }}
+            onChange={(_, newValue) => handleModelChange(newValue)}
             aria-label="Translation Model Selection"
             fullWidth
             sx={{ mb: 4 }}
           >
             {modelOptions.map(opt => (
-              <ToggleButton value={opt.value} key={opt.value} sx={{ flexDirection: 'column', flex: 1, p: 2 }}>
-                <Typography variant="button">{opt.label}</Typography>
-                <Typography variant="caption" sx={{ textTransform: 'none', mt: 0.5 }}>{opt.description}</Typography>
+              <ToggleButton value={opt.value} key={opt.value} sx={{ flexDirection: 'column', flex: 1, p: 2, alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <Typography variant="button">{opt.label}</Typography>
+                  <Chip label={opt.chip} color={opt.chipColor} size="small" />
+                </Box>
+                <Typography variant="caption" sx={{ textTransform: 'none', mt: 0.5, textAlign: 'center' }}>
+                  {opt.description}
+                </Typography>
               </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
+            ))}</ToggleButtonGroup>
 
           {/* Step 2: API Key */}
           <Typography variant="h5" component="h3" gutterBottom>2. Gemini API 키 입력</Typography>
@@ -335,8 +386,20 @@ export default function Home() {
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             fullWidth
-            sx={{ mb: 4 }}
+            sx={{ mb: 1 }}
           />
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 4 }}>
+            <Link 
+              href="https://aistudio.google.com/app/apikey" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              variant="body2"
+              sx={{ display: 'inline-flex', alignItems: 'center' }}
+            >
+              API 키 발급받기
+              <OpenInNewIcon sx={{ ml: 0.5, fontSize: 'inherit' }} />
+            </Link>
+          </Box>
 
           {/* Step 3: File Upload */}
           <Typography variant="h5" component="h3" gutterBottom>3. 소설 파일 업로드</Typography>
@@ -367,24 +430,68 @@ export default function Home() {
           <CardContent sx={{ borderTop: 1, borderColor: 'divider', mt: 2 }}>
             <Typography variant="h5" component="h3" gutterBottom>4. 핵심 서사 스타일 확인 및 수정</Typography>
             <Typography color="text.secondary" mb={3}>AI가 분석한 소설의 핵심 스타일입니다. 필요하다면 직접 수정할 수 있습니다.</Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <TextField 
-                  label="서사 관점" 
-                  value={styleData.narrative_perspective} 
-                  onChange={(e) => setStyleData(prev => prev ? { ...prev, narrative_perspective: e.target.value } : null)} 
-                  fullWidth 
+                  label="1. 주인공 이름" 
+                  value={styleData.protagonist_name} 
+                  onChange={(e) => setStyleData(prev => prev ? { ...prev, protagonist_name: e.target.value } : null)} 
+                  fullWidth
+                  variant="outlined"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PersonIcon />
+                      </InputAdornment>
+                    ),
+                  }}
                 />
                 <TextField 
-                  label="주요 말투" 
-                  value={styleData.primary_speech_level} 
-                  onChange={(e) => setStyleData(prev => prev ? { ...prev, primary_speech_level: e.target.value } : null)} 
-                  fullWidth 
+                  label="2. 서술 문체 및 어미" 
+                  value={styleData.narration_style_endings} 
+                  onChange={(e) => setStyleData(prev => prev ? { ...prev, narration_style_endings: e.target.value } : null)} 
+                  fullWidth
+                  multiline
+                  rows={4}
+                  variant="outlined"
+                   InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <TextFieldsIcon />
+                      </InputAdornment>
+                    ),
+                  }}
                 />
                 <TextField 
-                  label="글의 톤" 
-                  value={styleData.tone} 
-                  onChange={(e) => setStyleData(prev => prev ? { ...prev, tone: e.target.value } : null)} 
-                  fullWidth 
+                  label="3. 핵심 톤과 키워드 (전체 분위기)" 
+                  value={styleData.tone_keywords} 
+                  onChange={(e) => setStyleData(prev => prev ? { ...prev, tone_keywords: e.target.value } : null)} 
+                  fullWidth
+                  multiline
+                  rows={3}
+                  variant="outlined"
+                   InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <PaletteIcon />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <TextField 
+                  label="4. 가장 중요한 스타일 규칙 (Golden Rule)" 
+                  value={styleData.stylistic_rule} 
+                  onChange={(e) => setStyleData(prev => prev ? { ...prev, stylistic_rule: e.target.value } : null)} 
+                  fullWidth
+                  multiline
+                  rows={3}
+                  variant="outlined"
+                   InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <GavelIcon />
+                      </InputAdornment>
+                    ),
+                  }}
                 />
             </Box>
             <CardActions sx={{ justifyContent: 'flex-end', mt: 3, p: 0 }}>
@@ -410,70 +517,106 @@ export default function Home() {
         )}
       </Card>
 
-      {/* Jobs Table */}
+      {/* Jobs Section */}
       <Typography variant="h2" component="h2" textAlign="center" gutterBottom>Translation Jobs</Typography>
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Filename</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Submitted</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {jobs.map((job) => (
-              <TableRow key={job.id} hover sx={{ '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.04)' }}}>
-                <TableCell>{job.filename}</TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {getStatusIcon(job.status)}
-                    <Typography variant="body2">
-                      {job.status} {job.status === 'PROCESSING' && `(${job.progress}%)`}
+      
+      {jobs.some(job => job.status === 'PROCESSING') && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          <strong>안내:</strong> 번역 작업은 내부적으로 여러 단계를 거칩니다. 첫 챕터(약 5~10분)의 분석 및 번역이 완료될 때까지 진행률이 0%로 표시될 수 있으니 잠시만 기다려주세요.
+        </Alert>
+      )}
+
+      {jobs.some(job => job.status === 'COMPLETED' && !job.filename.toLowerCase().endsWith('.epub')) && (
+        <Alert severity="success" icon={<MenuBookIcon fontSize="inherit" />} sx={{ mb: 2 }}>
+          <strong>팁:</strong> 완료된 TXT 파일은{' '}
+          <Link href="https://calibre-ebook.com/download" target="_blank" rel="noopener noreferrer" sx={{ fontWeight: 'bold' }}>
+            Calibre
+          </Link>
+          {' '}
+          를 사용하여 EPUB 등 원하는 전자책 형식으로 쉽게 변환할 수 있습니다.
+        </Alert>
+      )}
+
+      {jobs.length > 0 ? (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>파일명</TableCell>
+                <TableCell>상태</TableCell>
+                <TableCell>소요 시간</TableCell>
+                <TableCell align="right">작업</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {jobs.map((job) => (
+                <TableRow key={job.id} hover>
+                  <TableCell component="th" scope="row">
+                    <Typography variant="body2" noWrap title={job.filename} sx={{ maxWidth: '300px' }}>
+                      {job.filename}
                     </Typography>
-                    {job.status === 'FAILED' && job.error_message && (
-                      <Tooltip title={job.error_message}><InfoIcon fontSize="small" sx={{ cursor: 'pointer' }} /></Tooltip>
-                    )}
-                  </Box>
-                  {job.status === 'PROCESSING' && <LinearProgress variant="determinate" value={job.progress} />}
-                </TableCell>
-                <TableCell>{new Date(job.created_at).toLocaleString()}</TableCell>
-                <TableCell align="right">
-                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-                    {job.status === 'COMPLETED' && (
-                      <Tooltip title="Download Translated File">
-                        <IconButton color="primary" href={`${API_URL}/download/${job.id}`} download>
-                          <DownloadIcon />
+                    <Typography variant="caption" color="text.secondary">
+                      {new Date(job.created_at).toLocaleString()}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {getStatusIcon(job.status)}
+                      <Typography variant="body2">
+                        {job.status} {job.status === 'PROCESSING' && `(${job.progress}%)`}
+                      </Typography>
+                    </Box>
+                    {job.status === 'PROCESSING' && <LinearProgress variant="determinate" value={job.progress} sx={{ mt: 0.5 }} />}
+                  </TableCell>
+                  <TableCell>
+                    {job.status === 'COMPLETED' ? formatDuration(job.created_at, job.completed_at) : '-'}
+                  </TableCell>
+                  <TableCell align="right">
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                      {job.status === 'COMPLETED' && (
+                        <Tooltip title="번역 파일 다운로드">
+                          <IconButton color="primary" href={`${API_URL}/download/${job.id}`} download>
+                            <DownloadIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {devMode && (job.status === 'COMPLETED' || job.status === 'FAILED') && (
+                        <>
+                          <Tooltip title="프롬프트 로그 다운로드">
+                            <IconButton size="small" href={`${API_URL}/download/logs/${job.id}/prompts`} download>
+                              <ChatIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="컨텍스트 로그 다운로드">
+                            <IconButton size="small" href={`${API_URL}/download/logs/${job.id}/context`} download>
+                              <DescriptionIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      )}
+                      <Tooltip title="작업 삭제">
+                        <IconButton onClick={() => handleDelete(job.id)}>
+                          <DeleteIcon />
                         </IconButton>
                       </Tooltip>
-                    )}
-                    {devMode && (job.status === 'COMPLETED' || job.status === 'FAILED') && (
-                      <>
-                        <Tooltip title="Download Prompts Log">
-                          <IconButton size="small" href={`${API_URL}/download/logs/${job.id}/prompts`} download>
-                            <ChatIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Download Context Log">
-                          <IconButton size="small" href={`${API_URL}/download/logs/${job.id}/context`} download>
-                            <DescriptionIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </>
-                    )}
-                    <Tooltip title="Delete Job">
-                      <IconButton onClick={() => handleDelete(job.id)}>
-                        <DeleteIcon />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      ) : (
+        <Paper sx={{ p: 4, textAlign: 'center', backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
+          <AutoStoriesIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+          <Typography variant="h6" component="p">
+            아직 번역한 작업이 없네요.
+          </Typography>
+          <Typography color="text.secondary">
+            첫 번째 소설을 번역해보세요!
+          </Typography>
+        </Paper>
+      )}
 
       {/* Footer */}
       <Box textAlign="center" mt={10} pt={4} borderTop={1} borderColor="divider">

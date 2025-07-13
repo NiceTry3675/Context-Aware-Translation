@@ -11,35 +11,19 @@ class DynamicConfigBuilder:
     It uses specialized managers to handle different aspects of the analysis.
     """
 
-    def __init__(self, model: GeminiModel, novel_name: str):
+    def __init__(self, model: GeminiModel, protagonist_name: str):
         """
         Initializes the builder with the shared Gemini model and managers.
         
         Args:
             model: The shared GeminiModel instance.
-            novel_name: The name of the novel, used for context.
+            protagonist_name: The name of the protagonist.
         """
         self.model = model
-        self.novel_name = novel_name
-        # In a future implementation, the protagonist's name could be dynamically identified
-        # or passed in from a configuration file. For now, we can assume a default.
-        protagonist_name = self._determine_protagonist(novel_name)
-        
         self.character_style_manager = CharacterStyleManager(model, protagonist_name)
-        print(f"DynamicConfigBuilder initialized for '{novel_name}' with protagonist '{protagonist_name}'.")
+        print(f"DynamicConfigBuilder initialized with protagonist '{protagonist_name}'.")
 
-    def _determine_protagonist(self, novel_name: str) -> str:
-        """
-        Determines the protagonist's name based on the novel's title.
-        This is a simple heuristic and can be replaced with a more robust method.
-        """
-        # Simple example: "THE_CATCHER_IN_THE_RYE" -> "Holden"
-        if "CATCHER" in novel_name.upper():
-            return "Holden"
-        if "METAMORPHOSIS" in novel_name.upper():
-            return "Gregor"
-        # Default fallback
-        return "protagonist"
+    
 
     def build_dynamic_guides(self, segment_text: str, core_narrative_style: str, current_glossary: dict, current_character_styles: dict, job_base_filename: str, segment_index: int) -> tuple[dict, dict, str]:
         """

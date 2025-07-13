@@ -11,8 +11,12 @@ from ..errors import ProhibitedException
 from ..errors import prohibited_content_logger
 from ..utils.retry import retry_on_prohibited_segment
 from ..prompts.sanitizer import PromptSanitizer
-from backend import crud  # Import crud to use its functions
 from sqlalchemy.orm import Session
+# Import crud only if backend is available
+try:
+    from backend import crud
+except ImportError:
+    crud = None
 
 def get_segment_ending(segment_text: str, max_chars: int) -> str:
     """
@@ -88,7 +92,8 @@ class TranslationEngine:
             
             # --- Progress Update ---
             progress = int((i / total_segments) * 100)
-            crud.update_job_progress(self.db, self.job_id, progress)
+            if crud and self.db and self.job_id:
+                crud.update_job_progress(self.db, self.job_id, progress)
             # -----------------------
 
             updated_glossary, updated_styles, style_deviation = self.dyn_config_builder.build_dynamic_guides(
@@ -117,7 +122,8 @@ class TranslationEngine:
                 character_styles=job.character_styles,
                 source_segment=segment_info.text,
                 prev_segment_en=immediate_context_en,
-                prev_segment_ko=immediate_context_ko
+                prev_segment_ko=immediate_context_ko,
+                protagonist_name=self.dyn_config_builder.character_style_manager.protagonist_name
             )
 
             self._write_context_log(

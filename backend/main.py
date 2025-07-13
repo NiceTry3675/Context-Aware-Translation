@@ -79,26 +79,32 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
 # )
 # -----------------------------------------------------
         translation_job = TranslationJob(file_path)
-        novel_name = translation_job.base_filename
-        dyn_config_builder = DynamicConfigBuilder(gemini_api, novel_name)
-
-        # 만약 사용자가 정의한 스타일이 있다면, 여기서 텍스트 형식으로 재구성
+        
+        # 사용자가 정의한 스타일 처리
         initial_core_style_text = None
+        protagonist_name = "protagonist" # 기본값
         if style_data:
             try:
                 style_dict = json.loads(style_data)
                 print(f"--- [BACKGROUND] Using user-defined core style for Job ID: {job_id}: {style_dict} ---")
                 
+                # 주인공 이름 설정
+                protagonist_name = style_dict.get('protagonist_name', 'protagonist')
+
                 # JSON을 core 로직이 기대하는 텍스트 형식으로 변환 (마크다운 포함)
                 style_parts = [
-                    f"1. **Narrative Perspective:** {style_dict.get('narrative_perspective', 'Not specified')}",
-                    f"2. **Primary Speech Level:** {style_dict.get('primary_speech_level', 'Not specified')}",
-                    f"3. **Tone (Written/Spoken):** {style_dict.get('tone', 'Not specified')}"
+                    f"1. **Protagonist Name:** {protagonist_name}",
+                    f"2. **Narration Style & Endings (서술 문체 및 어미):** {style_dict.get('narration_style_endings', 'Not specified')}",
+                    f"3. **Core Tone & Keywords (전체 분위기):** {style_dict.get('tone_keywords', 'Not specified')}",
+                    f"4. **Key Stylistic Rule (The \"Golden Rule\"):** {style_dict.get('stylistic_rule', 'Not specified')}"
                 ]
                 initial_core_style_text = "\n".join(style_parts)
 
             except json.JSONDecodeError:
                 print(f"--- [BACKGROUND] WARNING: Could not decode style_data JSON for Job ID: {job_id}. Proceeding with auto-analysis. ---")
+
+        # DynamicConfigBuilder를 주인공 이름과 함께 생성
+        dyn_config_builder = DynamicConfigBuilder(gemini_api, protagonist_name)
 
         # TranslationEngine 생성 시 재구성된 텍스트 스타일 전달
         engine = TranslationEngine(gemini_api, dyn_config_builder, db=db, job_id=job_id, initial_core_style=initial_core_style_text)
@@ -116,9 +122,10 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
 
 # Pydantic model for the style analysis response
 class StyleAnalysisResponse(BaseModel):
-    narrative_perspective: str
-    primary_speech_level: str
-    tone: str
+    protagonist_name: str
+    narration_style_endings: str
+    tone_keywords: str
+    stylistic_rule: str
 
 @app.post("/api/v1/analyze-style", response_model=StyleAnalysisResponse)
 async def analyze_style(
@@ -158,48 +165,45 @@ async def analyze_style(
             enable_soft_retry=config.get('enable_soft_retry', True)
         )
 
-        # --- TranslationEngine._define_core_style 로직을 직접 구현 ---
         print("\n--- Defining Core Narrative Style via API... ---")
         prompt = PromptManager.DEFINE_NARRATIVE_STYLE.format(sample_text=initial_text)
         style_report_text = gemini_api.generate_text(prompt)
         print(f"Style defined as: {style_report_text}")
-        # ----------------------------------------------------------
 
-        # 5. 텍스트 결과를 JSON으로 파싱 (개선된 로직)
+        # 5. 텍스트 결과를 JSON으로 파싱 (새로운 안정적인 로직)
         parsed_style = {}
         key_mapping = {
-            'Narrative Perspective': 'narrative_perspective',
-            'Primary Speech Level': 'primary_speech_level',
-            'Tone (Written/Spoken)': 'tone',
-            'Tone': 'tone'
+            "Protagonist Name": "protagonist_name",
+            "Narration Style & Endings (서술 문체 및 어미)": "narration_style_endings",
+            "Narration Style & Endings": "narration_style_endings",
+            "Core Tone & Keywords (전체 분위기)": "tone_keywords",
+            "Core Tone & Keywords": "tone_keywords",
+            "Key Stylistic Rule (The \"Golden Rule\")": "stylistic_rule",
+            "Key Stylistic Rule": "stylistic_rule",
         }
 
-        # AI 응답을 숫자(1., 2., 3.)를 기준으로 분리
-        segments = re.split(r'\s*\d\.\s*', style_report_text)
-        
-        for segment in segments:
-            if ':' not in segment:
-                continue
-
-            # 첫 번째 콜론을 기준으로 키와 값으로 분리
-            key_raw, value_full = segment.split(':', 1)
-            
-            # 키 정리: 양쪽의 ** 와 공백 제거
-            key = key_raw.replace('**', '').strip()
-            
-            # 값 정리: 
-            # 1. 부가 설명(" - ")이 있다면 그 앞부분만 사용
-            # 2. 양쪽의 ** 와 공백을 추가로 제거
-            value = value_full.split(' - ')[0].replace('**', '').strip()
-
-            if key in key_mapping:
-                json_key = key_mapping[key]
+        # 정규식을 사용하여 각 항목을 추출
+        for key_pattern, json_key in key_mapping.items():
+            # 정규식 패턴 생성 (키와 그 뒤에 오는 내용을 non-greedy하게 매칭)
+            # Lookahead (?=...)를 사용하여 다음 항목의 시작 전까지 모든 내용을 캡처
+            pattern = re.escape(key_pattern) + r":\s*(.*?)(?=\s*\d\.\s*\*|$)"
+            match = re.search(pattern, style_report_text, re.DOTALL | re.IGNORECASE)
+            if match:
+                # 값에서 앞뒤 공백과 마크다운을 정리
+                value = match.group(1).strip().replace('**', '')
                 parsed_style[json_key] = value
+        
+        # 중복 키를 처리했으므로, 유니크한 값만 남김
+        # (예: "Core Tone & Keywords (3-5 words)"와 "Core Tone & Keywords"가 둘 다 tone_keywords에 매핑됨)
+        # 실제로는 정규식 탐색 순서에 따라 하나만 매칭될 가능성이 높음.
 
         if len(parsed_style) < 3:
+            # 파싱 실패 시, 더 유용한 디버깅을 위해 정규식으로 찾은 부분이라도 보여주자.
+            found_keys = list(parsed_style.keys())
             error_detail = (
                 "Failed to parse all style attributes from the report. "
-                f"Received the following text from the AI, which could not be parsed: '{style_report_text}'"
+                f"Successfully parsed: {found_keys}. "
+                f"Received the following text from the AI, which could not be fully parsed: '{style_report_text}'"
             )
             raise HTTPException(status_code=500, detail=error_detail)
 
