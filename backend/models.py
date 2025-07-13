@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from .database import Base
 
@@ -12,3 +12,15 @@ class TranslationJob(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
     error_message = Column(String, nullable=True)
+
+class TranslationUsageLog(Base):
+    __tablename__ = "translation_usage_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(Integer, ForeignKey("translation_jobs.id"), index=True)
+    original_length = Column(Integer)
+    translated_length = Column(Integer)
+    translation_duration_seconds = Column(Integer)
+    model_used = Column(String)
+    error_type = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

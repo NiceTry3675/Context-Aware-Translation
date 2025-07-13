@@ -7,16 +7,17 @@ from ..prompts.builder import PromptBuilder
 from ..config.builder import DynamicConfigBuilder
 from .job import TranslationJob
 from ..prompts.manager import PromptManager
-from ..errors import ProhibitedException
+from ..errors import ProhibitedException, TranslationError
 from ..errors import prohibited_content_logger
 from ..utils.retry import retry_on_prohibited_segment
 from ..prompts.sanitizer import PromptSanitizer
 from sqlalchemy.orm import Session
-# Import crud only if backend is available
+# Import crud and schemas only if backend is available
 try:
-    from backend import crud
+    from backend import crud, schemas
 except ImportError:
     crud = None
+    schemas = None
 
 def get_segment_ending(segment_text: str, max_chars: int) -> str:
     """
@@ -50,15 +51,43 @@ class TranslationEngine:
         self.initial_core_style = initial_core_style
 
     def translate_job(self, job: TranslationJob):
+        start_time = time.time()
+        error_type = None
+        original_text = ""
+        translated_text_final = ""
+        try:
+            self._translate_job_internal(job)
+            original_text = "\n".join(s.text for s in job.segments)
+            translated_text_final = job.get_final_translation()
+        except TranslationError as e:
+            error_type = e.__class__.__name__
+            # Re-raise the exception to be handled by the main runner
+            raise e
+        finally:
+            if crud and self.db and self.job_id:
+                end_time = time.time()
+                duration = int(end_time - start_time)
+                
+                log_data = schemas.TranslationUsageLogCreate(
+                    job_id=self.job_id,
+                    original_length=len(original_text),
+                    translated_length=len(translated_text_final),
+                    translation_duration_seconds=duration,
+                    model_used=self.gemini_api.model_name,
+                    error_type=error_type
+                )
+                crud.create_translation_usage_log(self.db, log_data)
+                print("\n--- Usage log has been recorded. ---")
+
+    def _translate_job_internal(self, job: TranslationJob):
         """
-        Translates all segments in a given TranslationJob.
+        Internal method to handle the main translation logic.
         """
         prompt_log_dir = "debug_prompts"
         context_log_dir = "context_log"
         os.makedirs(prompt_log_dir, exist_ok=True)
         os.makedirs(context_log_dir, exist_ok=True)
         
-        # job_id를 파일명에 포함하여 고유성 보장
         prompt_log_path = os.path.join(prompt_log_dir, f"prompts_job_{self.job_id}_{job.base_filename}.txt")
         context_log_path = os.path.join(context_log_dir, f"context_job_{self.job_id}_{job.base_filename}.txt")
 
@@ -73,12 +102,10 @@ class TranslationEngine:
 
         core_narrative_style = ""
         if self.initial_core_style:
-            # 사용자가 제공한 포맷팅된 스타일을 그대로 사용
             print("\n--- Using User-Defined Core Narrative Style... ---")
             core_narrative_style = self.initial_core_style
             print(f"Style defined as: {core_narrative_style}")
         else:
-            # 기존 방식대로 스타일 분석
             core_narrative_style = self._define_core_style(job.segments[0].text, job.base_filename)
         
         with open(context_log_path, 'a', encoding='utf-8') as f:
@@ -90,11 +117,9 @@ class TranslationEngine:
         for i, segment_info in enumerate(tqdm(job.segments, desc="Translating Segments")):
             segment_index = i + 1
             
-            # --- Progress Update ---
             progress = int((i / total_segments) * 100)
             if crud and self.db and self.job_id:
                 crud.update_job_progress(self.db, self.job_id, progress)
-            # -----------------------
 
             updated_glossary, updated_styles, style_deviation = self.dyn_config_builder.build_dynamic_guides(
                 segment_text=segment_info.text,
@@ -140,72 +165,7 @@ class TranslationEngine:
                 f.write(prompt)
                 f.write("\n\n" + "="*50 + "\n\n")
 
-            # 5. Generate translation with retry logic
-            translated_text = ""
-            soft_retry_attempts = 3
-            original_prompt = prompt
-            
-            for retry_attempt in range(soft_retry_attempts + 1):
-                try:
-                    if retry_attempt > 0:
-                        # Create softer prompt for retry
-                        prompt = PromptSanitizer.create_softer_prompt(original_prompt, retry_attempt)
-                        print(f"\nRetrying with softer prompt (attempt {retry_attempt}/{soft_retry_attempts})...")
-                        time.sleep(2)  # Brief delay between retries
-                    
-                    # The gemini_model's generate_text will handle retries for retriable errors
-                    # and will immediately raise an exception for non-retriable ones.
-                    model_response = self.gemini_api.generate_text(prompt) 
-                    translated_text = _extract_translation_from_response(model_response)
-                    
-                    if retry_attempt > 0:
-                        print(f"Successfully translated with softer prompt on attempt {retry_attempt}")
-                    break  # Success, exit retry loop
-                    
-                except ProhibitedException as e:
-                    if retry_attempt < soft_retry_attempts:
-                        # Will retry with softer prompt
-                        print(f"\nProhibitedException caught: {e}")
-                        print("Will retry with a softer prompt...")
-                        continue
-                    else:
-                        # All retries exhausted
-                        # Handle prohibited content using the centralized logger
-                        e.source_text = segment_info.text
-                        e.context = {
-                            'segment_index': segment_index,
-                            'glossary': contextual_glossary,
-                            'character_styles': job.character_styles,
-                            'style_deviation': style_deviation,
-                            'soft_retry_attempts': soft_retry_attempts
-                        }
-                        log_path = prohibited_content_logger.log_prohibited_content(e, job.base_filename, segment_index)
-                        print(f"\nAll soft retry attempts failed. Translation blocked for segment {segment_index}.")
-                        print(f"Log saved to: {log_path}")
-                        
-                        # Try minimal prompt as last resort
-                        try:
-                            print("Attempting minimal prompt as last resort...")
-                            minimal_prompt = PromptSanitizer.create_minimal_prompt(segment_info.text, "Korean")
-                            model_response = self.gemini_api.generate_text(minimal_prompt)
-                            translated_text = _extract_translation_from_response(model_response)
-                            print("Successfully translated with minimal prompt.")
-                        except:
-                            translated_text = f"[TRANSLATION_BLOCKED: Content safety filter triggered]"
-
-                except Exception as e:
-                    error_message = str(e)
-                    print(f"Translation failed for segment {segment_index}. Error: {error_message}")
-                    translated_text = f"[TRANSLATION_FAILED: {error_message}]"
-                
-                # If it's a non-retriable error, we want to stop the entire job.
-                if "API key not valid" in error_message or "PermissionDenied" in error_message or "InvalidArgument" in error_message:
-                    print("Non-retriable error detected. Aborting the entire translation job.")
-                    # We re-raise the exception to be caught by the top-level handler in main.py
-                    # which will then mark the entire job as FAILED.
-                    raise e
-
-            # 6. Save the result
+            translated_text = self._translate_segment_with_retries(prompt, segment_info, segment_index, job, contextual_glossary, style_deviation)
             job.append_translated_segment(translated_text, segment_info)
 
         job.save_final_output()
@@ -213,16 +173,67 @@ class TranslationEngine:
         print(f"\n--- Translation Complete! ---")
         print(f"Output: {job.output_filename}")
 
+    def _translate_segment_with_retries(self, original_prompt: str, segment_info, segment_index: int, job: TranslationJob, contextual_glossary: dict, style_deviation: str) -> str:
+        soft_retry_attempts = 3
+        prompt = original_prompt
+        
+        for retry_attempt in range(soft_retry_attempts + 1):
+            try:
+                if retry_attempt > 0:
+                    prompt = PromptSanitizer.create_softer_prompt(original_prompt, retry_attempt)
+                    print(f"\nRetrying with softer prompt (attempt {retry_attempt}/{soft_retry_attempts})...")
+                    time.sleep(2)
+                
+                model_response = self.gemini_api.generate_text(prompt)
+                translated_text = _extract_translation_from_response(model_response)
+                
+                if retry_attempt > 0:
+                    print(f"Successfully translated with softer prompt on attempt {retry_attempt}")
+                return translated_text
+                
+            except ProhibitedException as e:
+                if retry_attempt < soft_retry_attempts:
+                    print(f"\nProhibitedException caught: {e}. Will retry with a softer prompt...")
+                    continue
+                else:
+                    e.source_text = segment_info.text
+                    e.context = {
+                        'segment_index': segment_index,
+                        'glossary': contextual_glossary,
+                        'character_styles': job.character_styles,
+                        'style_deviation': style_deviation,
+                        'soft_retry_attempts': soft_retry_attempts
+                    }
+                    log_path = prohibited_content_logger.log_prohibited_content(e, job.base_filename, segment_index)
+                    print(f"\nAll soft retry attempts failed. Log saved to: {log_path}")
+                    
+                    try:
+                        print("Attempting minimal prompt as last resort...")
+                        minimal_prompt = PromptSanitizer.create_minimal_prompt(segment_info.text, "Korean")
+                        model_response = self.gemini_api.generate_text(minimal_prompt)
+                        return _extract_translation_from_response(model_response)
+                    except Exception as final_e:
+                        print(f"Minimal prompt also failed: {final_e}")
+                        # Raise the original ProhibitedException to be logged
+                        raise e from final_e
+
+            except TranslationError as e:
+                # For other translation errors, we re-raise them to be caught by the main job handler
+                print(f"Translation failed for segment {segment_index}. Error: {e}")
+                raise e
+
+        # This part should not be reached if retries are handled correctly
+        raise TranslationError(f"Failed to translate segment {segment_index} after all retries.")
+
     def _define_core_style(self, sample_text: str, job_base_filename: str = "unknown") -> str:
         """Analyzes the first segment to define the core narrative style for the novel."""
         print("\n--- Defining Core Narrative Style... ---")
+        prompt = PromptManager.DEFINE_NARRATIVE_STYLE.format(sample_text=sample_text)
         try:
-            prompt = PromptManager.DEFINE_NARRATIVE_STYLE.format(sample_text=sample_text)
             style = self.gemini_api.generate_text(prompt)
             print(f"Style defined as: {style}")
             return style
         except ProhibitedException as e:
-            # Log the prohibited content error
             log_path = prohibited_content_logger.log_simple_prohibited_content(
                 api_call_type="core_style_definition",
                 prompt=prompt,
@@ -230,12 +241,11 @@ class TranslationEngine:
                 error_message=str(e),
                 job_filename=job_base_filename
             )
-            print(f"Warning: Core style definition blocked by safety settings. Log saved to: {log_path}")
-            print("Falling back to default narrative style.")
+            print(f"Warning: Core style definition blocked. Log: {log_path}. Falling back to default.")
             return "A standard, neutral literary style ('평서체')."
         except Exception as e:
             print(f"Warning: Could not define narrative style. Falling back to default. Error: {e}")
-            return "A standard, neutral literary style ('평서체')."
+            raise TranslationError(f"Failed to define core style: {e}") from e
 
     def _write_context_log(self, log_path: str, segment_index: int, job: TranslationJob, contextual_glossary: dict, immediate_context_en: str, immediate_context_ko: str, style_deviation: str):
         """Writes a human-readable summary of the context to a log file."""

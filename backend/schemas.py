@@ -17,3 +17,21 @@ class TranslationJob(TranslationJobBase):
 
     class Config:
         from_attributes = True
+
+class TranslationUsageLogBase(BaseModel):
+    job_id: int
+    original_length: int
+    translated_length: int
+    translation_duration_seconds: int
+    model_used: str
+    error_type: str | None = None
+
+class TranslationUsageLogCreate(TranslationUsageLogBase):
+    pass
+
+class TranslationUsageLog(TranslationUsageLogBase):
+    id: int
+    created_at: datetime.datetime
+
+    class Config:
+        from_attributes = True
