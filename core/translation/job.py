@@ -188,8 +188,8 @@ class TranslationJob:
         return sentences
 
     def append_translated_segment(self, translated_text: str, original_segment: SegmentInfo):
-        """Appends a translated segment text along with its original context."""
-        self.translated_segments.append(SegmentInfo(translated_text, original_segment.chapter_title, original_segment.chapter_filename))
+        """Appends a translated segment text."""
+        self.translated_segments.append(translated_text)
 
     def save_final_output(self):
         """Saves the final output based on the input file format."""
@@ -203,12 +203,8 @@ class TranslationJob:
     def _save_as_text(self):
         """Saves the translated segments as a single .txt file."""
         with open(self.output_filename, 'w', encoding='utf-8') as f:
-            for i, segment in enumerate(self.translated_segments):
-                # Write the translated text, preserving original formatting
-                f.write(segment.text)
-                # Add the separator, but not for the very last segment
-                if i < len(self.translated_segments) - 1:
-                    f.write("\n" + "="*20 + "\n\n")
+            full_text = "\n".join(self.translated_segments)
+            f.write(full_text)
 
     def _save_as_epub(self):
         """Saves the translated content as a very simple, single-chapter EPUB."""
@@ -235,7 +231,7 @@ class TranslationJob:
             translated_book.set_cover(cover_image_item.file_name, cover_image_item.content)
 
         # Combine all translated text into one block
-        full_translated_text = "".join(seg.text for seg in self.translated_segments)
+        full_translated_text = "".join(self.translated_segments)
 
         # Create a single chapter with the full text
         main_chapter = epub.EpubHtml(title='Translated Content', file_name='chap_1.xhtml', lang='ko')
@@ -263,4 +259,4 @@ class TranslationJob:
 
     def get_previous_translation(self, current_index: int) -> str:
         """Returns the translation of the previous segment."""
-        return self.translated_segments[current_index - 1].text if current_index > 0 else ""
+        return self.translated_segments[current_index - 1] if current_index > 0 else ""

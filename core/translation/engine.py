@@ -58,7 +58,7 @@ class TranslationEngine:
         try:
             self._translate_job_internal(job)
             original_text = "\n".join(s.text for s in job.segments)
-            translated_text_final = job.get_final_translation()
+            translated_text_final = "\n".join(job.translated_segments)
         except TranslationError as e:
             error_type = e.__class__.__name__
             # Re-raise the exception to be handled by the main runner
@@ -78,6 +78,7 @@ class TranslationEngine:
                 )
                 crud.create_translation_usage_log(self.db, log_data)
                 print("\n--- Usage log has been recorded. ---")
+
 
     def _translate_job_internal(self, job: TranslationJob):
         """

@@ -23,6 +23,7 @@ class GeminiModel:
         if not api_key:
             raise ValueError("API key cannot be empty.")
         genai.configure(api_key=api_key)
+        self.model_name = model_name
         self.model = genai.GenerativeModel(
             model_name,
             safety_settings=safety_settings,
