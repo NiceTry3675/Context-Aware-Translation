@@ -15,7 +15,9 @@ SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./database.db")
 # connect_args는 SQLite에만 필요한 옵션이므로, PostgreSQL 연결 시에는 제거합니다.
 if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
     engine = create_engine(
-        SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+        SQLALCHEMY_DATABASE_URL, 
+        connect_args={"check_same_thread": False},
+        echo=False
     )
 else:
     engine = create_engine(SQLALCHEMY_DATABASE_URL)
