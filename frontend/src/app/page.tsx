@@ -11,7 +11,6 @@ import {
   UploadFile as UploadFileIcon,
   Delete as DeleteIcon,
   Download as DownloadIcon,
-  Info as InfoIcon,
   Coffee as CoffeeIcon,
   Email as EmailIcon,
   CheckCircle as CheckCircleIcon,
@@ -28,7 +27,6 @@ import {
   Palette as PaletteIcon,
   Gavel as GavelIcon,
   OpenInNew as OpenInNewIcon,
-  Timer as TimerIcon,
   AutoStories as AutoStoriesIcon,
   MenuBook as MenuBookIcon,
 } from '@mui/icons-material';
