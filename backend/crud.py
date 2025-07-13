@@ -31,3 +31,10 @@ def update_job_progress(db: Session, job_id: int, progress: int):
         db.commit()
         db.refresh(db_job)
     return db_job
+
+def create_translation_usage_log(db: Session, log_data: schemas.TranslationUsageLogCreate):
+    db_log = models.TranslationUsageLog(**log_data.dict())
+    db.add(db_log)
+    db.commit()
+    db.refresh(db_log)
+    return db_log
