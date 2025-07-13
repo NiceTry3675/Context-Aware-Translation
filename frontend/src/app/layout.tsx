@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { Metadata } from "next";
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Snackbar from '@mui/material/Snackbar';
