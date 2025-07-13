@@ -38,3 +38,25 @@ def create_translation_usage_log(db: Session, log_data: schemas.TranslationUsage
     db.commit()
     db.refresh(db_log)
     return db_log
+
+# Announcement CRUD functions
+
+def get_active_announcement(db: Session) -> models.Announcement | None:
+    return db.query(models.Announcement).filter(models.Announcement.is_active == True).order_by(models.Announcement.created_at.desc()).first()
+
+def create_announcement(db: Session, announcement: schemas.AnnouncementCreate) -> models.Announcement:
+    # Deactivate all other announcements first
+    db.query(models.Announcement).update({models.Announcement.is_active: False})
+    db_announcement = models.Announcement(**announcement.dict())
+    db.add(db_announcement)
+    db.commit()
+    db.refresh(db_announcement)
+    return db_announcement
+
+def deactivate_announcement(db: Session, announcement_id: int) -> models.Announcement | None:
+    db_announcement = db.query(models.Announcement).filter(models.Announcement.id == announcement_id).first()
+    if db_announcement:
+        db_announcement.is_active = False
+        db.commit()
+        db.refresh(db_announcement)
+    return db_announcement
