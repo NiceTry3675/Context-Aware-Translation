@@ -89,13 +89,13 @@ class TranslationEngine:
         os.makedirs(prompt_log_dir, exist_ok=True)
         os.makedirs(context_log_dir, exist_ok=True)
         
-        prompt_log_path = os.path.join(prompt_log_dir, f"prompts_job_{self.job_id}_{job.base_filename}.txt")
-        context_log_path = os.path.join(context_log_dir, f"context_job_{self.job_id}_{job.base_filename}.txt")
+        prompt_log_path = os.path.join(prompt_log_dir, f"prompts_job_{self.job_id}_{job.user_base_filename}.txt")
+        context_log_path = os.path.join(context_log_dir, f"context_job_{self.job_id}_{job.user_base_filename}.txt")
 
         with open(prompt_log_path, 'w', encoding='utf-8') as f:
-            f.write(f"# PROMPT LOG FOR: {job.base_filename}\n\n")
+            f.write(f"# PROMPT LOG FOR: {job.user_base_filename}\n\n")
         with open(context_log_path, 'w', encoding='utf-8') as f:
-            f.write(f"# CONTEXT LOG FOR: {job.base_filename}\n\n")
+            f.write(f"# CONTEXT LOG FOR: {job.user_base_filename}\n\n")
 
         if not job.segments:
             print("No segments to translate. Exiting.")
@@ -107,7 +107,7 @@ class TranslationEngine:
             core_narrative_style = self.initial_core_style
             print(f"Style defined as: {core_narrative_style}")
         else:
-            core_narrative_style = self._define_core_style(job.segments[0].text, job.base_filename)
+            core_narrative_style = self._define_core_style(job.segments[0].text, job.user_base_filename)
         
         with open(context_log_path, 'a', encoding='utf-8') as f:
             f.write(f"--- Core Narrative Style Defined ---\n")
@@ -127,7 +127,7 @@ class TranslationEngine:
                 core_narrative_style=core_narrative_style,
                 current_glossary=job.glossary,
                 current_character_styles=job.character_styles,
-                job_base_filename=job.base_filename,
+                job_base_filename=job.user_base_filename,
                 segment_index=segment_index
             )
             job.glossary = updated_glossary
@@ -205,7 +205,7 @@ class TranslationEngine:
                         'style_deviation': style_deviation,
                         'soft_retry_attempts': soft_retry_attempts
                     }
-                    log_path = prohibited_content_logger.log_prohibited_content(e, job.base_filename, segment_index)
+                    log_path = prohibited_content_logger.log_prohibited_content(e, job.user_base_filename, segment_index)
                     print(f"\nAll soft retry attempts failed. Log saved to: {log_path}")
                     
                     try:

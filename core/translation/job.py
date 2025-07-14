@@ -17,13 +17,20 @@ class TranslationJob:
     Represents a single translation job, handling different file formats
     and orchestrating the segmentation and saving process.
     """
-    def __init__(self, filepath: str, target_segment_size: int = 15000):
+    def __init__(self, filepath: str, original_filename: str = None, target_segment_size: int = 15000):
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"The file '{filepath}' does not exist.")
         
-        self.filepath = filepath
-        self.base_filename = os.path.splitext(os.path.basename(filepath))[0]
-        self.input_format = os.path.splitext(filepath.lower())[1]
+        self.filepath = filepath  # This is the unique path, e.g., "uploads/123_MyBook.txt"
+        
+        # Determine the base filename for user-facing names (e.g., "MyBook")
+        user_facing_filename = original_filename if original_filename else os.path.basename(filepath)
+        self.user_base_filename = os.path.splitext(user_facing_filename)[0]
+
+        # Determine the unique base filename for saving files (e.g., "123_MyBook")
+        unique_base_filename = os.path.splitext(os.path.basename(filepath))[0]
+        
+        self.input_format = os.path.splitext(user_facing_filename.lower())[1]
         
         self.segments = []
         self.translated_segments = []
@@ -31,12 +38,13 @@ class TranslationJob:
         self.character_styles = {}
         self.style_map = {} # For EPUB styles
 
+        # Use unique_base_filename for the actual output filename to ensure uniqueness
         if self.input_format == '.epub':
             self.original_book = epub.read_epub(self.filepath)
-            self.output_filename = os.path.join('translated_novel', f"{self.base_filename}_translated.epub")
+            self.output_filename = os.path.join('translated_novel', f"{unique_base_filename}_translated.epub")
             self.segments = self._create_segments_for_epub(target_segment_size)
         else:
-            self.output_filename = os.path.join('translated_novel', f"{self.base_filename}_translated.txt")
+            self.output_filename = os.path.join('translated_novel', f"{unique_base_filename}_translated.txt")
             self.segments = self._create_segments_for_text(target_segment_size)
         
         os.makedirs(os.path.dirname(self.output_filename), exist_ok=True)
@@ -215,7 +223,8 @@ class TranslationJob:
             title = self.original_book.get_metadata('DC', 'title')[0][0]
             translated_book.set_title(f"[KOR] {title}")
         except (IndexError, KeyError):
-            translated_book.set_title(f"[KOR] {self.base_filename}")
+            # Fallback to the user-facing base filename
+            translated_book.set_title(f"[KOR] {self.user_base_filename}")
         translated_book.set_language('ko')
         for author in self.original_book.get_metadata('DC', 'creator'):
             translated_book.add_author(author[0])
