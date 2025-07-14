@@ -73,7 +73,8 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
             generation_config=config['generation_config'],
             enable_soft_retry=config.get('enable_soft_retry', True)
         )
-        translation_job = TranslationJob(file_path)
+        # Pass both the unique file_path and the original filename to TranslationJob
+        translation_job = TranslationJob(file_path, original_filename=filename)
         
         initial_core_style_text = None
         protagonist_name = "protagonist"
@@ -107,15 +108,19 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
         db.close()
 
 # --- SSE Announcement Stream ---
-async def announcement_generator(request: Request, db: Session):
+async def announcement_generator(request: Request):
     last_sent_announcement = None
-    client_id = id(request)  # 클라이언트 식별용
-    
+    client_id = id(request)
     print(f"📡 새 클라이언트 연결: {client_id}")
-    
-    # 연결 시 즉시 현재 활성 공지 전송
+
+    # DB 세션을 with 문으로 관리하여 자동 반환 보장
+    def get_announcement_from_db():
+        with SessionLocal() as db:
+            return crud.get_active_announcement(db)
+
     try:
-        current_announcement = crud.get_active_announcement(db)
+        # 초기 연결 시 즉시 현재 활성 공지 전송
+        current_announcement = get_announcement_from_db()
         if current_announcement:
             announcement_data = {
                 "id": current_announcement.id,
@@ -129,20 +134,19 @@ async def announcement_generator(request: Request, db: Session):
             print(f"📤 초기 공지 전송 (클라이언트 {client_id}): ID {current_announcement.id}")
     except Exception as e:
         print(f"❌ 초기 공지 전송 오류: {e}")
-    
+
     while True:
         if await request.is_disconnected():
             print(f"🔌 클라이언트 연결 해제: {client_id}")
             break
-        
+
         try:
-            current_announcement = crud.get_active_announcement(db)
+            current_announcement = get_announcement_from_db()
             
-            # 공지 상태가 변경된 경우에만 전송
             should_send = False
-            
+            announcement_data = {}
+
             if current_announcement is None and last_sent_announcement is not None:
-                # 활성 공지가 없어진 경우 - 마지막 공지를 비활성 상태로 전송
                 announcement_data = {
                     "id": last_sent_announcement.id,
                     "message": last_sent_announcement.message,
@@ -152,14 +156,13 @@ async def announcement_generator(request: Request, db: Session):
                 should_send = True
                 last_sent_announcement = None
                 print(f"🔇 공지 비활성화 전송 (클라이언트 {client_id})")
-                
+
             elif current_announcement is not None:
-                if (last_sent_announcement is None or 
+                if (last_sent_announcement is None or
                     current_announcement.id != last_sent_announcement.id or
                     current_announcement.message != last_sent_announcement.message or
                     current_announcement.is_active != last_sent_announcement.is_active):
                     
-                    # 새로운 공지 또는 기존 공지 변경
                     announcement_data = {
                         "id": current_announcement.id,
                         "message": current_announcement.message,
@@ -168,21 +171,25 @@ async def announcement_generator(request: Request, db: Session):
                     }
                     should_send = True
                     last_sent_announcement = current_announcement
-                    print(f"📢 새 공지 전송 (클라이언트 {client_id}): ID {current_announcement.id}, 활성: {current_announcement.is_active}")
-            
+                    print(f"📢 새 공지/변경 전송 (클라이언트 {client_id}): ID {current_announcement.id}")
+
             if should_send:
                 json_str = json.dumps(announcement_data, ensure_ascii=False)
                 yield f"data: {json_str}\n\n"
-                
+
         except Exception as e:
             print(f"❌ SSE 스트림 오류 (클라이언트 {client_id}): {e}")
-            break
+            # 오류 발생 시에도 루프를 계속 진행할 수 있도록 break를 제거하거나,
+            # 혹은 특정 오류에 대해서만 break를 수행하도록 처리할 수 있습니다.
+            # 여기서는 일단 연결을 유지하도록 break를 주석 처리합니다.
+            # break 
         
-        await asyncio.sleep(120)  # 120초마다 체크 (서버 부담 감소)
+        await asyncio.sleep(120)
 
 @app.get("/api/v1/announcements/stream")
-async def stream_announcements(request: Request, db: Session = Depends(get_db)):
-    return StreamingResponse(announcement_generator(request, db), media_type="text/event-stream; charset=utf-8")
+async def stream_announcements(request: Request):
+    # 더 이상 `db` 의존성을 직접 주입하지 않음
+    return StreamingResponse(announcement_generator(request), media_type="text/event-stream; charset=utf-8")
 
 # --- Admin Endpoints ---
 def verify_admin_secret(x_admin_secret: str = Header(...)):
@@ -345,16 +352,30 @@ async def create_upload_file(
     if not GeminiModel.validate_api_key(api_key, model_name=model_name):
         raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
 
-    file_path = f"uploads/{file.filename}"
+    # 1. Create DB job first to get a unique job_id
+    job_create = schemas.TranslationJobCreate(filename=file.filename)
+    db_job = crud.create_translation_job(db, job_create)
+    
+    # 2. Sanitize filename and create a unique filename using the job_id
+    # This prevents overwriting files with the same name.
+    sanitized_filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', file.filename)
+    unique_filename = f"{db_job.id}_{sanitized_filename}"
+    file_path = f"uploads/{unique_filename}"
+    
+    os.makedirs("uploads", exist_ok=True)
     try:
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
     except Exception as e:
+        # If file saving fails, we should ideally roll back the DB job creation
+        # or mark it as failed. For now, we'll raise an exception.
+        crud.update_job_status(db, db_job.id, "FAILED", error_message=f"Failed to save file: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
 
-    job_create = schemas.TranslationJobCreate(filename=file.filename)
-    db_job = crud.create_translation_job(db, job_create)
-    
+    # 3. Update the job record with the unique file path
+    crud.update_job_filepath(db, job_id=db_job.id, filepath=file_path)
+
+    # 4. Add the background task with the correct unique file path and original filename
     background_tasks.add_task(run_translation_in_background, db_job.id, file_path, file.filename, api_key, model_name, style_data)
     
     return db_job
@@ -373,16 +394,26 @@ def download_translated_file(job_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Job not found")
     if db_job.status != "COMPLETED":
         raise HTTPException(status_code=400, detail="Translation is not completed yet.")
+    if not db_job.filepath:
+        raise HTTPException(status_code=404, detail="Filepath not found for this job.")
 
-    base, ext = os.path.splitext(db_job.filename)
-    translated_filename = f"{base}_translated{ext}" if ext == '.epub' else f"{base}_translated.txt"
-    media_type = 'application/epub+zip' if ext == '.epub' else 'text/plain'
-    file_path = os.path.join("translated_novel", translated_filename)
+    # Construct the unique path to the translated file
+    unique_base = os.path.splitext(os.path.basename(db_job.filepath))[0]
+    original_ext = os.path.splitext(db_job.filename)[1]
+    
+    translated_unique_filename = f"{unique_base}_translated{original_ext}"
+    file_path = os.path.join("translated_novel", translated_unique_filename)
 
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="Translated file not found.")
+        raise HTTPException(status_code=404, detail=f"Translated file not found at path: {file_path}")
 
-    return FileResponse(path=file_path, filename=translated_filename, media_type=media_type)
+    # For the user, provide a clean, original-like filename
+    user_base = os.path.splitext(db_job.filename)[0]
+    user_translated_filename = f"{user_base}_translated{original_ext}"
+    
+    media_type = 'application/epub+zip' if original_ext.lower() == '.epub' else 'text/plain'
+
+    return FileResponse(path=file_path, filename=user_translated_filename, media_type=media_type)
 
 @app.get("/download/logs/{job_id}/{log_type}")
 def download_log_file(job_id: int, log_type: str, db: Session = Depends(get_db)):

@@ -12,6 +12,7 @@ class TranslationJob(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
     error_message = Column(String, nullable=True)
+    filepath = Column(String, nullable=True)  # 고유한 파일 경로 저장
 
 class TranslationUsageLog(Base):
     __tablename__ = "translation_usage_logs"
