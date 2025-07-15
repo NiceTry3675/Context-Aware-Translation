@@ -560,12 +560,23 @@ export default function Home() {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {getStatusIcon(job.status)}
-                      <Typography variant="body2">
-                        {job.status} {job.status === 'PROCESSING' && `(${job.progress}%)`}
-                      </Typography>
-                    </Box>
+                    {job.status === 'FAILED' && job.error_message ? (
+                      <Tooltip title={job.error_message} arrow>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'help' }}>
+                          {getStatusIcon(job.status)}
+                          <Typography variant="body2">
+                            {job.status}
+                          </Typography>
+                        </Box>
+                      </Tooltip>
+                    ) : (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {getStatusIcon(job.status)}
+                        <Typography variant="body2">
+                          {job.status} {job.status === 'PROCESSING' && `(${job.progress}%)`}
+                        </Typography>
+                      </Box>
+                    )}
                     {job.status === 'PROCESSING' && <LinearProgress variant="determinate" value={job.progress} sx={{ mt: 0.5 }} />}
                   </TableCell>
                   <TableCell>
@@ -573,7 +584,7 @@ export default function Home() {
                   </TableCell>
                   <TableCell align="right">
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-                      {job.status === 'COMPLETED' && (
+                      {(job.status === 'COMPLETED' || job.status === 'FAILED') && (
                         <Tooltip title="번역 파일 다운로드">
                           <IconButton color="primary" href={`${API_URL}/download/${job.id}`} download>
                             <DownloadIcon />

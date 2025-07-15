@@ -169,6 +169,9 @@ class TranslationEngine:
             translated_text = self._translate_segment_with_retries(prompt, segment_info, segment_index, job, contextual_glossary, style_deviation)
             job.append_translated_segment(translated_text, segment_info)
 
+            # Save intermediate progress after each segment
+            job.save_partial_output()
+
         job.save_final_output()
 
         print(f"\n--- Translation Complete! ---")

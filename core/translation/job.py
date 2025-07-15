@@ -199,6 +199,14 @@ class TranslationJob:
         """Appends a translated segment text."""
         self.translated_segments.append(translated_text)
 
+    def save_partial_output(self):
+        """Saves the currently translated segments to the output file."""
+        # This method is essentially the same as save_final_output but is called during the process.
+        if self.input_format == '.epub':
+            self._save_as_epub()
+        else:
+            self._save_as_text()
+
     def save_final_output(self):
         """Saves the final output based on the input file format."""
         print(f"\nSaving final output to {self.output_filename}...")

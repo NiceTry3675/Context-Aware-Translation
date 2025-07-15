@@ -49,6 +49,7 @@ translated_novel/*
 
 # Error logs
 error.txt
+log.txt
 
 # Uploaded files
 uploads/

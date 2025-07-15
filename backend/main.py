@@ -392,26 +392,32 @@ def download_translated_file(job_id: int, db: Session = Depends(get_db)):
     db_job = crud.get_job(db, job_id=job_id)
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
-    if db_job.status != "COMPLETED":
-        raise HTTPException(status_code=400, detail="Translation is not completed yet.")
+    if db_job.status not in ["COMPLETED", "FAILED"]:
+        raise HTTPException(status_code=400, detail=f"Translation is not completed yet. Current status: {db_job.status}")
     if not db_job.filepath:
         raise HTTPException(status_code=404, detail="Filepath not found for this job.")
 
     # Construct the unique path to the translated file
     unique_base = os.path.splitext(os.path.basename(db_job.filepath))[0]
-    original_ext = os.path.splitext(db_job.filename)[1]
-    
-    translated_unique_filename = f"{unique_base}_translated{original_ext}"
+    original_filename_base, original_ext = os.path.splitext(db_job.filename)
+
+    # If the original file is an EPUB, the translated file should also be an EPUB.
+    # Otherwise, the output is always a .txt file.
+    if original_ext.lower() == '.epub':
+        output_ext = '.epub'
+        media_type = 'application/epub+zip'
+    else:
+        output_ext = '.txt'
+        media_type = 'text/plain'
+
+    translated_unique_filename = f"{unique_base}_translated{output_ext}"
     file_path = os.path.join("translated_novel", translated_unique_filename)
 
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail=f"Translated file not found at path: {file_path}")
 
-    # For the user, provide a clean, original-like filename
-    user_base = os.path.splitext(db_job.filename)[0]
-    user_translated_filename = f"{user_base}_translated{original_ext}"
-    
-    media_type = 'application/epub+zip' if original_ext.lower() == '.epub' else 'text/plain'
+    # For the user, provide a clean filename with the correct extension
+    user_translated_filename = f"{original_filename_base}_translated{output_ext}"
 
     return FileResponse(path=file_path, filename=user_translated_filename, media_type=media_type)
 
