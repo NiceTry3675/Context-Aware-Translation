@@ -4,6 +4,7 @@ import traceback
 import re
 import json
 import asyncio
+import gc
 from fastapi import FastAPI, File, UploadFile, BackgroundTasks, Depends, HTTPException, Form, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
@@ -106,6 +107,9 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
         traceback.print_exc()
     finally:
         db.close()
+        # Explicitly run garbage collection to free up memory
+        gc.collect()
+        print(f"--- [BACKGROUND] Job ID: {job_id} finished. DB session closed and GC collected. ---")
 
 # --- SSE Announcement Stream ---
 async def announcement_generator(request: Request):
