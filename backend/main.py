@@ -64,17 +64,10 @@ app.add_middleware(
 def run_translation_in_background(job_id: int, file_path: str, filename: str, api_key: str, model_name: str, style_data: str = None):
     db = SessionLocal()
     try:
-        # Check if we need to resume the job
-        db_job = crud.get_job(db, job_id)
-        is_resume = db_job.last_successful_segment > 0
-        initial_context = json.loads(db_job.context_snapshot_json) if is_resume else {}
-
         crud.update_job_status(db, job_id, "PROCESSING")
         print(f"--- [BACKGROUND] Starting translation for Job ID: {job_id}, File: {filename}, Model: {model_name} ---")
-        if is_resume:
-            print(f"--- Resuming from segment: {db_job.last_successful_segment + 1}")
-
-        config = load_config()
+        
+        config = load_config() 
         gemini_api = GeminiModel(
             api_key=api_key,
             model_name=model_name,
@@ -82,8 +75,8 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
             generation_config=config['generation_config'],
             enable_soft_retry=config.get('enable_soft_retry', True)
         )
-        
-        translation_job = TranslationJob(file_path, original_filename=filename, is_resume=is_resume)
+        # Pass both the unique file_path and the original filename to TranslationJob
+        translation_job = TranslationJob(file_path, original_filename=filename)
         
         initial_core_style_text = None
         protagonist_name = "protagonist"
@@ -103,15 +96,7 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
                 print(f"--- [BACKGROUND] WARNING: Could not decode style_data JSON for Job ID: {job_id}. Proceeding with auto-analysis. ---")
 
         dyn_config_builder = DynamicConfigBuilder(gemini_api, protagonist_name)
-        engine = TranslationEngine(
-            gemini_api, 
-            dyn_config_builder, 
-            db=db, 
-            job_id=job_id, 
-            initial_core_style=initial_core_style_text,
-            resume_from_segment=db_job.last_successful_segment,
-            initial_context=initial_context
-        )
+        engine = TranslationEngine(gemini_api, dyn_config_builder, db=db, job_id=job_id, initial_core_style=initial_core_style_text)
         
         engine.translate_job(translation_job)
         crud.update_job_status(db, job_id, "COMPLETED")

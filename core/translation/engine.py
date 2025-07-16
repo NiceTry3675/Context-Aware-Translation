@@ -33,15 +33,13 @@ def _extract_translation_from_response(response: str) -> str:
     return response.strip()
 
 class TranslationEngine:
-    def __init__(self, gemini_api: GeminiModel, dyn_config_builder: DynamicConfigBuilder, db: Session, job_id: int, initial_core_style: str = None, resume_from_segment: int = 0, initial_context: dict = None):
+    def __init__(self, gemini_api: GeminiModel, dyn_config_builder: DynamicConfigBuilder, db: Session, job_id: int, initial_core_style: str = None):
         self.gemini_api = gemini_api
         self.dyn_config_builder = dyn_config_builder
         self.prompt_builder = PromptBuilder(PromptManager.MAIN_TRANSLATION)
         self.db = db
         self.job_id = job_id
         self.initial_core_style = initial_core_style
-        self.resume_from_segment = resume_from_segment
-        self.initial_context = initial_context or {}
 
     def translate_job(self, job: TranslationJob):
         start_time = time.time()
@@ -76,13 +74,11 @@ class TranslationEngine:
         prompt_log_path = os.path.join(prompt_log_dir, f"prompts_job_{self.job_id}_{job.user_base_filename}.txt")
         context_log_path = os.path.join(context_log_dir, f"context_job_{self.job_id}_{job.user_base_filename}.txt")
 
-        # If resuming, open files in append mode, otherwise write mode.
-        file_open_mode = 'a' if self.resume_from_segment > 0 else 'w'
-        with open(prompt_log_path, file_open_mode, encoding='utf-8') as f_prompt, open(context_log_path, file_open_mode, encoding='utf-8') as f_context:
-            if file_open_mode == 'w':
-                f_prompt.write(f"# PROMPT LOG FOR: {job.user_base_filename}\n\n")
-                f_context.write(f"# CONTEXT LOG FOR: {job.user_base_filename}\n\n")
+        with open(prompt_log_path, 'w', encoding='utf-8') as f_prompt, open(context_log_path, 'w', encoding='utf-8') as f_context:
+            f_prompt.write(f"# PROMPT LOG FOR: {job.user_base_filename}\n\n")
+            f_context.write(f"# CONTEXT LOG FOR: {job.user_base_filename}\n\n")
 
+        # Convert stream to list to get total count for progress calculation
         segments_list = list(job.stream_segments())
         total_segments = len(segments_list)
 
@@ -90,39 +86,26 @@ class TranslationEngine:
             print("No segments to translate. Exiting.")
             return 0, 0
 
-        # Restore context if resuming
-        if self.initial_context:
-            print(f"--- Resuming job, restoring context from segment {self.resume_from_segment} ---")
-            job.glossary = self.initial_context.get("glossary", {})
-            job.character_styles = self.initial_context.get("character_styles", {})
-
         first_segment = segments_list[0]
         core_narrative_style = self.initial_core_style or self._define_core_style(first_segment.text, job.user_base_filename)
-        if file_open_mode == 'w':
-            with open(context_log_path, 'a', encoding='utf-8') as f: 
-                f.write(f"--- Core Narrative Style Defined ---\n{core_narrative_style}\n{'='*50}\n\n")
+        with open(context_log_path, 'a', encoding='utf-8') as f: 
+            f.write(f"--- Core Narrative Style Defined ---\n{core_narrative_style}\n{'='*50}\n\n")
 
         total_original_length = 0
         total_translated_length = 0
         prev_segment_text = ""
         prev_translated_text = ""
 
-        # Slicing the list to start from the resume point
-        segments_to_process = segments_list[self.resume_from_segment:]
-
-        for i, segment_info in enumerate(tqdm(segments_to_process, desc="Translating Segments")):
-            segment_index = self.resume_from_segment + i + 1
+        for i, segment_info in enumerate(tqdm(segments_list, desc="Translating Segments")):
+            segment_index = i + 1
             
-            progress = int((segment_index / total_segments) * 100)
+            # Correct progress calculation
+            progress = int((i / total_segments) * 100)
             if crud and self.db and self.job_id: crud.update_job_progress(self.db, self.job_id, progress)
 
             iterator = self._process_segment(segment_info, segment_index, core_narrative_style, job, context_log_path, prompt_log_path, prev_segment_text, prev_translated_text)
             translated_text = next(iterator)
             job.append_translated_segment(translated_text)
-
-            # Save state to DB after each successful segment translation
-            if crud and self.db and self.job_id:
-                crud.update_job_state(self.db, self.job_id, segment_index, job.glossary, job.character_styles)
             
             total_original_length += len(segment_info.text)
             total_translated_length += len(translated_text)
