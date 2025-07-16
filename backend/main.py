@@ -9,6 +9,7 @@ from fastapi import FastAPI, File, UploadFile, BackgroundTasks, Depends, HTTPExc
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import inspect, text
 from typing import List, Dict, Optional
 from pydantic import BaseModel
 
@@ -43,6 +44,33 @@ def get_db():
         db.close()
 
 app = FastAPI()
+
+@app.on_event("startup")
+def run_db_migration():
+    """Checks and applies database migrations at startup."""
+    print("--- [STARTUP] Running database migration check ---")
+    engine = SessionLocal().get_bind()
+    inspector = inspect(engine)
+    table_name = "translation_jobs"
+    columns_to_add = {
+        "last_successful_segment": "INTEGER DEFAULT 0",
+        "context_snapshot_json": "TEXT DEFAULT '{}'"
+    }
+    try:
+        existing_columns = [col["name"] for col in inspector.get_columns(table_name)]
+        with engine.connect() as connection:
+            for col_name, col_type in columns_to_add.items():
+                if col_name not in existing_columns:
+                    print(f"Column '{col_name}' not found. Adding it...")
+                    connection.execute(text(f'ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type}'))
+                    print(f"Successfully added column: '{col_name}'")
+                else:
+                    print(f"Column '{col_name}' already exists. Skipping.")
+            # In SQLAlchemy 2.0, DDL statements like ALTER TABLE are auto-committed.
+            # connection.commit() is not needed.
+        print("--- [STARTUP] Database migration check finished ---")
+    except Exception as e:
+        print(f"--- [STARTUP] An error occurred during migration: {e}")
 
 # CORS 설정
 origins = [

@@ -1,0 +1,1 @@
+build: Run migration script on startup
