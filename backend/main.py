@@ -144,11 +144,6 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
         engine.translate_job(translation_job)
         crud.update_job_status(db, job_id, "COMPLETED")
         print(f"--- [BACKGROUND] Translation finished for Job ID: {job_id}, File: {filename} ---")
-    except Exception as e:
-        error_message = f"An unexpected error occurred: {str(e)}"
-        crud.update_job_status(db, job_id, "FAILED", error_message=error_message)
-        print(f"--- [BACKGROUND] {error_message} for Job ID: {job_id}, File: {filename} ---")
-        traceback.print_exc()
     finally:
         db.close()
         # Explicitly run garbage collection to free up memory

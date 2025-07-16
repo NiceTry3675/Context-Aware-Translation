@@ -113,6 +113,8 @@ class TranslationEngine:
         for i, segment_info in enumerate(tqdm(segments_to_process, desc="Translating Segments")):
             segment_index = self.resume_from_segment + i + 1
             
+            iterator = self._process_segment(segment_info, segment_index, core_narrative_style, job, context_log_path, prompt_log_path, prev_segment_text, prev_translated_text)
+            translated_text = next(iterator)
             job.append_translated_segment(translated_text)
 
             # Save state and progress to DB after each successful segment translation
