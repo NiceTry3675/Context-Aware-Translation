@@ -78,12 +78,15 @@ class TranslationEngine:
             f_prompt.write(f"# PROMPT LOG FOR: {job.user_base_filename}\n\n")
             f_context.write(f"# CONTEXT LOG FOR: {job.user_base_filename}\n\n")
 
-        segment_stream = job.stream_segments()
-        first_segment = next(segment_stream, None)
-        if not first_segment:
+        # Convert stream to list to get total count for progress calculation
+        segments_list = list(job.stream_segments())
+        total_segments = len(segments_list)
+
+        if total_segments == 0:
             print("No segments to translate. Exiting.")
             return 0, 0
 
+        first_segment = segments_list[0]
         core_narrative_style = self.initial_core_style or self._define_core_style(first_segment.text, job.user_base_filename)
         with open(context_log_path, 'a', encoding='utf-8') as f: 
             f.write(f"--- Core Narrative Style Defined ---\n{core_narrative_style}\n{'='*50}\n\n")
@@ -93,26 +96,20 @@ class TranslationEngine:
         prev_segment_text = ""
         prev_translated_text = ""
 
-        # Manually process the first segment, then loop through the rest
-        segment_iterator = self._process_segment(first_segment, 1, core_narrative_style, job, context_log_path, prompt_log_path, prev_segment_text, prev_translated_text)
-        translated_text = next(segment_iterator)
-        job.append_translated_segment(translated_text)
-        total_original_length += len(first_segment.text)
-        total_translated_length += len(translated_text)
-        prev_segment_text = first_segment.text
-        prev_translated_text = translated_text
-
-        # Use tqdm for the rest of the segments
-        for i, segment_info in enumerate(tqdm(segment_stream, desc="Translating Segments", initial=1)):
-            segment_index = i + 2 # Start from 2
-            progress = 5 # Placeholder for progress, can be improved
+        for i, segment_info in enumerate(tqdm(segments_list, desc="Translating Segments")):
+            segment_index = i + 1
+            
+            # Correct progress calculation
+            progress = int((i / total_segments) * 100)
             if crud and self.db and self.job_id: crud.update_job_progress(self.db, self.job_id, progress)
 
             iterator = self._process_segment(segment_info, segment_index, core_narrative_style, job, context_log_path, prompt_log_path, prev_segment_text, prev_translated_text)
             translated_text = next(iterator)
             job.append_translated_segment(translated_text)
+            
             total_original_length += len(segment_info.text)
             total_translated_length += len(translated_text)
+            
             prev_segment_text = segment_info.text
             prev_translated_text = translated_text
 
