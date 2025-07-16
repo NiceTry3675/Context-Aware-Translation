@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+import json
 from . import models, schemas
 
 def get_job(db: Session, job_id: int):
@@ -90,3 +91,18 @@ def deactivate_all_announcements(db: Session) -> int:
     
     print(f"🔇 모든 공지 비활성화 완료: {updated_count}개의 공지가 비활성화되었습니다.")
     return updated_count
+
+def update_job_state(db: Session, job_id: int, segment_index: int, glossary: dict, styles: dict):
+    db_job = get_job(db, job_id)
+    if db_job:
+        db_job.last_successful_segment = segment_index
+        
+        context_snapshot = {
+            "glossary": glossary,
+            "character_styles": styles
+        }
+        db_job.context_snapshot_json = json.dumps(context_snapshot, ensure_ascii=False)
+        
+        db.commit()
+        db.refresh(db_job)
+    return db_job

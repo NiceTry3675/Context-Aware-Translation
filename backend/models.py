@@ -14,6 +14,10 @@ class TranslationJob(Base):
     error_message = Column(String, nullable=True)
     filepath = Column(String, nullable=True)  # 고유한 파일 경로 저장
 
+    # For resuming jobs
+    last_successful_segment = Column(Integer, default=0)
+    context_snapshot_json = Column(Text, default='{}')
+
 class TranslationUsageLog(Base):
     __tablename__ = "translation_usage_logs"
 

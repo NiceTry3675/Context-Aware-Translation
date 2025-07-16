@@ -1,0 +1,6 @@
+refactor: Integrate DB migration into startup event
+
+- Reverts the temporary Procfile change.
+- Deletes the one-off migration script (`add_resume_columns.py`).
+- Adds a database migration function to `main.py` that runs on FastAPI's `startup` event.
+- This ensures a more robust and reliable way to apply database schema changes during deployment.

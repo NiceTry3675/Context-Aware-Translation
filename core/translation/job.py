@@ -18,7 +18,7 @@ class TranslationJob:
     Represents a single translation job, handling different file formats
     and orchestrating the segmentation and saving process in a memory-efficient way.
     """
-    def __init__(self, filepath: str, original_filename: str = None, target_segment_size: int = 15000):
+    def __init__(self, filepath: str, original_filename: str = None, target_segment_size: int = 15000, is_resume: bool = False):
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"The file '{filepath}' does not exist.")
         
@@ -42,8 +42,8 @@ class TranslationJob:
         else:
             self.output_filename = os.path.join(output_dir, f"{unique_base_filename}_translated.txt")
         
-        # Clean up previous partial files before starting a new job
-        if os.path.exists(self.output_filename):
+        # Only clean up previous files if it's a new job
+        if not is_resume and os.path.exists(self.output_filename):
             os.remove(self.output_filename)
 
     def stream_segments(self) -> Generator[SegmentInfo, None, None]:
