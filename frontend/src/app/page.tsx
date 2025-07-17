@@ -5,7 +5,7 @@ import {
   Container, Box, Typography, TextField, Button, CircularProgress, Alert,
   Card, CardContent, CardActions, IconButton, Tooltip, Chip,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-  LinearProgress, ToggleButtonGroup, ToggleButton, InputAdornment, Link
+  LinearProgress, ToggleButtonGroup, ToggleButton, InputAdornment, Link, Slider
 } from '@mui/material';
 import {
   UploadFile as UploadFileIcon,
@@ -121,6 +121,7 @@ export default function Home() {
   const [styleData, setStyleData] = useState<StyleData | null>(null);
   const [showStyleForm, setShowStyleForm] = useState<boolean>(false);
   const [devMode, setDevMode] = useState<boolean>(false);
+  const [segmentSize, setSegmentSize] = useState<number>(15000);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -258,6 +259,7 @@ export default function Home() {
     formData.append("api_key", apiKey);
     formData.append("model_name", selectedModel);
     formData.append("style_data", JSON.stringify(styleData));
+    formData.append("segment_size", segmentSize.toString());
 
     try {
       const response = await fetch(`${API_URL}/uploadfile/`, { method: 'POST', body: formData });
@@ -423,6 +425,38 @@ export default function Home() {
           {isAnalyzing && <LinearProgress color="secondary" sx={{ mt: 2 }} />}
           {analysisError && <Alert severity="error" sx={{ mt: 2 }}>{analysisError}</Alert>}
           {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+        </CardContent>
+
+        {/* Step 3.5: Advanced Settings */}
+        <CardContent sx={{ borderTop: 1, borderColor: 'divider', mt: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Typography variant="h5" component="h3">3.5 고급 설정 (선택)</Typography>
+                <Chip label="Beta" color="info" size="small" />
+            </Box>
+            <Typography color="text.secondary" mb={2}>
+              한 번에 번역할 최대 글자 수를 조절합니다. 일본어/중국어의 경우 5000자 내외를 권장합니다.
+            </Typography>
+            <Box>
+                <Typography gutterBottom>
+                    세그먼트 크기: <strong>{segmentSize.toLocaleString()}자</strong>
+                </Typography>
+                <Slider
+                    value={segmentSize}
+                    onChange={(_, newValue) => setSegmentSize(newValue as number)}
+                    aria-labelledby="segment-size-slider"
+                    valueLabelDisplay="auto"
+                    step={1000}
+                    marks={[
+                        { value: 2000, label: '최소' },
+                        { value: 5000, label: '일/중' },
+                        { value: 15000, label: '기본' },
+                        { value: 25000, label: '최대' },
+                    ]}
+                    min={2000}
+                    max={25000}
+                    color="secondary"
+                />
+            </Box>
         </CardContent>
 
         {/* Step 4: Style Form */}

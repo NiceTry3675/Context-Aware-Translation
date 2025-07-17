@@ -61,7 +61,7 @@ app.add_middleware(
 )
 
 # --- Background Translation Task ---
-def run_translation_in_background(job_id: int, file_path: str, filename: str, api_key: str, model_name: str, style_data: str = None):
+def run_translation_in_background(job_id: int, file_path: str, filename: str, api_key: str, model_name: str, style_data: str = None, segment_size: int = 15000):
     db = SessionLocal()
     try:
         crud.update_job_status(db, job_id, "PROCESSING")
@@ -75,7 +75,11 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
             generation_config=config['generation_config'],
             enable_soft_retry=config.get('enable_soft_retry', True)
         )
-        translation_job = TranslationJob(file_path, original_filename=filename)
+        translation_job = TranslationJob(
+            file_path, 
+            original_filename=filename, 
+            target_segment_size=segment_size
+        )
         
         initial_core_style_text = None
         protagonist_name = "protagonist"
@@ -309,7 +313,7 @@ async def analyze_style(
         for key_pattern, json_key in key_mapping.items():
             # 정규식 패턴 생성 (키와 그 뒤에 오는 내용을 non-greedy하게 매칭)
             # Lookahead (?=...)를 사용하여 다음 항목의 시작 전까지 모든 내용을 캡처
-            pattern = re.escape(key_pattern) + r":\s*(.*?)(?=\s*\d\.\s*\*|$)"
+            pattern = re.escape(key_pattern) + r":\s*(.*?)(?=\s*\d\.\s*|$)"
             match = re.search(pattern, style_report_text, re.DOTALL | re.IGNORECASE)
             if match:
                 # 값에서 앞뒤 공백과 마크다운을 정리
@@ -350,6 +354,7 @@ async def create_upload_file(
     api_key: str = Form(...),
     model_name: str = Form("gemini-2.5-flash-lite-preview-06-17"),
     style_data: str = Form(None),
+    segment_size: int = Form(15000), # 동적 세그먼트 크기 추가
     db: Session = Depends(get_db)
 ):
     if not GeminiModel.validate_api_key(api_key, model_name=model_name):
@@ -379,7 +384,7 @@ async def create_upload_file(
     crud.update_job_filepath(db, job_id=db_job.id, filepath=file_path)
 
     # 4. Add the background task with the correct unique file path and original filename
-    background_tasks.add_task(run_translation_in_background, db_job.id, file_path, file.filename, api_key, model_name, style_data)
+    background_tasks.add_task(run_translation_in_background, db_job.id, file_path, file.filename, api_key, model_name, style_data, segment_size)
     
     return db_job
 
