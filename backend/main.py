@@ -19,6 +19,7 @@ from .database import engine, SessionLocal
 # Import core logic
 from core.config.loader import load_config
 from core.translation.models.gemini import GeminiModel
+from core.translation.models.openrouter import OpenRouterModel
 from core.config.builder import DynamicConfigBuilder
 from core.translation.job import TranslationJob
 from core.translation.engine import TranslationEngine
@@ -60,6 +61,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- Helper function for model selection ---
+def get_model_api(api_key: str, model_name: str, config: dict):
+    """Factory function to get the correct model API instance."""
+    if api_key.startswith("sk-or-"):
+        print(f"--- [API] Using OpenRouter model: {model_name} ---")
+        return OpenRouterModel(
+            api_key=api_key,
+            model_name=model_name,
+            enable_soft_retry=config.get('enable_soft_retry', True)
+        )
+    else:
+        print(f"--- [API] Using Gemini model: {model_name} ---")
+        return GeminiModel(
+            api_key=api_key,
+            model_name=model_name,
+            safety_settings=config['safety_settings'],
+            generation_config=config['generation_config'],
+            enable_soft_retry=config.get('enable_soft_retry', True)
+        )
+
+def validate_api_key(api_key: str, model_name: str):
+    """Validates the API key based on its prefix."""
+    if api_key.startswith("sk-or-"):
+        return OpenRouterModel.validate_api_key(api_key, model_name)
+    else:
+        return GeminiModel.validate_api_key(api_key, model_name)
+
 # --- Background Translation Task ---
 def run_translation_in_background(job_id: int, file_path: str, filename: str, api_key: str, model_name: str, style_data: str = None, segment_size: int = 15000):
     db = SessionLocal()
@@ -68,13 +96,8 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
         print(f"--- [BACKGROUND] Starting translation for Job ID: {job_id}, File: {filename}, Model: {model_name} ---")
         
         config = load_config() 
-        gemini_api = GeminiModel(
-            api_key=api_key,
-            model_name=model_name,
-            safety_settings=config['safety_settings'],
-            generation_config=config['generation_config'],
-            enable_soft_retry=config.get('enable_soft_retry', True)
-        )
+        gemini_api = get_model_api(api_key, model_name, config)
+
         translation_job = TranslationJob(
             file_path, 
             original_filename=filename, 
@@ -257,7 +280,7 @@ async def analyze_style(
     api_key: str = Form(...),
     model_name: str = Form("gemini-2.5-flash-lite-preview-06-17"),
 ):
-    if not GeminiModel.validate_api_key(api_key, model_name=model_name):
+    if not validate_api_key(api_key, model_name):
         raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
 
     temp_dir = "uploads"
@@ -283,17 +306,11 @@ async def analyze_style(
 
         # 스타일 분석 로직 실행
         config = load_config()
-        gemini_api = GeminiModel(
-            api_key=api_key,
-            model_name=model_name,
-            safety_settings=config['safety_settings'],
-            generation_config=config['generation_config'],
-            enable_soft_retry=config.get('enable_soft_retry', True)
-        )
+        model_api = get_model_api(api_key, model_name, config)
         
         print("\n--- Defining Core Narrative Style via API... ---")
         prompt = PromptManager.DEFINE_NARRATIVE_STYLE.format(sample_text=initial_text)
-        style_report_text = gemini_api.generate_text(prompt)
+        style_report_text = model_api.generate_text(prompt)
         print(f"Style defined as: {style_report_text}")
 
         # 텍스트 결과를 JSON으로 파싱 (안정적인 로직)
@@ -357,7 +374,7 @@ async def create_upload_file(
     segment_size: int = Form(15000), # 동적 세그먼트 크기 추가
     db: Session = Depends(get_db)
 ):
-    if not GeminiModel.validate_api_key(api_key, model_name=model_name):
+    if not validate_api_key(api_key, model_name):
         raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
 
     # 1. Create DB job first to get a unique job_id

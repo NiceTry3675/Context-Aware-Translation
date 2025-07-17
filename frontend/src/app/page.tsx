@@ -50,7 +50,7 @@ interface StyleData {
   stylistic_rule: string;
 }
 
-const modelOptions = [
+const geminiModelOptions = [
     {
       value: "gemini-2.5-flash-lite-preview-06-17",
       label: "Flash Lite (추천)",
@@ -71,6 +71,72 @@ const modelOptions = [
       description: "최고 수준의 문학적 번역 품질을 원하신다면 선택하세요. (느리고 비쌀 수 있음)",
       chip: "품질",
       chipColor: "error" as "primary" | "success" | "info" | "error",
+    },
+];
+
+const openRouterModelOptions = [
+    {
+      value: "google/gemini-2.5-flash-lite-preview-06-17",
+      label: "Gemini 2.5 Flash Lite",
+      description: " ",
+      chip: "속도",
+      chipColor: "primary" as "primary" | "success" | "info" | "error",
+    },
+    {
+        value: "google/gemini-2.5-flash",
+        label: "Gemini 2.5 Flash",
+        description: " ",
+        chip: "균형",
+        chipColor: "success" as "primary" | "success" | "info" | "error",
+    },
+    {
+        value: "google/gemini-2.5-pro",
+        label: "Gemini 2.5 Pro",
+        description: " ",
+        chip: "품질",
+        chipColor: "info" as "primary" | "success" | "info" | "error",
+    },
+    {
+        value: "openai/gpt-4o",
+        label: "GPT-4o",
+        description: " ",
+        chip: "품질",
+        chipColor: "warning" as "primary" | "success" | "info" | "error",
+    },
+    {
+        value: "anthropic/claude-sonnet-4",
+        label: "Claude Sonnet 4",
+        description: " ",
+        chip: "품질",
+        chipColor: "info" as "primary" | "success" | "info" | "error",
+    },
+    {
+        value: "openai/gpt-4.1",
+        label: "GPT-4.1",
+        description: " ",
+        chip: "속도",
+        chipColor: "success" as "primary" | "success" | "info" | "error",
+    },
+    {
+        value: "x-ai/grok-4",
+        label: "Grok-4",
+        description: " ",
+        chip: "품질",
+        chipColor: "success" as "primary" | "success" | "info" | "error",
+    },
+    {
+        value: "tngtech/deepseek-r1t2-chimera:free",
+        label: "DeepSeek R1 T2 Chimera (무료)",
+        description: " ",
+        chip: "속도",
+        chipColor: "success" as "primary" | "success" | "info" | "error",
+    },
+    {
+        value: "deepseek/deepseek-r1-0528:free",
+        label: "DeepSeek R1 (무료)",
+        description: " ",
+        chip: "품질",
+        chipColor: "success" as "primary" | "success" | "info" | "error",
     },
 ];
 
@@ -115,7 +181,8 @@ export default function Home() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<string>(modelOptions[0].value);
+  const [apiProvider, setApiProvider] = useState<'gemini' | 'openrouter'>('gemini');
+  const [selectedModel, setSelectedModel] = useState<string>(geminiModelOptions[0].value);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analysisError, setAnalysisError] = useState<string>('');
   const [styleData, setStyleData] = useState<StyleData | null>(null);
@@ -128,13 +195,42 @@ export default function Home() {
   // --- Effects ---
   useEffect(() => {
     const storedApiKey = localStorage.getItem('geminiApiKey');
-    if (storedApiKey) setApiKey(storedApiKey);
+    const storedProvider = localStorage.getItem('apiProvider') as 'gemini' | 'openrouter' | null;
+    
+    if (storedApiKey) {
+        const provider = storedProvider || (storedApiKey.startsWith('sk-or-') ? 'openrouter' : 'gemini');
+        setApiProvider(provider);
+        setApiKey(storedApiKey);
+
+        if (provider === 'openrouter') {
+            setSelectedModel(localStorage.getItem('openRouterModel') || openRouterModelOptions[0].value);
+        } else {
+            setSelectedModel(localStorage.getItem('geminiModel') || geminiModelOptions[0].value);
+        }
+    }
     setDevMode(localStorage.getItem('devMode') === 'true');
   }, []);
 
   useEffect(() => {
-    if (apiKey) localStorage.setItem('geminiApiKey', apiKey);
-  }, [apiKey]);
+    if (!apiKey) return;
+    // Store the key regardless of provider, but tag the provider
+    localStorage.setItem('geminiApiKey', apiKey);
+    localStorage.setItem('apiProvider', apiProvider);
+  }, [apiKey, apiProvider]);
+
+  useEffect(() => {
+    // When provider changes, update the selected model to the default for that provider
+    if (apiProvider === 'gemini') {
+        const newModel = geminiModelOptions[0].value;
+        setSelectedModel(newModel);
+        localStorage.setItem('geminiModel', newModel);
+    } else {
+        const newModel = openRouterModelOptions[0].value;
+        setSelectedModel(newModel);
+        localStorage.setItem('openRouterModel', newModel);
+    }
+  }, [apiProvider]);
+
 
   const handleModelChange = (newValue: string) => {
     if (!newValue) return;
@@ -142,7 +238,7 @@ export default function Home() {
     const previousModel = selectedModel;
     setSelectedModel(newValue);
 
-    if (newValue === 'gemini-2.5-pro') {
+    if (apiProvider === 'gemini' && newValue === 'gemini-2.5-pro') {
       const confirmation = window.confirm(
         "⚠️ Pro 모델 경고 ⚠️\n\n" +
         "Pro 모델은 최고의 번역 품질을 제공하지만, 다음과 같은 단점이 있을 수 있습니다:\n\n" +
@@ -156,7 +252,15 @@ export default function Home() {
         setSelectedModel(previousModel);
       }
     }
+    
+    // Store the selected model for the current provider
+    if (apiProvider === 'gemini') {
+        localStorage.setItem('geminiModel', newValue);
+    } else {
+        localStorage.setItem('openRouterModel', newValue);
+    }
   };
+
   
   useEffect(() => {
     const loadJobs = async () => {
@@ -358,41 +462,67 @@ export default function Home() {
       {/* Main Action Card */}
       <Card sx={{ p: { xs: 2, md: 4 }, mb: 8 }}>
         <CardContent>
-          {/* Step 1: Model Selection */}
-          <Typography variant="h5" component="h3" gutterBottom>1. 번역 모델 선택</Typography>
+          {/* Step 1: API Provider Selection */}
+          <Typography variant="h5" component="h3" gutterBottom>1. API 제공자 선택</Typography>
+          <ToggleButtonGroup
+            value={apiProvider}
+            exclusive
+            onChange={(_, newProvider) => { if (newProvider) setApiProvider(newProvider); }}
+            aria-label="API Provider"
+            fullWidth
+            sx={{ mb: 4 }}
+          >
+            <ToggleButton value="gemini" aria-label="Gemini">
+              Google Gemini
+            </ToggleButton>
+            <ToggleButton value="openrouter" aria-label="OpenRouter">
+              OpenRouter
+            </ToggleButton>
+          </ToggleButtonGroup>
+
+          {/* Step 2: Model Selection */}
+          <Typography variant="h5" component="h3" gutterBottom>2. 번역 모델 선택</Typography>
           <ToggleButtonGroup
             value={selectedModel}
             exclusive
             onChange={(_, newValue) => handleModelChange(newValue)}
             aria-label="Translation Model Selection"
             fullWidth
-            sx={{ mb: 4 }}
+            sx={{ mb: 4, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 1 }}
           >
-            {modelOptions.map(opt => (
-              <ToggleButton value={opt.value} key={opt.value} sx={{ flexDirection: 'column', flex: 1, p: 2, alignItems: 'center' }}>
+            {(apiProvider === 'gemini' ? geminiModelOptions : openRouterModelOptions).map(opt => (
+              <ToggleButton value={opt.value} key={opt.value} sx={{ flexDirection: 'column', flex: 1, p: 2, alignItems: 'center', height: '100%' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <Typography variant="button">{opt.label}</Typography>
+                  <Typography variant="button" sx={{ lineHeight: 1.2 }}>{opt.label}</Typography>
                   <Chip label={opt.chip} color={opt.chipColor} size="small" />
                 </Box>
                 <Typography variant="caption" sx={{ textTransform: 'none', mt: 0.5, textAlign: 'center' }}>
                   {opt.description}
                 </Typography>
               </ToggleButton>
-            ))}</ToggleButtonGroup>
+            ))}
+          </ToggleButtonGroup>
 
-          {/* Step 2: API Key */}
-          <Typography variant="h5" component="h3" gutterBottom>2. Gemini API 키 입력</Typography>
+          {apiProvider === 'openrouter' && (
+            <Alert severity="info" sx={{ mb: 4 }}>
+              <strong>참고:</strong> 현재 프롬프트는 Gemini 모델에 최적화되어 설계되었습니다. DEEPSEEK 모델은 무료!지만 많이 느립니다.
+            </Alert>
+          )}
+
+          {/* Step 3: API Key */}
+          <Typography variant="h5" component="h3" gutterBottom>3. {apiProvider === 'gemini' ? 'Gemini' : 'OpenRouter'} API 키 입력</Typography>
           <TextField
             type="password"
-            label="Gemini API Key"
+            label={`${apiProvider === 'gemini' ? 'Gemini' : 'OpenRouter'} API Key`}
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             fullWidth
             sx={{ mb: 1 }}
+            placeholder={apiProvider === 'openrouter' ? 'sk-or-... 형식의 키를 입력하세요' : ''}
           />
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 4 }}>
             <Link 
-              href="https://aistudio.google.com/app/apikey" 
+              href={apiProvider === 'gemini' ? "https://aistudio.google.com/app/apikey" : "https://openrouter.ai/keys"}
               target="_blank" 
               rel="noopener noreferrer"
               variant="body2"
@@ -403,8 +533,8 @@ export default function Home() {
             </Link>
           </Box>
 
-          {/* Step 3: File Upload */}
-          <Typography variant="h5" component="h3" gutterBottom>3. 소설 파일 업로드</Typography>
+          {/* Step 4: File Upload */}
+          <Typography variant="h5" component="h3" gutterBottom>4. 소설 파일 업로드</Typography>
           <Button
             variant="contained"
             component="label"
@@ -427,10 +557,10 @@ export default function Home() {
           {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
         </CardContent>
 
-        {/* Step 3.5: Advanced Settings */}
+        {/* Step 4.5: Advanced Settings */}
         <CardContent sx={{ borderTop: 1, borderColor: 'divider', mt: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Typography variant="h5" component="h3">3.5 고급 설정 (선택)</Typography>
+                <Typography variant="h5" component="h3">4.5 고급 설정 (선택)</Typography>
                 <Chip label="Beta" color="info" size="small" />
             </Box>
             <Typography color="text.secondary" mb={2}>
@@ -459,10 +589,10 @@ export default function Home() {
             </Box>
         </CardContent>
 
-        {/* Step 4: Style Form */}
+        {/* Step 5: Style Form */}
         {showStyleForm && styleData && (
           <CardContent sx={{ borderTop: 1, borderColor: 'divider', mt: 2 }}>
-            <Typography variant="h5" component="h3" gutterBottom>4. 핵심 서사 스타일 확인 및 수정</Typography>
+            <Typography variant="h5" component="h3" gutterBottom>5. 핵심 서사 스타일 확인 및 수정</Typography>
             <Typography color="text.secondary" mb={3}>AI가 분석한 소설의 핵심 스타일입니다. 필요하다면 직접 수정할 수 있습니다.</Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <TextField 
