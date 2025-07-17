@@ -4,6 +4,7 @@ import traceback
 import re
 import json
 import asyncio
+import gc
 from fastapi import FastAPI, File, UploadFile, BackgroundTasks, Depends, HTTPException, Form, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
@@ -47,7 +48,8 @@ app = FastAPI()
 origins = [
     "http://localhost:3000",  # Next.js 개발 서버
     "https://context-aware-translation.vercel.app", # Vercel 배포 주소
-    "https://context-aware-translation-git-main-cat-rans.vercel.app" # Vercel 프리뷰 주소
+    "https://context-aware-translation-git-main-cat-rans.vercel.app", # Vercel 프리뷰 주소
+    "https://context-aware-translation-git-dev-cat-rans.vercel.app" # Vercel dev 프리뷰 주소
 ]
 
 app.add_middleware(
@@ -73,7 +75,6 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
             generation_config=config['generation_config'],
             enable_soft_retry=config.get('enable_soft_retry', True)
         )
-        # Pass both the unique file_path and the original filename to TranslationJob
         translation_job = TranslationJob(file_path, original_filename=filename)
         
         initial_core_style_text = None
@@ -106,6 +107,8 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
         traceback.print_exc()
     finally:
         db.close()
+        gc.collect()
+        print(f"--- [BACKGROUND] Job ID: {job_id} finished. DB session closed and GC collected. ---")
 
 # --- SSE Announcement Stream ---
 async def announcement_generator(request: Request):
