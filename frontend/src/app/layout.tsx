@@ -6,6 +6,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import Slide, { SlideProps } from '@mui/material/Slide';
+import { Analytics } from '@vercel/analytics/react';
 import theme from '../theme';
 import "./globals.css";
 
