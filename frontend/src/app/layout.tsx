@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from '@clerk/nextjs';
+import { koKR } from "@clerk/localizations";
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from '../theme';
@@ -23,7 +24,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className={inter.className}>
-        <ClerkProvider>
+        <ClerkProvider localization={koKR}>
           <ThemeProvider theme={theme}>
             <CssBaseline />
             <AnnouncementHandler />
