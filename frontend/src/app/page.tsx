@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth, useClerk } from '@clerk/nextjs';
+import dynamic from 'next/dynamic';
 import {
   Container, Box, Typography, TextField, Button, CircularProgress, Alert,
   Card, CardContent, CardActions, IconButton, Tooltip, Chip,
@@ -31,6 +33,8 @@ import {
   MenuBook as MenuBookIcon,
 } from '@mui/icons-material';
 import theme from '../theme';
+
+const AuthButtons = dynamic(() => import('./components/AuthButtons'), { ssr: false });
 
 // --- Type Definitions ---
 interface Job {
@@ -175,6 +179,8 @@ const formatDuration = (start: string, end: string | null): string => {
 
 // --- Main Component ---
 export default function Home() {
+  const { getToken, isSignedIn, isLoaded } = useAuth();
+  const { openSignIn } = useClerk();
   // --- State Management ---
   const [apiKey, setApiKey] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);
@@ -269,9 +275,12 @@ export default function Home() {
       const storedJobIds = JSON.parse(storedJobIdsString);
       if (!Array.isArray(storedJobIds) || storedJobIds.length === 0) return;
 
+      // --- Defensive Step: Ensure job IDs are unique ---
+      const uniqueJobIds = [...new Set(storedJobIds)];
+
       try {
         const fetchedJobs: Job[] = await Promise.all(
-          storedJobIds.map(async (id: number) => {
+          uniqueJobIds.map(async (id: number) => {
             const response = await fetch(`${API_URL}/status/${id}`);
             return response.ok ? response.json() : null;
           })
@@ -334,7 +343,10 @@ export default function Home() {
     formData.append('model_name', selectedModel);
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/analyze-style`, { method: 'POST', body: formData });
+      const response = await fetch(`${API_URL}/api/v1/analyze-style`, { 
+        method: 'POST', 
+        body: formData 
+      });
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.detail || '스타일 분석에 실패했습니다.');
@@ -354,6 +366,26 @@ export default function Home() {
       setError("번역을 시작할 파일과 스타일 정보가 필요합니다.");
       return;
     }
+
+    if (!isLoaded) {
+      // Clerk is still loading, prevent the user from proceeding.
+      setError("인증 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
+      return;
+    }
+
+    if (!isSignedIn) {
+      // User is not signed in, prompt them to sign in.
+      openSignIn({ redirectUrl: '/' });
+      return;
+    }
+
+    const token = await getToken();
+    if (!token) {
+        setError("로그인은 되었으나, 인증 토큰을 가져오지 못했습니다. 잠시 후 다시 시도하거나, 페이지를 새로고침해주세요.");
+        return;
+    }
+
+    // If we reach here, user is loaded and signed in.
     setUploading(true);
     setError(null);
     setShowStyleForm(false);
@@ -366,7 +398,12 @@ export default function Home() {
     formData.append("segment_size", segmentSize.toString());
 
     try {
-      const response = await fetch(`${API_URL}/uploadfile/`, { method: 'POST', body: formData });
+      const token = await getToken();
+      const response = await fetch(`${API_URL}/uploadfile/`, { 
+        method: 'POST', 
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData 
+      });
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.detail || "File upload failed");
@@ -409,6 +446,9 @@ export default function Home() {
   // --- Render ---
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Box sx={{ position: 'fixed', top: 32, right: 32, zIndex: 1000 }}>
+        <AuthButtons />
+      </Box>
       {/* Header */}
       <Box textAlign="center" mb={10}>
         <Box display="flex" justifyContent="center" alignItems="center" gap={2}>
@@ -714,7 +754,7 @@ export default function Home() {
             </TableHead>
             <TableBody>
               {jobs.map((job) => (
-                <TableRow key={job.id} hover>
+                <TableRow key={`job-row-${job.id}`} hover>
                   <TableCell component="th" scope="row">
                     <Typography variant="body2" noWrap title={job.filename} sx={{ maxWidth: '300px' }}>
                       {job.filename}

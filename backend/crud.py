@@ -5,7 +5,7 @@ def get_job(db: Session, job_id: int):
     return db.query(models.TranslationJob).filter(models.TranslationJob.id == job_id).first()
 
 def create_translation_job(db: Session, job: schemas.TranslationJobCreate):
-    db_job = models.TranslationJob(filename=job.filename, status="PENDING", progress=0)
+    db_job = models.TranslationJob(filename=job.filename, owner_id=job.owner_id, status="PENDING", progress=0)
     db.add(db_job)
     db.commit()
     db.refresh(db_job)
@@ -90,3 +90,38 @@ def deactivate_all_announcements(db: Session) -> int:
     
     print(f"🔇 모든 공지 비활성화 완료: {updated_count}개의 공지가 비활성화되었습니다.")
     return updated_count
+
+# --- User CRUD functions ---
+
+def get_user(db: Session, user_id: int):
+    return db.query(models.User).filter(models.User.id == user_id).first()
+
+def get_user_by_email(db: Session, email: str):
+    return db.query(models.User).filter(models.User.email == email).first()
+
+def get_user_by_clerk_id(db: Session, clerk_id: str):
+    return db.query(models.User).filter(models.User.clerk_user_id == clerk_id).first()
+
+def create_user(db: Session, user: schemas.UserCreate):
+    db_user = models.User(clerk_user_id=user.clerk_user_id, email=user.email, name=user.name)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def update_user(db: Session, clerk_id: str, user_update: schemas.UserUpdate):
+    db_user = get_user_by_clerk_id(db, clerk_id)
+    if db_user:
+        update_data = user_update.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_user, key, value)
+        db.commit()
+        db.refresh(db_user)
+    return db_user
+
+def delete_user(db: Session, clerk_id: str):
+    db_user = get_user_by_clerk_id(db, clerk_id)
+    if db_user:
+        db.delete(db_user)
+        db.commit()
+    return db_user

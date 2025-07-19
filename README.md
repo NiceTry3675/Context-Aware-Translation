@@ -95,6 +95,7 @@ Context-Aware-Translation/
 1.  **백엔드 서버 실행**:
     ```bash
     uvicorn backend.main:app --reload --port 8000
+    .\venv\Scripts\python.exe -m uvicorn backend.main:app --reload --port 8000
     ```
 
 2.  **프론트엔드 서버 실행**:
