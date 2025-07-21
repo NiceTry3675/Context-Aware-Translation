@@ -41,6 +41,14 @@ CLERK_WEBHOOK_SECRET = os.environ.get("CLERK_WEBHOOK_SECRET")
 # Create all database tables based on the models
 models.Base.metadata.create_all(bind=engine)
 
+# Run database migrations
+try:
+    from . import migrations
+    migrations.run_migrations()
+except Exception as e:
+    print(f"❌ Migration error: {e}")
+    # 마이그레이션 실패해도 앱은 계속 실행
+
 # --- FastAPI App Initialization ---
 app = FastAPI()
 
