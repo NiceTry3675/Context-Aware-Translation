@@ -1,26 +1,24 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
 import UserDisplayName from '../../../components/UserDisplayName';
 import {
   Container, Box, Typography, Card, CardContent, Button, Alert,
-  CircularProgress, Chip, IconButton, TextField, Divider,
-  Breadcrumbs, Link, Avatar, Paper, Menu, MenuItem
+  CircularProgress, IconButton, TextField, Divider,
+  Breadcrumbs, Link, Avatar, Paper
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  MoreVert as MoreVertIcon,
   Person as PersonIcon,
   CalendarToday as CalendarTodayIcon,
   Visibility as VisibilityIcon,
   Comment as CommentIcon,
   Send as SendIcon
 } from '@mui/icons-material';
-import theme from '../../../../theme';
 
 interface Author {
   id: number;
@@ -64,7 +62,7 @@ interface Comment {
   replies: Comment[];
 }
 
-export default function PostDetailPage() {
+function PostDetailPageContent() {
   const router = useRouter();
   const params = useParams();
   const categoryName = params.category as string;
@@ -83,8 +81,6 @@ export default function PostDetailPage() {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editingCommentContent, setEditingCommentContent] = useState('');
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedCommentId, setSelectedCommentId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -99,6 +95,7 @@ export default function PostDetailPage() {
     
     // 조회수 증가 (한 번만)
     incrementViewCount();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn, postId]);
 
   const fetchPost = async () => {
@@ -607,5 +604,19 @@ export default function PostDetailPage() {
         </CardContent>
       </Card>
     </Container>
+  );
+}
+
+export default function PostDetailPage() {
+  return (
+    <Suspense fallback={
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+          <CircularProgress />
+        </Box>
+      </Container>
+    }>
+      <PostDetailPageContent />
+    </Suspense>
   );
 } 

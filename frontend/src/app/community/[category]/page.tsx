@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
 import UserDisplayName from '../../components/UserDisplayName';
 import {
-  Container, Box, Typography, Card, CardContent, Button, Alert,
+  Container, Box, Typography, Button, Alert,
   CircularProgress, Chip, IconButton, TextField, InputAdornment,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, TablePagination, Breadcrumbs, Link
@@ -51,7 +51,7 @@ interface PostList {
   updated_at: string | null;
 }
 
-export default function CategoryPostsPage() {
+function CategoryPostsPageContent() {
   const router = useRouter();
   const params = useParams();
   const categoryName = params.category as string;
@@ -79,6 +79,7 @@ export default function CategoryPostsPage() {
     // 먼저 카테고리 정보를 가져온 다음 게시글을 가져옴
     fetchCategoryInfo();
     fetchPosts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn, categoryName, page, rowsPerPage]);
 
   const fetchCategoryInfo = async () => {
@@ -378,5 +379,19 @@ export default function CategoryPostsPage() {
         />
       </TableContainer>
     </Container>
+  );
+}
+
+export default function CategoryPostsPage() {
+  return (
+    <Suspense fallback={
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+          <CircularProgress />
+        </Box>
+      </Container>
+    }>
+      <CategoryPostsPageContent />
+    </Suspense>
   );
 } 

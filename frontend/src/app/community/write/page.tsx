@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
 import {
   Container, Box, Typography, TextField, Button, Alert,
   CircularProgress, FormControl, InputLabel, Select, MenuItem,
-  Card, CardContent, Breadcrumbs, Link, Checkbox, FormControlLabel,
-  Grid, IconButton, Chip
+  Card, CardContent, Breadcrumbs, Link, IconButton
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -34,7 +33,7 @@ interface PostFormData {
   images: string[];
 }
 
-export default function PostWritePage() {
+function PostWritePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoaded, isSignedIn, getToken } = useAuth();
@@ -72,6 +71,7 @@ export default function PostWritePage() {
     if (isEditMode) {
       fetchPost();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn]);
 
   const fetchCategories = async () => {
@@ -492,5 +492,19 @@ export default function PostWritePage() {
         </CardContent>
       </Card>
     </Container>
+  );
+}
+
+export default function PostWritePage() {
+  return (
+    <Suspense fallback={
+      <Container maxWidth="md" sx={{ py: 4 }}>
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+          <CircularProgress />
+        </Box>
+      </Container>
+    }>
+      <PostWritePageContent />
+    </Suspense>
   );
 } 

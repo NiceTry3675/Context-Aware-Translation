@@ -92,6 +92,7 @@ export default function CommunityPage() {
     }
 
     fetchCategoriesOverview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn]);
 
   const fetchCategoriesOverview = async () => {

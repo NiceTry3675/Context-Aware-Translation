@@ -38,16 +38,21 @@ ADMIN_SECRET_KEY = os.environ.get("ADMIN_SECRET_KEY", "dev-secret-key")
 CLERK_WEBHOOK_SECRET = os.environ.get("CLERK_WEBHOOK_SECRET")
 
 # --- Database Initialization ---
-# Create all database tables based on the models
-models.Base.metadata.create_all(bind=engine)
-
-# Run database migrations
+# Run database migrations (includes table creation)
 try:
     from . import migrations
     migrations.run_migrations()
 except Exception as e:
     print(f"❌ Migration error: {e}")
     # 마이그레이션 실패해도 앱은 계속 실행
+
+# Auto initialization (categories, etc.)
+try:
+    from . import auto_init
+    auto_init.run_auto_init()
+except Exception as e:
+    print(f"❌ Auto initialization error: {e}")
+    # 초기화 실패해도 앱은 계속 실행
 
 # --- FastAPI App Initialization ---
 app = FastAPI()
@@ -528,6 +533,7 @@ def deactivate_all_announcements(db: Session = Depends(get_db)):
         },
         media_type="application/json; charset=utf-8"
     )
+
 
 # --- Community Board Endpoints ---
 

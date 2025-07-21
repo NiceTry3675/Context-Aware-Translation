@@ -13,6 +13,15 @@ logger = logging.getLogger(__name__)
 def run_migrations():
     """필요한 데이터베이스 마이그레이션을 실행합니다."""
     
+    # 먼저 모든 테이블 생성 (SQLAlchemy 모델 기반)
+    try:
+        from . import models
+        logger.info("Creating all tables from models...")
+        models.Base.metadata.create_all(bind=engine)
+        logger.info("✅ All tables created successfully!")
+    except Exception as e:
+        logger.warning(f"⚠️ Table creation failed or already exists: {e}")
+    
     migrations = [
         # 이미지 업로드 기능을 위한 images 컬럼 추가
         {
@@ -38,6 +47,15 @@ def run_migrations():
             "sql": """
                 ALTER TABLE comments 
                 ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE;
+            """
+        },
+        
+        # 사용자 역할 관리를 위한 role 컬럼 추가
+        {
+            "name": "Add role column to users",
+            "sql": """
+                ALTER TABLE users 
+                ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'user';
             """
         },
         
