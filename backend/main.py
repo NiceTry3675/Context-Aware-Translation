@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, File, UploadFile, BackgroundTasks, Depends, HTTPException, Form, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from svix import Webhook
@@ -46,6 +47,7 @@ app = FastAPI()
 # --- Middleware Configuration ---
 origins = [
     "http://localhost:3000",  # Next.js development server
+    "http://127.0.0.1:3000",  # Alternative localhost
     "https://context-aware-translation.vercel.app", # Vercel production deployment
     "https://context-aware-translation-git-main-cat-rans.vercel.app", # Vercel main branch preview
     "https://context-aware-translation-git-dev-cat-rans.vercel.app" # Vercel dev branch preview
@@ -53,11 +55,25 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=[
+        "http://localhost:3000",  # 로컬 개발
+        "http://127.0.0.1:3000",  # 로컬 대체
+        "https://context-aware-translation.vercel.app",  # Vercel 프로덕션
+        "https://context-aware-translation-git-dev-cat-rans.vercel.app",  # Vercel dev 브랜치
+        "https://context-aware-translation-git-main-cat-rans.vercel.app"  # Vercel main 브랜치
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+# --- Static Files Configuration ---
+# Create uploads directory if it doesn't exist
+UPLOAD_DIR = "uploads/images"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Mount static files for serving uploaded images
+app.mount("/static", StaticFiles(directory="uploads"), name="static")
 
 # --- Dependency Injection ---
 def get_db():
@@ -504,4 +520,363 @@ def deactivate_all_announcements(db: Session = Depends(get_db)):
         },
         media_type="application/json; charset=utf-8"
     )
+
+# --- Community Board Endpoints ---
+
+# 임시 디버그 엔드포인트들은 보안상 제거됨
+
+@app.post("/api/v1/community/upload-image")
+async def upload_image(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    """Upload an image for posts"""
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400, 
+            detail="Only image files (JPEG, PNG, GIF, WebP) are allowed"
+        )
+    
+    # Validate file size (max 10MB)
+    file_content = await file.read()
+    if len(file_content) > 10 * 1024 * 1024:  # 10MB
+        raise HTTPException(status_code=400, detail="File size must be less than 10MB")
+    
+    # Generate unique filename
+    file_extension = os.path.splitext(file.filename)[1]
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    
+    # Save file
+    with open(file_path, "wb") as buffer:
+        buffer.write(file_content)
+    
+    # Return the URL for accessing the uploaded image
+    image_url = f"/static/images/{unique_filename}"
+    
+    return {
+        "url": image_url,
+        "filename": unique_filename,
+        "original_name": file.filename,
+        "size": len(file_content)
+    }
+
+@app.get("/api/v1/community/categories", response_model=list[schemas.PostCategory])
+def get_categories(db: Session = Depends(get_db)):
+    """Get all post categories"""
+    return crud.get_post_categories(db)
+
+@app.get("/api/v1/community/categories/overview")
+def get_categories_with_recent_posts(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_optional_user)
+):
+    """Get categories with their recent posts for community overview"""
+    categories = crud.get_post_categories(db)
+    categories_overview = []
+    
+    for category in categories:
+        # Get 3 most recent posts for each category
+        recent_posts = crud.get_posts(db, category_id=category.id, skip=0, limit=3)
+        
+        # Convert posts to list format with proper schema
+        posts_data = []
+        for post in recent_posts:
+            # Check if user can see private post details
+            can_view_private = crud.can_view_private_post(post, current_user)
+            
+            post_dict = {
+                'id': post.id,
+                'title': post.title if can_view_private or not post.is_private else '🔒 비밀글입니다',
+                'author': {
+                    'id': post.author.id,
+                    'clerk_user_id': post.author.clerk_user_id,
+                    'name': post.author.name,
+                    'role': post.author.role,
+                    'email': post.author.email,
+                    'created_at': post.author.created_at,
+                    'updated_at': post.author.updated_at
+                },
+                'category': {
+                    'id': post.category.id,
+                    'name': post.category.name,
+                    'display_name': post.category.display_name,
+                    'description': post.category.description,
+                    'is_admin_only': post.category.is_admin_only,
+                    'order': post.category.order,
+                    'created_at': post.category.created_at
+                },
+                'is_pinned': post.is_pinned,
+                'is_private': post.is_private,
+                'view_count': post.view_count,
+                'images': post.images or [],
+                'created_at': post.created_at,
+                'updated_at': post.updated_at,
+                'comment_count': crud.count_post_comments(db, post.id)
+            }
+            posts_data.append(post_dict)
+        
+        category_overview = {
+            'id': category.id,
+            'name': category.name,
+            'display_name': category.display_name,
+            'description': category.description,
+            'is_admin_only': category.is_admin_only,
+            'order': category.order,
+            'created_at': category.created_at,
+            'recent_posts': posts_data,
+            'total_posts': len(crud.get_posts(db, category_id=category.id, skip=0, limit=1000))  # Get total count
+        }
+        categories_overview.append(category_overview)
+    
+    return categories_overview
+
+@app.get("/api/v1/community/posts", response_model=list[schemas.PostList])
+def get_posts(
+    category: str = None,
+    skip: int = 0,
+    limit: int = 20,
+    search: str = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_optional_user)
+):
+    """Get posts with optional filtering (filters private posts based on user permissions)"""
+    category_id = None
+    if category:
+        db_category = crud.get_post_category_by_name(db, category)
+        if db_category:
+            category_id = db_category.id
+    
+    posts = crud.get_posts(db, category_id=category_id, skip=skip, limit=limit, search=search)
+    
+    # Note: Private posts are shown in list but content access is controlled in individual post endpoint
+    
+    # Add comment count to each post
+    posts_with_count = []
+    for post in posts:
+        # 관계형 필드를 포함하여 수동으로 딕셔너리 구성
+        post_dict = {
+            'id': post.id,
+            'title': post.title,
+            'author': {
+                'id': post.author.id,
+                'clerk_user_id': post.author.clerk_user_id,
+                'name': post.author.name,
+                'role': post.author.role,
+                'email': post.author.email,
+                'created_at': post.author.created_at,
+                'updated_at': post.author.updated_at
+            },
+            'category': {
+                'id': post.category.id,
+                'name': post.category.name,
+                'display_name': post.category.display_name,
+                'description': post.category.description,
+                'is_admin_only': post.category.is_admin_only,
+                'order': post.category.order,
+                'created_at': post.category.created_at
+            },
+            'is_pinned': post.is_pinned,
+            'is_private': post.is_private,
+            'view_count': post.view_count,
+            'images': post.images or [],
+            'created_at': post.created_at,
+            'updated_at': post.updated_at,
+            'comment_count': crud.count_post_comments(db, post.id)
+        }
+        posts_with_count.append(schemas.PostList(**post_dict))
+    
+    return posts_with_count
+
+@app.post("/api/v1/community/posts", response_model=schemas.Post)
+async def create_post(
+    post: schemas.PostCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    """Create a new post"""
+    # Check if category is admin-only
+    category = db.query(models.PostCategory).filter(models.PostCategory.id == post.category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    # 관리자 권한 확인 (로컬 DB + Clerk publicMetadata)
+    if category.is_admin_only:
+        user_is_admin = await auth.is_admin(current_user)
+        if not user_is_admin:
+            raise HTTPException(status_code=403, detail="Only admins can post in this category")
+    
+    return crud.create_post(db, post, current_user.id)
+
+@app.get("/api/v1/community/posts/{post_id}", response_model=schemas.Post)
+def get_post(
+    post_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_optional_user)
+):
+    """Get a specific post (without incrementing view count)"""
+    post = crud.get_post(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Check if user can view private post
+    if not crud.can_view_private_post(post, current_user):
+        raise HTTPException(status_code=403, detail="Access denied to private post")
+    
+    return post
+
+@app.post("/api/v1/community/posts/{post_id}/view")
+def increment_post_view(
+    post_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_optional_user)
+):
+    """Increment post view count (separate endpoint)"""
+    post = crud.get_post(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Check if user can view private post
+    if not crud.can_view_private_post(post, current_user):
+        raise HTTPException(status_code=403, detail="Access denied to private post")
+    
+    updated_post = crud.increment_post_view_count(db, post_id)
+    return {"view_count": updated_post.view_count}
+
+@app.put("/api/v1/community/posts/{post_id}", response_model=schemas.Post)
+async def update_post(
+    post_id: int,
+    post_update: schemas.PostUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    """Update a post"""
+    post = crud.get_post(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Check permission (author or admin)
+    user_is_admin = await auth.is_admin(current_user)
+    if post.author_id != current_user.id and not user_is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to update this post")
+    
+    return crud.update_post(db, post_id, post_update)
+
+@app.delete("/api/v1/community/posts/{post_id}")
+async def delete_post(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    """Delete a post"""
+    post = crud.get_post(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Check permission (author or admin)
+    user_is_admin = await auth.is_admin(current_user)
+    if post.author_id != current_user.id and not user_is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this post")
+    
+    crud.delete_post(db, post_id)
+    return {"message": "Post deleted successfully"}
+
+# Comment endpoints
+@app.get("/api/v1/community/posts/{post_id}/comments", response_model=list[schemas.Comment])
+def get_comments(
+    post_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_optional_user)
+):
+    """Get comments for a post (filters private comments based on user permissions)"""
+    post = crud.get_post(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    comments = crud.get_comments(db, post_id)
+    
+    # Filter private comments based on user permissions
+    comments = crud.filter_private_comments(comments, current_user)
+    
+    return comments
+
+@app.post("/api/v1/community/posts/{post_id}/comments", response_model=schemas.Comment)
+def create_comment(
+    post_id: int,
+    comment: schemas.CommentCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    """Create a comment on a post"""
+    post = crud.get_post(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Ensure post_id matches
+    comment.post_id = post_id
+    
+    return crud.create_comment(db, comment, current_user.id)
+
+@app.put("/api/v1/community/comments/{comment_id}", response_model=schemas.Comment)
+async def update_comment(
+    comment_id: int,
+    comment_update: schemas.CommentUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    """Update a comment"""
+    comment = crud.get_comment(db, comment_id)
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    
+    # Check permission (author or admin)
+    user_is_admin = await auth.is_admin(current_user)
+    if comment.author_id != current_user.id and not user_is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to update this comment")
+    
+    return crud.update_comment(db, comment_id, comment_update)
+
+@app.delete("/api/v1/community/comments/{comment_id}")
+async def delete_comment(
+    comment_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    """Delete a comment"""
+    comment = crud.get_comment(db, comment_id)
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    
+    # Check permission (author or admin)
+    user_is_admin = await auth.is_admin(current_user)
+    if comment.author_id != current_user.id and not user_is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this comment")
+    
+    crud.delete_comment(db, comment_id)
+    return {"message": "Comment deleted successfully"}
+
+# Admin endpoint to initialize categories
+@app.post("/api/v1/admin/community/init-categories", dependencies=[Depends(verify_admin_secret)])
+def initialize_categories(db: Session = Depends(get_db)):
+    """Initialize default post categories"""
+    default_categories = [
+        {"name": "notice", "display_name": "공지사항", "description": "중요한 공지사항", "is_admin_only": True, "order": 1},
+        {"name": "suggestion", "display_name": "건의사항", "description": "서비스 개선을 위한 제안", "is_admin_only": False, "order": 2},
+        {"name": "qna", "display_name": "Q&A", "description": "질문과 답변", "is_admin_only": False, "order": 3},
+        {"name": "free", "display_name": "자유게시판", "description": "자유로운 소통 공간", "is_admin_only": False, "order": 4}
+    ]
+    
+    created_categories = []
+    for cat_data in default_categories:
+        existing = crud.get_post_category_by_name(db, cat_data["name"])
+        if not existing:
+            category = crud.create_post_category(db, schemas.PostCategoryCreate(**cat_data))
+            created_categories.append(category)
+    
+    return {
+        "message": f"Created {len(created_categories)} categories",
+        "categories": created_categories
+    }
 

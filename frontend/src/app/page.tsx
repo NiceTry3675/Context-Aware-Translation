@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth, useClerk } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import {
   Container, Box, Typography, TextField, Button, CircularProgress, Alert,
@@ -31,6 +32,7 @@ import {
   OpenInNew as OpenInNewIcon,
   AutoStories as AutoStoriesIcon,
   MenuBook as MenuBookIcon,
+  Forum as ForumIcon,
 } from '@mui/icons-material';
 import theme from '../theme';
 
@@ -181,6 +183,7 @@ const formatDuration = (start: string, end: string | null): string => {
 export default function Home() {
   const { getToken, isSignedIn, isLoaded } = useAuth();
   const { openSignIn } = useClerk();
+  const router = useRouter();
   // --- State Management ---
   const [apiKey, setApiKey] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);
@@ -446,7 +449,24 @@ export default function Home() {
   // --- Render ---
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ position: 'fixed', top: 32, right: 32, zIndex: 1000 }}>
+      <Box sx={{ position: 'fixed', top: 32, right: 32, zIndex: 1000, display: 'flex', gap: 2 }}>
+        {isSignedIn && (
+          <Button
+            variant="outlined"
+            startIcon={<ForumIcon />}
+            onClick={() => router.push('/community')}
+            sx={{
+              borderColor: theme.palette.primary.main,
+              color: theme.palette.primary.main,
+              '&:hover': {
+                borderColor: theme.palette.primary.dark,
+                backgroundColor: `${theme.palette.primary.main}10`,
+              }
+            }}
+          >
+            커뮤니티
+          </Button>
+        )}
         <AuthButtons />
       </Box>
       {/* Header */}
