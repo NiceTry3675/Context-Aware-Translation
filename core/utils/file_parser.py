@@ -7,6 +7,7 @@ from ebooklib import epub
 from bs4 import BeautifulSoup
 import markdown
 import fitz  # PyMuPDF
+import gc
 
 def _parse_txt(filepath):
     """Parses a .txt file."""
@@ -55,16 +56,21 @@ def _parse_md(filepath):
 
 def _parse_pdf(filepath):
     """Parses a .pdf file and returns its text content."""
+    doc = None
     try:
         doc = fitz.open(filepath)
         content = []
         for page in doc:
             content.append(page.get_text())
-        doc.close()
         return "\n\n".join(content)
     except Exception as e:
         print(f"Error parsing PDF file {filepath}: {e}")
         raise
+    finally:
+        if doc:
+            doc.close()
+            del doc
+            gc.collect()
 
 def parse_document(filepath: str) -> str:
     """
