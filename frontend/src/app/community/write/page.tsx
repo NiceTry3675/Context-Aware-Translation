@@ -117,9 +117,6 @@ function PostWritePageContent() {
       if (!response.ok) throw new Error('Failed to fetch post');
       const post = await response.json();
       
-      console.log('Fetched post for editing:', post);
-      console.log('Post images:', post.images);
-      
       // Check if user can edit this post
       if (post.author.clerk_user_id !== user?.id && 
           user?.publicMetadata?.role !== 'admin') {
@@ -135,7 +132,6 @@ function PostWritePageContent() {
         images: post.images || []
       };
       
-      console.log('Setting form data:', newFormData);
       setFormData(newFormData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
@@ -380,10 +376,7 @@ function PostWritePageContent() {
               </Typography>
 
               {/* Uploaded Images Preview */}
-              {(() => {
-                console.log('Render check - formData.images:', formData.images, 'Length:', formData.images.length);
-                return formData.images.length > 0;
-              })() && (
+              {formData.images.length > 0 && (
                 <Box>
                   <Typography variant="subtitle2" gutterBottom>
                     첨부된 이미지 ({formData.images.length}개)

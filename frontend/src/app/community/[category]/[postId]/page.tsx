@@ -250,8 +250,6 @@ function PostDetailPageContent() {
 
   const canModifyPost = () => {
     if (!post || !user) return false;
-    console.log('Post author:', post.author);
-    console.log('Current user:', user.id);
     
     // Clerk user ID 기반으로 권한 확인
     return post.author.clerk_user_id === user.id || 
@@ -260,8 +258,6 @@ function PostDetailPageContent() {
 
   const canModifyComment = (comment: Comment) => {
     if (!user) return false;
-    console.log('Comment author:', comment.author);
-    console.log('Current user:', user.id);
     
     // Clerk user ID 기반으로 권한 확인
     return comment.author.clerk_user_id === user.id || 
