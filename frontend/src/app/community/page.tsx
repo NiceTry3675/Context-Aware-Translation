@@ -289,13 +289,17 @@ export default function CommunityPage() {
                             key={post.id} 
                             sx={{ 
                               px: 0, 
-                              cursor: 'pointer',
+                              cursor: post.title.includes('🔒') ? 'not-allowed' : 'pointer',
                               '&:hover': {
-                                backgroundColor: 'action.hover',
+                                backgroundColor: post.title.includes('🔒') ? 'transparent' : 'action.hover',
                                 borderRadius: 1
                               }
                             }}
-                            onClick={() => router.push(`/community/${category.name}/${post.id}`)}
+                            onClick={() => {
+                              if (!post.title.includes('🔒')) {
+                                router.push(`/community/${category.name}/${post.id}`)
+                              }
+                            }}
                           >
                             <ListItemText
                               primary={

@@ -175,6 +175,10 @@ async def get_required_user(
                     db_user = crud.update_user(db, clerk_user_id, user_update)
                     print(f"--- [INFO] Updated user {db_user.id} with: {update_data}. ---")
 
+    # Sync user role from Clerk every time they are fetched
+    if db_user:
+        db_user = await sync_user_role_from_clerk(db, db_user)
+
     return db_user
 
 async def get_optional_user(
@@ -236,6 +240,33 @@ async def get_optional_user(
             print(f"--- [ERROR] Failed to create user in optional auth: {e}")
             return None
 
+    if db_user:
+        db_user = await sync_user_role_from_clerk(db, db_user)
+
+    return db_user
+
+async def sync_user_role_from_clerk(db: Session, db_user: models.User) -> models.User:
+    """
+    Fetches user role from Clerk's publicMetadata and updates the local DB if they differ.
+    """
+    try:
+        clerk_user_info = await get_clerk_user_info(db_user.clerk_user_id)
+        # Return early if no metadata is available
+        if not (clerk_user_info and clerk_user_info.get('public_metadata')):
+            return db_user
+
+        clerk_role = clerk_user_info['public_metadata'].get('role', 'user')
+        
+        if db_user.role != clerk_role:
+            print(f"--- [INFO] Role mismatch for user {db_user.id}. DB: '{db_user.role}', Clerk: '{clerk_role}'. Syncing... ---")
+            db_user.role = clerk_role
+            db.commit()
+            db.refresh(db_user)
+            print(f"--- [INFO] Synced role for user {db_user.id} to '{clerk_role}'. ---")
+            
+    except Exception as e:
+        print(f"--- [WARN] Could not sync user role for {db_user.clerk_user_id}: {e}")
+    
     return db_user
 
 async def is_admin(user: models.User) -> bool:

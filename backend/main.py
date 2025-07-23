@@ -609,38 +609,39 @@ def get_categories_with_recent_posts(
         # Convert posts to list format with proper schema
         posts_data = []
         for post in recent_posts:
-            # Check if user can see private post details
             can_view_private = crud.can_view_private_post(post, current_user)
             
-            post_dict = {
-                'id': post.id,
-                'title': post.title if can_view_private or not post.is_private else '🔒 비밀글입니다',
-                'author': {
-                    'id': post.author.id,
-                    'clerk_user_id': post.author.clerk_user_id,
-                    'name': post.author.name,
-                    'role': post.author.role,
-                    'email': post.author.email,
-                    'created_at': post.author.created_at,
-                    'updated_at': post.author.updated_at
-                },
-                'category': {
-                    'id': post.category.id,
-                    'name': post.category.name,
-                    'display_name': post.category.display_name,
-                    'description': post.category.description,
-                    'is_admin_only': category.is_admin_only,
-                    'order': category.order,
-                    'created_at': category.created_at
-                },
-                'is_pinned': post.is_pinned,
-                'is_private': post.is_private,
-                'view_count': post.view_count,
-                'images': post.images or [],
-                'created_at': post.created_at,
-                'updated_at': post.updated_at,
-                'comment_count': comment_counts.get(post.id, 0) # Get count from pre-fetched map
-            }
+            post_dict = {}
+            if can_view_private:
+                # User has permission, return full details
+                post_dict = {
+                    'id': post.id,
+                    'title': post.title,
+                    'author': post.author,
+                    'category': post.category,
+                    'is_pinned': post.is_pinned,
+                    'is_private': post.is_private,
+                    'view_count': post.view_count,
+                    'images': post.images or [],
+                    'created_at': post.created_at,
+                    'updated_at': post.updated_at,
+                    'comment_count': comment_counts.get(post.id, 0)
+                }
+            else:
+                # User does not have permission, mask the post
+                post_dict = {
+                    'id': post.id,
+                    'title': '🔒 비밀글입니다',
+                    'author': schemas.User(id=0, clerk_user_id="", name="익명", role="user", email="", created_at=post.created_at),
+                    'category': post.category,
+                    'is_pinned': post.is_pinned,
+                    'is_private': True,
+                    'view_count': post.view_count,
+                    'images': [],
+                    'created_at': post.created_at,
+                    'updated_at': post.updated_at,
+                    'comment_count': comment_counts.get(post.id, 0)
+                }
             posts_data.append(post_dict)
         
         category_overview = {
@@ -667,7 +668,7 @@ def get_posts(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_optional_user)
 ):
-    """Get posts with optional filtering (filters private posts based on user permissions)"""
+    """Get posts, masking private ones based on user permissions."""
     category_id = None
     if category:
         db_category = crud.get_post_category_by_name(db, category)
@@ -676,29 +677,33 @@ def get_posts(
     
     posts = crud.get_posts(db, category_id=category_id, skip=skip, limit=limit, search=search)
     
-    # Efficiently fetch comment counts for all posts in one query
     post_ids = [post.id for post in posts]
     comment_counts = crud.get_comment_counts_for_posts(db, post_ids)
     
-    # Add comment count to each post
-    posts_with_count = []
+    sanitized_posts = []
     for post in posts:
-        post_dict = {
-            'id': post.id,
-            'title': post.title,
-            'author': post.author, # Assuming author is eagerly loaded
-            'category': post.category, # Assuming category is eagerly loaded
-            'is_pinned': post.is_pinned,
-            'is_private': post.is_private,
-            'view_count': post.view_count,
-            'images': post.images or [],
-            'created_at': post.created_at,
-            'updated_at': post.updated_at,
-            'comment_count': comment_counts.get(post.id, 0)
-        }
-        posts_with_count.append(schemas.PostList(**post_dict))
-    
-    return posts_with_count
+        if crud.can_view_private_post(post, current_user):
+            post_dict = post.__dict__
+            post_dict['comment_count'] = comment_counts.get(post.id, 0)
+            sanitized_posts.append(schemas.PostList(**post_dict))
+        else:
+            # Mask the private post
+            masked_post = schemas.PostList(
+                id=post.id,
+                title="🔒 비밀글입니다.",
+                author=schemas.User(id=0, clerk_user_id="", name="익명", role="user", email="", created_at=post.created_at),
+                category=post.category,
+                is_pinned=post.is_pinned,
+                is_private=True,
+                view_count=post.view_count,
+                images=[],
+                comment_count=comment_counts.get(post.id, 0),
+                created_at=post.created_at,
+                updated_at=post.updated_at
+            )
+            sanitized_posts.append(masked_post)
+            
+    return sanitized_posts
 
 @app.post("/api/v1/community/posts", response_model=schemas.Post)
 async def create_post(
@@ -726,14 +731,40 @@ def get_post(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_optional_user)
 ):
-    """Get a specific post (without incrementing view count)"""
+    """Get a specific post, masking private comments based on user permissions."""
     post = crud.get_post(db, post_id)
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
     
-    # Check if user can view private post
+    # Check if user can view the private post itself
     if not crud.can_view_private_post(post, current_user):
-        raise HTTPException(status_code=403, detail="Access denied to private post")
+        # Unlike the list view, for a direct access, we raise an error
+        raise HTTPException(status_code=403, detail="Access denied to this private post")
+
+    # Sanitize comments within the post based on permissions
+    sanitized_comments = []
+    if post.comments:
+        for comment in post.comments:
+            if crud.can_view_private_comment(comment, current_user):
+                sanitized_comments.append(comment)
+            elif comment.is_private:
+                masked_comment = schemas.Comment(
+                    id=comment.id,
+                    content="🔒 비밀 댓글입니다.",
+                    author=schemas.User(id=0, clerk_user_id="", name="익명", role="user", email="", created_at=comment.created_at),
+                    post_id=comment.post_id,
+                    parent_id=comment.parent_id,
+                    is_private=True,
+                    created_at=comment.created_at,
+                    updated_at=comment.updated_at,
+                    replies=[]
+                )
+                sanitized_comments.append(masked_comment)
+            else:
+                sanitized_comments.append(comment)
+    
+    # Re-assign the sanitized comments to the post object before returning
+    post.comments = sanitized_comments
     
     return post
 
@@ -800,17 +831,42 @@ def get_comments(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_optional_user)
 ):
-    """Get comments for a post (filters private comments based on user permissions)"""
+    """Get comments for a post, masking private ones based on user permissions."""
     post = crud.get_post(db, post_id)
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
-    
+
+    # First, check if the user can view the post itself
+    if not crud.can_view_private_post(post, current_user):
+        raise HTTPException(status_code=403, detail="Access denied to this post and its comments")
+
     comments = crud.get_comments(db, post_id)
     
-    # Filter private comments based on user permissions
-    comments = crud.filter_private_comments(comments, current_user)
-    
-    return comments
+    # Sanitize comments based on permissions
+    sanitized_comments = []
+    for comment in comments:
+        if crud.can_view_private_comment(comment, current_user):
+            # User has permission, return the full comment
+            sanitized_comments.append(comment)
+        elif comment.is_private:
+            # User cannot view, mask the content
+            masked_comment = schemas.Comment(
+                id=comment.id,
+                content="🔒 비밀 댓글입니다.",
+                author=schemas.User(id=0, clerk_user_id="", name="익명", role="user", email="", created_at=comment.created_at),
+                post_id=comment.post_id,
+                parent_id=comment.parent_id,
+                is_private=True,
+                created_at=comment.created_at,
+                updated_at=comment.updated_at,
+                replies=[] # Replies are handled recursively if needed
+            )
+            sanitized_comments.append(masked_comment)
+        else:
+            # It's a public comment, just add it
+            sanitized_comments.append(comment)
+            
+    return sanitized_comments
 
 @app.post("/api/v1/community/posts/{post_id}/comments", response_model=schemas.Comment)
 def create_comment(

@@ -24,10 +24,14 @@ def can_view_private_comment(comment: models.Comment, current_user: Optional[mod
         return True
     if not current_user:
         return False
-    # Author can view their own private comment
+    # 1. Comment author can view their own private comment
     if comment.author_id == current_user.id:
         return True
-    # Admin can view any private comment
+    # 2. Post author can view any private comment on their post
+    # Ensure comment.post is loaded to prevent extra DB queries
+    if comment.post and comment.post.author_id == current_user.id:
+        return True
+    # 3. Admin can view any private comment
     if auth.is_admin_sync(current_user):
         return True
     return False
@@ -259,7 +263,8 @@ def get_comments(db: Session, post_id: int):
     from sqlalchemy.orm import joinedload
     
     return db.query(models.Comment).options(
-        joinedload(models.Comment.author)
+        joinedload(models.Comment.author),
+        joinedload(models.Comment.post)  # Eagerly load the post relationship
     ).filter(
         models.Comment.post_id == post_id,
         models.Comment.parent_id == None  # Only top-level comments
