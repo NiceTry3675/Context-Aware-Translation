@@ -1,6 +1,7 @@
 import os
 from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from clerk_backend_api import Clerk
 from clerk_backend_api.models import ClerkErrors, SDKError
 from clerk_backend_api.security import AuthenticateRequestOptions
@@ -114,40 +115,36 @@ async def get_required_user(
 
     if not db_user:
         print(f"--- [INFO] User with Clerk ID {clerk_user_id} not found in DB. Creating new user record from API request. ---")
-        print(f"--- [DEBUG] JWT Claims: {claims}")
-        
-        # Clerk Management API를 사용하여 완전한 사용자 정보 가져오기
-        clerk_user_info = await get_clerk_user_info(clerk_user_id)
-        
-        if clerk_user_info:
-            # Clerk API에서 가져온 정보 사용 (사용자명 우선)
-            email_address = clerk_user_info.get('email')
-            name = (clerk_user_info.get('username') or 
-                   clerk_user_info.get('full_name') or
-                   (email_address.split('@')[0] if email_address else None))
-        else:
-            # Fallback to JWT claims
-            email_address = claims.get('primary_email_address') or claims.get('email')
-            first_name = claims.get('first_name') or claims.get('given_name') or ''
-            last_name = claims.get('last_name') or claims.get('family_name') or ''
-            full_name = claims.get('name') or claims.get('full_name') or ''
+        try:
+            # Clerk Management API를 사용하여 완전한 사용자 정보 가져오기
+            clerk_user_info = await get_clerk_user_info(clerk_user_id)
             
-            if full_name:
-                name = full_name
-            elif first_name or last_name:
-                name = f"{first_name} {last_name}".strip()
-            elif email_address:
-                name = email_address.split('@')[0]
+            if clerk_user_info:
+                email_address = clerk_user_info.get('email')
+                name = (clerk_user_info.get('username') or 
+                       clerk_user_info.get('full_name') or
+                       (email_address.split('@')[0] if email_address else None))
             else:
-                name = None
+                # Fallback to JWT claims if API fails
+                email_address = claims.get('primary_email_address') or claims.get('email')
+                name = (claims.get('name') or claims.get('full_name') or 
+                       f"{claims.get('first_name', '')} {claims.get('last_name', '')}".strip() or
+                       (email_address.split('@')[0] if email_address else None))
 
-        new_user_data = schemas.UserCreate(
-            clerk_user_id=clerk_user_id,
-            email=email_address,
-            name=name
-        )
-        db_user = crud.create_user(db, user=new_user_data)
-        print(f"--- [INFO] Successfully created user {db_user.id} for Clerk ID {clerk_user_id} with name: {name}. ---")
+            new_user_data = schemas.UserCreate(
+                clerk_user_id=clerk_user_id,
+                email=email_address,
+                name=name
+            )
+            db_user = crud.create_user(db, user=new_user_data)
+            print(f"--- [INFO] Successfully created user {db_user.id} for Clerk ID {clerk_user_id} with name: {name}. ---")
+        except IntegrityError:
+            db.rollback()
+            print(f"--- [WARN] Race condition detected for Clerk ID {clerk_user_id}. User likely created by webhook. Refetching... ---")
+            db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
+            if not db_user:
+                # This case is highly unlikely but good to handle.
+                raise HTTPException(status_code=500, detail="Failed to create or find user after race condition.")
     else:
         # 기존 사용자의 이름이 없는 경우 업데이트
         if not db_user.name:
@@ -202,13 +199,11 @@ async def get_optional_user(
     # If user doesn't exist in DB but is authenticated, create them
     if not db_user:
         print(f"--- [INFO] Optional auth: User with Clerk ID {clerk_user_id} not found in DB. Creating new user. ---")
-        
         try:
             # Clerk Management API를 사용하여 완전한 사용자 정보 가져오기
             clerk_user_info = await get_clerk_user_info(clerk_user_id)
             
             if clerk_user_info:
-                # Clerk API에서 가져온 정보 사용 (사용자명 우선)
                 email_address = clerk_user_info.get('email')
                 name = (clerk_user_info.get('username') or 
                        clerk_user_info.get('full_name') or
@@ -216,18 +211,9 @@ async def get_optional_user(
             else:
                 # Fallback to JWT claims
                 email_address = claims.get('primary_email_address') or claims.get('email')
-                first_name = claims.get('first_name') or claims.get('given_name') or ''
-                last_name = claims.get('last_name') or claims.get('family_name') or ''
-                full_name = claims.get('name') or claims.get('full_name') or ''
-                
-                if full_name:
-                    name = full_name
-                elif first_name or last_name:
-                    name = f"{first_name} {last_name}".strip()
-                elif email_address:
-                    name = email_address.split('@')[0]
-                else:
-                    name = None
+                name = (claims.get('name') or claims.get('full_name') or 
+                       f"{claims.get('first_name', '')} {claims.get('last_name', '')}".strip() or
+                       (email_address.split('@')[0] if email_address else None))
 
             new_user_data = schemas.UserCreate(
                 clerk_user_id=clerk_user_id,
@@ -236,6 +222,10 @@ async def get_optional_user(
             )
             db_user = crud.create_user(db, user=new_user_data)
             print(f"--- [INFO] Successfully created user {db_user.id} for Clerk ID {clerk_user_id} in optional auth. ---")
+        except IntegrityError:
+            db.rollback()
+            print(f"--- [WARN] Race condition detected for Clerk ID {clerk_user_id} during optional auth. Refetching... ---")
+            db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
         except Exception as e:
             print(f"--- [ERROR] Failed to create user in optional auth: {e}")
             return None

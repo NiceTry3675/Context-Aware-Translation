@@ -378,7 +378,8 @@ async def handle_clerk_webhook(request: Request, svix_id: str = Header(None), sv
 
     if event_type == "user.created":
         user_name = f'{data.get("first_name", "")} {data.get("last_name", "")}'.strip()
-        email_address = data.get("email_addresses", [{}])[0].get("email_address")
+        email_addresses = data.get("email_addresses", [])
+        email_address = email_addresses[0].get("email_address") if email_addresses else None
 
         user_in = schemas.UserCreate(
             clerk_user_id=data["id"],
@@ -391,7 +392,8 @@ async def handle_clerk_webhook(request: Request, svix_id: str = Header(None), sv
         db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
         
         user_name = f'{data.get("first_name", "")} {data.get("last_name", "")}'.strip()
-        email_address = data.get("email_addresses", [{}])[0].get("email_address")
+        email_addresses = data.get("email_addresses", [])
+        email_address = email_addresses[0].get("email_address") if email_addresses else None
 
         if db_user:
             user_update = schemas.UserUpdate(email=email_address or None, name=user_name or None)
@@ -683,9 +685,9 @@ def get_posts(
     sanitized_posts = []
     for post in posts:
         if crud.can_view_private_post(post, current_user):
-            post_dict = post.__dict__
-            post_dict['comment_count'] = comment_counts.get(post.id, 0)
-            sanitized_posts.append(schemas.PostList(**post_dict))
+            post_data = schemas.PostList.model_validate(post)
+            post_data.comment_count = comment_counts.get(post.id, 0)
+            sanitized_posts.append(post_data)
         else:
             # Mask the private post
             masked_post = schemas.PostList(

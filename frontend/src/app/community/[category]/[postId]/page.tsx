@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
 import UserDisplayName from '../../../components/UserDisplayName';
@@ -82,23 +82,7 @@ function PostDetailPageContent() {
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editingCommentContent, setEditingCommentContent] = useState('');
 
-  useEffect(() => {
-    if (!isLoaded) return;
-
-    if (!isSignedIn) {
-      router.push('/');
-      return;
-    }
-
-    fetchPost();
-    fetchComments();
-    
-    // 조회수 증가 (한 번만)
-    incrementViewCount();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, isSignedIn, postId]);
-
-  const fetchPost = async () => {
+  const fetchPost = useCallback(async () => {
     try {
       const token = await getToken();
       const response = await fetch(`${API_URL}/api/v1/community/posts/${postId}`, {
@@ -120,34 +104,9 @@ function PostDetailPageContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken, postId, API_URL]);
 
-  const incrementViewCount = async () => {
-    try {
-      const token = await getToken();
-      await fetch(`${API_URL}/api/v1/community/posts/${postId}/view`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      // 조회수 증가 후 게시글 정보 다시 가져오기
-      const response = await fetch(`${API_URL}/api/v1/community/posts/${postId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const updatedPost = await response.json();
-        setPost(updatedPost);
-      }
-    } catch (err) {
-      // 조회수 증가 실패는 조용히 처리 (사용자 경험에 영향 주지 않음)
-      console.warn('Failed to increment view count:', err);
-    }
-  };
-
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     try {
       const token = await getToken();
       const response = await fetch(`${API_URL}/api/v1/community/posts/${postId}/comments`, {
@@ -161,7 +120,35 @@ function PostDetailPageContent() {
     } catch (err) {
       console.error('Failed to fetch comments:', err);
     }
-  };
+  }, [getToken, postId, API_URL]);
+
+  const incrementViewCount = useCallback(async () => {
+    try {
+      const token = await getToken();
+      await fetch(`${API_URL}/api/v1/community/posts/${postId}/view`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      // No need to refetch here, view count is not critical to be real-time
+    } catch (err) {
+      console.warn('Failed to increment view count:', err);
+    }
+  }, [getToken, postId, API_URL]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    if (!isSignedIn) {
+      router.push('/');
+      return;
+    }
+
+    fetchPost();
+    fetchComments();
+    incrementViewCount();
+  }, [isLoaded, isSignedIn, router, fetchPost, fetchComments, incrementViewCount]);
 
   const handleDeletePost = async () => {
     if (!confirm('정말로 이 게시글을 삭제하시겠습니까?')) return;

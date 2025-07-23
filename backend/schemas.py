@@ -168,6 +168,7 @@ class Post(PostBase, KSTTimezoneBase):
     author: User
     category: PostCategory
     view_count: int
+    comments: List['Comment'] = []
 
 # --- Comment Schemas ---
 class CommentBase(BaseModel):
@@ -189,3 +190,4 @@ class Comment(CommentBase, KSTTimezoneBase):
 
 # Update forward references
 Comment.model_rebuild()
+Post.model_rebuild()
