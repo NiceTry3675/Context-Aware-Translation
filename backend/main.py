@@ -590,10 +590,21 @@ def get_categories_with_recent_posts(
     """Get categories with their recent posts for community overview"""
     categories = crud.get_post_categories(db)
     categories_overview = []
-    
+
+    # 모든 카테고리의 최근 게시물 3개를 한 번에 가져오기
+    all_recent_posts = []
     for category in categories:
         # Get 3 most recent posts for each category
         recent_posts = crud.get_posts(db, category_id=category.id, skip=0, limit=3)
+        all_recent_posts.extend(recent_posts)
+
+    # 모든 최근 게시물의 댓글 수를 한 번의 쿼리로 가져오기
+    post_ids = [post.id for post in all_recent_posts]
+    comment_counts = crud.get_comment_counts_for_posts(db, post_ids)
+
+    for category in categories:
+        # 해당 카테고리의 최근 게시물 필터링
+        recent_posts = [post for post in all_recent_posts if post.category_id == category.id]
         
         # Convert posts to list format with proper schema
         posts_data = []
@@ -618,9 +629,9 @@ def get_categories_with_recent_posts(
                     'name': post.category.name,
                     'display_name': post.category.display_name,
                     'description': post.category.description,
-                    'is_admin_only': post.category.is_admin_only,
-                    'order': post.category.order,
-                    'created_at': post.category.created_at
+                    'is_admin_only': category.is_admin_only,
+                    'order': category.order,
+                    'created_at': category.created_at
                 },
                 'is_pinned': post.is_pinned,
                 'is_private': post.is_private,
@@ -628,7 +639,7 @@ def get_categories_with_recent_posts(
                 'images': post.images or [],
                 'created_at': post.created_at,
                 'updated_at': post.updated_at,
-                'comment_count': crud.count_post_comments(db, post.id)
+                'comment_count': comment_counts.get(post.id, 0) # Get count from pre-fetched map
             }
             posts_data.append(post_dict)
         
@@ -641,7 +652,7 @@ def get_categories_with_recent_posts(
             'order': category.order,
             'created_at': category.created_at,
             'recent_posts': posts_data,
-            'total_posts': len(crud.get_posts(db, category_id=category.id, skip=0, limit=1000))  # Get total count
+            'total_posts': crud.count_posts(db, category_id=category.id)  # Use efficient count query
         }
         categories_overview.append(category_overview)
     
@@ -665,40 +676,25 @@ def get_posts(
     
     posts = crud.get_posts(db, category_id=category_id, skip=skip, limit=limit, search=search)
     
-    # Note: Private posts are shown in list but content access is controlled in individual post endpoint
+    # Efficiently fetch comment counts for all posts in one query
+    post_ids = [post.id for post in posts]
+    comment_counts = crud.get_comment_counts_for_posts(db, post_ids)
     
     # Add comment count to each post
     posts_with_count = []
     for post in posts:
-        # 관계형 필드를 포함하여 수동으로 딕셔너리 구성
         post_dict = {
             'id': post.id,
             'title': post.title,
-            'author': {
-                'id': post.author.id,
-                'clerk_user_id': post.author.clerk_user_id,
-                'name': post.author.name,
-                'role': post.author.role,
-                'email': post.author.email,
-                'created_at': post.author.created_at,
-                'updated_at': post.author.updated_at
-            },
-            'category': {
-                'id': post.category.id,
-                'name': post.category.name,
-                'display_name': post.category.display_name,
-                'description': post.category.description,
-                'is_admin_only': post.category.is_admin_only,
-                'order': post.category.order,
-                'created_at': post.category.created_at
-            },
+            'author': post.author, # Assuming author is eagerly loaded
+            'category': post.category, # Assuming category is eagerly loaded
             'is_pinned': post.is_pinned,
             'is_private': post.is_private,
             'view_count': post.view_count,
             'images': post.images or [],
             'created_at': post.created_at,
             'updated_at': post.updated_at,
-            'comment_count': crud.count_post_comments(db, post.id)
+            'comment_count': comment_counts.get(post.id, 0)
         }
         posts_with_count.append(schemas.PostList(**post_dict))
     

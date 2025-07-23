@@ -296,3 +296,33 @@ def delete_comment(db: Session, comment_id: int):
 
 def count_post_comments(db: Session, post_id: int):
     return db.query(models.Comment).filter(models.Comment.post_id == post_id).count()
+
+def count_posts(db: Session, category_id: int = None, search: str = None) -> int:
+    """Count posts with optional filtering, using an efficient COUNT query."""
+    query = db.query(models.Post)
+    if category_id:
+        query = query.filter(models.Post.category_id == category_id)
+    if search:
+        query = query.filter(
+            (models.Post.title.contains(search)) | 
+            (models.Post.content.contains(search))
+        )
+    return query.count()
+
+def get_comment_counts_for_posts(db: Session, post_ids: list[int]) -> dict[int, int]:
+    """Get comment counts for a list of posts in a single query."""
+    if not post_ids:
+        return {}
+    
+    from sqlalchemy import func
+    
+    result = db.query(
+        models.Comment.post_id,
+        func.count(models.Comment.id).label('comment_count')
+    ).filter(
+        models.Comment.post_id.in_(post_ids)
+    ).group_by(
+        models.Comment.post_id
+    ).all()
+    
+    return {post_id: count for post_id, count in result}

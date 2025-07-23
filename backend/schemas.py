@@ -19,28 +19,14 @@ except ImportError:
     UTC_ZONE = datetime.timezone.utc
     KST_ZONE = datetime.timezone(datetime.timedelta(hours=9))
 
-# --- User Schemas ---
-class UserBase(BaseModel):
-    email: Optional[str] = None
-    name: Optional[str] = None
-
-class UserCreate(UserBase):
-    clerk_user_id: str
-
-class UserUpdate(UserBase):
-    pass
-
-class User(UserBase):
-    id: int
-    clerk_user_id: str
-    role: str = "user"
+# --- Base Schemas for Reusability ---
+class KSTTimezoneBase(BaseModel):
     created_at: datetime.datetime
     updated_at: Optional[datetime.datetime] = None
 
     @field_serializer('created_at')
     def serialize_created_at(self, dt: datetime.datetime) -> datetime.datetime:
         if dt.tzinfo is None:
-            # UTC로 가정하고 한국 시간으로 변환
             dt = dt.replace(tzinfo=UTC_ZONE)
         return dt.astimezone(KST_ZONE)
     
@@ -54,6 +40,22 @@ class User(UserBase):
 
     class Config:
         from_attributes = True
+
+# --- User Schemas ---
+class UserBase(BaseModel):
+    email: Optional[str] = None
+    name: Optional[str] = None
+
+class UserCreate(UserBase):
+    clerk_user_id: str
+
+class UserUpdate(UserBase):
+    pass
+
+class User(UserBase, KSTTimezoneBase):
+    id: int
+    clerk_user_id: str
+    role: str = "user"
 
 # --- TranslationJob Schemas ---
 class TranslationJobBase(BaseModel):
@@ -150,7 +152,7 @@ class PostUpdate(BaseModel):
     is_pinned: Optional[bool] = None
     images: Optional[list[str]] = None
 
-class PostList(BaseModel):
+class PostList(KSTTimezoneBase):
     id: int
     title: str
     author: User
@@ -160,50 +162,12 @@ class PostList(BaseModel):
     view_count: int
     images: list[str] = []
     comment_count: int = 0
-    created_at: datetime.datetime
-    updated_at: Optional[datetime.datetime] = None
 
-    @field_serializer('created_at')
-    def serialize_created_at(self, dt: datetime.datetime) -> datetime.datetime:
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=UTC_ZONE)
-        return dt.astimezone(KST_ZONE)
-    
-    @field_serializer('updated_at')
-    def serialize_updated_at(self, dt: Optional[datetime.datetime]) -> Optional[datetime.datetime]:
-        if dt is None:
-            return None
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=UTC_ZONE)
-        return dt.astimezone(KST_ZONE)
-
-    class Config:
-        from_attributes = True
-
-class Post(PostBase):
+class Post(PostBase, KSTTimezoneBase):
     id: int
     author: User
     category: PostCategory
     view_count: int
-    created_at: datetime.datetime
-    updated_at: Optional[datetime.datetime] = None
-
-    @field_serializer('created_at')
-    def serialize_created_at(self, dt: datetime.datetime) -> datetime.datetime:
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=UTC_ZONE)
-        return dt.astimezone(KST_ZONE)
-    
-    @field_serializer('updated_at')
-    def serialize_updated_at(self, dt: Optional[datetime.datetime]) -> Optional[datetime.datetime]:
-        if dt is None:
-            return None
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=UTC_ZONE)
-        return dt.astimezone(KST_ZONE)
-
-    class Config:
-        from_attributes = True
 
 # --- Comment Schemas ---
 class CommentBase(BaseModel):
@@ -217,30 +181,11 @@ class CommentCreate(CommentBase):
 class CommentUpdate(BaseModel):
     content: str
 
-class Comment(CommentBase):
+class Comment(CommentBase, KSTTimezoneBase):
     id: int
     author: User
     post_id: int
-    created_at: datetime.datetime
-    updated_at: Optional[datetime.datetime] = None
     replies: List['Comment'] = []
-
-    @field_serializer('created_at')
-    def serialize_created_at(self, dt: datetime.datetime) -> datetime.datetime:
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=UTC_ZONE)
-        return dt.astimezone(KST_ZONE)
-    
-    @field_serializer('updated_at')
-    def serialize_updated_at(self, dt: Optional[datetime.datetime]) -> Optional[datetime.datetime]:
-        if dt is None:
-            return None
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=UTC_ZONE)
-        return dt.astimezone(KST_ZONE)
-
-    class Config:
-        from_attributes = True
 
 # Update forward references
 Comment.model_rebuild()
