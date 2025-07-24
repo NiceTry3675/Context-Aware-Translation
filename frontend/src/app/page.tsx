@@ -36,7 +36,7 @@ import {
 } from '@mui/icons-material';
 import theme from '../theme';
 
-const AuthButtons = dynamic(() => import('./components/AuthButtons'), { ssr: false });
+import AuthButtons from './components/AuthButtons';
 
 // --- Type Definitions ---
 interface Job {
