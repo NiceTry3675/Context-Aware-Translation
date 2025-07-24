@@ -48,7 +48,7 @@ export default function SimplePrivacyPolicyPage() {
         <Box sx={{ my: 3 }}>
           <Typography variant="h5" gutterBottom>3. 정보 보관 및 권리</Typography>
           <Typography paragraph>
-            수집된 정보는 회원 탈퇴 시까지 보관되며, 사용자는 언제든지 서비스 내에서 계정 삭제를 통해 정보를 영구적으로 파기할 수 있습니다.
+            수집된 정보는 회원 탈퇴 시까지 보관되며, 사용자는 언제든지 서비스 내에서 계정 삭제를 통해 정보를 <strong>즉시, 영구적으로</strong> 파기할 수 있습니다.
           </Typography>
         </Box>
 

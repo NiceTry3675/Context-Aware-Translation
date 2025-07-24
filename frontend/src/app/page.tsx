@@ -883,6 +883,11 @@ export default function Home() {
             Contact Us
           </Button>
         </Box>
+        <Box mt={2}>
+          <Link href="/privacy" color="text.secondary" variant="body2">
+            개인정보처리방침
+          </Link>
+        </Box>
       </Box>
     </Container>
   );
