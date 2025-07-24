@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth, useClerk } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
+
 import {
   Container, Box, Typography, TextField, Button, CircularProgress, Alert,
   Card, CardContent, CardActions, IconButton, Tooltip, Chip,
