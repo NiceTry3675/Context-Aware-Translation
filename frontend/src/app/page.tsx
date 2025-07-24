@@ -878,7 +878,9 @@ export default function Home() {
           <Button
             variant="outlined"
             startIcon={<EmailIcon />}
-            href="mailto:tomtom5330@gmail.com"
+            href="https://forms.gle/st93J7NT2PLcxgaj9"
+            target="_blank"
+            rel="noopener noreferrer"
           >
             Contact Us
           </Button>

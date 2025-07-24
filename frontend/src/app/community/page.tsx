@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import {
   Container, Box, Typography, Card, CardContent,
-  Button, Alert, CircularProgress, Chip, Divider, List, ListItem, ListItemText
+  Button, Alert, CircularProgress, Chip, Divider, List, ListItem, ListItemText, IconButton
 } from '@mui/material';
 import {
   Announcement as AnnouncementIcon,
@@ -14,7 +14,8 @@ import {
   Forum as ForumIcon,
   ArrowForward as ArrowForwardIcon,
   Lock as LockIcon,
-  PushPin as PushPinIcon
+  PushPin as PushPinIcon,
+  Home as HomeIcon
 } from '@mui/icons-material';
 import theme from '../../theme';
 
@@ -162,6 +163,13 @@ export default function CommunityPage() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 8 }}>
+      <Box sx={{ mb: 4 }}>
+        <IconButton onClick={() => router.push('/')} color="primary">
+          <HomeIcon />
+          <Typography variant="button" sx={{ ml: 1 }}>홈으로</Typography>
+        </IconButton>
+      </Box>
+
       {/* Header */}
       <Box textAlign="center" mb={6}>
         <Typography variant="h1" component="h1" sx={{
