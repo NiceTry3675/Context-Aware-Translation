@@ -38,6 +38,7 @@ def run_migrations():
     # --- 마이그레이션 정의 ---
     migrations_to_run = [
         # Column additions
+        {'type': 'add_column', 'table': 'translation_jobs', 'column': 'owner_id', 'definition': 'VARCHAR(255)'},
         {'type': 'add_column', 'table': 'posts', 'column': 'images', 'definition': "JSON DEFAULT '[]'"},
         {'type': 'add_column', 'table': 'posts', 'column': 'is_private', 'definition': 'BOOLEAN DEFAULT FALSE'},
         {'type': 'add_column', 'table': 'comments', 'column': 'is_private', 'definition': 'BOOLEAN DEFAULT FALSE'},
