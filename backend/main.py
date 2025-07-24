@@ -1,3 +1,4 @@
+# --- 1. Standard Library Imports ---
 import shutil
 import os
 import traceback
@@ -5,18 +6,24 @@ import re
 import json
 import asyncio
 import gc
+import uuid
+
+# --- 2. Third-party Library Imports ---
+from dotenv import load_dotenv
 from fastapi import FastAPI, File, UploadFile, BackgroundTasks, Depends, HTTPException, Form, Request, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
-from typing import List, Dict, Optional
 from pydantic import BaseModel
+from svix import Webhook
 
-# Import database, models, schemas, crud
-from . import models, schemas, crud
+# --- Load Environment Variables FIRST ---
+load_dotenv() # This loads variables from the .env file at the project root
+
+# --- 3. Internal/Local Application Imports ---
+from . import models, schemas, crud, auth
 from .database import engine, SessionLocal
-
-# Import core logic
 from core.config.loader import load_config
 from core.translation.models.gemini import GeminiModel
 from core.translation.models.openrouter import OpenRouterModel
@@ -26,42 +33,71 @@ from core.translation.engine import TranslationEngine
 from core.utils.file_parser import parse_document
 from core.prompts.manager import PromptManager
 
-# --- Environment Variables ---
-# A simple secret key for admin operations.
-# In a real production environment, use a more secure method like OAuth2.
+# --- Environment Variables & Constants ---
 ADMIN_SECRET_KEY = os.environ.get("ADMIN_SECRET_KEY", "dev-secret-key")
+CLERK_WEBHOOK_SECRET = os.environ.get("CLERK_WEBHOOK_SECRET")
 
+# --- Database Initialization ---
+# Run database migrations (includes table creation)
+try:
+    from . import migrations
+    migrations.run_migrations()
+except Exception as e:
+    print(f"❌ Migration error: {e}")
+    # 마이그레이션 실패해도 앱은 계속 실행
 
-# Create the database tables
-models.Base.metadata.create_all(bind=engine)
+# Auto initialization (categories, etc.)
+try:
+    from . import auto_init
+    auto_init.run_auto_init()
+except Exception as e:
+    print(f"❌ Auto initialization error: {e}")
+    # 초기화 실패해도 앱은 계속 실행
 
-# Dependency to get a database session
+# --- FastAPI App Initialization ---
+app = FastAPI()
+
+# --- Middleware Configuration ---
+origins = [
+    "http://localhost:3000",  # Next.js development server
+    "http://127.0.0.1:3000",  # Alternative localhost
+    "https://context-aware-translation.vercel.app", # Vercel production deployment
+    "https://context-aware-translation-git-main-cat-rans.vercel.app", # Vercel main branch preview
+    "https://context-aware-translation-git-dev-cat-rans.vercel.app" # Vercel dev branch preview
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",  # 로컬 개발
+        "http://127.0.0.1:3000",  # 로컬 대체
+        "https://context-aware-translation.vercel.app",  # Vercel 프로덕션
+        "https://context-aware-translation-git-dev-cat-rans.vercel.app",  # Vercel dev 브랜치
+        "https://context-aware-translation-git-main-cat-rans.vercel.app"  # Vercel main 브랜치
+    ],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
+
+# --- Static Files Configuration ---
+# Create uploads directory if it doesn't exist
+UPLOAD_DIR = "uploads/images"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Mount static files for serving uploaded images
+app.mount("/static", StaticFiles(directory="uploads"), name="static")
+
+# --- Dependency Injection ---
 def get_db():
+    """Dependency to get a database session for a single request."""
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
-app = FastAPI()
-
-# CORS 설정
-origins = [
-    "http://localhost:3000",  # Next.js 개발 서버
-    "https://context-aware-translation.vercel.app", # Vercel 배포 주소
-    "https://context-aware-translation-git-main-cat-rans.vercel.app", # Vercel 프리뷰 주소
-    "https://context-aware-translation-git-dev-cat-rans.vercel.app" # Vercel dev 프리뷰 주소
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# --- Helper function for model selection ---
+# --- Helper Functions ---
 def get_model_api(api_key: str, model_name: str, config: dict):
     """Factory function to get the correct model API instance."""
     if api_key.startswith("sk-or-"):
@@ -88,14 +124,14 @@ def validate_api_key(api_key: str, model_name: str):
     else:
         return GeminiModel.validate_api_key(api_key, model_name)
 
-# --- Background Translation Task ---
+# --- Background Task Definition ---
 def run_translation_in_background(job_id: int, file_path: str, filename: str, api_key: str, model_name: str, style_data: str = None, segment_size: int = 15000):
     db = SessionLocal()
     try:
         crud.update_job_status(db, job_id, "PROCESSING")
         print(f"--- [BACKGROUND] Starting translation for Job ID: {job_id}, File: {filename}, Model: {model_name} ---")
         
-        config = load_config() 
+        config = load_config()
         gemini_api = get_model_api(api_key, model_name, config)
 
         translation_job = TranslationJob(
@@ -137,19 +173,256 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
         gc.collect()
         print(f"--- [BACKGROUND] Job ID: {job_id} finished. DB session closed and GC collected. ---")
 
-# --- SSE Announcement Stream ---
+# --- API Endpoints ---
+
+@app.get("/")
+def read_root():
+    return {"message": "Translation Service Backend is running!"}
+
+# --- Translation Endpoints ---
+
+class StyleAnalysisResponse(BaseModel):
+    protagonist_name: str
+    narration_style_endings: str
+    tone_keywords: str
+    stylistic_rule: str
+
+@app.post("/api/v1/analyze-style", response_model=StyleAnalysisResponse)
+async def analyze_style(
+    file: UploadFile = File(...),
+    api_key: str = Form(...),
+    model_name: str = Form("gemini-2.5-flash-lite-preview-06-17"),
+    # No longer requires user authentication for this specific endpoint
+):
+    if not validate_api_key(api_key, model_name):
+        raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
+
+    temp_dir = "uploads"
+    os.makedirs(temp_dir, exist_ok=True)
+    # Create a unique temporary filename to avoid collisions
+    unique_id = uuid.uuid4()
+    temp_file_path = os.path.join(temp_dir, f"temp_{unique_id}_{file.filename}")
+    try:
+        with open(temp_file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save temporary file: {e}")
+
+    try:
+        try:
+            text_segments = parse_document(temp_file_path)
+        except Exception as parse_error:
+            raise HTTPException(status_code=400, detail=f"Failed to parse the uploaded file: {str(parse_error)}")
+            
+        if not text_segments:
+            raise HTTPException(status_code=400, detail="Could not extract text from the file.")
+        
+        initial_text = " ".join(text_segments.split('\n\n')[:5])
+
+        config = load_config()
+        model_api = get_model_api(api_key, model_name, config)
+        
+        print("\n--- Defining Core Narrative Style via API... ---")
+        prompt = PromptManager.DEFINE_NARRATIVE_STYLE.format(sample_text=initial_text)
+        style_report_text = model_api.generate_text(prompt)
+        print(f"Style defined as: {style_report_text}")
+
+        parsed_style = {}
+        key_mapping = {
+            "Protagonist Name": "protagonist_name",
+            "Protagonist Name (주인공 이름)": "protagonist_name",
+            "Narration Style & Endings (서술 문체 및 어미)": "narration_style_endings",
+            "Narration Style & Endings": "narration_style_endings",
+            "Core Tone & Keywords (전체 분위기)": "tone_keywords",
+            "Core Tone & Keywords": "tone_keywords",
+            "Key Stylistic Rule (The \"Golden Rule\")": "stylistic_rule",
+            "Key Stylistic Rule": "stylistic_rule",
+        }
+
+        for key_pattern, json_key in key_mapping.items():
+            pattern = re.escape(key_pattern) + r":\s*(.*?)(?=\s*\d\.\s*|$)"
+            match = re.search(pattern, style_report_text, re.DOTALL | re.IGNORECASE)
+            if match:
+                value = match.group(1).strip().replace('**', '')
+                parsed_style[json_key] = value
+        
+        if len(parsed_style) < 3:
+            found_keys = list(parsed_style.keys())
+            error_detail = (
+                "Failed to parse all style attributes from the report. "
+                f"Successfully parsed: {found_keys}. "
+                f"Received from AI: '{style_report_text}'"
+            )
+            raise HTTPException(status_code=500, detail=error_detail)
+
+        return StyleAnalysisResponse(**parsed_style)
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"An error occurred during style analysis: {e}")
+    finally:
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+
+@app.post("/uploadfile/", response_model=schemas.TranslationJob)
+async def create_upload_file(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    api_key: str = Form(...),
+    model_name: str = Form("gemini-2.5-flash-lite-preview-06-17"),
+    style_data: str = Form(None),
+    segment_size: int = Form(15000),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    if not validate_api_key(api_key, model_name):
+        raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
+
+    job_create = schemas.TranslationJobCreate(filename=file.filename, owner_id=current_user.id)
+    db_job = crud.create_translation_job(db, job_create)
+    
+    sanitized_filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', file.filename)
+    unique_filename = f"{db_job.id}_{sanitized_filename}"
+    file_path = f"uploads/{unique_filename}"
+    
+    os.makedirs("uploads", exist_ok=True)
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        crud.update_job_status(db, db_job.id, "FAILED", error_message=f"Failed to save file: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
+
+    crud.update_job_filepath(db, job_id=db_job.id, filepath=file_path)
+
+    background_tasks.add_task(run_translation_in_background, db_job.id, file_path, file.filename, api_key, model_name, style_data, segment_size)
+    
+    return db_job
+
+@app.get("/status/{job_id}", response_model=schemas.TranslationJob)
+def get_job_status(job_id: int, db: Session = Depends(get_db)):
+    db_job = crud.get_job(db, job_id=job_id)
+    if db_job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return db_job
+
+@app.get("/download/{job_id}")
+def download_translated_file(job_id: int, db: Session = Depends(get_db)):
+    db_job = crud.get_job(db, job_id=job_id)
+    if db_job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if db_job.status not in ["COMPLETED", "FAILED"]:
+        raise HTTPException(status_code=400, detail=f"Translation is not completed yet. Current status: {db_job.status}")
+    if not db_job.filepath:
+        raise HTTPException(status_code=404, detail="Filepath not found for this job.")
+
+    unique_base = os.path.splitext(os.path.basename(db_job.filepath))[0]
+    original_filename_base, original_ext = os.path.splitext(db_job.filename)
+
+    if original_ext.lower() == '.epub':
+        output_ext = '.epub'
+        media_type = 'application/epub+zip'
+    else:
+        output_ext = '.txt'
+        media_type = 'text/plain'
+
+    translated_unique_filename = f"{unique_base}_translated{output_ext}"
+    file_path = os.path.join("translated_novel", translated_unique_filename)
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail=f"Translated file not found at path: {file_path}")
+
+    user_translated_filename = f"{original_filename_base}_translated{output_ext}"
+
+    return FileResponse(path=file_path, filename=user_translated_filename, media_type=media_type)
+
+@app.get("/download/logs/{job_id}/{log_type}")
+def download_log_file(job_id: int, log_type: str, db: Session = Depends(get_db)):
+    db_job = crud.get_job(db, job_id=job_id)
+    if db_job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if log_type not in ["prompts", "context"]:
+        raise HTTPException(status_code=400, detail="Invalid log type. Must be 'prompts' or 'context'.")
+
+    base, _ = os.path.splitext(db_job.filename)
+    log_dir = "debug_prompts" if log_type == "prompts" else "context_log"
+    log_filename = f"{log_type}_job_{job_id}_{base}.txt"
+    log_path = os.path.join(log_dir, log_filename)
+
+    if not os.path.exists(log_path):
+        raise HTTPException(status_code=404, detail=f"{log_type.capitalize()} log file not found.")
+
+    return FileResponse(path=log_path, filename=log_filename, media_type="text/plain")
+
+# --- Webhook Endpoints ---
+
+@app.post("/api/v1/webhooks/clerk")
+async def handle_clerk_webhook(request: Request, svix_id: str = Header(None), svix_timestamp: str = Header(None), svix_signature: str = Header(None), db: Session = Depends(get_db)):
+    if not CLERK_WEBHOOK_SECRET:
+        raise HTTPException(status_code=500, detail="Webhook secret is not configured.")
+    
+    headers = {
+        "svix-id": svix_id,
+        "svix-timestamp": svix_timestamp,
+        "svix-signature": svix_signature,
+    }
+    
+    try:
+        payload_body = await request.body()
+        wh = Webhook(CLERK_WEBHOOK_SECRET)
+        evt = wh.verify(payload_body, headers)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error verifying webhook signature: {e}")
+
+    event_type = evt["type"]
+    data = evt["data"]
+
+    if event_type == "user.created":
+        user_name = f'{data.get("first_name", "")} {data.get("last_name", "")}'.strip()
+        email_addresses = data.get("email_addresses", [])
+        email_address = email_addresses[0].get("email_address") if email_addresses else None
+
+        user_in = schemas.UserCreate(
+            clerk_user_id=data["id"],
+            email=email_address or None, # Ensure None if empty
+            name=user_name or None
+        )
+        crud.create_user(db, user=user_in)
+    elif event_type == "user.updated":
+        clerk_user_id = data["id"]
+        db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
+        
+        user_name = f'{data.get("first_name", "")} {data.get("last_name", "")}'.strip()
+        email_addresses = data.get("email_addresses", [])
+        email_address = email_addresses[0].get("email_address") if email_addresses else None
+
+        if db_user:
+            user_update = schemas.UserUpdate(email=email_address or None, name=user_name or None)
+            crud.update_user(db, clerk_id=clerk_user_id, user_update=user_update)
+        else:
+            print(f"--- [INFO] Webhook received user.updated for non-existent user {clerk_user_id}. Creating them now. ---")
+            user_in = schemas.UserCreate(
+                clerk_user_id=clerk_user_id,
+                email=email_address or None, # Ensure None if empty
+                name=user_name or None
+            )
+            crud.create_user(db, user=user_in)
+    elif event_type == "user.deleted":
+        crud.delete_user(db, clerk_id=data["id"])
+        
+    return {"status": "success"}
+
+# --- SSE Announcement Stream Endpoint ---
+
 async def announcement_generator(request: Request):
     last_sent_announcement = None
     client_id = id(request)
     print(f"📡 새 클라이언트 연결: {client_id}")
 
-    # DB 세션을 with 문으로 관리하여 자동 반환 보장
     def get_announcement_from_db():
         with SessionLocal() as db:
             return crud.get_active_announcement(db)
 
     try:
-        # 초기 연결 시 즉시 현재 활성 공지 전송
         current_announcement = get_announcement_from_db()
         if current_announcement:
             announcement_data = {
@@ -209,19 +482,15 @@ async def announcement_generator(request: Request):
 
         except Exception as e:
             print(f"❌ SSE 스트림 오류 (클라이언트 {client_id}): {e}")
-            # 오류 발생 시에도 루프를 계속 진행할 수 있도록 break를 제거하거나,
-            # 혹은 특정 오류에 대해서만 break를 수행하도록 처리할 수 있습니다.
-            # 여기서는 일단 연결을 유지하도록 break를 주석 처리합니다.
-            # break 
         
         await asyncio.sleep(120)
 
 @app.get("/api/v1/announcements/stream")
 async def stream_announcements(request: Request):
-    # 더 이상 `db` 의존성을 직접 주입하지 않음
     return StreamingResponse(announcement_generator(request), media_type="text/event-stream; charset=utf-8")
 
 # --- Admin Endpoints ---
+
 def verify_admin_secret(x_admin_secret: str = Header(...)):
     if x_admin_secret != ADMIN_SECRET_KEY:
         raise HTTPException(status_code=403, detail="Invalid admin secret key")
@@ -267,199 +536,415 @@ def deactivate_all_announcements(db: Session = Depends(get_db)):
         media_type="application/json; charset=utf-8"
     )
 
-# --- Main API Endpoints ---
-class StyleAnalysisResponse(BaseModel):
-    protagonist_name: str
-    narration_style_endings: str
-    tone_keywords: str
-    stylistic_rule: str
 
-@app.post("/api/v1/analyze-style", response_model=StyleAnalysisResponse)
-async def analyze_style(
+# --- Community Board Endpoints ---
+
+# 임시 디버그 엔드포인트들은 보안상 제거됨
+
+@app.post("/api/v1/community/upload-image")
+async def upload_image(
     file: UploadFile = File(...),
-    api_key: str = Form(...),
-    model_name: str = Form("gemini-2.5-flash-lite-preview-06-17"),
+    current_user: models.User = Depends(auth.get_required_user)
 ):
-    if not validate_api_key(api_key, model_name):
-        raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
+    """Upload an image for posts"""
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400, 
+            detail="Only image files (JPEG, PNG, GIF, WebP) are allowed"
+        )
+    
+    # Validate file size (max 10MB)
+    file_content = await file.read()
+    if len(file_content) > 10 * 1024 * 1024:  # 10MB
+        raise HTTPException(status_code=400, detail="File size must be less than 10MB")
+    
+    # Generate unique filename
+    file_extension = os.path.splitext(file.filename)[1]
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    
+    # Save file
+    with open(file_path, "wb") as buffer:
+        buffer.write(file_content)
+    
+    # Return the URL for accessing the uploaded image
+    image_url = f"/static/images/{unique_filename}"
+    
+    return {
+        "url": image_url,
+        "filename": unique_filename,
+        "original_name": file.filename,
+        "size": len(file_content)
+    }
 
-    temp_dir = "uploads"
-    os.makedirs(temp_dir, exist_ok=True)
-    temp_file_path = os.path.join(temp_dir, f"temp_{file.filename}")
-    try:
-        with open(temp_file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save temporary file: {e}")
+@app.get("/api/v1/community/categories", response_model=list[schemas.PostCategory])
+def get_categories(db: Session = Depends(get_db)):
+    """Get all post categories"""
+    return crud.get_post_categories(db)
 
-    try:
-        # 저장된 파일의 경로를 사용하여 텍스트 파싱
-        try:
-            text_segments = parse_document(temp_file_path)
-        except Exception as parse_error:
-            raise HTTPException(status_code=400, detail=f"Failed to parse the uploaded file: {str(parse_error)}")
+@app.get("/api/v1/community/categories/overview")
+def get_categories_with_recent_posts(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_optional_user)
+):
+    """Get categories with their recent posts for community overview"""
+    categories = crud.get_post_categories(db)
+    categories_overview = []
+
+    # 모든 카테고리의 최근 게시물 3개를 한 번에 가져오기
+    all_recent_posts = []
+    for category in categories:
+        # Get 3 most recent posts for each category
+        recent_posts = crud.get_posts(db, category_id=category.id, skip=0, limit=3)
+        all_recent_posts.extend(recent_posts)
+
+    # 모든 최근 게시물의 댓글 수를 한 번의 쿼리로 가져오기
+    post_ids = [post.id for post in all_recent_posts]
+    comment_counts = crud.get_comment_counts_for_posts(db, post_ids)
+
+    for category in categories:
+        # 해당 카테고리의 최근 게시물 필터링
+        recent_posts = [post for post in all_recent_posts if post.category_id == category.id]
+        
+        # Convert posts to list format with proper schema
+        posts_data = []
+        for post in recent_posts:
+            can_view_private = crud.can_view_private_post(post, current_user)
             
-        if not text_segments:
-            raise HTTPException(status_code=400, detail="Could not extract text from the file.")
-        # Join segments to get a single block of text for analysis
-        initial_text = " ".join(text_segments.split('\n\n')[:5]) # Split by paragraphs and take first 5
-
-        # 스타일 분석 로직 실행
-        config = load_config()
-        model_api = get_model_api(api_key, model_name, config)
+            post_dict = {}
+            if can_view_private:
+                # User has permission, return full details
+                post_dict = {
+                    'id': post.id,
+                    'title': post.title,
+                    'author': post.author,
+                    'category': post.category,
+                    'is_pinned': post.is_pinned,
+                    'is_private': post.is_private,
+                    'view_count': post.view_count,
+                    'images': post.images or [],
+                    'created_at': post.created_at,
+                    'updated_at': post.updated_at,
+                    'comment_count': comment_counts.get(post.id, 0)
+                }
+            else:
+                # User does not have permission, mask the post
+                post_dict = {
+                    'id': post.id,
+                    'title': '🔒 비밀글입니다',
+                    'author': schemas.User(id=0, clerk_user_id="", name="익명", role="user", email="", created_at=post.created_at),
+                    'category': post.category,
+                    'is_pinned': post.is_pinned,
+                    'is_private': True,
+                    'view_count': post.view_count,
+                    'images': [],
+                    'created_at': post.created_at,
+                    'updated_at': post.updated_at,
+                    'comment_count': comment_counts.get(post.id, 0)
+                }
+            posts_data.append(post_dict)
         
-        print("\n--- Defining Core Narrative Style via API... ---")
-        prompt = PromptManager.DEFINE_NARRATIVE_STYLE.format(sample_text=initial_text)
-        style_report_text = model_api.generate_text(prompt)
-        print(f"Style defined as: {style_report_text}")
-
-        # 텍스트 결과를 JSON으로 파싱 (안정적인 로직)
-        parsed_style = {}
-        key_mapping = {
-            "Protagonist Name": "protagonist_name",
-            "Protagonist Name (주인공 이름)": "protagonist_name",
-            "Narration Style & Endings (서술 문체 및 어미)": "narration_style_endings",
-            "Narration Style & Endings": "narration_style_endings",
-            "Core Tone & Keywords (전체 분위기)": "tone_keywords",
-            "Core Tone & Keywords": "tone_keywords",
-            "Key Stylistic Rule (The \"Golden Rule\")": "stylistic_rule",
-            "Key Stylistic Rule": "stylistic_rule",
+        category_overview = {
+            'id': category.id,
+            'name': category.name,
+            'display_name': category.display_name,
+            'description': category.description,
+            'is_admin_only': category.is_admin_only,
+            'order': category.order,
+            'created_at': category.created_at,
+            'recent_posts': posts_data,
+            'total_posts': crud.count_posts(db, category_id=category.id)  # Use efficient count query
         }
+        categories_overview.append(category_overview)
+    
+    return categories_overview
 
-        # 정규식을 사용하여 각 항목을 추출
-        for key_pattern, json_key in key_mapping.items():
-            # 정규식 패턴 생성 (키와 그 뒤에 오는 내용을 non-greedy하게 매칭)
-            # Lookahead (?=...)를 사용하여 다음 항목의 시작 전까지 모든 내용을 캡처
-            pattern = re.escape(key_pattern) + r":\s*(.*?)(?=\s*\d\.\s*|$)"
-            match = re.search(pattern, style_report_text, re.DOTALL | re.IGNORECASE)
-            if match:
-                # 값에서 앞뒤 공백과 마크다운을 정리
-                value = match.group(1).strip().replace('**', '')
-                parsed_style[json_key] = value
-        
-        # 중복 키를 처리했으므로, 유니크한 값만 남김
-        # (예: "Core Tone & Keywords (3-5 words)"와 "Core Tone & Keywords"가 둘 다 tone_keywords에 매핑됨)
-        # 실제로는 정규식 탐색 순서에 따라 하나만 매칭될 가능성이 높음.
-
-        if len(parsed_style) < 3:
-            # 파싱 실패 시, 더 유용한 디버깅을 위해 정규식으로 찾은 부분이라도 보여주자.
-            found_keys = list(parsed_style.keys())
-            error_detail = (
-                "Failed to parse all style attributes from the report. "
-                f"Successfully parsed: {found_keys}. "
-                f"Received the following text from the AI, which could not be fully parsed: '{style_report_text}'"
-            )
-            raise HTTPException(status_code=500, detail=error_detail)
-
-        return StyleAnalysisResponse(**parsed_style)
-    except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"An error occurred during style analysis: {e}")
-    finally:
-        # 임시 파일 삭제
-        if os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
-
-@app.get("/")
-def read_root():
-    return {"message": "Translation Service Backend is running!"}
-
-@app.post("/uploadfile/", response_model=schemas.TranslationJob)
-async def create_upload_file(
-    background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
-    api_key: str = Form(...),
-    model_name: str = Form("gemini-2.5-flash-lite-preview-06-17"),
-    style_data: str = Form(None),
-    segment_size: int = Form(15000), # 동적 세그먼트 크기 추가
-    db: Session = Depends(get_db)
+@app.get("/api/v1/community/posts", response_model=list[schemas.PostList])
+def get_posts(
+    category: str = None,
+    skip: int = 0,
+    limit: int = 20,
+    search: str = None,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_optional_user)
 ):
-    if not validate_api_key(api_key, model_name):
-        raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
-
-    # 1. Create DB job first to get a unique job_id
-    job_create = schemas.TranslationJobCreate(filename=file.filename)
-    db_job = crud.create_translation_job(db, job_create)
+    """Get posts, masking private ones based on user permissions."""
+    category_id = None
+    if category:
+        db_category = crud.get_post_category_by_name(db, category)
+        if db_category:
+            category_id = db_category.id
     
-    # 2. Sanitize filename and create a unique filename using the job_id
-    # This prevents overwriting files with the same name.
-    sanitized_filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', file.filename)
-    unique_filename = f"{db_job.id}_{sanitized_filename}"
-    file_path = f"uploads/{unique_filename}"
+    posts = crud.get_posts(db, category_id=category_id, skip=skip, limit=limit, search=search)
     
-    os.makedirs("uploads", exist_ok=True)
-    try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-    except Exception as e:
-        # If file saving fails, we should ideally roll back the DB job creation
-        # or mark it as failed. For now, we'll raise an exception.
-        crud.update_job_status(db, db_job.id, "FAILED", error_message=f"Failed to save file: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
-
-    # 3. Update the job record with the unique file path
-    crud.update_job_filepath(db, job_id=db_job.id, filepath=file_path)
-
-    # 4. Add the background task with the correct unique file path and original filename
-    background_tasks.add_task(run_translation_in_background, db_job.id, file_path, file.filename, api_key, model_name, style_data, segment_size)
+    post_ids = [post.id for post in posts]
+    comment_counts = crud.get_comment_counts_for_posts(db, post_ids)
     
-    return db_job
+    sanitized_posts = []
+    for post in posts:
+        if crud.can_view_private_post(post, current_user):
+            post_data = schemas.PostList.model_validate(post)
+            post_data.comment_count = comment_counts.get(post.id, 0)
+            sanitized_posts.append(post_data)
+        else:
+            # Mask the private post
+            masked_post = schemas.PostList(
+                id=post.id,
+                title="🔒 비밀글입니다.",
+                author=schemas.User(id=0, clerk_user_id="", name="익명", role="user", email="", created_at=post.created_at),
+                category=post.category,
+                is_pinned=post.is_pinned,
+                is_private=True,
+                view_count=post.view_count,
+                images=[],
+                comment_count=comment_counts.get(post.id, 0),
+                created_at=post.created_at,
+                updated_at=post.updated_at
+            )
+            sanitized_posts.append(masked_post)
+            
+    return sanitized_posts
 
-@app.get("/status/{job_id}", response_model=schemas.TranslationJob)
-def get_job_status(job_id: int, db: Session = Depends(get_db)):
-    db_job = crud.get_job(db, job_id=job_id)
-    if db_job is None:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return db_job
+@app.post("/api/v1/community/posts", response_model=schemas.Post)
+async def create_post(
+    post: schemas.PostCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    """Create a new post"""
+    # Check if category is admin-only
+    category = db.query(models.PostCategory).filter(models.PostCategory.id == post.category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    # 관리자 권한 확인 (로컬 DB + Clerk publicMetadata)
+    if category.is_admin_only:
+        user_is_admin = await auth.is_admin(current_user)
+        if not user_is_admin:
+            raise HTTPException(status_code=403, detail="Only admins can post in this category")
+    
+    return crud.create_post(db, post, current_user.id)
 
-@app.get("/download/{job_id}")
-def download_translated_file(job_id: int, db: Session = Depends(get_db)):
-    db_job = crud.get_job(db, job_id=job_id)
-    if db_job is None:
-        raise HTTPException(status_code=404, detail="Job not found")
-    if db_job.status not in ["COMPLETED", "FAILED"]:
-        raise HTTPException(status_code=400, detail=f"Translation is not completed yet. Current status: {db_job.status}")
-    if not db_job.filepath:
-        raise HTTPException(status_code=404, detail="Filepath not found for this job.")
+@app.get("/api/v1/community/posts/{post_id}", response_model=schemas.Post)
+def get_post(
+    post_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_optional_user)
+):
+    """Get a specific post, masking private comments based on user permissions."""
+    post = crud.get_post(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Check if user can view the private post itself
+    if not crud.can_view_private_post(post, current_user):
+        # Unlike the list view, for a direct access, we raise an error
+        raise HTTPException(status_code=403, detail="Access denied to this private post")
 
-    # Construct the unique path to the translated file
-    unique_base = os.path.splitext(os.path.basename(db_job.filepath))[0]
-    original_filename_base, original_ext = os.path.splitext(db_job.filename)
+    # Sanitize comments within the post based on permissions
+    sanitized_comments = []
+    if post.comments:
+        for comment in post.comments:
+            if crud.can_view_private_comment(comment, current_user):
+                sanitized_comments.append(comment)
+            elif comment.is_private:
+                masked_comment = schemas.Comment(
+                    id=comment.id,
+                    content="🔒 비밀 댓글입니다.",
+                    author=schemas.User(id=0, clerk_user_id="", name="익명", role="user", email="", created_at=comment.created_at),
+                    post_id=comment.post_id,
+                    parent_id=comment.parent_id,
+                    is_private=True,
+                    created_at=comment.created_at,
+                    updated_at=comment.updated_at,
+                    replies=[]
+                )
+                sanitized_comments.append(masked_comment)
+            else:
+                sanitized_comments.append(comment)
+    
+    # Re-assign the sanitized comments to the post object before returning
+    post.comments = sanitized_comments
+    
+    return post
 
-    # If the original file is an EPUB, the translated file should also be an EPUB.
-    # Otherwise, the output is always a .txt file.
-    if original_ext.lower() == '.epub':
-        output_ext = '.epub'
-        media_type = 'application/epub+zip'
-    else:
-        output_ext = '.txt'
-        media_type = 'text/plain'
+@app.post("/api/v1/community/posts/{post_id}/view")
+def increment_post_view(
+    post_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_optional_user)
+):
+    """Increment post view count (separate endpoint)"""
+    post = crud.get_post(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Check if user can view private post
+    if not crud.can_view_private_post(post, current_user):
+        raise HTTPException(status_code=403, detail="Access denied to private post")
+    
+    updated_post = crud.increment_post_view_count(db, post_id)
+    return {"view_count": updated_post.view_count}
 
-    translated_unique_filename = f"{unique_base}_translated{output_ext}"
-    file_path = os.path.join("translated_novel", translated_unique_filename)
+@app.put("/api/v1/community/posts/{post_id}", response_model=schemas.Post)
+async def update_post(
+    post_id: int,
+    post_update: schemas.PostUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    """Update a post"""
+    post = crud.get_post(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Check permission (author or admin)
+    user_is_admin = await auth.is_admin(current_user)
+    if post.author_id != current_user.id and not user_is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to update this post")
+    
+    return crud.update_post(db, post_id, post_update)
 
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail=f"Translated file not found at path: {file_path}")
+@app.delete("/api/v1/community/posts/{post_id}")
+async def delete_post(
+    post_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    """Delete a post"""
+    post = crud.get_post(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Check permission (author or admin)
+    user_is_admin = await auth.is_admin(current_user)
+    if post.author_id != current_user.id and not user_is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this post")
+    
+    crud.delete_post(db, post_id)
+    return {"message": "Post deleted successfully"}
 
-    # For the user, provide a clean filename with the correct extension
-    user_translated_filename = f"{original_filename_base}_translated{output_ext}"
+# Comment endpoints
+@app.get("/api/v1/community/posts/{post_id}/comments", response_model=list[schemas.Comment])
+def get_comments(
+    post_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_optional_user)
+):
+    """Get comments for a post, masking private ones based on user permissions."""
+    post = crud.get_post(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
 
-    return FileResponse(path=file_path, filename=user_translated_filename, media_type=media_type)
+    # First, check if the user can view the post itself
+    if not crud.can_view_private_post(post, current_user):
+        raise HTTPException(status_code=403, detail="Access denied to this post and its comments")
 
-@app.get("/download/logs/{job_id}/{log_type}")
-def download_log_file(job_id: int, log_type: str, db: Session = Depends(get_db)):
-    db_job = crud.get_job(db, job_id=job_id)
-    if db_job is None:
-        raise HTTPException(status_code=404, detail="Job not found")
-    if log_type not in ["prompts", "context"]:
-        raise HTTPException(status_code=400, detail="Invalid log type. Must be 'prompts' or 'context'.")
+    comments = crud.get_comments(db, post_id)
+    
+    # Sanitize comments based on permissions
+    sanitized_comments = []
+    for comment in comments:
+        if crud.can_view_private_comment(comment, current_user):
+            # User has permission, return the full comment
+            sanitized_comments.append(comment)
+        elif comment.is_private:
+            # User cannot view, mask the content
+            masked_comment = schemas.Comment(
+                id=comment.id,
+                content="🔒 비밀 댓글입니다.",
+                author=schemas.User(id=0, clerk_user_id="", name="익명", role="user", email="", created_at=comment.created_at),
+                post_id=comment.post_id,
+                parent_id=comment.parent_id,
+                is_private=True,
+                created_at=comment.created_at,
+                updated_at=comment.updated_at,
+                replies=[] # Replies are handled recursively if needed
+            )
+            sanitized_comments.append(masked_comment)
+        else:
+            # It's a public comment, just add it
+            sanitized_comments.append(comment)
+            
+    return sanitized_comments
 
-    base, _ = os.path.splitext(db_job.filename)
-    log_dir = "debug_prompts" if log_type == "prompts" else "context_log"
-    log_filename = f"{log_type}_job_{job_id}_{base}.txt"
-    log_path = os.path.join(log_dir, log_filename)
+@app.post("/api/v1/community/posts/{post_id}/comments", response_model=schemas.Comment)
+def create_comment(
+    post_id: int,
+    comment: schemas.CommentCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    """Create a comment on a post"""
+    post = crud.get_post(db, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    
+    # Ensure post_id matches
+    comment.post_id = post_id
+    
+    return crud.create_comment(db, comment, current_user.id)
 
-    if not os.path.exists(log_path):
-        raise HTTPException(status_code=404, detail=f"{log_type.capitalize()} log file not found.")
+@app.put("/api/v1/community/comments/{comment_id}", response_model=schemas.Comment)
+async def update_comment(
+    comment_id: int,
+    comment_update: schemas.CommentUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    """Update a comment"""
+    comment = crud.get_comment(db, comment_id)
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    
+    # Check permission (author or admin)
+    user_is_admin = await auth.is_admin(current_user)
+    if comment.author_id != current_user.id and not user_is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to update this comment")
+    
+    return crud.update_comment(db, comment_id, comment_update)
 
-    return FileResponse(path=log_path, filename=log_filename, media_type="text/plain")
+@app.delete("/api/v1/community/comments/{comment_id}")
+async def delete_comment(
+    comment_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    """Delete a comment"""
+    comment = crud.get_comment(db, comment_id)
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    
+    # Check permission (author or admin)
+    user_is_admin = await auth.is_admin(current_user)
+    if comment.author_id != current_user.id and not user_is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this comment")
+    
+    crud.delete_comment(db, comment_id)
+    return {"message": "Comment deleted successfully"}
+
+# Admin endpoint to initialize categories
+@app.post("/api/v1/admin/community/init-categories", dependencies=[Depends(verify_admin_secret)])
+def initialize_categories(db: Session = Depends(get_db)):
+    """Initialize default post categories"""
+    default_categories = [
+        {"name": "notice", "display_name": "공지사항", "description": "중요한 공지사항", "is_admin_only": True, "order": 1},
+        {"name": "suggestion", "display_name": "건의사항", "description": "서비스 개선을 위한 제안", "is_admin_only": False, "order": 2},
+        {"name": "qna", "display_name": "Q&A", "description": "질문과 답변", "is_admin_only": False, "order": 3},
+        {"name": "free", "display_name": "자유게시판", "description": "자유로운 소통 공간", "is_admin_only": False, "order": 4}
+    ]
+    
+    created_categories = []
+    for cat_data in default_categories:
+        existing = crud.get_post_category_by_name(db, cat_data["name"])
+        if not existing:
+            category = crud.create_post_category(db, schemas.PostCategoryCreate(**cat_data))
+            created_categories.append(category)
+    
+    return {
+        "message": f"Created {len(created_categories)} categories",
+        "categories": created_categories
+    }
+
