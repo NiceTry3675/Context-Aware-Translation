@@ -58,22 +58,16 @@ except Exception as e:
 app = FastAPI()
 
 # --- Middleware Configuration ---
-origins = [
-    "http://localhost:3000",  # Next.js development server
-    "http://127.0.0.1:3000",  # Alternative localhost
-    "https://context-aware-translation.vercel.app", # Vercel production deployment
-    "https://context-aware-translation-git-main-cat-rans.vercel.app", # Vercel main branch preview
-    "https://context-aware-translation-git-dev-cat-rans.vercel.app" # Vercel dev branch preview
-]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",  # 로컬 개발
-        "http://127.0.0.1:3000",  # 로컬 대체
-        "https://context-aware-translation.vercel.app",  # Vercel 프로덕션
-        "https://context-aware-translation-git-dev-cat-rans.vercel.app",  # Vercel dev 브랜치
-        "https://context-aware-translation-git-main-cat-rans.vercel.app"  # Vercel main 브랜치
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://catrans.me",
+        "https://www.catrans.me",
+        "https://context-aware-translation.vercel.app",
+        "https://context-aware-translation-git-dev-cat-rans.vercel.app",
+        "https://context-aware-translation-git-main-cat-rans.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
