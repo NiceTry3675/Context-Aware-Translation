@@ -32,6 +32,8 @@ from core.translation.job import TranslationJob
 from core.translation.engine import TranslationEngine
 from core.utils.file_parser import parse_document
 from core.prompts.manager import PromptManager
+from core.translation.style_analyzer import extract_sample_text, analyze_narrative_style_with_api, parse_style_analysis, format_style_for_engine
+from core.translation.style_analyzer import extract_sample_text, analyze_narrative_style_with_api, parse_style_analysis
 
 # --- Environment Variables & Constants ---
 ADMIN_SECRET_KEY = os.environ.get("ADMIN_SECRET_KEY", "dev-secret-key")
@@ -141,15 +143,28 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
                 style_dict = json.loads(style_data)
                 print(f"--- [BACKGROUND] Using user-defined core style for Job ID: {job_id}: {style_dict} ---")
                 protagonist_name = style_dict.get('protagonist_name', 'protagonist')
-                style_parts = [
-                    f"1. **Protagonist Name:** {protagonist_name}",
-                    f"2. **Narration Style & Endings (서술 문체 및 어미):** {style_dict.get('narration_style_endings', 'Not specified')}",
-                    f"3. **Core Tone & Keywords (전체 분위기):** {style_dict.get('tone_keywords', 'Not specified')}",
-                    f"4. **Key Stylistic Rule (The \"Golden Rule\"):** {style_dict.get('stylistic_rule', 'Not specified')}"
-                ]
-                initial_core_style_text = "\n".join(style_parts)
+                initial_core_style_text = format_style_for_engine(style_dict, protagonist_name)
             except json.JSONDecodeError:
                 print(f"--- [BACKGROUND] WARNING: Could not decode style_data JSON for Job ID: {job_id}. Proceeding with auto-analysis. ---")
+        else:
+            # When no style data is provided, we need to perform automatic analysis
+            # First, we need to extract the sample text consistently
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    file_content = f.read()
+                sample_text = extract_sample_text(file_path, method="first_segment", count=15000)
+                
+                config = load_config()
+                model_api = get_model_api(api_key, model_name, config)
+                
+                print(f"--- [BACKGROUND] Performing automatic style analysis for Job ID: {job_id} ---")
+                style_report_text = analyze_narrative_style_with_api(sample_text, model_api, filename)
+                parsed_style = parse_style_analysis(style_report_text)
+                protagonist_name = parsed_style.get('protagonist_name', 'protagonist')
+                initial_core_style_text = format_style_for_engine(parsed_style, protagonist_name)
+                print(f"--- [BACKGROUND] Automatic style analysis complete for Job ID: {job_id} ---")
+            except Exception as e:
+                print(f"--- [BACKGROUND] WARNING: Could not perform automatic style analysis for Job ID: {job_id}. Error: {e} ---")
 
         dyn_config_builder = DynamicConfigBuilder(gemini_api, protagonist_name)
         engine = TranslationEngine(gemini_api, dyn_config_builder, db=db, job_id=job_id, initial_core_style=initial_core_style_text)
@@ -211,34 +226,19 @@ async def analyze_style(
         if not text_segments:
             raise HTTPException(status_code=400, detail="Could not extract text from the file.")
         
-        initial_text = " ".join(text_segments.split('\n\n')[:5])
+        # Use centralized function to extract sample text (matching core engine approach)
+        initial_text = extract_sample_text(temp_file_path, method="first_segment", count=15000)
 
         config = load_config()
         model_api = get_model_api(api_key, model_name, config)
         
         print("\n--- Defining Core Narrative Style via API... ---")
-        prompt = PromptManager.DEFINE_NARRATIVE_STYLE.format(sample_text=initial_text)
-        style_report_text = model_api.generate_text(prompt)
+        # Use centralized function to analyze style
+        style_report_text = analyze_narrative_style_with_api(initial_text, model_api, file.filename)
         print(f"Style defined as: {style_report_text}")
 
-        parsed_style = {}
-        key_mapping = {
-            "Protagonist Name": "protagonist_name",
-            "Protagonist Name (주인공 이름)": "protagonist_name",
-            "Narration Style & Endings (서술 문체 및 어미)": "narration_style_endings",
-            "Narration Style & Endings": "narration_style_endings",
-            "Core Tone & Keywords (전체 분위기)": "tone_keywords",
-            "Core Tone & Keywords": "tone_keywords",
-            "Key Stylistic Rule (The \"Golden Rule\")": "stylistic_rule",
-            "Key Stylistic Rule": "stylistic_rule",
-        }
-
-        for key_pattern, json_key in key_mapping.items():
-            pattern = re.escape(key_pattern) + r":\s*(.*?)(?=\s*\d\.\s*|$)"
-            match = re.search(pattern, style_report_text, re.DOTALL | re.IGNORECASE)
-            if match:
-                value = match.group(1).strip().replace('**', '')
-                parsed_style[json_key] = value
+        # Use centralized function to parse style analysis
+        parsed_style = parse_style_analysis(style_report_text)
         
         if len(parsed_style) < 3:
             found_keys = list(parsed_style.keys())

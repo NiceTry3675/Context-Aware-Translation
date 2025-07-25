@@ -11,6 +11,7 @@ from ..errors import ProhibitedException, TranslationError
 from ..errors import prohibited_content_logger
 from ..utils.retry import retry_on_prohibited_segment
 from ..prompts.sanitizer import PromptSanitizer
+from .style_analyzer import extract_sample_text, analyze_narrative_style_with_api
 from sqlalchemy.orm import Session
 # Import crud and schemas only if backend is available
 try:
@@ -107,7 +108,7 @@ class TranslationEngine:
             core_narrative_style = self.initial_core_style
             print(f"Style defined as: {core_narrative_style}")
         else:
-            core_narrative_style = self._define_core_style(job.segments[0].text, job.user_base_filename)
+            core_narrative_style = self._define_core_style(job.filepath, job.user_base_filename)
         
         with open(context_log_path, 'a', encoding='utf-8') as f:
             f.write(f"--- Core Narrative Style Defined ---\n")
@@ -229,24 +230,15 @@ class TranslationEngine:
         # This part should not be reached if retries are handled correctly
         raise TranslationError(f"Failed to translate segment {segment_index} after all retries.")
 
-    def _define_core_style(self, sample_text: str, job_base_filename: str = "unknown") -> str:
+    def _define_core_style(self, file_path: str, job_base_filename: str = "unknown") -> str:
         """Analyzes the first segment to define the core narrative style for the novel."""
         print("\n--- Defining Core Narrative Style... ---")
-        prompt = PromptManager.DEFINE_NARRATIVE_STYLE.format(sample_text=sample_text)
+        # Extract the sample text using the centralized function
+        sample_text = extract_sample_text(file_path, method="first_segment", count=15000)
         try:
-            style = self.gemini_api.generate_text(prompt)
+            style = analyze_narrative_style_with_api(sample_text, self.gemini_api, job_base_filename)
             print(f"Style defined as: {style}")
             return style
-        except ProhibitedException as e:
-            log_path = prohibited_content_logger.log_simple_prohibited_content(
-                api_call_type="core_style_definition",
-                prompt=prompt,
-                source_text=sample_text,
-                error_message=str(e),
-                job_filename=job_base_filename
-            )
-            print(f"Warning: Core style definition blocked. Log: {log_path}. Falling back to default.")
-            return "A standard, neutral literary style ('평서체')."
         except Exception as e:
             print(f"Warning: Could not define narrative style. Falling back to default. Error: {e}")
             raise TranslationError(f"Failed to define core style: {e}") from e
