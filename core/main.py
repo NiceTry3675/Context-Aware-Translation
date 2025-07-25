@@ -49,7 +49,7 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
             print("Validating API key...")
         
         # Use the model name from config for validation
-        model_name = config.get('gemini_model_name', 'gemini-2.5-flash-lite-preview-06-17')
+        model_name = config.get('gemini_model_name', 'gemini-2.5-flash-lite')
         if not GeminiModel.validate_api_key(api_key, model_name):
             raise ValueError("Invalid API key provided")
         

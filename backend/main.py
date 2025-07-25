@@ -185,7 +185,7 @@ class StyleAnalysisResponse(BaseModel):
 async def analyze_style(
     file: UploadFile = File(...),
     api_key: str = Form(...),
-    model_name: str = Form("gemini-2.5-flash-lite-preview-06-17"),
+    model_name: str = Form("gemini-2.5-flash-lite"),
     # No longer requires user authentication for this specific endpoint
 ):
     if not validate_api_key(api_key, model_name):
@@ -262,7 +262,7 @@ async def create_upload_file(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     api_key: str = Form(...),
-    model_name: str = Form("gemini-2.5-flash-lite-preview-06-17"),
+    model_name: str = Form("gemini-2.5-flash-lite"),
     style_data: str = Form(None),
     segment_size: int = Form(15000),
     db: Session = Depends(get_db),

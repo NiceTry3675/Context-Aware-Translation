@@ -58,7 +58,7 @@ interface StyleData {
 
 const geminiModelOptions = [
     {
-      value: "gemini-2.5-flash-lite-preview-06-17",
+      value: "gemini-2.5-flash-lite",
       label: "Flash Lite (추천)",
       description: "가장 빠른 속도와 저렴한 비용으로 빠르게 결과물을 확인하고 싶을 때 적합합니다.",
       chip: "속도",
@@ -82,7 +82,7 @@ const geminiModelOptions = [
 
 const openRouterModelOptions = [
     {
-      value: "google/gemini-2.5-flash-lite-preview-06-17",
+      value: "google/gemini-2.5-flash-lite",
       label: "Gemini 2.5 Flash Lite",
       description: " ",
       chip: "속도",

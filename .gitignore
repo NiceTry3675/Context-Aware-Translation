@@ -16,9 +16,11 @@ ngrok.exe
 .vscode/
 .idea/
 .gemini/
+.qwen/
 CLAUDE.md
 TODO.md
 GEMINI.md
+QWEN.md
 
 
 # Archives
