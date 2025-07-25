@@ -122,8 +122,9 @@ def validate_api_key(api_key: str, model_name: str):
 
 # --- Background Task Definition ---
 def run_translation_in_background(job_id: int, file_path: str, filename: str, api_key: str, model_name: str, style_data: str = None, segment_size: int = 15000):
-    db = SessionLocal()
+    db = None
     try:
+        db = SessionLocal()
         crud.update_job_status(db, job_id, "PROCESSING")
         print(f"--- [BACKGROUND] Starting translation for Job ID: {job_id}, File: {filename}, Model: {model_name} ---")
         
@@ -150,8 +151,6 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
             # When no style data is provided, we need to perform automatic analysis
             # First, we need to extract the sample text consistently
             try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    file_content = f.read()
                 sample_text = extract_sample_text(file_path, method="first_segment", count=15000)
                 
                 config = load_config()
@@ -173,12 +172,14 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
         crud.update_job_status(db, job_id, "COMPLETED")
         print(f"--- [BACKGROUND] Translation finished for Job ID: {job_id}, File: {filename} ---")
     except Exception as e:
-        error_message = f"An unexpected error occurred: {str(e)}"
-        crud.update_job_status(db, job_id, "FAILED", error_message=error_message)
-        print(f"--- [BACKGROUND] {error_message} for Job ID: {job_id}, File: {filename} ---")
+        if db:
+            error_message = f"An unexpected error occurred: {str(e)}"
+            crud.update_job_status(db, job_id, "FAILED", error_message=error_message)
+        print(f"--- [BACKGROUND] An unexpected error occurred for Job ID: {job_id}, File: {filename}. Error: {e} ---")
         traceback.print_exc()
     finally:
-        db.close()
+        if db:
+            db.close()
         gc.collect()
         print(f"--- [BACKGROUND] Job ID: {job_id} finished. DB session closed and GC collected. ---")
 
@@ -218,14 +219,6 @@ async def analyze_style(
         raise HTTPException(status_code=500, detail=f"Failed to save temporary file: {e}")
 
     try:
-        try:
-            text_segments = parse_document(temp_file_path)
-        except Exception as parse_error:
-            raise HTTPException(status_code=400, detail=f"Failed to parse the uploaded file: {str(parse_error)}")
-            
-        if not text_segments:
-            raise HTTPException(status_code=400, detail="Could not extract text from the file.")
-        
         # Use centralized function to extract sample text (matching core engine approach)
         initial_text = extract_sample_text(temp_file_path, method="first_segment", count=15000)
 

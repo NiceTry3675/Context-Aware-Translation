@@ -1,10 +1,12 @@
 import re
-from typing import Dict, Any, List
+import os
+from typing import Dict, Any, List, Union
 from ..prompts.manager import PromptManager
 from ..translation.models.gemini import GeminiModel
 from ..translation.models.openrouter import OpenRouterModel
-from ..errors import ProhibitedException
+from ..errors import ProhibitedException, TranslationError
 from ..errors.error_logger import prohibited_content_logger
+from ..utils.file_parser import parse_document
 from .job import SegmentInfo
 
 
@@ -84,18 +86,29 @@ def _create_segments_from_plain_text(text: str, target_size: int) -> List[Segmen
     return segments
 
 
-def extract_sample_text(text: str, method: str = "first_segment", count: int = 15000) -> str:
+def extract_sample_text(filepath: str, method: str = "first_segment", count: int = 15000) -> str:
     """
     Extracts a sample text for style analysis based on the specified method.
     
     Args:
-        text: The full text to sample from
+        filepath: Path to the file to parse and sample from
         method: Sampling method - "first_segment" to use the actual segmentation logic
         count: Target segment size (default 15000 characters)
         
     Returns:
         Sample text for analysis (first segment according to segmentation logic)
     """
+    # For very large files, we'll stream content instead of loading everything into memory
+    file_size = os.path.getsize(filepath)
+    
+    # If file is larger than 10MB, we'll use a streaming approach for initial parsing
+    if file_size > 10 * 1024 * 1024:  # 10MB
+        print(f"Large file detected ({file_size} bytes). Using streaming approach for parsing.")
+        text = _stream_and_extract_text(filepath, count * 2)  # Extract more than needed for proper segmentation
+    else:
+        # First parse the document to get clean text
+        text = parse_document(filepath)
+    
     if method == "first_segment":
         # Use the actual segmentation logic to get the first segment
         segments = _create_segments_from_plain_text(text, count)
@@ -103,6 +116,40 @@ def extract_sample_text(text: str, method: str = "first_segment", count: int = 1
     else:
         # Fallback to simple character-based extraction
         return text[:count]
+
+
+def _stream_and_extract_text(filepath: str, max_chars: int) -> str:
+    """
+    Streams a text file and extracts up to max_chars characters for initial processing.
+    This is more memory-efficient for very large files.
+    
+    Args:
+        filepath: Path to the file to stream
+        max_chars: Maximum number of characters to extract
+        
+    Returns:
+        Extracted text up to max_chars
+    """
+    # Only works with text files (.txt)
+    _, extension = os.path.splitext(filepath.lower())
+    if extension != '.txt':
+        # For non-text files, fall back to regular parsing
+        return parse_document(filepath)
+    
+    extracted_text = ""
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            # Read in chunks to avoid loading the entire file
+            while len(extracted_text) < max_chars:
+                chunk = f.read(min(8192, max_chars - len(extracted_text)))  # 8KB chunks or remaining needed
+                if not chunk:
+                    break
+                extracted_text += chunk
+        return extracted_text
+    except Exception as e:
+        print(f"Error in streaming text extraction: {e}")
+        # Fall back to regular parsing
+        return parse_document(filepath)
 
 
 def analyze_narrative_style_with_api(
