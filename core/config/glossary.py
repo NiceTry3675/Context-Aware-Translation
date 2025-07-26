@@ -2,49 +2,43 @@ from ..translation.models.gemini import GeminiModel
 from ..prompts.manager import PromptManager
 from ..errors import ProhibitedException
 from ..errors import prohibited_content_logger
+from typing import Dict, Optional
 
 class GlossaryManager:
     """Manages the glossary for a translation job."""
 
-    def __init__(self, model: GeminiModel, job_filename: str = "unknown"):
+    def __init__(self, model: GeminiModel, job_filename: str = "unknown", initial_glossary: Optional[Dict[str, str]] = None):
         self.model = model
         self.job_filename = job_filename
+        self.glossary = initial_glossary or {}
+        if initial_glossary:
+            print(f"GlossaryManager initialized with {len(initial_glossary)} pre-defined terms.")
 
-    def update_glossary(self, segment_text: str, current_glossary: dict) -> dict:
+    def update_glossary(self, segment_text: str) -> dict:
         """
         Extracts proper nouns from the segment, translates new ones,
         and returns the updated glossary.
         """
-        # print("\nUpdating Glossary...")
         extracted_terms = self._extract_proper_nouns(segment_text)
         if not extracted_terms:
-            # print("No new proper nouns found in this segment.")
-            return current_glossary
+            return self.glossary
 
-        new_terms = [term for term in extracted_terms if term not in current_glossary]
+        new_terms = [term for term in extracted_terms if term not in self.glossary]
         if not new_terms:
-            # print("All extracted nouns are already in the glossary.")
-            return current_glossary
+            return self.glossary
             
-        # encoded_new_terms = [term.encode('cp949', 'replace').decode('cp949') for term in new_terms]
-        # print(f"Found {len(new_terms)} new proper nouns to translate: {', '.join(encoded_new_terms)}")
         translated_terms = self._translate_terms(new_terms, segment_text)
 
-        updated_glossary = current_glossary.copy()
-        updated_glossary.update(translated_terms)
-        
-        # print("Glossary updated.")
-        return updated_glossary
+        self.glossary.update(translated_terms)
+        return self.glossary
 
     def _extract_proper_nouns(self, segment_text: str) -> list[str]:
         """Extracts proper nouns from the text using the LLM."""
         prompt = PromptManager.GLOSSARY_EXTRACT_NOUNS.format(segment_text=segment_text)
         try:
             response = self.model.generate_text(prompt)
-            # Return a sorted list of unique, non-empty terms
             return sorted(list(set([term.strip() for term in response.split(',') if term.strip()])))
         except ProhibitedException as e:
-            # Log the prohibited content error
             log_path = prohibited_content_logger.log_simple_prohibited_content(
                 api_call_type="glossary_extraction",
                 prompt=prompt,
@@ -74,7 +68,6 @@ class GlossaryManager:
                         translated_dict[key] = value
             return translated_dict
         except ProhibitedException as e:
-            # Log the prohibited content error
             log_path = prohibited_content_logger.log_simple_prohibited_content(
                 api_call_type="glossary_translation",
                 prompt=prompt,

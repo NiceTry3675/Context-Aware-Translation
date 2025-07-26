@@ -239,3 +239,67 @@ def format_style_for_engine(style_data: Dict[str, str], protagonist_name: str = 
         f"4. **Key Stylistic Rule (The \"Golden Rule\"):** {style_data.get('stylistic_rule', 'Not specified')}"
     ]
     return "\n".join(style_parts)
+
+def analyze_glossary_with_api(sample_text: str, model_api: Union[GeminiModel, OpenRouterModel], job_filename: str = "unknown") -> str:
+    """
+    Analyzes the sample text to extract and translate glossary terms in two steps.
+    
+    Args:
+        sample_text: Text sample to analyze.
+        model_api: The AI model API instance.
+        job_filename: Name of the file being processed (for logging).
+        
+    Returns:
+        A string containing term-translation pairs, one per line.
+    """
+    # Step 1: Extract nouns
+    noun_prompt = PromptManager.GLOSSARY_EXTRACT_NOUNS.format(segment_text=sample_text)
+    try:
+        print("--- Extracting nouns for glossary... ---")
+        nouns_text = model_api.generate_text(noun_prompt)
+        if "N/A" in nouns_text or not nouns_text.strip():
+            print("No nouns found for glossary.")
+            return ""
+        print(f"Extracted nouns: {nouns_text}")
+    except Exception as e:
+        print(f"Warning: Could not extract nouns for glossary. Error: {e}")
+        raise TranslationError(f"Failed to extract nouns: {e}") from e
+
+    # Step 2: Translate the extracted nouns
+    translate_prompt = PromptManager.GLOSSARY_TRANSLATE_TERMS.format(
+        segment_text=sample_text, 
+        key_terms=nouns_text
+    )
+    try:
+        print("--- Translating extracted nouns... ---")
+        translated_text = model_api.generate_text(translate_prompt)
+        print(f"Translated terms: {translated_text}")
+        return translated_text
+    except Exception as e:
+        print(f"Warning: Could not translate terms for glossary. Error: {e}")
+        raise TranslationError(f"Failed to translate terms: {e}") from e
+
+def parse_glossary_analysis(glossary_text: str) -> List[Dict[str, str]]:
+    """
+    Parses the term-translation text into a list of structured dictionaries.
+    
+    Args:
+        glossary_text: The raw text from the AI (e.g., "Term1: 번역1\nTerm2: 번역2").
+        
+    Returns:
+        A list of dictionaries, e.g., [{"term": "Term1", "translation": "번역1"}].
+    """
+    parsed_glossary = []
+    if not glossary_text.strip():
+        return parsed_glossary
+
+    lines = glossary_text.strip().split('\n')
+    for line in lines:
+        if ':' in line:
+            parts = line.split(':', 1)
+            term = parts[0].strip()
+            translation = parts[1].strip()
+            if term and translation:
+                parsed_glossary.append({"term": term, "translation": translation})
+    
+    return parsed_glossary

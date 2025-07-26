@@ -1,4 +1,3 @@
-# --- 1. Standard Library Imports ---
 import shutil
 import os
 import traceback
@@ -7,6 +6,7 @@ import json
 import asyncio
 import gc
 import uuid
+from typing import List
 
 # --- 2. Third-party Library Imports ---
 from dotenv import load_dotenv
@@ -32,8 +32,14 @@ from core.translation.job import TranslationJob
 from core.translation.engine import TranslationEngine
 from core.utils.file_parser import parse_document
 from core.prompts.manager import PromptManager
-from core.translation.style_analyzer import extract_sample_text, analyze_narrative_style_with_api, parse_style_analysis, format_style_for_engine
-from core.translation.style_analyzer import extract_sample_text, analyze_narrative_style_with_api, parse_style_analysis
+from core.translation.style_analyzer import (
+    extract_sample_text, 
+    analyze_narrative_style_with_api, 
+    parse_style_analysis, 
+    format_style_for_engine,
+    analyze_glossary_with_api,
+    parse_glossary_analysis
+)
 
 # --- Environment Variables & Constants ---
 ADMIN_SECRET_KEY = os.environ.get("ADMIN_SECRET_KEY", "dev-secret-key")
@@ -121,7 +127,7 @@ def validate_api_key(api_key: str, model_name: str):
         return GeminiModel.validate_api_key(api_key, model_name)
 
 # --- Background Task Definition ---
-def run_translation_in_background(job_id: int, file_path: str, filename: str, api_key: str, model_name: str, style_data: str = None, segment_size: int = 15000):
+def run_translation_in_background(job_id: int, file_path: str, filename: str, api_key: str, model_name: str, style_data: str = None, glossary_data: str = None, segment_size: int = 15000):
     db = None
     try:
         db = SessionLocal()
@@ -148,11 +154,8 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
             except json.JSONDecodeError:
                 print(f"--- [BACKGROUND] WARNING: Could not decode style_data JSON for Job ID: {job_id}. Proceeding with auto-analysis. ---")
         else:
-            # When no style data is provided, we need to perform automatic analysis
-            # First, we need to extract the sample text consistently
             try:
                 sample_text = extract_sample_text(file_path, method="first_segment", count=15000)
-                
                 config = load_config()
                 model_api = get_model_api(api_key, model_name, config)
                 
@@ -165,7 +168,15 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
             except Exception as e:
                 print(f"--- [BACKGROUND] WARNING: Could not perform automatic style analysis for Job ID: {job_id}. Error: {e} ---")
 
-        dyn_config_builder = DynamicConfigBuilder(gemini_api, protagonist_name)
+        initial_glossary = None
+        if glossary_data:
+            try:
+                initial_glossary = json.loads(glossary_data)
+                print(f"--- [BACKGROUND] Using user-defined glossary for Job ID: {job_id} ---")
+            except json.JSONDecodeError:
+                print(f"--- [BACKGROUND] WARNING: Could not decode glossary_data JSON for Job ID: {job_id}. ---")
+
+        dyn_config_builder = DynamicConfigBuilder(gemini_api, protagonist_name, initial_glossary=initial_glossary)
         engine = TranslationEngine(gemini_api, dyn_config_builder, db=db, job_id=job_id, initial_core_style=initial_core_style_text)
         
         engine.translate_job(translation_job)
@@ -196,6 +207,13 @@ class StyleAnalysisResponse(BaseModel):
     narration_style_endings: str
     tone_keywords: str
     stylistic_rule: str
+
+class GlossaryTerm(BaseModel):
+    term: str
+    translation: str
+
+class GlossaryAnalysisResponse(BaseModel):
+    glossary: List[GlossaryTerm]
 
 @app.post("/api/v1/analyze-style", response_model=StyleAnalysisResponse)
 async def analyze_style(
@@ -250,6 +268,49 @@ async def analyze_style(
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
 
+
+@app.post("/api/v1/analyze-glossary", response_model=GlossaryAnalysisResponse)
+async def analyze_glossary(
+    file: UploadFile = File(...),
+    api_key: str = Form(...),
+    model_name: str = Form("gemini-2.5-flash-lite"),
+):
+    if not validate_api_key(api_key, model_name):
+        raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
+
+    temp_dir = "uploads"
+    os.makedirs(temp_dir, exist_ok=True)
+    unique_id = uuid.uuid4()
+    temp_file_path = os.path.join(temp_dir, f"temp_{unique_id}_{file.filename}")
+    try:
+        with open(temp_file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save temporary file: {e}")
+
+    try:
+        initial_text = extract_sample_text(temp_file_path, method="first_segment", count=15000)
+        config = load_config()
+        model_api = get_model_api(api_key, model_name, config)
+        
+        print("\n--- Extracting Glossary via API... ---")
+        glossary_report_text = analyze_glossary_with_api(initial_text, model_api, file.filename)
+        print(f"Glossary extracted as: {glossary_report_text}")
+
+        parsed_glossary = parse_glossary_analysis(glossary_report_text)
+        
+        if not parsed_glossary:
+            # It's okay to return an empty list if no terms were found
+            return GlossaryAnalysisResponse(glossary=[])
+
+        return GlossaryAnalysisResponse(glossary=parsed_glossary)
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"An error occurred during glossary analysis: {e}")
+    finally:
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+
 @app.post("/uploadfile/", response_model=schemas.TranslationJob)
 async def create_upload_file(
     background_tasks: BackgroundTasks,
@@ -257,6 +318,7 @@ async def create_upload_file(
     api_key: str = Form(...),
     model_name: str = Form("gemini-2.5-flash-lite"),
     style_data: str = Form(None),
+    glossary_data: str = Form(None),
     segment_size: int = Form(15000),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_required_user)
@@ -281,7 +343,7 @@ async def create_upload_file(
 
     crud.update_job_filepath(db, job_id=db_job.id, filepath=file_path)
 
-    background_tasks.add_task(run_translation_in_background, db_job.id, file_path, file.filename, api_key, model_name, style_data, segment_size)
+    background_tasks.add_task(run_translation_in_background, db_job.id, file_path, file.filename, api_key, model_name, style_data, glossary_data, segment_size)
     
     return db_job
 

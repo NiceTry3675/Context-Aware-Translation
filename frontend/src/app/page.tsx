@@ -8,7 +8,8 @@ import {
   Container, Box, Typography, TextField, Button, CircularProgress, Alert,
   Card, CardContent, CardActions, IconButton, Tooltip, Chip,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-  LinearProgress, ToggleButtonGroup, ToggleButton, InputAdornment, Link, Slider
+  LinearProgress, ToggleButtonGroup, ToggleButton, InputAdornment, Link, Slider,
+  Switch, FormControlLabel
 } from '@mui/material';
 import {
   UploadFile as UploadFileIcon,
@@ -24,6 +25,7 @@ import {
   Style as StyleIcon,
   Description as DescriptionIcon,
   Chat as ChatIcon,
+  Add as AddIcon,
 
   Person as PersonIcon,
   TextFields as TextFieldsIcon,
@@ -54,6 +56,11 @@ interface StyleData {
   narration_style_endings: string;
   tone_keywords: string;
   stylistic_rule: string;
+}
+
+interface GlossaryTerm {
+  term: string;
+  translation: string;
 }
 
 const geminiModelOptions = [
@@ -193,9 +200,12 @@ export default function Home() {
   const [apiProvider, setApiProvider] = useState<'gemini' | 'openrouter'>('gemini');
   const [selectedModel, setSelectedModel] = useState<string>(geminiModelOptions[0].value);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [isAnalyzingGlossary, setIsAnalyzingGlossary] = useState<boolean>(false);
   const [analysisError, setAnalysisError] = useState<string>('');
   const [styleData, setStyleData] = useState<StyleData | null>(null);
   const [showStyleForm, setShowStyleForm] = useState<boolean>(false);
+  const [glossaryData, setGlossaryData] = useState<GlossaryTerm[]>([]);
+  const [analyzeGlossary, setAnalyzeGlossary] = useState<boolean>(true);
   const [devMode, setDevMode] = useState<boolean>(false);
   const [segmentSize, setSegmentSize] = useState<number>(15000);
 
@@ -222,13 +232,11 @@ export default function Home() {
 
   useEffect(() => {
     if (!apiKey) return;
-    // Store the key regardless of provider, but tag the provider
     localStorage.setItem('geminiApiKey', apiKey);
     localStorage.setItem('apiProvider', apiProvider);
   }, [apiKey, apiProvider]);
 
   useEffect(() => {
-    // When provider changes, update the selected model to the default for that provider
     if (apiProvider === 'gemini') {
         const newModel = geminiModelOptions[0].value;
         setSelectedModel(newModel);
@@ -262,7 +270,6 @@ export default function Home() {
       }
     }
     
-    // Store the selected model for the current provider
     if (apiProvider === 'gemini') {
         localStorage.setItem('geminiModel', newValue);
     } else {
@@ -278,7 +285,6 @@ export default function Home() {
       const storedJobIds = JSON.parse(storedJobIdsString);
       if (!Array.isArray(storedJobIds) || storedJobIds.length === 0) return;
 
-      // --- Defensive Step: Ensure job IDs are unique ---
       const uniqueJobIds = [...new Set(storedJobIds)];
 
       try {
@@ -327,41 +333,95 @@ export default function Home() {
   // --- Handlers ---
   const handleFileChange = async (selectedFile: File | null) => {
     if (!selectedFile) {
-      setFile(null);
-      return;
+        setFile(null);
+        return;
     }
     setFile(selectedFile);
     if (!apiKey) {
-      setError("API 키를 먼저 입력해주세요.");
-      return;
+        setError("API 키를 먼저 입력해주세요.");
+        return;
     }
+
     setIsAnalyzing(true);
     setAnalysisError('');
     setError(null);
     setStyleData(null);
+    setGlossaryData([]);
+    setShowStyleForm(false);
 
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    formData.append('api_key', apiKey);
-    formData.append('model_name', selectedModel);
+    const styleFormData = new FormData();
+    styleFormData.append('file', selectedFile);
+    styleFormData.append('api_key', apiKey);
+    styleFormData.append('model_name', selectedModel);
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/analyze-style`, { 
-        method: 'POST', 
-        body: formData 
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || '스타일 분석에 실패했습니다.');
-      }
-      const analyzedStyle = await response.json();
-      setStyleData(analyzedStyle);
-      setShowStyleForm(true);
+        // --- 1. Analyze Style ---
+        const styleResponse = await fetch(`${API_URL}/api/v1/analyze-style`, {
+            method: 'POST',
+            body: styleFormData,
+        });
+
+        if (!styleResponse.ok) {
+            const errorData = await styleResponse.json();
+            throw new Error(errorData.detail || '스타일 분석에 실패했습니다.');
+        }
+
+        const analyzedStyle = await styleResponse.json();
+        setStyleData(analyzedStyle);
+        setShowStyleForm(true);
+
+        // --- 2. Analyze Glossary (if toggled) ---
+        if (analyzeGlossary) {
+            setIsAnalyzingGlossary(true);
+            const glossaryFormData = new FormData();
+            glossaryFormData.append('file', selectedFile);
+            glossaryFormData.append('api_key', apiKey);
+            glossaryFormData.append('model_name', selectedModel);
+
+            try {
+                const glossaryResponse = await fetch(`${API_URL}/api/v1/analyze-glossary`, {
+                    method: 'POST',
+                    body: glossaryFormData,
+                });
+
+                if (glossaryResponse.ok) {
+                    const result = await glossaryResponse.json();
+                    setGlossaryData(result.glossary || []);
+                } else {
+                    // Don't block the user, just show a non-critical error in the glossary section
+                    console.error('용어집 분석 실패:', await glossaryResponse.text());
+                    setGlossaryData([]); // Clear any previous data
+                }
+            } catch (glossaryErr) {
+                console.error('용어집 분석 중 예외 발생:', glossaryErr);
+                setGlossaryData([]);
+            } finally {
+                setIsAnalyzingGlossary(false);
+            }
+        }
+
     } catch (err) {
-      setAnalysisError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
+        setAnalysisError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
+        setShowStyleForm(false); // Hide form on critical error
     } finally {
-      setIsAnalyzing(false);
+        setIsAnalyzing(false);
     }
+};
+
+
+  const handleGlossaryChange = (index: number, field: keyof GlossaryTerm, value: string) => {
+    const updatedGlossary = [...glossaryData];
+    updatedGlossary[index] = { ...updatedGlossary[index], [field]: value };
+    setGlossaryData(updatedGlossary);
+  };
+
+  const handleAddGlossaryTerm = () => {
+    setGlossaryData([...glossaryData, { term: '', translation: '' }]);
+  };
+
+  const handleRemoveGlossaryTerm = (index: number) => {
+    const updatedGlossary = glossaryData.filter((_, i) => i !== index);
+    setGlossaryData(updatedGlossary);
   };
 
   const handleStartTranslation = async () => {
@@ -371,13 +431,11 @@ export default function Home() {
     }
 
     if (!isLoaded) {
-      // Clerk is still loading, prevent the user from proceeding.
       setError("인증 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
       return;
     }
 
     if (!isSignedIn) {
-      // User is not signed in, prompt them to sign in.
       openSignIn({ redirectUrl: '/' });
       return;
     }
@@ -388,7 +446,6 @@ export default function Home() {
         return;
     }
 
-    // If we reach here, user is loaded and signed in.
     setUploading(true);
     setError(null);
     setShowStyleForm(false);
@@ -398,6 +455,9 @@ export default function Home() {
     formData.append("api_key", apiKey);
     formData.append("model_name", selectedModel);
     formData.append("style_data", JSON.stringify(styleData));
+    if (glossaryData.length > 0) {
+      formData.append("glossary_data", JSON.stringify(glossaryData));
+    }
     formData.append("segment_size", segmentSize.toString());
 
     try {
@@ -416,6 +476,8 @@ export default function Home() {
       const storedJobIds = JSON.parse(localStorage.getItem('jobIds') || '[]');
       localStorage.setItem('jobIds', JSON.stringify([newJob.id, ...storedJobIds]));
       setFile(null);
+      setStyleData(null);
+      setGlossaryData([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred.");
     } finally {
@@ -427,6 +489,7 @@ export default function Home() {
     setShowStyleForm(false);
     setFile(null);
     setStyleData(null);
+    setGlossaryData([]);
     const fileInput = document.getElementById('file-upload-input') as HTMLInputElement;
     if (fileInput) fileInput.value = '';
   };
@@ -595,6 +658,11 @@ export default function Home() {
 
           {/* Step 4: File Upload */}
           <Typography variant="h5" component="h3" gutterBottom>4. 소설 파일 업로드</Typography>
+          <FormControlLabel
+            control={<Switch checked={analyzeGlossary} onChange={(e) => setAnalyzeGlossary(e.target.checked)} />}
+            label="AI 용어집 사전분석 및 수정 활성화"
+            sx={{ mb: 1 }}
+          />
           <Button
             variant="contained"
             component="label"
@@ -612,7 +680,7 @@ export default function Home() {
             />
           </Button>
 
-          {isAnalyzing && <LinearProgress color="secondary" sx={{ mt: 2 }} />}
+          {(isAnalyzing || isAnalyzingGlossary) && <LinearProgress color="secondary" sx={{ mt: 2 }} />}
           {analysisError && <Alert severity="error" sx={{ mt: 2 }}>{analysisError}</Alert>}
           {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
         </CardContent>
@@ -649,12 +717,12 @@ export default function Home() {
             </Box>
         </CardContent>
 
-        {/* Step 5: Style Form */}
+        {/* Step 5: Style and Glossary Form */}
         {showStyleForm && styleData && (
           <CardContent sx={{ borderTop: 1, borderColor: 'divider', mt: 2 }}>
             <Typography variant="h5" component="h3" gutterBottom>5. 핵심 서사 스타일 확인 및 수정</Typography>
             <Typography color="text.secondary" mb={3}>AI가 분석한 소설의 핵심 스타일입니다. 필요하다면 직접 수정할 수 있습니다.</Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mb: 4 }}>
                 <TextField 
                   label="1. 주인공 이름" 
                   value={styleData.protagonist_name} 
@@ -718,6 +786,69 @@ export default function Home() {
                   }}
                 />
             </Box>
+
+            <>
+              <Typography variant="h5" component="h3" gutterBottom>6. 고유명사 번역 노트</Typography>
+              <Typography color="text.secondary" mb={2}>
+                {analyzeGlossary
+                  ? "AI가 추천한 용어집입니다. 번역을 수정하거나, 새로운 용어를 추가/삭제할 수 있습니다."
+                  : "번역에 사용할 고유명사(인물, 지명 등)를 직접 추가할 수 있습니다. AI 분석은 비활성화됩니다."
+                }
+              </Typography>
+              
+              {isAnalyzingGlossary ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2}}>
+                      <CircularProgress size={24} />
+                      <Typography>용어집 분석 중...</Typography>
+                  </Box>
+              ) : glossaryData.length > 0 ? (
+                <TableContainer component={Paper} sx={{ mb: 2 }}>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>원문 (Term)</TableCell>
+                        <TableCell>번역 (Translation)</TableCell>
+                        <TableCell align="right">삭제</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {glossaryData.map((term, index) => (
+                        <TableRow key={index}>
+                          <TableCell>
+                            <TextField
+                              value={term.term}
+                              onChange={(e) => handleGlossaryChange(index, 'term', e.target.value)}
+                              variant="standard"
+                              fullWidth
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <TextField
+                              value={term.translation}
+                              onChange={(e) => handleGlossaryChange(index, 'translation', e.target.value)}
+                              variant="standard"
+                              fullWidth
+                            />
+                          </TableCell>
+                          <TableCell align="right">
+                            <IconButton onClick={() => handleRemoveGlossaryTerm(index)} size="small">
+                              <DeleteIcon />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                null
+              )}
+
+              <Button onClick={handleAddGlossaryTerm} startIcon={<AddIcon />} sx={{ mb: 3 }}>
+                용어 추가
+              </Button>
+            </>
+
             <CardActions sx={{ justifyContent: 'flex-end', mt: 3, p: 0 }}>
               <Button onClick={handleCancelStyleEdit} color="secondary">취소</Button>
               <Button 
@@ -734,11 +865,11 @@ export default function Home() {
                   }
                 }}
               >
-                {uploading ? <CircularProgress size={24} color="inherit" /> : '이 스타일로 번역 시작'}
+                {uploading ? <CircularProgress size={24} color="inherit" /> : '이 설정으로 번역 시작'}
               </Button>
             </CardActions>
           </CardContent>
-        )}
+        ) }
       </Card>
 
       {/* Jobs Section */}
@@ -864,7 +995,7 @@ export default function Home() {
             href="https://coff.ee/nicetry3675"
             target="_blank"
             rel="noopener noreferrer"
-            sx={{ 
+            sx={{
               mr: 1,
               backgroundColor: theme.palette.warning.main,
               color: theme.palette.getContrastText(theme.palette.warning.main),
