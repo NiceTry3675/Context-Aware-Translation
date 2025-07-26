@@ -28,16 +28,25 @@ glossary:
 
 
   translate_terms: |
-    You are a glossary specialist for a literary translation. Your task is to provide a single, contextually appropriate Korean translation for each term, using the original text for context.
+    You are a glossary specialist for a literary translation. Your task is to provide a single, contextually appropriate Korean translation for each new term, following the rules below.
 
-    **CRITICAL:** The translation must be consistent. If a term has a common, established translation (e.g., in movies, other books), prefer that.
+    **Rule 1: Consistency with Existing Glossary (Most Important)**
+    You MUST ensure the new translations are consistent with the `Existing Glossary` provided. If a new term contains a word from the existing glossary (e.g., new term "Andrew Ramsay" and existing "Andrew: 앤드류"), the translation MUST be based on the existing one (e.g., "Andrew Ramsay: 앤드류 램지").
+
+    **Rule 2: Consistency with Established Translations**
+    If a term has a common, established translation (e.g., in movies, other books), prefer that, unless it contradicts Rule 1.
+
+    **Existing Glossary (Reference):**
+    ---
+    {existing_glossary}
+    ---
 
     **Original Text Context:**
     ---
     {segment_text}
     ---
 
-    **Terms to Translate:**
+    **New Terms to Translate:**
     {key_terms}
 
     **Formatting Rules:**

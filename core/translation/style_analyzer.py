@@ -268,7 +268,8 @@ def analyze_glossary_with_api(sample_text: str, model_api: Union[GeminiModel, Op
     # Step 2: Translate the extracted nouns
     translate_prompt = PromptManager.GLOSSARY_TRANSLATE_TERMS.format(
         segment_text=sample_text, 
-        key_terms=nouns_text
+        key_terms=nouns_text,
+        existing_glossary="N/A"  # No existing glossary during initial analysis
     )
     try:
         print("--- Translating extracted nouns... ---")

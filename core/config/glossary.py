@@ -54,9 +54,14 @@ class GlossaryManager:
 
     def _translate_terms(self, terms: list[str], segment_text: str) -> dict:
         """Translates a list of terms and returns a dictionary."""
+        existing_glossary_str = '\n'.join([f"{k}: {v}" for k, v in self.glossary.items()])
+        if not existing_glossary_str:
+            existing_glossary_str = "N/A"
+
         prompt = PromptManager.GLOSSARY_TRANSLATE_TERMS.format(
             key_terms=', '.join(terms),
-            segment_text=segment_text
+            segment_text=segment_text,
+            existing_glossary=existing_glossary_str
         )
         try:
             response = self.model.generate_text(prompt)
