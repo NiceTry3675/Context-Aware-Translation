@@ -4,6 +4,7 @@ from .glossary import GlossaryManager
 from .character_style import CharacterStyleManager
 from ..errors import ProhibitedException
 from ..errors import prohibited_content_logger
+from typing import List, Dict, Optional
 
 class DynamicConfigBuilder:
     """
@@ -11,17 +12,27 @@ class DynamicConfigBuilder:
     It uses specialized managers to handle different aspects of the analysis.
     """
 
-    def __init__(self, model: GeminiModel, protagonist_name: str):
+    def __init__(self, model: GeminiModel, protagonist_name: str, initial_glossary: Optional[List[Dict[str, str]]] = None):
         """
         Initializes the builder with the shared Gemini model and managers.
         
         Args:
             model: The shared GeminiModel instance.
             protagonist_name: The name of the protagonist.
+            initial_glossary: An optional list of dictionaries to pre-populate the glossary.
         """
         self.model = model
         self.character_style_manager = CharacterStyleManager(model, protagonist_name)
+        
+        self.initial_glossary_dict = {}
+        if initial_glossary:
+            for item in initial_glossary:
+                if isinstance(item, dict) and 'term' in item and 'translation' in item:
+                    self.initial_glossary_dict[item['term']] = item['translation']
+        
         print(f"DynamicConfigBuilder initialized with protagonist '{protagonist_name}'.")
+        if self.initial_glossary_dict:
+            print(f"Pre-populating glossary with {len(self.initial_glossary_dict)} user-defined terms.")
 
     
 
@@ -44,14 +55,13 @@ class DynamicConfigBuilder:
             A tuple containing the updated glossary, updated character styles,
             and any style deviation information.
         """
-        # print("\n--- Building Dynamic Guides for Segment ---")
+        # 1. Initialize GlossaryManager with the user-defined glossary
+        # The current_glossary from the job state is merged with the initial one.
+        combined_glossary = {**self.initial_glossary_dict, **current_glossary}
+        glossary_manager = GlossaryManager(self.model, job_base_filename, initial_glossary=combined_glossary)
         
-        # 1. Update glossary - create manager with job filename
-        glossary_manager = GlossaryManager(self.model, job_base_filename)
-        updated_glossary = glossary_manager.update_glossary(
-            segment_text,
-            current_glossary
-        )
+        # Update glossary based on the current segment
+        updated_glossary = glossary_manager.update_glossary(segment_text)
 
         # 2. Update character styles
         updated_character_styles = self.character_style_manager.update_styles(
@@ -69,12 +79,10 @@ class DynamicConfigBuilder:
             segment_index
         )
 
-        # print("--- Dynamic Guides Built Successfully ---")
         return updated_glossary, updated_character_styles, style_deviation_info
 
     def _analyze_style_deviation(self, segment_text: str, core_narrative_style: str, job_base_filename: str = "unknown", segment_index: int = None) -> str:
         """Analyzes the segment for deviations from the core narrative style."""
-        # print("Analyzing for narrative style deviations...")
         prompt = PromptManager.ANALYZE_NARRATIVE_DEVIATION.format(
             core_narrative_style=core_narrative_style,
             segment_text=segment_text
@@ -82,13 +90,10 @@ class DynamicConfigBuilder:
         try:
             response = self.model.generate_text(prompt)
             if "N/A" in response:
-                # print("No deviation found.")
                 return "N/A"
             else:
-                # print(f"Deviation found: {response}")
                 return response
         except ProhibitedException as e:
-            # Log the prohibited content error
             log_path = prohibited_content_logger.log_simple_prohibited_content(
                 api_call_type="style_deviation_analysis",
                 prompt=prompt,

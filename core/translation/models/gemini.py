@@ -33,7 +33,7 @@ class GeminiModel:
         print(f"GeminiModel initialized with model: {model_name}, soft_retry: {enable_soft_retry}")
 
     @staticmethod
-    def validate_api_key(api_key: str, model_name: str = "gemini-2.5-flash-lite-preview-06-17") -> bool:
+    def validate_api_key(api_key: str, model_name: str = "gemini-2.5-flash-lite") -> bool:
         """
         Validates the provided API key by checking if the specified model can be accessed.
         Returns True if valid, False otherwise.

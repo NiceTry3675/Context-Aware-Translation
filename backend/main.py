@@ -1,4 +1,3 @@
-# --- 1. Standard Library Imports ---
 import shutil
 import os
 import traceback
@@ -7,6 +6,7 @@ import json
 import asyncio
 import gc
 import uuid
+from typing import List
 
 # --- 2. Third-party Library Imports ---
 from dotenv import load_dotenv
@@ -32,6 +32,14 @@ from core.translation.job import TranslationJob
 from core.translation.engine import TranslationEngine
 from core.utils.file_parser import parse_document
 from core.prompts.manager import PromptManager
+from core.translation.style_analyzer import (
+    extract_sample_text, 
+    analyze_narrative_style_with_api, 
+    parse_style_analysis, 
+    format_style_for_engine,
+    analyze_glossary_with_api,
+    parse_glossary_analysis
+)
 
 # --- Environment Variables & Constants ---
 ADMIN_SECRET_KEY = os.environ.get("ADMIN_SECRET_KEY", "dev-secret-key")
@@ -119,9 +127,10 @@ def validate_api_key(api_key: str, model_name: str):
         return GeminiModel.validate_api_key(api_key, model_name)
 
 # --- Background Task Definition ---
-def run_translation_in_background(job_id: int, file_path: str, filename: str, api_key: str, model_name: str, style_data: str = None, segment_size: int = 15000):
-    db = SessionLocal()
+def run_translation_in_background(job_id: int, file_path: str, filename: str, api_key: str, model_name: str, style_data: str = None, glossary_data: str = None, segment_size: int = 15000):
+    db = None
     try:
+        db = SessionLocal()
         crud.update_job_status(db, job_id, "PROCESSING")
         print(f"--- [BACKGROUND] Starting translation for Job ID: {job_id}, File: {filename}, Model: {model_name} ---")
         
@@ -141,29 +150,47 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
                 style_dict = json.loads(style_data)
                 print(f"--- [BACKGROUND] Using user-defined core style for Job ID: {job_id}: {style_dict} ---")
                 protagonist_name = style_dict.get('protagonist_name', 'protagonist')
-                style_parts = [
-                    f"1. **Protagonist Name:** {protagonist_name}",
-                    f"2. **Narration Style & Endings (서술 문체 및 어미):** {style_dict.get('narration_style_endings', 'Not specified')}",
-                    f"3. **Core Tone & Keywords (전체 분위기):** {style_dict.get('tone_keywords', 'Not specified')}",
-                    f"4. **Key Stylistic Rule (The \"Golden Rule\"):** {style_dict.get('stylistic_rule', 'Not specified')}"
-                ]
-                initial_core_style_text = "\n".join(style_parts)
+                initial_core_style_text = format_style_for_engine(style_dict, protagonist_name)
             except json.JSONDecodeError:
                 print(f"--- [BACKGROUND] WARNING: Could not decode style_data JSON for Job ID: {job_id}. Proceeding with auto-analysis. ---")
+        else:
+            try:
+                sample_text = extract_sample_text(file_path, method="first_segment", count=15000)
+                config = load_config()
+                model_api = get_model_api(api_key, model_name, config)
+                
+                print(f"--- [BACKGROUND] Performing automatic style analysis for Job ID: {job_id} ---")
+                style_report_text = analyze_narrative_style_with_api(sample_text, model_api, filename)
+                parsed_style = parse_style_analysis(style_report_text)
+                protagonist_name = parsed_style.get('protagonist_name', 'protagonist')
+                initial_core_style_text = format_style_for_engine(parsed_style, protagonist_name)
+                print(f"--- [BACKGROUND] Automatic style analysis complete for Job ID: {job_id} ---")
+            except Exception as e:
+                print(f"--- [BACKGROUND] WARNING: Could not perform automatic style analysis for Job ID: {job_id}. Error: {e} ---")
 
-        dyn_config_builder = DynamicConfigBuilder(gemini_api, protagonist_name)
+        initial_glossary = None
+        if glossary_data:
+            try:
+                initial_glossary = json.loads(glossary_data)
+                print(f"--- [BACKGROUND] Using user-defined glossary for Job ID: {job_id} ---")
+            except json.JSONDecodeError:
+                print(f"--- [BACKGROUND] WARNING: Could not decode glossary_data JSON for Job ID: {job_id}. ---")
+
+        dyn_config_builder = DynamicConfigBuilder(gemini_api, protagonist_name, initial_glossary=initial_glossary)
         engine = TranslationEngine(gemini_api, dyn_config_builder, db=db, job_id=job_id, initial_core_style=initial_core_style_text)
         
         engine.translate_job(translation_job)
         crud.update_job_status(db, job_id, "COMPLETED")
         print(f"--- [BACKGROUND] Translation finished for Job ID: {job_id}, File: {filename} ---")
     except Exception as e:
-        error_message = f"An unexpected error occurred: {str(e)}"
-        crud.update_job_status(db, job_id, "FAILED", error_message=error_message)
-        print(f"--- [BACKGROUND] {error_message} for Job ID: {job_id}, File: {filename} ---")
+        if db:
+            error_message = f"An unexpected error occurred: {str(e)}"
+            crud.update_job_status(db, job_id, "FAILED", error_message=error_message)
+        print(f"--- [BACKGROUND] An unexpected error occurred for Job ID: {job_id}, File: {filename}. Error: {e} ---")
         traceback.print_exc()
     finally:
-        db.close()
+        if db:
+            db.close()
         gc.collect()
         print(f"--- [BACKGROUND] Job ID: {job_id} finished. DB session closed and GC collected. ---")
 
@@ -181,11 +208,18 @@ class StyleAnalysisResponse(BaseModel):
     tone_keywords: str
     stylistic_rule: str
 
+class GlossaryTerm(BaseModel):
+    term: str
+    translation: str
+
+class GlossaryAnalysisResponse(BaseModel):
+    glossary: List[GlossaryTerm]
+
 @app.post("/api/v1/analyze-style", response_model=StyleAnalysisResponse)
 async def analyze_style(
     file: UploadFile = File(...),
     api_key: str = Form(...),
-    model_name: str = Form("gemini-2.5-flash-lite-preview-06-17"),
+    model_name: str = Form("gemini-2.5-flash-lite"),
     # No longer requires user authentication for this specific endpoint
 ):
     if not validate_api_key(api_key, model_name):
@@ -203,42 +237,19 @@ async def analyze_style(
         raise HTTPException(status_code=500, detail=f"Failed to save temporary file: {e}")
 
     try:
-        try:
-            text_segments = parse_document(temp_file_path)
-        except Exception as parse_error:
-            raise HTTPException(status_code=400, detail=f"Failed to parse the uploaded file: {str(parse_error)}")
-            
-        if not text_segments:
-            raise HTTPException(status_code=400, detail="Could not extract text from the file.")
-        
-        initial_text = " ".join(text_segments.split('\n\n')[:5])
+        # Use centralized function to extract sample text (matching core engine approach)
+        initial_text = extract_sample_text(temp_file_path, method="first_segment", count=15000)
 
         config = load_config()
         model_api = get_model_api(api_key, model_name, config)
         
         print("\n--- Defining Core Narrative Style via API... ---")
-        prompt = PromptManager.DEFINE_NARRATIVE_STYLE.format(sample_text=initial_text)
-        style_report_text = model_api.generate_text(prompt)
+        # Use centralized function to analyze style
+        style_report_text = analyze_narrative_style_with_api(initial_text, model_api, file.filename)
         print(f"Style defined as: {style_report_text}")
 
-        parsed_style = {}
-        key_mapping = {
-            "Protagonist Name": "protagonist_name",
-            "Protagonist Name (주인공 이름)": "protagonist_name",
-            "Narration Style & Endings (서술 문체 및 어미)": "narration_style_endings",
-            "Narration Style & Endings": "narration_style_endings",
-            "Core Tone & Keywords (전체 분위기)": "tone_keywords",
-            "Core Tone & Keywords": "tone_keywords",
-            "Key Stylistic Rule (The \"Golden Rule\")": "stylistic_rule",
-            "Key Stylistic Rule": "stylistic_rule",
-        }
-
-        for key_pattern, json_key in key_mapping.items():
-            pattern = re.escape(key_pattern) + r":\s*(.*?)(?=\s*\d\.\s*|$)"
-            match = re.search(pattern, style_report_text, re.DOTALL | re.IGNORECASE)
-            if match:
-                value = match.group(1).strip().replace('**', '')
-                parsed_style[json_key] = value
+        # Use centralized function to parse style analysis
+        parsed_style = parse_style_analysis(style_report_text)
         
         if len(parsed_style) < 3:
             found_keys = list(parsed_style.keys())
@@ -257,13 +268,57 @@ async def analyze_style(
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
 
+
+@app.post("/api/v1/analyze-glossary", response_model=GlossaryAnalysisResponse)
+async def analyze_glossary(
+    file: UploadFile = File(...),
+    api_key: str = Form(...),
+    model_name: str = Form("gemini-2.5-flash-lite"),
+):
+    if not validate_api_key(api_key, model_name):
+        raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
+
+    temp_dir = "uploads"
+    os.makedirs(temp_dir, exist_ok=True)
+    unique_id = uuid.uuid4()
+    temp_file_path = os.path.join(temp_dir, f"temp_{unique_id}_{file.filename}")
+    try:
+        with open(temp_file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save temporary file: {e}")
+
+    try:
+        initial_text = extract_sample_text(temp_file_path, method="first_segment", count=15000)
+        config = load_config()
+        model_api = get_model_api(api_key, model_name, config)
+        
+        print("\n--- Extracting Glossary via API... ---")
+        glossary_report_text = analyze_glossary_with_api(initial_text, model_api, file.filename)
+        print(f"Glossary extracted as: {glossary_report_text}")
+
+        parsed_glossary = parse_glossary_analysis(glossary_report_text)
+        
+        if not parsed_glossary:
+            # It's okay to return an empty list if no terms were found
+            return GlossaryAnalysisResponse(glossary=[])
+
+        return GlossaryAnalysisResponse(glossary=parsed_glossary)
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"An error occurred during glossary analysis: {e}")
+    finally:
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+
 @app.post("/uploadfile/", response_model=schemas.TranslationJob)
 async def create_upload_file(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     api_key: str = Form(...),
-    model_name: str = Form("gemini-2.5-flash-lite-preview-06-17"),
+    model_name: str = Form("gemini-2.5-flash-lite"),
     style_data: str = Form(None),
+    glossary_data: str = Form(None),
     segment_size: int = Form(15000),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_required_user)
@@ -288,7 +343,7 @@ async def create_upload_file(
 
     crud.update_job_filepath(db, job_id=db_job.id, filepath=file_path)
 
-    background_tasks.add_task(run_translation_in_background, db_job.id, file_path, file.filename, api_key, model_name, style_data, segment_size)
+    background_tasks.add_task(run_translation_in_background, db_job.id, file_path, file.filename, api_key, model_name, style_data, glossary_data, segment_size)
     
     return db_job
 
