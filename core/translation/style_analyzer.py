@@ -240,7 +240,7 @@ def format_style_for_engine(style_data: Dict[str, str], protagonist_name: str = 
     ]
     return "\n".join(style_parts)
 
-def analyze_glossary_with_api(sample_text: str, model_api: Union[GeminiModel, OpenRouterModel], job_filename: str = "unknown", language: str = "english") -> str:
+def analyze_glossary_with_api(sample_text: str, model_api: Union[GeminiModel, OpenRouterModel], job_filename: str = "unknown") -> str:
     """
     Analyzes the sample text to extract and translate glossary terms in two steps.
     
@@ -269,8 +269,7 @@ def analyze_glossary_with_api(sample_text: str, model_api: Union[GeminiModel, Op
     translate_prompt = PromptManager.GLOSSARY_TRANSLATE_TERMS.format(
         segment_text=sample_text, 
         key_terms=nouns_text,
-        existing_glossary="N/A",  # No existing glossary during initial analysis
-        source_language=language.capitalize()
+        existing_glossary="N/A"  # No existing glossary during initial analysis
     )
     try:
         print("--- Translating extracted nouns... ---")

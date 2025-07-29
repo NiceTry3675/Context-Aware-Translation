@@ -16,7 +16,7 @@ from core.utils.file_parser import parse_document
 
 
 def translate(source_file: str, target_file: Optional[str] = None, api_key: Optional[str] = None, 
-              segment_size: int = 10000, verbose: bool = False, language: str = "english") -> None:
+              segment_size: int = 10000, verbose: bool = False) -> None:
     """
     Translate a novel from English to Korean using the Context-Aware Translation system.
     
@@ -82,7 +82,7 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
         dyn_config_builder = DynamicConfigBuilder(gemini_model, book_title)
         
         # Create translation engine (no database for CLI mode)
-        engine = TranslationEngine(gemini_model, dyn_config_builder, db=None, job_id=None, language=language)
+        engine = TranslationEngine(gemini_model, dyn_config_builder, db=None, job_id=None)
         
         # Run translation
         if verbose:
@@ -150,7 +150,8 @@ Examples:
     parser.add_argument('-k', '--api-key', help='Google Gemini API key')
     parser.add_argument('-s', '--segment-size', type=int, default=10000,
                         help='Target segment size for translation (default: 10000)')
-    parser.add_argument('-l', '--language', default='english', help='Source language of the text (default: english)')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='Enable verbose output')
     
     args = parser.parse_args()
     
@@ -160,8 +161,7 @@ Examples:
         target_file=args.target,
         api_key=args.api_key,
         segment_size=args.segment_size,
-        verbose=args.verbose,
-        language=args.language
+        verbose=args.verbose
     )
 
 

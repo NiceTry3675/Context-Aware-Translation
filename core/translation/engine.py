@@ -43,14 +43,13 @@ class TranslationEngine:
     """
     Orchestrates the entire translation process, segment by segment.
     """
-    def __init__(self, gemini_api: GeminiModel, dyn_config_builder: DynamicConfigBuilder, db: Session, job_id: int, initial_core_style: str = None, language: str = "english"):
+    def __init__(self, gemini_api: GeminiModel, dyn_config_builder: DynamicConfigBuilder, db: Session, job_id: int, initial_core_style: str = None):
         self.gemini_api = gemini_api
         self.dyn_config_builder = dyn_config_builder
         self.prompt_builder = PromptBuilder(PromptManager.MAIN_TRANSLATION)
         self.db = db
         self.job_id = job_id
         self.initial_core_style = initial_core_style
-        self.language = language
 
     def translate_job(self, job: TranslationJob):
         start_time = time.time()
@@ -130,8 +129,7 @@ class TranslationEngine:
                 current_glossary=job.glossary,
                 current_character_styles=job.character_styles,
                 job_base_filename=job.user_base_filename,
-                segment_index=segment_index,
-                language=self.language
+                segment_index=segment_index
             )
             job.glossary = updated_glossary
             job.character_styles = updated_styles
@@ -141,7 +139,7 @@ class TranslationEngine:
                 if re.search(r'\b' + re.escape(key) + r'\b', segment_info.text, re.IGNORECASE)
             }
             
-            immediate_context_source = get_segment_ending(job.get_previous_segment(i), max_chars=1500)
+            immediate_context_en = get_segment_ending(job.get_previous_segment(i), max_chars=1500)
             immediate_context_ko = get_segment_ending(job.get_previous_translation(i), max_chars=500)
             
             prompt = self.prompt_builder.build_translation_prompt(
@@ -150,10 +148,9 @@ class TranslationEngine:
                 glossary=contextual_glossary,
                 character_styles=job.character_styles,
                 source_segment=segment_info.text,
-                prev_segment_source=immediate_context_source,
+                prev_segment_en=immediate_context_en,
                 prev_segment_ko=immediate_context_ko,
-                protagonist_name=self.dyn_config_builder.character_style_manager.protagonist_name,
-                language=self.language
+                protagonist_name=self.dyn_config_builder.character_style_manager.protagonist_name
             )
 
             self._write_context_log(
@@ -161,7 +158,7 @@ class TranslationEngine:
                 segment_index=segment_index,
                 job=job,
                 contextual_glossary=contextual_glossary,
-                immediate_context_source=immediate_context_source,
+                immediate_context_en=immediate_context_en,
                 immediate_context_ko=immediate_context_ko,
                 style_deviation=style_deviation
             )
@@ -246,11 +243,10 @@ class TranslationEngine:
             print(f"Warning: Could not define narrative style. Falling back to default. Error: {e}")
             raise TranslationError(f"Failed to define core style: {e}") from e
 
-    def _write_context_log(self, log_path: str, segment_index: int, job: TranslationJob, contextual_glossary: dict, immediate_context_source: str, immediate_context_ko: str, style_deviation: str):
+    def _write_context_log(self, log_path: str, segment_index: int, job: TranslationJob, contextual_glossary: dict, immediate_context_en: str, immediate_context_ko: str, style_deviation: str):
         """Writes a human-readable summary of the context to a log file."""
         with open(log_path, 'a', encoding='utf-8') as f:
             f.write(f"--- CONTEXT FOR SEGMENT {segment_index} ---\n\n")
-            f.write(f"### Source Language: {self.language.capitalize()}\n\n")
             f.write("### Narrative Style Deviation:\n")
             f.write(f"{style_deviation}\n\n")
             f.write("### Contextual Glossary (For This Segment):\n")
@@ -274,8 +270,8 @@ class TranslationEngine:
             else:
                 f.write("- Empty\n")
             f.write("\n")
-            f.write(f"### Immediate {self.language.capitalize()} Context (Previous Segment Ending):\n")
-            f.write(f"{immediate_context_source or 'N/A'}\n\n")
+            f.write("### Immediate language Context (Previous Segment Ending):\n")
+            f.write(f"{immediate_context_en or 'N/A'}\n\n")
             f.write("### Immediate Korean Context (Previous Segment Ending):\n")
             f.write(f"{immediate_context_ko or 'N/A'}\n\n")
             f.write("="*50 + "\n\n")

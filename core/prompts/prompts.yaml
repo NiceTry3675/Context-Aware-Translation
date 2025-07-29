@@ -50,7 +50,7 @@ glossary:
     {key_terms}
 
     **Formatting Rules:**
-    - Format: `{source_language} Term: 한국어 번역`
+    - Format: `English Term: 한국어 번역`
     - One entry per line.
     - No other text or explanation.
 
@@ -129,7 +129,7 @@ style_analysis:
 
 translation:
   main: |
-    You are an expert literary translator. Your mission is to translate the following {source_language} text into natural, fluent Korean, strictly adhering to the guidelines below.
+    You are an expert literary translator. Your mission is to translate the following text into natural, fluent Korean, strictly adhering to the guidelines below.
 
     **GUIDELINE 1: Core Narrative Style (기본 서술)**
     - This defines the **default style for all NARRATION (text outside of "…")**. You must follow it strictly, unless overridden by Guideline 2.
@@ -161,17 +161,17 @@ translation:
     {character_speech_styles}
 
     **GUIDELINE 5: Other Characters' Dialogue (기타 인물 대화)**
-    - For all other characters, or if a specific interaction is not in the list above, please translate their dialogue from {source_language} to Korean naturally based on the context of the scene.
+    - For all other characters, or if a specific interaction is not in the list above, please translate their dialogue naturally based on the context of the scene.
 
     **GUIDELINE 6: Context is Key**
     - Use the previous sentences for immediate context and style continuity.
-    - **Previous {source_language} Sentence:**
-      {prev_segment_source}
+    - **Previous Source Sentence:**
+      {prev_segment_en}
     - **Previous Korean Translation:**
       {prev_segment_ko}
     - Your new translation should flow naturally from the previous Korean translation.
 
-    **Translate the following {source_language} text into Korean, adhering to all guidelines above:**
+    **Translate the following text into Korean, adhering to all guidelines above:**
     ---
     {source_segment}
     ---

@@ -14,7 +14,7 @@ class PromptBuilder:
         self.template = template
         print("PromptBuilder initialized.")
 
-    def build_translation_prompt(self, core_narrative_style: str, style_deviation_info: str, glossary: dict, character_styles: dict, source_segment: str, prev_segment_source: str, prev_segment_ko: str, protagonist_name: str, language: str = "English") -> str:
+    def build_translation_prompt(self, core_narrative_style: str, style_deviation_info: str, glossary: dict, character_styles: dict, source_segment: str, prev_segment_en: str, prev_segment_ko: str, protagonist_name: str) -> str:
         """
         Builds the final prompt by filling the template with all necessary data.
 
@@ -24,9 +24,8 @@ class PromptBuilder:
             glossary: The full, cumulative glossary.
             character_styles: The full, cumulative character style dictionary.
             source_segment: The source text to be translated.
-            prev_segment_source: The ending of the previous source segment for context.
+            prev_segment_en: The ending of the previous English segment for context.
             prev_segment_ko: The ending of the previous Korean segment for context.
-            language: The source language of the text.
 
         Returns:
             The fully formatted prompt string ready for the AI model.
@@ -39,11 +38,10 @@ class PromptBuilder:
             "style_deviation_info": style_deviation_info,
             "glossary_terms": glossary_string,
             "character_speech_styles": character_styles_string,
-            "prev_segment_source": prev_segment_source or "N/A",
+            "prev_segment_en": prev_segment_en or "N/A",
             "prev_segment_ko": prev_segment_ko or "N/A",
             "source_segment": source_segment,
             "protagonist_name": protagonist_name,
-            "source_language": language.capitalize(),
         }
 
         try:
