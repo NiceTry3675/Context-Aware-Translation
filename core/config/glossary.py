@@ -14,7 +14,7 @@ class GlossaryManager:
         if initial_glossary:
             print(f"GlossaryManager initialized with {len(initial_glossary)} pre-defined terms.")
 
-    def update_glossary(self, segment_text: str) -> dict:
+    def update_glossary(self, segment_text: str, language: str = "english") -> dict:
         """
         Extracts proper nouns from the segment, translates new ones,
         and returns the updated glossary.
@@ -27,7 +27,7 @@ class GlossaryManager:
         if not new_terms:
             return self.glossary
             
-        translated_terms = self._translate_terms(new_terms, segment_text)
+        translated_terms = self._translate_terms(new_terms, segment_text, language)
 
         self.glossary.update(translated_terms)
         return self.glossary
@@ -52,7 +52,7 @@ class GlossaryManager:
             print(f"Warning: Could not extract proper nouns. {e}")
             return []
 
-    def _translate_terms(self, terms: list[str], segment_text: str) -> dict:
+    def _translate_terms(self, terms: list[str], segment_text: str, language: str) -> dict:
         """Translates a list of terms and returns a dictionary."""
         existing_glossary_str = '\n'.join([f"{k}: {v}" for k, v in self.glossary.items()])
         if not existing_glossary_str:
@@ -61,7 +61,8 @@ class GlossaryManager:
         prompt = PromptManager.GLOSSARY_TRANSLATE_TERMS.format(
             key_terms=', '.join(terms),
             segment_text=segment_text,
-            existing_glossary=existing_glossary_str
+            existing_glossary=existing_glossary_str,
+            source_language=language.capitalize()
         )
         try:
             response = self.model.generate_text(prompt)

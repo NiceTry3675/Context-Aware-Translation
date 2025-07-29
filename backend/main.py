@@ -127,7 +127,7 @@ def validate_api_key(api_key: str, model_name: str):
         return GeminiModel.validate_api_key(api_key, model_name)
 
 # --- Background Task Definition ---
-def run_translation_in_background(job_id: int, file_path: str, filename: str, api_key: str, model_name: str, style_data: str = None, glossary_data: str = None, segment_size: int = 15000):
+def run_translation_in_background(job_id: int, file_path: str, filename: str, api_key: str, model_name: str, style_data: str = None, glossary_data: str = None, segment_size: int = 15000, language: str = "english"):
     db = None
     try:
         db = SessionLocal()
@@ -177,7 +177,7 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
                 print(f"--- [BACKGROUND] WARNING: Could not decode glossary_data JSON for Job ID: {job_id}. ---")
 
         dyn_config_builder = DynamicConfigBuilder(gemini_api, protagonist_name, initial_glossary=initial_glossary)
-        engine = TranslationEngine(gemini_api, dyn_config_builder, db=db, job_id=job_id, initial_core_style=initial_core_style_text)
+        engine = TranslationEngine(gemini_api, dyn_config_builder, db=db, job_id=job_id, initial_core_style=initial_core_style_text, language=language)
         
         engine.translate_job(translation_job)
         crud.update_job_status(db, job_id, "COMPLETED")
@@ -274,6 +274,7 @@ async def analyze_glossary(
     file: UploadFile = File(...),
     api_key: str = Form(...),
     model_name: str = Form("gemini-2.5-flash-lite"),
+    language: str = Form("english"),
 ):
     if not validate_api_key(api_key, model_name):
         raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
@@ -294,7 +295,7 @@ async def analyze_glossary(
         model_api = get_model_api(api_key, model_name, config)
         
         print("\n--- Extracting Glossary via API... ---")
-        glossary_report_text = analyze_glossary_with_api(initial_text, model_api, file.filename)
+        glossary_report_text = analyze_glossary_with_api(initial_text, model_api, file.filename, language=language)
         print(f"Glossary extracted as: {glossary_report_text}")
 
         parsed_glossary = parse_glossary_analysis(glossary_report_text)
@@ -320,6 +321,7 @@ async def create_upload_file(
     style_data: str = Form(None),
     glossary_data: str = Form(None),
     segment_size: int = Form(15000),
+    language: str = Form("english"),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.get_required_user)
 ):
@@ -343,7 +345,7 @@ async def create_upload_file(
 
     crud.update_job_filepath(db, job_id=db_job.id, filepath=file_path)
 
-    background_tasks.add_task(run_translation_in_background, db_job.id, file_path, file.filename, api_key, model_name, style_data, glossary_data, segment_size)
+    background_tasks.add_task(run_translation_in_background, db_job.id, file_path, file.filename, api_key, model_name, style_data, glossary_data, segment_size, language)
     
     return db_job
 

@@ -36,7 +36,7 @@ class DynamicConfigBuilder:
 
     
 
-    def build_dynamic_guides(self, segment_text: str, core_narrative_style: str, current_glossary: dict, current_character_styles: dict, job_base_filename: str, segment_index: int) -> tuple[dict, dict, str]:
+    def build_dynamic_guides(self, segment_text: str, core_narrative_style: str, current_glossary: dict, current_character_styles: dict, job_base_filename: str, segment_index: int, language: str = "english") -> tuple[dict, dict, str]:
         """
         Analyzes a text segment to build dynamic guidelines for translation.
 
@@ -61,7 +61,7 @@ class DynamicConfigBuilder:
         glossary_manager = GlossaryManager(self.model, job_base_filename, initial_glossary=combined_glossary)
         
         # Update glossary based on the current segment
-        updated_glossary = glossary_manager.update_glossary(segment_text)
+        updated_glossary = glossary_manager.update_glossary(segment_text, language=language)
 
         # 2. Update character styles
         updated_character_styles = self.character_style_manager.update_styles(
