@@ -13,11 +13,11 @@
 
 ### 로컬 개발 환경
 - **URL**: `http://localhost:8000`
-- **시크릿 키**: `dev-secret-key`
+- **시크릿 키**: `.env` 파일의 `DEV_SECRET_KEY` 값 사용
 
 ### 프로덕션 환경 (Railway)
 - **URL**: `https://catrans.up.railway.app`
-- **시크릿 키**: `catrans`
+- **시크릿 키**: `.env` 파일의 `PROD_SECRET_KEY` 값 사용
 
 ---
 
@@ -62,12 +62,12 @@ PowerShell을 사용해야 하는 경우:
 2. **PowerShell 명령어 실행:**
 ```powershell
 # 로컬 개발환경
-$headers = @{'Content-Type'='application/json; charset=utf-8'; 'x-admin-secret'='dev-secret-key'}
+$headers = @{'Content-Type'='application/json; charset=utf-8'; 'x-admin-secret'=$env:DEV_SECRET_KEY}
 $jsonContent = Get-Content -Path "announcement.json" -Encoding UTF8 -Raw
 Invoke-RestMethod -Uri "http://localhost:8000/api/v1/admin/announcements" -Method POST -Headers $headers -Body $jsonContent
 
 # 프로덕션 환경
-$headers = @{'Content-Type'='application/json; charset=utf-8'; 'x-admin-secret'='catrans'}
+$headers = @{'Content-Type'='application/json; charset=utf-8'; 'x-admin-secret'=$env:PROD_SECRET_KEY}
 $jsonContent = Get-Content -Path "announcement.json" -Encoding UTF8 -Raw
 Invoke-RestMethod -Uri "https://catrans.up.railway.app/api/v1/admin/announcements" -Method POST -Headers $headers -Body $jsonContent
 ```
@@ -76,12 +76,12 @@ Invoke-RestMethod -Uri "https://catrans.up.railway.app/api/v1/admin/announcement
 
 **로컬 개발환경:**
 ```powershell
-Invoke-RestMethod -Uri "http://localhost:8000/api/v1/admin/announcements" -Method POST -Headers @{'Content-Type'='application/json; charset=utf-8'; 'x-admin-secret'='dev-secret-key'} -Body '{"message": "🚀 System Update: Translation service has been improved! ✅", "is_active": true}'
+Invoke-RestMethod -Uri "http://localhost:8000/api/v1/admin/announcements" -Method POST -Headers @{'Content-Type'='application/json; charset=utf-8'; 'x-admin-secret'=$env:DEV_SECRET_KEY} -Body '{"message": "🚀 System Update: Translation service has been improved! ✅", "is_active": true}'
 ```
 
 **프로덕션 환경:**
 ```powershell
-Invoke-RestMethod -Uri "https://catrans.up.railway.app/api/v1/admin/announcements" -Method POST -Headers @{'Content-Type'='application/json; charset=utf-8'; 'x-admin-secret'='catrans'} -Body '{"message": "🚀 시스템 업데이트: 번역 서비스가 개선되었습니다! ✅", "is_active": true}'
+Invoke-RestMethod -Uri "https://catrans.up.railway.app/api/v1/admin/announcements" -Method POST -Headers @{'Content-Type'='application/json; charset=utf-8'; 'x-admin-secret'=$env:PROD_SECRET_KEY} -Body '{"message": "🚀 시스템 업데이트: 번역 서비스가 개선되었습니다! ✅", "is_active": true}'
 ```
 
 ### cURL (Linux/Mac)
@@ -90,7 +90,7 @@ Invoke-RestMethod -Uri "https://catrans.up.railway.app/api/v1/admin/announcement
 ```bash
 curl -X POST "http://localhost:8000/api/v1/admin/announcements" \
   -H "Content-Type: application/json; charset=utf-8" \
-  -H "x-admin-secret: dev-secret-key" \
+  -H "x-admin-secret: $DEV_SECRET_KEY" \
   -d '{"message": "🚀 시스템 업데이트: 번역 서비스가 개선되었습니다! ✅", "is_active": true}'
 ```
 
@@ -98,7 +98,7 @@ curl -X POST "http://localhost:8000/api/v1/admin/announcements" \
 ```bash
 curl -X POST "https://catrans.up.railway.app/api/v1/admin/announcements" \
   -H "Content-Type: application/json; charset=utf-8" \
-  -H "x-admin-secret: catrans" \
+  -H "x-admin-secret: $PROD_SECRET_KEY" \
   -d '{"message": "🚀 시스템 업데이트: 번역 서비스가 개선되었습니다! ✅", "is_active": true}'
 ```
 
@@ -132,21 +132,21 @@ python send_announcement.py
 **PowerShell:**
 ```powershell
 # 로컬 개발환경
-Invoke-RestMethod -Uri "http://localhost:8000/api/v1/admin/announcements/deactivate-all" -Method PUT -Headers @{'x-admin-secret'='dev-secret-key'}
+Invoke-RestMethod -Uri "http://localhost:8000/api/v1/admin/announcements/deactivate-all" -Method PUT -Headers @{'x-admin-secret'=$env:DEV_SECRET_KEY}
 
 # 프로덕션 환경
-Invoke-RestMethod -Uri "https://catrans.up.railway.app/api/v1/admin/announcements/deactivate-all" -Method PUT -Headers @{'x-admin-secret'='catrans'}
+Invoke-RestMethod -Uri "https://catrans.up.railway.app/api/v1/admin/announcements/deactivate-all" -Method PUT -Headers @{'x-admin-secret'=$env:PROD_SECRET_KEY}
 ```
 
 **cURL:**
 ```bash
 # 로컬 개발환경
 curl -X PUT "http://localhost:8000/api/v1/admin/announcements/deactivate-all" \
-  -H "x-admin-secret: dev-secret-key"
+  -H "x-admin-secret: $DEV_SECRET_KEY"
 
 # 프로덕션 환경
 curl -X PUT "https://catrans.up.railway.app/api/v1/admin/announcements/deactivate-all" \
-  -H "x-admin-secret: catrans"
+  -H "x-admin-secret: $PROD_SECRET_KEY"
 ```
 
 #### B. 특정 공지 비활성화
@@ -156,26 +156,26 @@ curl -X PUT "https://catrans.up.railway.app/api/v1/admin/announcements/deactivat
 **PowerShell:**
 ```powershell
 # 로컬 개발환경
-Invoke-RestMethod -Uri "http://localhost:8000/api/v1/admin/announcements/{ID}/deactivate" -Method PUT -Headers @{'x-admin-secret'='dev-secret-key'}
+Invoke-RestMethod -Uri "http://localhost:8000/api/v1/admin/announcements/{ID}/deactivate" -Method PUT -Headers @{'x-admin-secret'=$env:DEV_SECRET_KEY}
 
 # 프로덕션 환경
-Invoke-RestMethod -Uri "https://catrans.up.railway.app/api/v1/admin/announcements/{ID}/deactivate" -Method PUT -Headers @{'x-admin-secret'='catrans'}
+Invoke-RestMethod -Uri "https://catrans.up.railway.app/api/v1/admin/announcements/{ID}/deactivate" -Method PUT -Headers @{'x-admin-secret'=$env:PROD_SECRET_KEY}
 ```
 
 **cURL:**
 ```bash
 # 로컬 개발환경
 curl -X PUT "http://localhost:8000/api/v1/admin/announcements/{ID}/deactivate" \
-  -H "x-admin-secret: dev-secret-key"
+  -H "x-admin-secret: $DEV_SECRET_KEY"
 
 # 프로덕션 환경
 curl -X PUT "https://catrans.up.railway.app/api/v1/admin/announcements/{ID}/deactivate" \
-  -H "x-admin-secret: catrans"
+  -H "x-admin-secret: $PROD_SECRET_KEY"
 ```
 
 **예시 (ID가 25인 공지 비활성화):**
 ```powershell
-Invoke-RestMethod -Uri "http://localhost:8000/api/v1/admin/announcements/25/deactivate" -Method PUT -Headers @{'x-admin-secret'='dev-secret-key'}
+Invoke-RestMethod -Uri "http://localhost:8000/api/v1/admin/announcements/25/deactivate" -Method PUT -Headers @{'x-admin-secret'=$env:DEV_SECRET_KEY}
 ```
 
 ---
@@ -208,8 +208,7 @@ curl -N "https://catrans.up.railway.app/api/v1/announcements/stream"
 **1. 403 Forbidden - Invalid admin secret key**
 ```
 해결: x-admin-secret 헤더의 값이 올바른지 확인하세요.
-- 로컬: 'dev-secret-key'
-- 프로덕션: 'catrans'
+- .env 파일의 DEV_SECRET_KEY 또는 PROD_SECRET_KEY 값을 확인하세요.
 ```
 
 **2. 404 Not Found**
@@ -228,7 +227,7 @@ curl -N "https://catrans.up.railway.app/api/v1/announcements/stream"
 **4. PowerShell 긴 명령어 문제**
 ```
 해결: 변수를 사용하여 명령어를 분할하세요.
-$headers = @{'Content-Type'='application/json; charset=utf-8'; 'x-admin-secret'='dev-secret-key'}
+$headers = @{'Content-Type'='application/json; charset=utf-8'; 'x-admin-secret'=$env:DEV_SECRET_KEY}
 $body = '{"message": "공지 내용", "is_active": true}'
 Invoke-RestMethod -Uri "http://localhost:8000/api/v1/admin/announcements" -Method POST -Headers $headers -Body $body
 ```

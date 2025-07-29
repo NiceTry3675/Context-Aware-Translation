@@ -4,6 +4,10 @@
 import urllib.request
 import json
 import sys
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def send_announcement(message, environment='local'):
     """
@@ -17,10 +21,10 @@ def send_announcement(message, environment='local'):
     # 환경별 설정
     if environment == 'local':
         url = "http://localhost:8000/api/v1/admin/announcements"
-        secret_key = "dev-secret-key"
+        secret_key = os.getenv("DEV_SECRET_KEY")
     else:  # production
         url = "https://catrans.up.railway.app/api/v1/admin/announcements"
-        secret_key = "catrans"
+        secret_key = os.getenv("PROD_SECRET_KEY")
     
     # 공지 데이터 준비
     data = {
@@ -78,10 +82,10 @@ def deactivate_announcement(announcement_id, environment='local'):
     # 환경별 설정
     if environment == 'local':
         url = f"http://localhost:8000/api/v1/admin/announcements/{announcement_id}/deactivate"
-        secret_key = "dev-secret-key"
+        secret_key = os.getenv("DEV_SECRET_KEY")
     else:  # production
         url = f"https://catrans.up.railway.app/api/v1/admin/announcements/{announcement_id}/deactivate"
-        secret_key = "catrans"
+        secret_key = os.getenv("PROD_SECRET_KEY")
     
     try:
         print(f"🔇 공지 비활성화 중... (ID: {announcement_id})")
@@ -114,10 +118,10 @@ def deactivate_all_announcements(environment='local'):
     # 환경별 설정
     if environment == 'local':
         url = "http://localhost:8000/api/v1/admin/announcements/deactivate-all"
-        secret_key = "dev-secret-key"
+        secret_key = os.getenv("DEV_SECRET_KEY")
     else:  # production
         url = "https://catrans.up.railway.app/api/v1/admin/announcements/deactivate-all"
-        secret_key = "catrans"
+        secret_key = os.getenv("PROD_SECRET_KEY")
     
     try:
         print("🔇 모든 공지 비활성화 중...")

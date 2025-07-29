@@ -500,6 +500,43 @@ export default function Home() {
     localStorage.setItem('jobIds', JSON.stringify(storedJobIds.filter((id: number) => id !== jobId)));
   };
 
+  const handleDownload = async (url: string, filename: string) => {
+    if (!isSignedIn) {
+      openSignIn({ redirectUrl: '/' });
+      return;
+    }
+    try {
+      const token = await getToken();
+      if (!token) {
+        setError("다운로드에 필요한 인증 토큰을 가져올 수 없습니다.");
+        return;
+      }
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `Failed to download file from ${url}`);
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unknown error occurred during download.");
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'COMPLETED': return <CheckCircleIcon color="success" />;
@@ -941,7 +978,10 @@ export default function Home() {
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
                       {(job.status === 'COMPLETED' || job.status === 'FAILED') && (
                         <Tooltip title="번역 파일 다운로드">
-                          <IconButton color="primary" href={`${API_URL}/download/${job.id}`} download>
+                          <IconButton 
+                            color="primary" 
+                            onClick={() => handleDownload(`${API_URL}/download/${job.id}`, `${job.filename.split('.')[0]}_translated.${job.filename.toLowerCase().endsWith('.epub') ? 'epub' : 'txt'}`)}
+                          >
                             <DownloadIcon />
                           </IconButton>
                         </Tooltip>
@@ -949,12 +989,18 @@ export default function Home() {
                       {devMode && (job.status === 'COMPLETED' || job.status === 'FAILED') && (
                         <>
                           <Tooltip title="프롬프트 로그 다운로드">
-                            <IconButton size="small" href={`${API_URL}/download/logs/${job.id}/prompts`} download>
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handleDownload(`${API_URL}/download/logs/${job.id}/prompts`, `prompts_job_${job.id}_${job.filename.split('.')[0]}.txt`)}
+                            >
                               <ChatIcon />
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="컨텍스트 로그 다운로드">
-                            <IconButton size="small" href={`${API_URL}/download/logs/${job.id}/context`} download>
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handleDownload(`${API_URL}/download/logs/${job.id}/context`, `context_job_${job.id}_${job.filename.split('.')[0]}.txt`)}
+                            >
                               <DescriptionIcon />
                             </IconButton>
                           </Tooltip>
