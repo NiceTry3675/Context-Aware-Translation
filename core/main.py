@@ -18,7 +18,7 @@ from core.utils.file_parser import parse_document
 def translate(source_file: str, target_file: Optional[str] = None, api_key: Optional[str] = None, 
               segment_size: int = 10000, verbose: bool = False) -> None:
     """
-    Translate a novel from English to Korean using the Context-Aware Translation system.
+    Translate a novel from a source language to Korean using the Context-Aware Translation system.
     
     Args:
         source_file: Path to the source file to translate

@@ -139,7 +139,7 @@ class TranslationEngine:
                 if re.search(r'\b' + re.escape(key) + r'\b', segment_info.text, re.IGNORECASE)
             }
             
-            immediate_context_en = get_segment_ending(job.get_previous_segment(i), max_chars=1500)
+            immediate_context_source = get_segment_ending(job.get_previous_segment(i), max_chars=1500)
             immediate_context_ko = get_segment_ending(job.get_previous_translation(i), max_chars=500)
             
             prompt = self.prompt_builder.build_translation_prompt(
@@ -148,7 +148,7 @@ class TranslationEngine:
                 glossary=contextual_glossary,
                 character_styles=job.character_styles,
                 source_segment=segment_info.text,
-                prev_segment_en=immediate_context_en,
+                prev_segment_source=immediate_context_source,
                 prev_segment_ko=immediate_context_ko,
                 protagonist_name=self.dyn_config_builder.character_style_manager.protagonist_name
             )
@@ -158,7 +158,7 @@ class TranslationEngine:
                 segment_index=segment_index,
                 job=job,
                 contextual_glossary=contextual_glossary,
-                immediate_context_en=immediate_context_en,
+                immediate_context_source=immediate_context_source,
                 immediate_context_ko=immediate_context_ko,
                 style_deviation=style_deviation
             )
@@ -243,7 +243,7 @@ class TranslationEngine:
             print(f"Warning: Could not define narrative style. Falling back to default. Error: {e}")
             raise TranslationError(f"Failed to define core style: {e}") from e
 
-    def _write_context_log(self, log_path: str, segment_index: int, job: TranslationJob, contextual_glossary: dict, immediate_context_en: str, immediate_context_ko: str, style_deviation: str):
+    def _write_context_log(self, log_path: str, segment_index: int, job: TranslationJob, contextual_glossary: dict, immediate_context_source: str, immediate_context_ko: str, style_deviation: str):
         """Writes a human-readable summary of the context to a log file."""
         with open(log_path, 'a', encoding='utf-8') as f:
             f.write(f"--- CONTEXT FOR SEGMENT {segment_index} ---\n\n")
@@ -271,7 +271,7 @@ class TranslationEngine:
                 f.write("- Empty\n")
             f.write("\n")
             f.write("### Immediate language Context (Previous Segment Ending):\n")
-            f.write(f"{immediate_context_en or 'N/A'}\n\n")
+            f.write(f"{immediate_context_source or 'N/A'}\n\n")
             f.write("### Immediate Korean Context (Previous Segment Ending):\n")
             f.write(f"{immediate_context_ko or 'N/A'}\n\n")
             f.write("="*50 + "\n\n")
