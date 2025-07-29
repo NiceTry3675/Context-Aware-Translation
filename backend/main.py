@@ -355,10 +355,19 @@ def get_job_status(job_id: int, db: Session = Depends(get_db)):
     return db_job
 
 @app.get("/download/{job_id}")
-def download_translated_file(job_id: int, db: Session = Depends(get_db)):
+def download_translated_file(
+    job_id: int, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
     db_job = crud.get_job(db, job_id=job_id)
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Check ownership
+    if db_job.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to download this file")
+
     if db_job.status not in ["COMPLETED", "FAILED"]:
         raise HTTPException(status_code=400, detail=f"Translation is not completed yet. Current status: {db_job.status}")
     if not db_job.filepath:
@@ -385,10 +394,20 @@ def download_translated_file(job_id: int, db: Session = Depends(get_db)):
     return FileResponse(path=file_path, filename=user_translated_filename, media_type=media_type)
 
 @app.get("/download/logs/{job_id}/{log_type}")
-def download_log_file(job_id: int, log_type: str, db: Session = Depends(get_db)):
+def download_log_file(
+    job_id: int, 
+    log_type: str, 
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
     db_job = crud.get_job(db, job_id=job_id)
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
+
+    # Check ownership
+    if db_job.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to download logs for this file")
+
     if log_type not in ["prompts", "context"]:
         raise HTTPException(status_code=400, detail="Invalid log type. Must be 'prompts' or 'context'.")
 
