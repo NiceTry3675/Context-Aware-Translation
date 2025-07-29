@@ -13,6 +13,7 @@ from core.translation.job import TranslationJob
 from core.translation.engine import TranslationEngine
 from core.errors.base import TranslationError
 from core.utils.file_parser import parse_document
+from core.translation.style_analyzer import extract_sample_text, analyze_narrative_style_with_api, parse_style_analysis
 
 
 def translate(source_file: str, target_file: Optional[str] = None, api_key: Optional[str] = None, 
@@ -72,14 +73,34 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
         if verbose:
             print(f"Created {len(job.segments)} segments from source file")
         
-        # Extract book title from filename
-        book_title = Path(source_file).stem.replace('_', ' ').title()
+        # Analyze protagonist name from the text
+        if verbose:
+            print("\n--- Analyzing Protagonist Name... ---")
         
+        try:
+            sample_text = extract_sample_text(source_file)
+            # Use the filename for logging purposes in the analyzer
+            job_filename = Path(source_file).stem
+            style_analysis_text = analyze_narrative_style_with_api(sample_text, gemini_model, job_filename=job_filename)
+            parsed_style = parse_style_analysis(style_analysis_text)
+            protagonist_name = parsed_style.get('protagonist_name')
+
+            if not protagonist_name:
+                print("Warning: Could not determine protagonist name from analysis. Falling back to filename.")
+                protagonist_name = Path(source_file).stem.replace('_', ' ').title()
+            else:
+                 if verbose:
+                    print(f"Protagonist identified as: {protagonist_name}")
+
+        except Exception as e:
+            print(f"Warning: Failed to analyze protagonist name due to an error: {e}. Falling back to filename.")
+            protagonist_name = Path(source_file).stem.replace('_', ' ').title()
+
         # Create dynamic config builder
         if verbose:
-            print(f"Initializing dynamic config builder for: {book_title}")
+            print(f"\nInitializing dynamic config builder for protagonist: {protagonist_name}")
         
-        dyn_config_builder = DynamicConfigBuilder(gemini_model, book_title)
+        dyn_config_builder = DynamicConfigBuilder(gemini_model, protagonist_name)
         
         # Create translation engine (no database for CLI mode)
         engine = TranslationEngine(gemini_model, dyn_config_builder, db=None, job_id=None)
