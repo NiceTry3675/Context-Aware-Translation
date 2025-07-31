@@ -33,6 +33,7 @@ class TranslationJob(Base):
     # --- Add these lines ---
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True) # Start as nullable for existing jobs
     owner = relationship("User", back_populates="jobs")
+    final_glossary = Column(JSON, nullable=True)
     # -----------------------
 
 class TranslationUsageLog(Base):

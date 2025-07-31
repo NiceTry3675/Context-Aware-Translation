@@ -175,6 +175,9 @@ class TranslationEngine:
 
         job.save_final_output()
 
+        if crud and self.db and self.job_id:
+            crud.update_job_final_glossary(self.db, self.job_id, job.glossary)
+
         print(f"\n--- Translation Complete! ---")
         print(f"Output: {job.output_filename}")
 

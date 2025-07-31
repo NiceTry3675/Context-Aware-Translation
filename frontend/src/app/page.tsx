@@ -884,6 +884,54 @@ export default function Home() {
               <Button onClick={handleAddGlossaryTerm} startIcon={<AddIcon />} sx={{ mb: 3 }}>
                 용어 추가
               </Button>
+
+              <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                <Button
+                  component="label"
+                  variant="outlined"
+                  startIcon={<UploadFileIcon />}
+                >
+                  용어집 불러오기 (.json)
+                  <input
+                    type="file"
+                    hidden
+                    accept=".json"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          try {
+                            const newGlossaryJson = JSON.parse(event.target?.result as string);
+                            
+                            // Create a Map to merge glossaries, ensuring new terms overwrite old ones
+                            const mergedGlossaryMap = new Map<string, string>();
+
+                            // Add existing terms to the map
+                            glossaryData.forEach(term => mergedGlossaryMap.set(term.term, term.translation));
+
+                            // Add new/updated terms from the file to the map
+                            Object.entries(newGlossaryJson).forEach(([term, translation]) => {
+                              if (typeof term === 'string' && typeof translation === 'string') {
+                                mergedGlossaryMap.set(term, translation);
+                              }
+                            });
+
+                            // Convert the map back to an array of objects
+                            const mergedGlossary = Array.from(mergedGlossaryMap, ([term, translation]) => ({ term, translation }));
+
+                            setGlossaryData(mergedGlossary);
+                          } catch (error) {
+                            console.error("Error parsing glossary file:", error);
+                            setError("용어집 파일을 읽는 데 실패했습니다. 유효한 JSON 파일인지 확인해주세요.");
+                          }
+                        };
+                        reader.readAsText(file);
+                      }
+                    }}
+                  />
+                </Button>
+              </Box>
             </>
 
             <CardActions sx={{ justifyContent: 'flex-end', mt: 3, p: 0 }}>
@@ -983,6 +1031,16 @@ export default function Home() {
                             onClick={() => handleDownload(`${API_URL}/download/${job.id}`, `${job.filename.split('.')[0]}_translated.${job.filename.toLowerCase().endsWith('.epub') ? 'epub' : 'txt'}`)}
                           >
                             <DownloadIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {job.status === 'COMPLETED' && (
+                        <Tooltip title="용어집 다운로드">
+                          <IconButton 
+                            color="secondary"
+                            onClick={() => handleDownload(`${API_URL}/api/v1/jobs/${job.id}/glossary`, `${job.filename.split('.')[0]}_glossary.json`)}
+                          >
+                            <MenuBookIcon />
                           </IconButton>
                         </Tooltip>
                       )}

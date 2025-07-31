@@ -83,6 +83,14 @@ def update_job_filepath(db: Session, job_id: int, filepath: str):
         db.refresh(db_job)
     return db_job
 
+def update_job_final_glossary(db: Session, job_id: int, glossary: dict):
+    db_job = get_job(db, job_id)
+    if db_job:
+        db_job.final_glossary = glossary
+        db.commit()
+        db.refresh(db_job)
+    return db_job
+
 def create_translation_usage_log(db: Session, log_data: schemas.TranslationUsageLogCreate):
     db_log = models.TranslationUsageLog(**log_data.dict())
     db.add(db_log)
