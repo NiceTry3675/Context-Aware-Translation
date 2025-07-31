@@ -395,8 +395,9 @@ export default function Home() {
                     setGlossaryAnalysisError(errorMessage);
                     setGlossaryData([]); // Clear any previous data
                 }
-            } catch (glossaryErr) {
-                setGlossaryAnalysisError('용어집 분석 중 예기치 않은 오류가 발생했습니다. 네트워크 연결을 확인해주세요.');
+            } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : '용어집 분석 중 예기치 않은 오류가 발생했습니다. 네트워크 연결을 확인해주세요.';
+                setGlossaryAnalysisError(errorMessage);
                 setGlossaryData([]);
             } finally {
                 setIsAnalyzingGlossary(false);
