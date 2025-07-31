@@ -263,7 +263,8 @@ async def analyze_style(
         return StyleAnalysisResponse(**parsed_style)
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"An error occurred during style analysis: {e}")
+        # Pass the specific error message to the frontend
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
@@ -306,7 +307,8 @@ async def analyze_glossary(
         return GlossaryAnalysisResponse(glossary=parsed_glossary)
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"An error occurred during glossary analysis: {e}")
+        # Pass the specific error message to the frontend
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
@@ -426,6 +428,29 @@ async def download_log_file(
         raise HTTPException(status_code=404, detail=f"{log_type.capitalize()} log file not found.")
 
     return FileResponse(path=log_path, filename=log_filename, media_type="text/plain")
+
+@app.get("/api/v1/jobs/{job_id}/glossary")
+async def get_job_glossary(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    db_job = crud.get_job(db, job_id=job_id)
+    if db_job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # Check ownership or admin role
+    user_is_admin = await auth.is_admin(current_user)
+    if not db_job.owner or (db_job.owner.clerk_user_id != current_user.clerk_user_id and not user_is_admin):
+        raise HTTPException(status_code=403, detail="Not authorized to access this glossary")
+
+    if db_job.status != "COMPLETED":
+        raise HTTPException(status_code=400, detail=f"Glossary is available only for completed jobs. Current status: {db_job.status}")
+
+    if not db_job.final_glossary:
+        return {} # Return an empty object if glossary is not set
+
+    return db_job.final_glossary
 
 # --- Webhook Endpoints ---
 

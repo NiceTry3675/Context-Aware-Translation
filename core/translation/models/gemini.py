@@ -112,8 +112,8 @@ class GeminiModel:
                     print("Retrying in 5 seconds...")
                     time.sleep(5)
                 else:
-                    # After all retries, re-raise the last exception
-                    raise Exception(f"All {max_retries} API call attempts failed.") from e
+                    # After all retries, re-raise the last exception with more context
+                    raise Exception(f"All {max_retries} API call attempts failed. Last error: {e}") from e
         
         return "" # Should not be reached
     

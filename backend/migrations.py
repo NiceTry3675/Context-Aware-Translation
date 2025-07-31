@@ -51,6 +51,7 @@ def run_migrations():
                 {'type': 'add_column', 'table': 'posts', 'column': 'is_private', 'definition': 'BOOLEAN DEFAULT FALSE'},
                 {'type': 'add_column', 'table': 'comments', 'column': 'is_private', 'definition': 'BOOLEAN DEFAULT FALSE'},
                 {'type': 'add_column', 'table': 'users', 'column': 'role', 'definition': "VARCHAR(50) DEFAULT 'user'"},
+                {'type': 'add_column', 'table': 'translation_jobs', 'column': 'final_glossary', 'definition': 'JSON'},
 
                 # Index creations (each as a separate statement)
                 {'type': 'create_index', 'name': 'idx_posts_is_private', 'sql': 'CREATE INDEX IF NOT EXISTS idx_posts_is_private ON posts(is_private)'},
