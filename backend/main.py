@@ -263,7 +263,8 @@ async def analyze_style(
         return StyleAnalysisResponse(**parsed_style)
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"An error occurred during style analysis: {e}")
+        # Pass the specific error message to the frontend
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
@@ -306,7 +307,8 @@ async def analyze_glossary(
         return GlossaryAnalysisResponse(glossary=parsed_glossary)
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"An error occurred during glossary analysis: {e}")
+        # Pass the specific error message to the frontend
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)

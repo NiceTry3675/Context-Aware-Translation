@@ -202,6 +202,7 @@ export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [isAnalyzingGlossary, setIsAnalyzingGlossary] = useState<boolean>(false);
   const [analysisError, setAnalysisError] = useState<string>('');
+  const [glossaryAnalysisError, setGlossaryAnalysisError] = useState<string>('');
   const [styleData, setStyleData] = useState<StyleData | null>(null);
   const [showStyleForm, setShowStyleForm] = useState<boolean>(false);
   const [glossaryData, setGlossaryData] = useState<GlossaryTerm[]>([]);
@@ -344,6 +345,7 @@ export default function Home() {
 
     setIsAnalyzing(true);
     setAnalysisError('');
+    setGlossaryAnalysisError('');
     setError(null);
     setStyleData(null);
     setGlossaryData([]);
@@ -388,12 +390,13 @@ export default function Home() {
                     const result = await glossaryResponse.json();
                     setGlossaryData(result.glossary || []);
                 } else {
-                    // Don't block the user, just show a non-critical error in the glossary section
-                    console.error('용어집 분석 실패:', await glossaryResponse.text());
+                    const errorData = await glossaryResponse.json();
+                    const errorMessage = errorData.detail || 'AI 용어집 분석에 실패했습니다. 수동으로 추가하거나, 기본 설정으로 번역을 시작할 수 있습니다.';
+                    setGlossaryAnalysisError(errorMessage);
                     setGlossaryData([]); // Clear any previous data
                 }
             } catch (glossaryErr) {
-                console.error('용어집 분석 중 예외 발생:', glossaryErr);
+                setGlossaryAnalysisError('용어집 분석 중 예기치 않은 오류가 발생했습니다. 네트워크 연결을 확인해주세요.');
                 setGlossaryData([]);
             } finally {
                 setIsAnalyzingGlossary(false);
@@ -832,6 +835,8 @@ export default function Home() {
                   : "번역에 사용할 고유명사(인물, 지명 등)를 직접 추가할 수 있습니다. AI 분석은 비활성화됩니다."
                 }
               </Typography>
+
+              {glossaryAnalysisError && <Alert severity="warning" sx={{ mb: 2 }}>{glossaryAnalysisError}</Alert>}
               
               {isAnalyzingGlossary ? (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2}}>

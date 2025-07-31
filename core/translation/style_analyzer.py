@@ -184,7 +184,8 @@ def analyze_narrative_style_with_api(
         print(f"Warning: Core style definition blocked. Log: {log_path}. Falling back to default.")
         return "A standard, neutral literary style ('평서체')."
     except Exception as e:
-        print(f"Warning: Could not define narrative style. Falling back to default. Error: {e}")
+        print(f"Warning: Could not define narrative style. Error: {e}")
+        # Re-raise with the specific error message from the underlying API call
         raise Exception(f"Failed to define core style: {e}") from e
 
 
