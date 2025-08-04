@@ -451,7 +451,7 @@ async def handle_clerk_webhook(request: Request, svix_id: str = Header(None), sv
     data = evt["data"]
 
     if event_type == "user.created":
-        user_name = f'{data.get("first_name", "")} {data.get("last_name", "")}'.strip()
+        user_name = data.get("username")
         email_addresses = data.get("email_addresses", [])
         email_address = email_addresses[0].get("email_address") if email_addresses else None
 
@@ -465,7 +465,7 @@ async def handle_clerk_webhook(request: Request, svix_id: str = Header(None), sv
         clerk_user_id = data["id"]
         db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
         
-        user_name = f'{data.get("first_name", "")} {data.get("last_name", "")}'.strip()
+        user_name = data.get("username")
         email_addresses = data.get("email_addresses", [])
         email_address = email_addresses[0].get("email_address") if email_addresses else None
 

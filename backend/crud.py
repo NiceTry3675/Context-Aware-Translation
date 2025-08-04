@@ -165,6 +165,16 @@ def update_user(db: Session, clerk_id: str, user_update: schemas.UserUpdate):
 def delete_user(db: Session, clerk_id: str):
     db_user = get_user_by_clerk_id(db, clerk_id)
     if db_user:
+        # 1. 사용자가 작성한 게시글의 author_id를 NULL로 변경
+        db.query(models.Post).filter(models.Post.author_id == db_user.id).update({"author_id": None})
+        
+        # 2. 사용자가 작성한 댓글의 author_id를 NULL로 변경
+        db.query(models.Comment).filter(models.Comment.author_id == db_user.id).update({"author_id": None})
+        
+        # 3. 사용자가 생성한 번역 작업의 owner_id를 NULL로 변경
+        db.query(models.TranslationJob).filter(models.TranslationJob.owner_id == db_user.id).update({"owner_id": None})
+        
+        # 4. 모든 참조가 정리된 후 사용자 삭제
         db.delete(db_user)
         db.commit()
     return db_user
