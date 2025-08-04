@@ -215,6 +215,28 @@ class TranslationJob:
         else:
             self._save_as_text()
         print("Save complete.")
+    
+    def save_translation(self, output_path: str = None):
+        """Saves the translation to a specified path or default output filename."""
+        if output_path:
+            # Temporarily change the output filename for saving
+            original_output = self.output_filename
+            self.output_filename = output_path
+            
+            # Ensure directory exists
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            
+            # Save based on format
+            if self.input_format == '.epub' and output_path.endswith('.epub'):
+                self._save_as_epub()
+            else:
+                # Default to text format for post-edited versions
+                self._save_as_text()
+            
+            # Restore original output filename
+            self.output_filename = original_output
+        else:
+            self.save_final_output()
 
     def _save_as_text(self):
         """Saves the translated segments as a single .txt file."""

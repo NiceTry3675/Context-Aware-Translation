@@ -26,3 +26,11 @@ class PromptManager:
     
     # --- Translation Engine Prompts ---
     MAIN_TRANSLATION = _prompts["translation"]["main"]
+    SOFT_RETRY_TRANSLATION = _prompts["translation"]["soft_retry"]
+    
+    # --- Validation Prompts ---
+    VALIDATION_COMPREHENSIVE = _prompts["validation"]["comprehensive_check"]
+    VALIDATION_QUICK = _prompts["validation"]["quick_check"]
+    
+    # --- Post-Edit Prompts ---
+    POST_EDIT_CORRECTION = _prompts["post_edit"]["correction"]

@@ -181,3 +181,161 @@ translation:
     ---
     {source_segment}
     ---
+
+  soft_retry: |
+    You are an expert literary translator with a focus on creative and nuanced translation.
+    
+    The text below may contain mature themes or complex content. Your task is to translate it professionally
+    while maintaining the literary quality and narrative integrity of the original work.
+    
+    **IMPORTANT:** Focus on creating a natural, flowing Korean translation that preserves:
+    - The narrative voice and style
+    - Character relationships and dialogue patterns
+    - Literary devices and metaphors
+    - Emotional undertones and atmosphere
+    
+    **Glossary Terms to Use:**
+    {glossary_terms}
+    
+    **Character Speech Styles:**
+    {character_speech_styles}
+    
+    **Previous Context:**
+    - Previous Source: {prev_segment_source}
+    - Previous Translation: {prev_segment_ko}
+    
+    **Text to Translate:**
+    ---
+    {source_segment}
+    ---
+    
+    **Output in Korean:**
+
+validation:
+  comprehensive_check: |
+    You are an expert translation quality validator. Your task is to carefully analyze the source text and its Korean translation to identify any issues.
+    
+    **Source Text:**
+    ---
+    {source_text}
+    ---
+    
+    **Korean Translation:**
+    ---
+    {translated_text}
+    ---
+    
+    **Glossary (for reference):**
+    {glossary_terms}
+    
+    **Validation Checklist:**
+    1. **Completeness**: Are all sentences/paragraphs from the source translated? List any missing content.
+    2. **Accuracy**: Are there any mistranslations or significant meaning changes? Identify specific issues.
+    3. **Additions**: Is there any content in the translation that doesn't exist in the source? Flag any additions.
+    4. **Character Names**: Are all character names consistently translated according to the glossary?
+    5. **Dialogue Style**: Does the dialogue maintain appropriate Korean formality levels?
+    6. **Flow**: Does the translation read naturally in Korean, or are there awkward expressions?
+    
+    **Output Format:**
+    IMPORTANT: List EVERY issue you find. Do not summarize or omit any problems.
+    
+    Provide a structured report with the following sections:
+    
+    **Status**: PASS or FAIL (FAIL if ANY issues found)
+    
+    **Critical Issues**: 
+    - List EACH major problem separately as a bullet point
+    - Include specific examples with quotes
+    - If none found, write "None"
+    
+    **Minor Issues**:
+    - List EACH minor problem separately as a bullet point  
+    - Include specific examples
+    - If none found, write "None"
+    
+    **Missing Content**:
+    - Quote EACH piece of source text that wasn't translated
+    - One bullet point per missing element
+    - If none found, write "None"
+    
+    **Added Content**:
+    - Quote EACH piece added in translation not in source
+    - One bullet point per addition
+    - If none found, write "None"
+    
+    **Name Inconsistencies**:
+    - List EACH character name issue separately
+    - Show source name → translated name
+    - If none found, write "None"
+    
+    Remember: List ALL issues found, not just examples.
+    
+    **Validation Report:**
+
+  quick_check: |
+    You are a translation validator. Quickly check if this translation has any critical issues.
+    
+    **Source (English):**
+    {source_text}
+    
+    **Translation (Korean):**
+    {translated_text}
+    
+    **Glossary Reference:**
+    {glossary_terms}
+    
+    Provide a quick validation report:
+    
+    **Status**: PASS or FAIL
+    
+    **Critical Issues**:
+    - List any critical mistranslations or omissions
+    - If none, write "None"
+    
+    **Missing Content**:
+    - List any missing content from source
+    - If none, write "None"
+    
+    **Name Inconsistencies**:
+    - List any character name issues
+    - If none, write "None"
+    
+    Note: Be specific and list ALL issues found.
+
+post_edit:
+  correction: |
+    You are an expert Korean literary translator performing post-editing to fix specific issues identified in a translation.
+    
+    **Original Source Text (English):**
+    ---
+    {source_text}
+    ---
+    
+    **Current Korean Translation (with issues):**
+    ---
+    {current_translation}
+    ---
+    
+    **Issues Found in Validation:**
+    {issues_found}
+    
+    **Glossary (MUST be followed):**
+    {glossary_terms}
+    
+    **Your Task:**
+    1. Fix ALL the issues listed above while preserving the good parts of the translation
+    2. For missing content: Add the missing parts naturally into the Korean translation
+    3. For added content: Remove content not present in the source
+    4. For name inconsistencies: Use the exact names from the glossary
+    5. For critical issues: Correct the mistranslations or errors
+    6. Maintain the literary style and natural flow of Korean
+    
+    **Important Guidelines:**
+    - Keep changes minimal - only fix the identified issues
+    - Preserve the translator's original style choices where they are correct
+    - Ensure the final result reads naturally in Korean
+    - Do NOT add any new content beyond fixing the issues
+    - Follow the glossary strictly for all proper nouns
+    
+    **Output:**
+    Provide ONLY the corrected Korean translation. Do not include any explanations, comments, or formatting.
