@@ -311,7 +311,7 @@ export default function Home() {
       try {
         const fetchedJobs: Job[] = await Promise.all(
           uniqueJobIds.map(async (id: number) => {
-            const response = await fetch(`${API_URL}/status/${id}`);
+            const response = await fetch(`${API_URL}/api/v1/jobs/${id}`);
             return response.ok ? response.json() : null;
           })
         );
@@ -334,7 +334,7 @@ export default function Home() {
     const updatedJobs = await Promise.all(
       processingJobs.map(async (job) => {
         try {
-          const response = await fetch(`${API_URL}/status/${job.id}`);
+          const response = await fetch(`${API_URL}/api/v1/jobs/${job.id}`);
           return response.ok ? response.json() : job;
         } catch {
           return job;
@@ -501,7 +501,7 @@ export default function Home() {
       }
       
       console.log("Got token, uploading file with authentication...");
-      const response = await fetch(`${API_URL}/uploadfile/`, { 
+      const response = await fetch(`${API_URL}/api/v1/jobs`, { 
         method: 'POST', 
         headers: { 
           'Authorization': `Bearer ${token}`
@@ -1278,7 +1278,7 @@ export default function Home() {
                         <Tooltip title="번역 파일 다운로드">
                           <IconButton 
                             color="primary" 
-                            onClick={() => handleDownload(`${API_URL}/download/${job.id}`, `${job.filename.split('.')[0]}_translated.${job.filename.toLowerCase().endsWith('.epub') ? 'epub' : 'txt'}`)}
+                            onClick={() => handleDownload(`${API_URL}/api/v1/jobs/${job.id}/output`, `${job.filename.split('.')[0]}_translated.${job.filename.toLowerCase().endsWith('.epub') ? 'epub' : 'txt'}`)}
                           >
                             <DownloadIcon />
                           </IconButton>
@@ -1356,7 +1356,7 @@ export default function Home() {
                           <Tooltip title="프롬프트 로그 다운로드">
                             <IconButton 
                               size="small" 
-                              onClick={() => handleDownload(`${API_URL}/download/logs/${job.id}/prompts`, `prompts_job_${job.id}_${job.filename.split('.')[0]}.txt`)}
+                              onClick={() => handleDownload(`${API_URL}/api/v1/jobs/${job.id}/logs/prompts`, `prompts_job_${job.id}_${job.filename.split('.')[0]}.txt`)}
                             >
                               <ChatIcon />
                             </IconButton>
@@ -1364,7 +1364,7 @@ export default function Home() {
                           <Tooltip title="컨텍스트 로그 다운로드">
                             <IconButton 
                               size="small" 
-                              onClick={() => handleDownload(`${API_URL}/download/logs/${job.id}/context`, `context_job_${job.id}_${job.filename.split('.')[0]}.txt`)}
+                              onClick={() => handleDownload(`${API_URL}/api/v1/jobs/${job.id}/logs/context`, `context_job_${job.id}_${job.filename.split('.')[0]}.txt`)}
                             >
                               <DescriptionIcon />
                             </IconButton>
