@@ -352,6 +352,19 @@ export default function Home() {
         setFile(null);
         return;
     }
+    
+    // Check authentication first
+    if (!isLoaded) {
+      setError("인증 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
+      return;
+    }
+    
+    if (!isSignedIn) {
+      setError("번역을 시작하려면 먼저 로그인해주세요.");
+      openSignIn({ redirectUrl: '/' });
+      return;
+    }
+    
     setFile(selectedFile);
     if (!apiKey) {
         setError("API 키를 먼저 입력해주세요.");
@@ -459,12 +472,6 @@ export default function Home() {
       return;
     }
 
-    const token = await getToken();
-    if (!token) {
-        setError("로그인은 되었으나, 인증 토큰을 가져오지 못했습니다. 잠시 후 다시 시도하거나, 페이지를 새로고침해주세요.");
-        return;
-    }
-
     setUploading(true);
     setError(null);
     setShowStyleForm(false);
@@ -481,14 +488,29 @@ export default function Home() {
 
     try {
       const token = await getToken();
+      if (!token) {
+        console.error("Failed to get authentication token");
+        setError("로그인은 되었으나, 인증 토큰을 가져오지 못했습니다. 잠시 후 다시 시도하거나, 페이지를 새로고침해주세요.");
+        setUploading(false);
+        return;
+      }
+      
+      console.log("Got token, uploading file with authentication...");
       const response = await fetch(`${API_URL}/uploadfile/`, { 
         method: 'POST', 
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { 
+          'Authorization': `Bearer ${token}`
+        },
         body: formData 
       });
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "File upload failed");
+        console.error(`Upload failed with status ${response.status}: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+        if (response.status === 401) {
+          throw new Error("인증에 실패했습니다. 다시 로그인해주세요.");
+        }
+        throw new Error(errorData.detail || `File upload failed: ${response.statusText}`);
       }
       const newJob: Job = await response.json();
       setJobs(prevJobs => [newJob, ...prevJobs]);
