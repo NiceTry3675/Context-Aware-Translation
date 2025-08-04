@@ -194,6 +194,168 @@ def run_translation_in_background(job_id: int, file_path: str, filename: str, ap
         gc.collect()
         print(f"--- [BACKGROUND] Job ID: {job_id} finished. DB session closed and GC collected. ---")
 
+def run_validation_in_background(job_id: int, file_path: str, quick_validation: bool, validation_sample_rate: int):
+    """Background task to run validation on a completed translation."""
+    from core.translation.validator import TranslationValidator
+    
+    db = None
+    try:
+        db = SessionLocal()
+        job = crud.get_job(db, job_id=job_id)
+        if not job:
+            print(f"--- [VALIDATION] Job ID {job_id} not found ---")
+            return
+        
+        # Update status to IN_PROGRESS
+        job.validation_status = "IN_PROGRESS"
+        db.commit()
+        print(f"--- [VALIDATION] Starting validation for Job ID: {job_id} ---")
+        
+        # Get the translated file path
+        unique_base = os.path.splitext(os.path.basename(file_path))[0]
+        original_ext = os.path.splitext(job.filename)[1].lower()
+        
+        if original_ext == '.epub':
+            output_ext = '.epub'
+        else:
+            output_ext = '.txt'
+        
+        translated_filename = f"{unique_base}_translated{output_ext}"
+        translated_path = os.path.join("translated_novel", translated_filename)
+        
+        if not os.path.exists(translated_path):
+            raise FileNotFoundError(f"Translated file not found: {translated_path}")
+        
+        # Initialize validator
+        config = load_config()
+        # Get API key from the job's owner (would need to store this or pass it)
+        # For now, we'll use the environment variable as fallback
+        api_key = os.environ.get("GEMINI_API_KEY", "")
+        model_name = "gemini-2.0-flash-exp"
+        
+        model_api = get_model_api(api_key, model_name, config)
+        validator = TranslationValidator(model_api)
+        
+        # Run validation
+        sample_rate = validation_sample_rate / 100.0  # Convert percentage to decimal
+        validation_job = TranslationJob(file_path, original_filename=job.filename)
+        
+        report = validator.validate_job(
+            validation_job,
+            translated_path,
+            quick_check=quick_validation,
+            sample_rate=sample_rate
+        )
+        
+        # Save validation report
+        os.makedirs("validation_logs", exist_ok=True)
+        report_filename = f"{os.path.splitext(job.filename)[0]}_validation_report.json"
+        report_path = os.path.join("validation_logs", report_filename)
+        
+        with open(report_path, 'w', encoding='utf-8') as f:
+            json.dump(report, f, ensure_ascii=False, indent=2)
+        
+        # Update job with results
+        job.validation_status = "COMPLETED"
+        job.validation_report_path = report_path
+        job.validation_completed_at = func.now()
+        db.commit()
+        
+        print(f"--- [VALIDATION] Completed validation for Job ID: {job_id} ---")
+        
+    except Exception as e:
+        if db:
+            job = crud.get_job(db, job_id=job_id)
+            if job:
+                job.validation_status = "FAILED"
+                db.commit()
+        print(f"--- [VALIDATION] Error validating Job ID {job_id}: {e} ---")
+        traceback.print_exc()
+    finally:
+        if db:
+            db.close()
+        gc.collect()
+
+def run_post_edit_in_background(job_id: int, file_path: str, validation_report_path: str):
+    """Background task to run post-editing on a validated translation."""
+    from core.translation.post_editor import PostEditEngine
+    
+    db = None
+    try:
+        db = SessionLocal()
+        job = crud.get_job(db, job_id=job_id)
+        if not job:
+            print(f"--- [POST-EDIT] Job ID {job_id} not found ---")
+            return
+        
+        # Update status to IN_PROGRESS
+        job.post_edit_status = "IN_PROGRESS"
+        db.commit()
+        print(f"--- [POST-EDIT] Starting post-editing for Job ID: {job_id} ---")
+        
+        # Get the translated file path
+        unique_base = os.path.splitext(os.path.basename(file_path))[0]
+        original_ext = os.path.splitext(job.filename)[1].lower()
+        
+        if original_ext == '.epub':
+            output_ext = '.epub'
+        else:
+            output_ext = '.txt'
+        
+        translated_filename = f"{unique_base}_translated{output_ext}"
+        translated_path = os.path.join("translated_novel", translated_filename)
+        
+        if not os.path.exists(translated_path):
+            raise FileNotFoundError(f"Translated file not found: {translated_path}")
+        
+        # Initialize post-editor
+        config = load_config()
+        # Get API key from the job's owner (would need to store this or pass it)
+        # For now, we'll use the environment variable as fallback
+        api_key = os.environ.get("GEMINI_API_KEY", "")
+        model_name = "gemini-2.0-flash-exp"
+        
+        model_api = get_model_api(api_key, model_name, config)
+        
+        # Get glossary if available
+        glossary = job.final_glossary if job.final_glossary else {}
+        
+        post_editor = PostEditEngine(model_api, glossary=glossary)
+        
+        # Run post-editing
+        translation_job = TranslationJob(file_path, original_filename=job.filename)
+        
+        postedited_path = post_editor.post_edit_job(
+            translation_job,
+            translated_path,
+            validation_report_path
+        )
+        
+        # Get the post-edit log path
+        log_filename = f"{os.path.splitext(job.filename)[0]}_postedit_log.json"
+        log_path = os.path.join("postedit_logs", log_filename)
+        
+        # Update job with results
+        job.post_edit_status = "COMPLETED"
+        job.post_edit_log_path = log_path
+        job.post_edit_completed_at = func.now()
+        db.commit()
+        
+        print(f"--- [POST-EDIT] Completed post-editing for Job ID: {job_id} ---")
+        
+    except Exception as e:
+        if db:
+            job = crud.get_job(db, job_id=job_id)
+            if job:
+                job.post_edit_status = "FAILED"
+                db.commit()
+        print(f"--- [POST-EDIT] Error post-editing Job ID {job_id}: {e} ---")
+        traceback.print_exc()
+    finally:
+        if db:
+            db.close()
+        gc.collect()
+
 # --- API Endpoints ---
 
 @app.get("/")
@@ -451,6 +613,131 @@ async def get_job_glossary(
         return {} # Return an empty object if glossary is not set
 
     return db_job.final_glossary
+
+# --- Validation and Post-Edit Endpoints ---
+
+@app.put("/api/v1/jobs/{job_id}/validation")
+async def trigger_validation(
+    job_id: int,
+    background_tasks: BackgroundTasks,
+    quick_validation: bool = Form(False),
+    validation_sample_rate: int = Form(100),  # percentage 0-100
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    """Trigger validation on a completed translation job."""
+    db_job = crud.get_job(db, job_id=job_id)
+    if db_job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Check ownership or admin role
+    user_is_admin = await auth.is_admin(current_user)
+    if not db_job.owner or (db_job.owner.clerk_user_id != current_user.clerk_user_id and not user_is_admin):
+        raise HTTPException(status_code=403, detail="Not authorized to validate this job")
+    
+    if db_job.status != "COMPLETED":
+        raise HTTPException(status_code=400, detail=f"Can only validate completed jobs. Current status: {db_job.status}")
+    
+    # Update job with validation settings
+    db_job.validation_enabled = True
+    db_job.validation_status = "PENDING"
+    db_job.quick_validation = quick_validation
+    db_job.validation_sample_rate = validation_sample_rate
+    db.commit()
+    
+    # Add background task to run validation
+    background_tasks.add_task(run_validation_in_background, job_id, db_job.filepath, quick_validation, validation_sample_rate)
+    
+    return {"message": "Validation started", "job_id": job_id}
+
+@app.get("/api/v1/jobs/{job_id}/validation-report")
+async def get_validation_report(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    """Get the validation report for a job."""
+    db_job = crud.get_job(db, job_id=job_id)
+    if db_job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Check ownership or admin role
+    user_is_admin = await auth.is_admin(current_user)
+    if not db_job.owner or (db_job.owner.clerk_user_id != current_user.clerk_user_id and not user_is_admin):
+        raise HTTPException(status_code=403, detail="Not authorized to access this validation report")
+    
+    if db_job.validation_status != "COMPLETED":
+        raise HTTPException(status_code=400, detail=f"Validation not completed. Current status: {db_job.validation_status}")
+    
+    if not db_job.validation_report_path or not os.path.exists(db_job.validation_report_path):
+        raise HTTPException(status_code=404, detail="Validation report not found")
+    
+    # Read and return the JSON report
+    with open(db_job.validation_report_path, 'r', encoding='utf-8') as f:
+        report = json.load(f)
+    
+    return report
+
+@app.put("/api/v1/jobs/{job_id}/post-edit")
+async def trigger_post_edit(
+    job_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    """Trigger post-editing on a validated translation job."""
+    db_job = crud.get_job(db, job_id=job_id)
+    if db_job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Check ownership or admin role
+    user_is_admin = await auth.is_admin(current_user)
+    if not db_job.owner or (db_job.owner.clerk_user_id != current_user.clerk_user_id and not user_is_admin):
+        raise HTTPException(status_code=403, detail="Not authorized to post-edit this job")
+    
+    if db_job.validation_status != "COMPLETED":
+        raise HTTPException(status_code=400, detail="Validation must be completed before post-editing")
+    
+    if not db_job.validation_report_path:
+        raise HTTPException(status_code=400, detail="Validation report not found")
+    
+    # Update job with post-edit settings
+    db_job.post_edit_enabled = True
+    db_job.post_edit_status = "PENDING"
+    db.commit()
+    
+    # Add background task to run post-editing
+    background_tasks.add_task(run_post_edit_in_background, job_id, db_job.filepath, db_job.validation_report_path)
+    
+    return {"message": "Post-editing started", "job_id": job_id}
+
+@app.get("/api/v1/jobs/{job_id}/post-edit-log")
+async def get_post_edit_log(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_required_user)
+):
+    """Get the post-edit log for a job."""
+    db_job = crud.get_job(db, job_id=job_id)
+    if db_job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Check ownership or admin role
+    user_is_admin = await auth.is_admin(current_user)
+    if not db_job.owner or (db_job.owner.clerk_user_id != current_user.clerk_user_id and not user_is_admin):
+        raise HTTPException(status_code=403, detail="Not authorized to access this post-edit log")
+    
+    if db_job.post_edit_status != "COMPLETED":
+        raise HTTPException(status_code=400, detail=f"Post-editing not completed. Current status: {db_job.post_edit_status}")
+    
+    if not db_job.post_edit_log_path or not os.path.exists(db_job.post_edit_log_path):
+        raise HTTPException(status_code=404, detail="Post-edit log not found")
+    
+    # Read and return the JSON log
+    with open(db_job.post_edit_log_path, 'r', encoding='utf-8') as f:
+        log = json.load(f)
+    
+    return log
 
 # --- Webhook Endpoints ---
 

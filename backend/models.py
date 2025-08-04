@@ -35,6 +35,19 @@ class TranslationJob(Base):
     owner = relationship("User", back_populates="jobs")
     final_glossary = Column(JSON, nullable=True)
     # -----------------------
+    
+    # Validation and Post-Edit fields
+    validation_enabled = Column(Boolean, default=False)
+    validation_status = Column(String, nullable=True)  # PENDING, IN_PROGRESS, COMPLETED, FAILED
+    validation_sample_rate = Column(Integer, default=100)  # Percentage 0-100
+    quick_validation = Column(Boolean, default=False)
+    validation_report_path = Column(String, nullable=True)
+    validation_completed_at = Column(DateTime(timezone=True), nullable=True)
+    
+    post_edit_enabled = Column(Boolean, default=False)
+    post_edit_status = Column(String, nullable=True)  # PENDING, IN_PROGRESS, COMPLETED, FAILED
+    post_edit_log_path = Column(String, nullable=True)
+    post_edit_completed_at = Column(DateTime(timezone=True), nullable=True)
 
 class TranslationUsageLog(Base):
     __tablename__ = "translation_usage_logs"

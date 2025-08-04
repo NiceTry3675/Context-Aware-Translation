@@ -35,6 +35,9 @@ import {
   AutoStories as AutoStoriesIcon,
   MenuBook as MenuBookIcon,
   Forum as ForumIcon,
+  FactCheck as FactCheckIcon,
+  Edit as EditIcon,
+  Assessment as AssessmentIcon,
 } from '@mui/icons-material';
 import theme from '../theme';
 
@@ -49,6 +52,14 @@ interface Job {
   created_at: string;
   completed_at: string | null;
   error_message: string | null;
+  validation_enabled: boolean;
+  validation_status: string | null;
+  validation_sample_rate: number;
+  quick_validation: boolean;
+  validation_completed_at: string | null;
+  post_edit_enabled: boolean;
+  post_edit_status: string | null;
+  post_edit_completed_at: string | null;
 }
 
 interface StyleData {
@@ -209,6 +220,10 @@ export default function Home() {
   const [analyzeGlossary, setAnalyzeGlossary] = useState<boolean>(true);
   const [devMode, setDevMode] = useState<boolean>(false);
   const [segmentSize, setSegmentSize] = useState<number>(15000);
+  const [enableValidation, setEnableValidation] = useState<boolean>(false);
+  const [quickValidation, setQuickValidation] = useState<boolean>(false);
+  const [validationSampleRate, setValidationSampleRate] = useState<number>(100);
+  const [enablePostEdit, setEnablePostEdit] = useState<boolean>(false);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -504,6 +519,121 @@ export default function Home() {
     localStorage.setItem('jobIds', JSON.stringify(storedJobIds.filter((id: number) => id !== jobId)));
   };
 
+  const handleTriggerValidation = async (jobId: number) => {
+    try {
+      const token = await getToken();
+      const formData = new FormData();
+      formData.append('quick_validation', quickValidation.toString());
+      formData.append('validation_sample_rate', validationSampleRate.toString());
+      
+      const response = await fetch(`${API_URL}/api/v1/jobs/${jobId}/validation`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+      
+      if (response.ok) {
+        setError(null);
+        // Refresh job list to show validation status
+        await fetchJobs();
+      } else {
+        const errorData = await response.json();
+        setError(errorData.detail || 'Failed to start validation');
+      }
+    } catch (error) {
+      console.error('Error triggering validation:', error);
+      setError('Failed to start validation');
+    }
+  };
+
+  const handleTriggerPostEdit = async (jobId: number) => {
+    try {
+      const token = await getToken();
+      const response = await fetch(`${API_URL}/api/v1/jobs/${jobId}/post-edit`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        setError(null);
+        // Refresh job list to show post-edit status
+        await fetchJobs();
+      } else {
+        const errorData = await response.json();
+        setError(errorData.detail || 'Failed to start post-editing');
+      }
+    } catch (error) {
+      console.error('Error triggering post-edit:', error);
+      setError('Failed to start post-editing');
+    }
+  };
+
+  const handleDownloadValidationReport = async (jobId: number) => {
+    try {
+      const token = await getToken();
+      const response = await fetch(`${API_URL}/api/v1/jobs/${jobId}/validation-report`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const report = await response.json();
+        const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `validation_report_job_${jobId}.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.detail || 'Failed to download validation report');
+      }
+    } catch (error) {
+      console.error('Error downloading validation report:', error);
+      setError('Failed to download validation report');
+    }
+  };
+
+  const handleDownloadPostEditLog = async (jobId: number) => {
+    try {
+      const token = await getToken();
+      const response = await fetch(`${API_URL}/api/v1/jobs/${jobId}/post-edit-log`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const log = await response.json();
+        const blob = new Blob([JSON.stringify(log, null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `post_edit_log_job_${jobId}.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.detail || 'Failed to download post-edit log');
+      }
+    } catch (error) {
+      console.error('Error downloading post-edit log:', error);
+      setError('Failed to download post-edit log');
+    }
+  };
+
   const handleDownload = async (url: string, filename: string) => {
     if (!isSignedIn) {
       openSignIn({ redirectUrl: '/' });
@@ -755,6 +885,65 @@ export default function Home() {
                     max={25000}
                     color="secondary"
                 />
+            </Box>
+            
+            {/* Validation Settings */}
+            <Box sx={{ mt: 3 }}>
+                <Typography variant="h6" gutterBottom>번역 검증 설정</Typography>
+                <FormControlLabel
+                    control={
+                        <Switch
+                            checked={enableValidation}
+                            onChange={(e) => setEnableValidation(e.target.checked)}
+                            color="primary"
+                        />
+                    }
+                    label="번역 완료 후 자동 검증"
+                />
+                {enableValidation && (
+                    <Box sx={{ ml: 3, mt: 2 }}>
+                        <FormControlLabel
+                            control={
+                                <Switch
+                                    checked={quickValidation}
+                                    onChange={(e) => setQuickValidation(e.target.checked)}
+                                    color="secondary"
+                                />
+                            }
+                            label="빠른 검증 (중요 문제만 확인)"
+                        />
+                        <Box sx={{ mt: 2 }}>
+                            <Typography gutterBottom>
+                                검증 샘플 비율: <strong>{validationSampleRate}%</strong>
+                            </Typography>
+                            <Slider
+                                value={validationSampleRate}
+                                onChange={(_, newValue) => setValidationSampleRate(newValue as number)}
+                                valueLabelDisplay="auto"
+                                step={10}
+                                marks={[
+                                    { value: 10, label: '10%' },
+                                    { value: 50, label: '50%' },
+                                    { value: 100, label: '100%' },
+                                ]}
+                                min={10}
+                                max={100}
+                                color="primary"
+                            />
+                        </Box>
+                        <FormControlLabel
+                            control={
+                                <Switch
+                                    checked={enablePostEdit}
+                                    onChange={(e) => setEnablePostEdit(e.target.checked)}
+                                    color="success"
+                                    disabled={!enableValidation}
+                                />
+                            }
+                            label="검증된 문제 자동 수정 (Post-Edit)"
+                        />
+                    </Box>
+                )}
             </Box>
         </CardContent>
 
@@ -1024,6 +1213,36 @@ export default function Home() {
                       </Box>
                     )}
                     {job.status === 'PROCESSING' && <LinearProgress variant="determinate" value={job.progress} sx={{ mt: 0.5 }} />}
+                    
+                    {/* Validation Status */}
+                    {job.validation_enabled && (
+                      <Box sx={{ mt: 1 }}>
+                        <Chip 
+                          label={`검증: ${job.validation_status || 'PENDING'}`}
+                          size="small"
+                          color={
+                            job.validation_status === 'COMPLETED' ? 'success' :
+                            job.validation_status === 'IN_PROGRESS' ? 'warning' :
+                            job.validation_status === 'FAILED' ? 'error' : 'default'
+                          }
+                        />
+                      </Box>
+                    )}
+                    
+                    {/* Post-Edit Status */}
+                    {job.post_edit_enabled && (
+                      <Box sx={{ mt: 0.5 }}>
+                        <Chip 
+                          label={`수정: ${job.post_edit_status || 'PENDING'}`}
+                          size="small"
+                          color={
+                            job.post_edit_status === 'COMPLETED' ? 'success' :
+                            job.post_edit_status === 'IN_PROGRESS' ? 'warning' :
+                            job.post_edit_status === 'FAILED' ? 'error' : 'default'
+                          }
+                        />
+                      </Box>
+                    )}
                   </TableCell>
                   <TableCell>
                     {job.status === 'COMPLETED' ? formatDuration(job.created_at, job.completed_at) : '-'}
@@ -1047,6 +1266,50 @@ export default function Home() {
                             onClick={() => handleDownload(`${API_URL}/api/v1/jobs/${job.id}/glossary`, `${job.filename.split('.')[0]}_glossary.json`)}
                           >
                             <MenuBookIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      
+                      {/* Validation Actions */}
+                      {job.status === 'COMPLETED' && !job.validation_enabled && (
+                        <Tooltip title="번역 검증 시작">
+                          <IconButton 
+                            color="info"
+                            onClick={() => handleTriggerValidation(job.id)}
+                          >
+                            <FactCheckIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {job.validation_status === 'COMPLETED' && (
+                        <Tooltip title="검증 보고서 다운로드">
+                          <IconButton 
+                            color="info"
+                            onClick={() => handleDownloadValidationReport(job.id)}
+                          >
+                            <AssessmentIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      
+                      {/* Post-Edit Actions */}
+                      {job.validation_status === 'COMPLETED' && !job.post_edit_enabled && (
+                        <Tooltip title="자동 수정 시작">
+                          <IconButton 
+                            color="success"
+                            onClick={() => handleTriggerPostEdit(job.id)}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {job.post_edit_status === 'COMPLETED' && (
+                        <Tooltip title="수정 로그 다운로드">
+                          <IconButton 
+                            color="success"
+                            onClick={() => handleDownloadPostEditLog(job.id)}
+                          >
+                            <DescriptionIcon />
                           </IconButton>
                         </Tooltip>
                       )}
