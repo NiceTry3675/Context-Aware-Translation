@@ -202,6 +202,7 @@ export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [isAnalyzingGlossary, setIsAnalyzingGlossary] = useState<boolean>(false);
   const [analysisError, setAnalysisError] = useState<string>('');
+  const [glossaryAnalysisError, setGlossaryAnalysisError] = useState<string>('');
   const [styleData, setStyleData] = useState<StyleData | null>(null);
   const [showStyleForm, setShowStyleForm] = useState<boolean>(false);
   const [glossaryData, setGlossaryData] = useState<GlossaryTerm[]>([]);
@@ -344,6 +345,7 @@ export default function Home() {
 
     setIsAnalyzing(true);
     setAnalysisError('');
+    setGlossaryAnalysisError('');
     setError(null);
     setStyleData(null);
     setGlossaryData([]);
@@ -388,12 +390,14 @@ export default function Home() {
                     const result = await glossaryResponse.json();
                     setGlossaryData(result.glossary || []);
                 } else {
-                    // Don't block the user, just show a non-critical error in the glossary section
-                    console.error('용어집 분석 실패:', await glossaryResponse.text());
+                    const errorData = await glossaryResponse.json();
+                    const errorMessage = errorData.detail || 'AI 용어집 분석에 실패했습니다. 수동으로 추가하거나, 기본 설정으로 번역을 시작할 수 있습니다.';
+                    setGlossaryAnalysisError(errorMessage);
                     setGlossaryData([]); // Clear any previous data
                 }
-            } catch (glossaryErr) {
-                console.error('용어집 분석 중 예외 발생:', glossaryErr);
+            } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : '용어집 분석 중 예기치 않은 오류가 발생했습니다. 네트워크 연결을 확인해주세요.';
+                setGlossaryAnalysisError(errorMessage);
                 setGlossaryData([]);
             } finally {
                 setIsAnalyzingGlossary(false);
@@ -832,6 +836,8 @@ export default function Home() {
                   : "번역에 사용할 고유명사(인물, 지명 등)를 직접 추가할 수 있습니다. AI 분석은 비활성화됩니다."
                 }
               </Typography>
+
+              {glossaryAnalysisError && <Alert severity="warning" sx={{ mb: 2 }}>{glossaryAnalysisError}</Alert>}
               
               {isAnalyzingGlossary ? (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2}}>
@@ -884,6 +890,54 @@ export default function Home() {
               <Button onClick={handleAddGlossaryTerm} startIcon={<AddIcon />} sx={{ mb: 3 }}>
                 용어 추가
               </Button>
+
+              <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                <Button
+                  component="label"
+                  variant="outlined"
+                  startIcon={<UploadFileIcon />}
+                >
+                  용어집 불러오기 (.json)
+                  <input
+                    type="file"
+                    hidden
+                    accept=".json"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          try {
+                            const newGlossaryJson = JSON.parse(event.target?.result as string);
+                            
+                            // Create a Map to merge glossaries, ensuring new terms overwrite old ones
+                            const mergedGlossaryMap = new Map<string, string>();
+
+                            // Add existing terms to the map
+                            glossaryData.forEach(term => mergedGlossaryMap.set(term.term, term.translation));
+
+                            // Add new/updated terms from the file to the map
+                            Object.entries(newGlossaryJson).forEach(([term, translation]) => {
+                              if (typeof term === 'string' && typeof translation === 'string') {
+                                mergedGlossaryMap.set(term, translation);
+                              }
+                            });
+
+                            // Convert the map back to an array of objects
+                            const mergedGlossary = Array.from(mergedGlossaryMap, ([term, translation]) => ({ term, translation }));
+
+                            setGlossaryData(mergedGlossary);
+                          } catch (error) {
+                            console.error("Error parsing glossary file:", error);
+                            setError("용어집 파일을 읽는 데 실패했습니다. 유효한 JSON 파일인지 확인해주세요.");
+                          }
+                        };
+                        reader.readAsText(file);
+                      }
+                    }}
+                  />
+                </Button>
+              </Box>
             </>
 
             <CardActions sx={{ justifyContent: 'flex-end', mt: 3, p: 0 }}>
@@ -983,6 +1037,16 @@ export default function Home() {
                             onClick={() => handleDownload(`${API_URL}/download/${job.id}`, `${job.filename.split('.')[0]}_translated.${job.filename.toLowerCase().endsWith('.epub') ? 'epub' : 'txt'}`)}
                           >
                             <DownloadIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {job.status === 'COMPLETED' && (
+                        <Tooltip title="용어집 다운로드">
+                          <IconButton 
+                            color="secondary"
+                            onClick={() => handleDownload(`${API_URL}/api/v1/jobs/${job.id}/glossary`, `${job.filename.split('.')[0]}_glossary.json`)}
+                          >
+                            <MenuBookIcon />
                           </IconButton>
                         </Tooltip>
                       )}
