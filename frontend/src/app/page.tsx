@@ -42,6 +42,8 @@ import {
 import theme from '../theme';
 
 import AuthButtons from './components/AuthButtons';
+import TranslationSidebar from './components/TranslationSidebar';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
 // --- Type Definitions ---
 interface Job {
@@ -54,6 +56,7 @@ interface Job {
   error_message: string | null;
   validation_enabled: boolean;
   validation_status: string | null;
+  validation_progress: number;
   validation_sample_rate: number;
   quick_validation: boolean;
   validation_completed_at: string | null;
@@ -224,6 +227,8 @@ export default function Home() {
   const [quickValidation, setQuickValidation] = useState<boolean>(false);
   const [validationSampleRate, setValidationSampleRate] = useState<number>(100);
   const [enablePostEdit, setEnablePostEdit] = useState<boolean>(false);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const [selectedJobForSidebar, setSelectedJobForSidebar] = useState<Job | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -558,8 +563,7 @@ export default function Home() {
       
       if (response.ok) {
         setError(null);
-        // Refresh job list to show validation status
-        await fetchJobs();
+        // Job list will be refreshed by the automatic polling
       } else {
         const errorData = await response.json();
         setError(errorData.detail || 'Failed to start validation');
@@ -582,8 +586,7 @@ export default function Home() {
       
       if (response.ok) {
         setError(null);
-        // Refresh job list to show post-edit status
-        await fetchJobs();
+        // Job list will be refreshed by the automatic polling
       } else {
         const errorData = await response.json();
         setError(errorData.detail || 'Failed to start post-editing');
@@ -1282,14 +1285,27 @@ export default function Home() {
                         </Tooltip>
                       )}
                       {job.status === 'COMPLETED' && (
-                        <Tooltip title="용어집 다운로드">
-                          <IconButton 
-                            color="secondary"
-                            onClick={() => handleDownload(`${API_URL}/api/v1/jobs/${job.id}/glossary`, `${job.filename.split('.')[0]}_glossary.json`)}
-                          >
-                            <MenuBookIcon />
-                          </IconButton>
-                        </Tooltip>
+                        <>
+                          <Tooltip title="용어집 다운로드">
+                            <IconButton 
+                              color="secondary"
+                              onClick={() => handleDownload(`${API_URL}/api/v1/jobs/${job.id}/glossary`, `${job.filename.split('.')[0]}_glossary.json`)}
+                            >
+                              <MenuBookIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="상세 보기">
+                            <IconButton 
+                              color="primary"
+                              onClick={() => {
+                                setSelectedJobForSidebar(job);
+                                setSidebarOpen(true);
+                              }}
+                            >
+                              <VisibilityIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </>
                       )}
                       
                       {/* Validation Actions */}
@@ -1377,6 +1393,20 @@ export default function Home() {
             첫 번째 소설을 번역해보세요!
           </Typography>
         </Paper>
+      )}
+
+      {/* Translation Sidebar */}
+      {selectedJobForSidebar && (
+        <TranslationSidebar
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          jobId={selectedJobForSidebar.id.toString()}
+          jobStatus={selectedJobForSidebar.status}
+          validationStatus={selectedJobForSidebar.validation_status || undefined}
+          postEditStatus={selectedJobForSidebar.post_edit_status || undefined}
+          validationProgress={selectedJobForSidebar.validation_progress}
+          onRefresh={pollJobStatus}
+        />
       )}
 
       {/* Footer */}

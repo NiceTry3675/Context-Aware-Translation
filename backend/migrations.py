@@ -56,6 +56,7 @@ def run_migrations():
                 # Validation and Post-Edit columns
                 {'type': 'add_column', 'table': 'translation_jobs', 'column': 'validation_enabled', 'definition': 'BOOLEAN DEFAULT FALSE'},
                 {'type': 'add_column', 'table': 'translation_jobs', 'column': 'validation_status', 'definition': 'VARCHAR(50)'},
+                {'type': 'add_column', 'table': 'translation_jobs', 'column': 'validation_progress', 'definition': 'INTEGER DEFAULT 0'},
                 {'type': 'add_column', 'table': 'translation_jobs', 'column': 'validation_sample_rate', 'definition': 'INTEGER DEFAULT 100'},
                 {'type': 'add_column', 'table': 'translation_jobs', 'column': 'quick_validation', 'definition': 'BOOLEAN DEFAULT FALSE'},
                 {'type': 'add_column', 'table': 'translation_jobs', 'column': 'validation_report_path', 'definition': 'VARCHAR(500)'},

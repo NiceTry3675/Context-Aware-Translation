@@ -67,10 +67,20 @@ async def get_current_user_claims(request: Request) -> Optional[dict]:
     """
     # Check if the Authorization header exists before proceeding
     if "Authorization" not in request.headers:
+        print(f"--- [AUTH DEBUG] No Authorization header found in request to {request.url.path}")
         return None
+    
+    auth_header = request.headers.get("Authorization")
+    print(f"--- [AUTH DEBUG] Authorization header for {request.url.path}: {auth_header[:50] if auth_header else 'None'}...")
         
     try:
-        options = AuthenticateRequestOptions(secret_key=os.environ.get("CLERK_SECRET_KEY"))
+        clerk_secret = os.environ.get("CLERK_SECRET_KEY")
+        if not clerk_secret:
+            print("--- [AUTH ERROR] CLERK_SECRET_KEY not found in environment variables!")
+            return None
+        print(f"--- [AUTH DEBUG] Using Clerk secret key: {clerk_secret[:10]}...")
+        
+        options = AuthenticateRequestOptions(secret_key=clerk_secret)
         request_state = clerk.authenticate_request(request=request, options=options)
 
         if request_state.is_signed_in:
@@ -78,11 +88,14 @@ async def get_current_user_claims(request: Request) -> Optional[dict]:
             print(f"--- [DEBUG] Full JWT Claims: {payload}")
             print(f"--- [DEBUG] Available keys: {list(payload.keys()) if payload else 'None'}")
             return payload
+        else:
+            print(f"--- [AUTH DEBUG] Token present but not signed in. Request state: {request_state}")
         return None
 
-    except (ClerkErrors, SDKError):
+    except (ClerkErrors, SDKError) as e:
         # This can happen if the token is present but invalid (e.g., expired).
         # We treat this as an unauthenticated state for this optional check.
+        print(f"--- [AUTH DEBUG] Clerk authentication error: {e}")
         return None
     except Exception as e:
         print(f"--- [AUTH DEBUG] An unexpected error occurred during optional auth check: {e} ---")

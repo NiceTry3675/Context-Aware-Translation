@@ -72,6 +72,15 @@ class TranslationJob(TranslationJobBase):
     completed_at: Optional[datetime.datetime] = None
     error_message: Optional[str] = None
     owner_id: Optional[int] = None
+    validation_enabled: Optional[bool] = None
+    validation_status: Optional[str] = None
+    validation_progress: Optional[int] = None
+    validation_sample_rate: Optional[int] = None
+    quick_validation: Optional[bool] = None
+    validation_completed_at: Optional[datetime.datetime] = None
+    post_edit_enabled: Optional[bool] = None
+    post_edit_status: Optional[str] = None
+    post_edit_completed_at: Optional[datetime.datetime] = None
 
     class Config:
         from_attributes = True

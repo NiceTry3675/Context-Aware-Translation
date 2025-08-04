@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
 from pydantic import BaseModel
 from svix import Webhook
 
@@ -240,12 +241,55 @@ def run_validation_in_background(job_id: int, file_path: str, quick_validation: 
         sample_rate = validation_sample_rate / 100.0  # Convert percentage to decimal
         validation_job = TranslationJob(file_path, original_filename=job.filename)
         
-        report = validator.validate_job(
+        # Load the translated segments from the translated file
+        # Since we know the translated file is a text file with segments separated by newlines
+        with open(translated_path, 'r', encoding='utf-8') as f:
+            translated_text = f.read()
+            # Split by double newlines if segments are separated that way, 
+            # or adjust based on how segments were saved
+            validation_job.translated_segments = translated_text.split('\n')
+            # Filter out empty strings from the list
+            validation_job.translated_segments = [s for s in validation_job.translated_segments if s.strip()]
+        
+        # Ensure we have matching segment counts
+        if len(validation_job.segments) != len(validation_job.translated_segments):
+            print(f"Warning: Segment count mismatch - Source: {len(validation_job.segments)}, Translated: {len(validation_job.translated_segments)}")
+            # Try to match segments by combining translated lines if needed
+            if len(validation_job.translated_segments) > len(validation_job.segments):
+                # Too many translated segments, might be due to line breaks
+                # Combine them to match source segment count
+                combined_segments = []
+                lines_per_segment = len(validation_job.translated_segments) // len(validation_job.segments)
+                for i in range(0, len(validation_job.translated_segments), lines_per_segment):
+                    combined_segments.append('\n'.join(validation_job.translated_segments[i:i+lines_per_segment]))
+                validation_job.translated_segments = combined_segments[:len(validation_job.segments)]
+        
+        # Also load the glossary from the job if available
+        if job.final_glossary:
+            validation_job.glossary = json.loads(job.final_glossary) if isinstance(job.final_glossary, str) else job.final_glossary
+        
+        # Define progress callback to update database
+        def update_progress(progress: int):
+            job.validation_progress = progress
+            db.commit()
+            print(f"--- [VALIDATION] Progress: {progress}% ---")
+        
+        # Reset progress at start
+        job.validation_progress = 0
+        db.commit()
+        
+        results, summary = validator.validate_job(
             validation_job,
-            translated_path,
-            quick_check=quick_validation,
-            sample_rate=sample_rate
+            sample_rate=sample_rate,
+            quick_mode=quick_validation,
+            progress_callback=update_progress
         )
+        
+        # The validate_job now returns a tuple, extract the report
+        report = {
+            'summary': summary,
+            'detailed_results': [r.to_dict() for r in results]
+        }
         
         # Save validation report
         os.makedirs("validation_logs", exist_ok=True)
@@ -257,6 +301,7 @@ def run_validation_in_background(job_id: int, file_path: str, quick_validation: 
         
         # Update job with results
         job.validation_status = "COMPLETED"
+        job.validation_progress = 100
         job.validation_report_path = report_path
         job.validation_completed_at = func.now()
         db.commit()
@@ -657,6 +702,7 @@ async def get_validation_report(
     current_user: models.User = Depends(auth.get_required_user)
 ):
     """Get the validation report for a job."""
+    print(f"--- [API] Getting validation report for job {job_id} ---")
     db_job = crud.get_job(db, job_id=job_id)
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -667,15 +713,19 @@ async def get_validation_report(
         raise HTTPException(status_code=403, detail="Not authorized to access this validation report")
     
     if db_job.validation_status != "COMPLETED":
+        print(f"--- [API] Validation not completed. Status: {db_job.validation_status} ---")
         raise HTTPException(status_code=400, detail=f"Validation not completed. Current status: {db_job.validation_status}")
     
+    print(f"--- [API] Validation report path: {db_job.validation_report_path} ---")
     if not db_job.validation_report_path or not os.path.exists(db_job.validation_report_path):
+        print(f"--- [API] Report not found at path: {db_job.validation_report_path} ---")
         raise HTTPException(status_code=404, detail="Validation report not found")
     
     # Read and return the JSON report
     with open(db_job.validation_report_path, 'r', encoding='utf-8') as f:
         report = json.load(f)
     
+    print(f"--- [API] Successfully loaded validation report with {len(report.get('detailed_results', []))} results ---")
     return report
 
 @app.put("/api/v1/jobs/{job_id}/post-edit")

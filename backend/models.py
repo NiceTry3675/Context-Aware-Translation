@@ -39,6 +39,7 @@ class TranslationJob(Base):
     # Validation and Post-Edit fields
     validation_enabled = Column(Boolean, default=False)
     validation_status = Column(String, nullable=True)  # PENDING, IN_PROGRESS, COMPLETED, FAILED
+    validation_progress = Column(Integer, default=0)  # Progress percentage 0-100
     validation_sample_rate = Column(Integer, default=100)  # Percentage 0-100
     quick_validation = Column(Boolean, default=False)
     validation_report_path = Column(String, nullable=True)
