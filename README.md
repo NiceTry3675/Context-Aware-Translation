@@ -30,6 +30,8 @@
 - **📊 사용량 통계 수집**: 서비스 개선을 위해 번역 소요 시간, 텍스트 길이, 사용 모델 등 익명의 사용 통계를 수집합니다.
 - **📢 실시간 공지 기능**: 서버에서 모든 클라이언트에게 실시간으로 중요 공지를 전송할 수 있습니다. (SSE 사용)
 - **🔍 실시간 진행률 확인**: 번역 작업의 진행 상황을 실시간으로 웹 화면에서 확인할 수 있습니다.
+- **✅ 번역 품질 검증**: AI 기반 자동 검증 시스템으로 번역 정확도, 누락 내용, 이름 일관성 등을 체크합니다.
+- **🔧 자동 오류 수정 (Post-Edit)**: 검증에서 발견된 문제를 AI가 자동으로 수정하고 포괄적인 로그를 생성합니다.
 - **📄 다양한 파일 형식 지원**: TXT, DOCX, EPUB, PDF 등 주요 문서 파일 형식을 지원합니다.
 - **💬 커뮤니티 게시판**: 사용자들이 공지사항, 건의사항, Q&A, 자유게시판을 통해 소통할 수 있는 커뮤니티 기능을 제공합니다.
 
@@ -78,6 +80,8 @@ Context-Aware-Translation/
 │   ├── translation/             # 번역 로직
 │   │   ├── engine.py            # 번역 엔진
 │   │   ├── job.py               # 번역 작업 관리
+│   │   ├── validator.py         # 번역 품질 검증기
+│   │   ├── post_editor.py       # 자동 오류 수정기
 │   │   └── models/              # AI 모델 인터페이스
 │   │       ├── gemini.py        # Gemini API 인터페이스
 │   │       └── openrouter.py    # OpenRouter API 인터페이스
@@ -96,6 +100,8 @@ Context-Aware-Translation/
 ├── context_log/                 # 📝 문맥 분석 로그
 ├── debug_prompts/               # 🔍 디버그 프롬프트
 ├── prohibited_content_logs/     # ⚠️ 부적절한 콘텐츠 로그
+├── validation_logs/             # ✅ 번역 품질 검증 보고서
+├── postedit_logs/               # 🔧 자동 수정 내역 로그
 ├── requirements.txt             # 🐍 Python 의존성
 ├── package.json                 # 📦 Node.js 의존성
 └── Dockerfile                   # 🐳 Docker 설정
@@ -190,11 +196,22 @@ python init_categories.py
     
     # API 키 직접 전달
     python -m core.main "source_novel/my_novel.txt" -k "YOUR_API_KEY"
+    
+    # 번역 품질 검증 활성화
+    python -m core.main "source_novel/my_novel.txt" --with-validation
+    
+    # 빠른 검증 (샘플링)
+    python -m core.main "source_novel/my_novel.txt" --with-validation --quick-validation --validation-sample-rate 0.3
+    
+    # 검증 후 자동 수정 (Post-Edit)
+    python -m core.main "source_novel/my_novel.txt" --with-validation --post-edit
     ```
     -   더 많은 옵션은 `python -m core.main --help`로 확인할 수 있습니다.
 
 3.  **결과 확인**:
     -   번역이 완료되면 `translated_novel` 디렉토리에 결과 파일이 생성됩니다.
+    -   검증 사용 시 `validation_logs` 디렉토리에 품질 검증 보고서가 생성됩니다.
+    -   Post-Edit 사용 시 `postedit_logs` 디렉토리에 전체 수정 내역이 포함된 로그가 생성됩니다.
 
 ## 💻 기술 스택
 

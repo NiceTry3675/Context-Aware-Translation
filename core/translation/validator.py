@@ -64,8 +64,9 @@ class ValidationResult:
         
         for section_key, patterns in sections.items():
             for pattern in patterns:
-                # Create regex pattern for section
-                section_regex = rf'\*\*{pattern}\*\*[:\s]*([^\*]+?)(?=\*\*|$)'
+                # Create regex pattern for section - improved to handle embedded bold text
+                # Look for the section header and capture everything until the next main section or end
+                section_regex = rf'\*\*{pattern}\*\*[:\s]*\n((?:(?!\n\*\*[A-Z][^\*]+\*\*:).)*?)(?=\n\*\*[A-Z][^\*]+\*\*:|$)'
                 match = re.search(section_regex, response_text, re.IGNORECASE | re.DOTALL)
                 
                 if match:
@@ -76,9 +77,9 @@ class ValidationResult:
                         # Skip this section as it has no issues
                         continue
                     
-                    # Extract bullet points or numbered items
-                    # Also handle lines that start without bullets
-                    items = re.findall(r'[-•\d]+\.?\s*(.+?)(?=\n[-•\d]+\.?\s|\n\n|$)', content, re.DOTALL)
+                    # Extract bullet points - handle * bullet points specifically
+                    # Match lines starting with *, -, •, or numbers
+                    items = re.findall(r'^[\*\-•\d]+\.?\s+(.+?)(?=\n[\*\-•\d]+\.?\s|\n\n|$)', content, re.MULTILINE | re.DOTALL)
                     
                     # If no bullet points found, try to split by newlines
                     if not items and content and not re.match(r'^(none|n/a)', content, re.IGNORECASE):

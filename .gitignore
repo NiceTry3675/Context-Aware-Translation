@@ -60,3 +60,5 @@ uploads/
 
 # Database files
 database.db
+/validation_logs/
+/postedit_logs/

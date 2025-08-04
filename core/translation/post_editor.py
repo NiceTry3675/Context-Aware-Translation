@@ -194,10 +194,30 @@ class PostEditEngine:
         
         # Identify segments needing edit
         segments_to_edit = self.identify_segments_needing_edit(validation_report)
+        segments_to_edit_idx = {s['segment_index'] for s in segments_to_edit}
         
         if not segments_to_edit:
             print("No segments require post-editing. Translation quality is good!")
-            return translation_job.translated_segments, {'segments_edited': 0}
+            # Still create a comprehensive log even if no edits were needed
+            complete_log = self._create_complete_log(
+                translation_job, 
+                translation_job.translated_segments, 
+                validation_report,
+                segments_to_edit_idx
+            )
+            summary = {
+                'segments_edited': 0,
+                'total_segments': len(translation_job.translated_segments),
+                'edit_percentage': 0.0,
+                'issues_addressed': {
+                    'critical': 0,
+                    'missing_content': 0,
+                    'added_content': 0,
+                    'name_inconsistencies': 0
+                }
+            }
+            self._save_postedit_log(complete_log, summary, translation_job.user_base_filename)
+            return translation_job.translated_segments, summary
         
         print(f"\n{'='*60}")
         print(f"Starting Post-Edit Process")
@@ -208,7 +228,6 @@ class PostEditEngine:
         
         # Create a copy of translated segments for editing
         edited_segments = translation_job.translated_segments.copy()
-        edit_log = []
         
         # Post-edit each problematic segment
         with tqdm(total=len(segments_to_edit), desc="Post-editing segments", unit="segment") as pbar:
@@ -233,20 +252,15 @@ class PostEditEngine:
                 # Update the segment
                 edited_segments[segment_idx] = edited_translation
                 
-                # Log the edit
-                edit_log.append({
-                    'segment_index': segment_idx,
-                    'issues_fixed': {
-                        'critical': len(segment_data.get('critical_issues', [])),
-                        'missing_content': len(segment_data.get('missing_content', [])),
-                        'added_content': len(segment_data.get('added_content', [])),
-                        'name_inconsistencies': len(segment_data.get('name_inconsistencies', []))
-                    },
-                    'original_translation': current_translation[:100] + '...' if len(current_translation) > 100 else current_translation,
-                    'edited_translation': edited_translation[:100] + '...' if len(edited_translation) > 100 else edited_translation
-                })
-                
                 pbar.update(1)
+        
+        # Create comprehensive log with all segments
+        complete_log = self._create_complete_log(
+            translation_job, 
+            edited_segments, 
+            validation_report,
+            segments_to_edit_idx
+        )
         
         # Calculate summary
         summary = {
@@ -262,7 +276,7 @@ class PostEditEngine:
         }
         
         # Save post-edit log
-        self._save_postedit_log(edit_log, summary, translation_job.user_base_filename)
+        self._save_postedit_log(complete_log, summary, translation_job.user_base_filename)
         
         # Print summary
         self._print_summary(summary)
@@ -272,13 +286,97 @@ class PostEditEngine:
         
         return edited_segments, summary
     
-    def _save_postedit_log(self, edit_log: List[Dict], summary: Dict[str, Any], base_filename: str):
-        """Save post-edit log to file."""
+    def _create_complete_log(self, 
+                            translation_job,
+                            edited_segments: List[str],
+                            validation_report: Dict[str, Any],
+                            edited_indices: set) -> List[Dict[str, Any]]:
+        """
+        Create a comprehensive log containing all segments with their complete translations.
+        
+        Args:
+            translation_job: The TranslationJob object
+            edited_segments: The edited translations
+            validation_report: The validation report data
+            edited_indices: Set of segment indices that were edited
+            
+        Returns:
+            List of all segments with complete information
+        """
+        complete_log = []
+        
+        # Create a mapping of validation results by segment index
+        validation_by_idx = {}
+        for result in validation_report.get('detailed_results', []):
+            validation_by_idx[result['segment_index']] = result
+        
+        # Process all segments
+        for idx in range(len(translation_job.segments)):
+            source_text = translation_job.segments[idx].text
+            original_translation = translation_job.translated_segments[idx]
+            edited_translation = edited_segments[idx]
+            was_edited = idx in edited_indices
+            
+            # Get validation data for this segment
+            validation_data = validation_by_idx.get(idx, {})
+            
+            segment_entry = {
+                'segment_index': idx,
+                'was_edited': was_edited,
+                'source_text': source_text,
+                'original_translation': original_translation,
+                'edited_translation': edited_translation,
+                'validation_status': validation_data.get('status', 'N/A'),
+                'issues': {
+                    'critical': validation_data.get('critical_issues', []),
+                    'missing_content': validation_data.get('missing_content', []),
+                    'added_content': validation_data.get('added_content', []),
+                    'name_inconsistencies': validation_data.get('name_inconsistencies', []),
+                    'minor_issues': validation_data.get('minor_issues', [])
+                }
+            }
+            
+            # Add change summary if edited
+            if was_edited:
+                segment_entry['changes_made'] = self._detect_changes(
+                    original_translation, 
+                    edited_translation
+                )
+            
+            complete_log.append(segment_entry)
+        
+        return complete_log
+    
+    def _detect_changes(self, original: str, edited: str) -> Dict[str, Any]:
+        """
+        Detect and summarize changes between original and edited translations.
+        
+        Args:
+            original: Original translation
+            edited: Edited translation
+            
+        Returns:
+            Dictionary summarizing the changes
+        """
+        changes = {
+            'text_changed': original != edited,
+            'length_change': len(edited) - len(original),
+            'original_length': len(original),
+            'edited_length': len(edited)
+        }
+        
+        # Could add more sophisticated change detection here
+        # (e.g., word-level diff, specific change patterns, etc.)
+        
+        return changes
+    
+    def _save_postedit_log(self, complete_log: List[Dict], summary: Dict[str, Any], base_filename: str):
+        """Save comprehensive post-edit log to file."""
         log_path = self.postedit_log_dir / f"{base_filename}_postedit_log.json"
         
         log_data = {
             'summary': summary,
-            'edits': edit_log
+            'segments': complete_log  # Changed from 'edits' to 'segments' for clarity
         }
         
         with open(log_path, 'w', encoding='utf-8') as f:
