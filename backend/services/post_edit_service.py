@@ -15,7 +15,7 @@ class PostEditService:
     def prepare_post_edit(
         job: models.TranslationJob,
         api_key: str,
-        model_name: str = "gemini-2.0-flash-exp"
+        model_name: str = "gemini-2.5-flash-lite"
     ) -> tuple[PostEditEngine, TranslationJob, str]:
         """Prepare the post-editor and translation job for post-editing."""
         # Get the translated file path
@@ -38,13 +38,28 @@ class PostEditService:
         config = load_config()
         model_api = TranslationService.get_model_api(api_key, model_name, config)
         
-        # Get glossary if available
-        glossary = job.final_glossary if job.final_glossary else {}
-        
-        post_editor = PostEditEngine(model_api, glossary=glossary)
+        post_editor = PostEditEngine(model_api)
         
         # Create translation job for post-editing
         translation_job = TranslationJob(job.filepath, original_filename=job.filename)
+        
+        # Load the translated segments from the translated file
+        with open(translated_path, 'r', encoding='utf-8') as f:
+            translated_text = f.read()
+            translation_job.translated_segments = translated_text.split('\n')
+            # Filter out empty strings from the list
+            translation_job.translated_segments = [s for s in translation_job.translated_segments if s.strip()]
+        
+        # Handle segment count mismatch
+        if len(translation_job.segments) != len(translation_job.translated_segments):
+            print(f"Warning: Segment count mismatch - Source: {len(translation_job.segments)}, Translated: {len(translation_job.translated_segments)}")
+            if len(translation_job.translated_segments) > len(translation_job.segments):
+                # Too many translated segments, might be due to line breaks
+                combined_segments = []
+                lines_per_segment = len(translation_job.translated_segments) // len(translation_job.segments)
+                for i in range(0, len(translation_job.translated_segments), lines_per_segment):
+                    combined_segments.append('\n'.join(translation_job.translated_segments[i:i+lines_per_segment]))
+                translation_job.translated_segments = combined_segments[:len(translation_job.segments)]
         
         return post_editor, translation_job, translated_path
     
@@ -58,7 +73,6 @@ class PostEditService:
         """Run the post-editing process."""
         postedited_path = post_editor.post_edit_job(
             translation_job,
-            translated_path,
             validation_report_path
         )
         

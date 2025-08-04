@@ -16,7 +16,7 @@ class ValidationService:
     def prepare_validation(
         job: models.TranslationJob,
         api_key: str,
-        model_name: str = "gemini-2.0-flash-exp"
+        model_name: str = "gemini-2.5-flash-lite"
     ) -> tuple[TranslationValidator, TranslationJob, str]:
         """Prepare the validator and translation job for validation."""
         # Get the translated file path

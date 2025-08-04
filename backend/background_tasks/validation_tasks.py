@@ -29,7 +29,7 @@ def run_validation_in_background(
         # Get API key - for now using environment variable
         # In production, this should be retrieved from secure storage
         api_key = os.environ.get("GEMINI_API_KEY", "")
-        model_name = "gemini-2.0-flash-exp"
+        model_name = "gemini-2.5-flash-lite"
         
         # Prepare validation components
         validator, validation_job, translated_path = ValidationService.prepare_validation(

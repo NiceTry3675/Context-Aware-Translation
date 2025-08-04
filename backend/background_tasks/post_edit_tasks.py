@@ -28,7 +28,7 @@ def run_post_edit_in_background(
         # Get API key - for now using environment variable
         # In production, this should be retrieved from secure storage
         api_key = os.environ.get("GEMINI_API_KEY", "")
-        model_name = "gemini-2.0-flash-exp"
+        model_name = "gemini-2.5-flash-lite"
         
         # Prepare post-edit components
         post_editor, translation_job, translated_path = PostEditService.prepare_post_edit(
