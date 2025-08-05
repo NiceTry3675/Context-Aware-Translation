@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, Callable
 from sqlalchemy.orm import Session
 
 from core.translation.post_editor import PostEditEngine
@@ -70,17 +70,27 @@ class PostEditService:
         translated_path: str,
         validation_report_path: str,
         selected_issue_types: dict = None,
-        selected_issues: dict = None
-    ) -> str:
-        """Run the post-editing process."""
-        postedited_path = post_editor.post_edit_job(
+        selected_issues: dict = None,
+        progress_callback: Optional[Callable[[int], None]] = None
+    ):
+        """Run the post-editing process and overwrite the translated file."""
+        edited_segments = post_editor.post_edit_job(
             translation_job,
             validation_report_path,
             selected_issue_types,
-            selected_issues
+            selected_issues,
+            progress_callback=progress_callback
         )
-        
-        return postedited_path
+
+        # Overwrite the translated file with the edited content
+        try:
+            with open(translated_path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(edited_segments))
+            print(f"--- [POST-EDIT] Successfully updated translated file: {translated_path} ---")
+        except IOError as e:
+            print(f"--- [POST-EDIT] Error writing to translated file: {e} ---")
+            # Optionally, re-raise or handle the error appropriately
+            raise e
     
     @staticmethod
     def get_post_edit_log_path(job: models.TranslationJob) -> str:

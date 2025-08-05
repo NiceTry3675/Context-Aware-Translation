@@ -77,8 +77,10 @@ export default function JobRow({
           progress={job.progress}
           validationEnabled={job.validation_enabled}
           validationStatus={job.validation_status || undefined}
+          validationProgress={job.validation_progress}
           postEditEnabled={job.post_edit_enabled}
           postEditStatus={job.post_edit_status || undefined}
+          postEditProgress={job.post_edit_progress}
         />
       </TableCell>
       <TableCell>

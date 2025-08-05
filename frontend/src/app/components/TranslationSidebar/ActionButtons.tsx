@@ -18,6 +18,8 @@ interface ActionButtonsProps {
   loading: boolean;
   validationStatus?: string;
   validationProgress?: number;
+  postEditStatus?: string;
+  postEditProgress?: number;
 }
 
 export default function ActionButtons({
@@ -31,6 +33,8 @@ export default function ActionButtons({
   loading,
   validationStatus,
   validationProgress,
+  postEditStatus,
+  postEditProgress,
 }: ActionButtonsProps) {
   const handleDownloadValidationReport = () => {
     if (!validationReport) return;
@@ -106,6 +110,21 @@ export default function ActionButtons({
           <LinearProgress 
             variant={validationProgress !== undefined ? "determinate" : "indeterminate"} 
             value={validationProgress} 
+            sx={{ mt: 1 }}
+          />
+        </Box>
+      )}
+
+      {postEditStatus === 'IN_PROGRESS' && (
+        <Box sx={{ mt: 2 }}>
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <Typography variant="body2" color="text.secondary">
+              포스트 에디팅 진행중: {postEditProgress !== undefined ? `${postEditProgress}%` : '계산중...'}
+            </Typography>
+          </Stack>
+          <LinearProgress 
+            variant={postEditProgress !== undefined ? "determinate" : "indeterminate"} 
+            value={postEditProgress} 
             sx={{ mt: 1 }}
           />
         </Box>

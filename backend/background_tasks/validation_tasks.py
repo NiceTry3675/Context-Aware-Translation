@@ -40,7 +40,7 @@ def run_validation_in_background(
         
         # Define progress callback
         def update_progress(progress: int):
-            ValidationService.update_job_validation_status(db, job, "IN_PROGRESS", progress=progress)
+            crud.update_job_validation_progress(db, job_id, progress)
             print(f"--- [VALIDATION] Progress: {progress}% ---")
         
         # Run validation

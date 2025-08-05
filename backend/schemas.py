@@ -80,6 +80,7 @@ class TranslationJob(TranslationJobBase):
     validation_completed_at: Optional[datetime.datetime] = None
     post_edit_enabled: Optional[bool] = None
     post_edit_status: Optional[str] = None
+    post_edit_progress: Optional[int] = None
     post_edit_completed_at: Optional[datetime.datetime] = None
 
     class Config:

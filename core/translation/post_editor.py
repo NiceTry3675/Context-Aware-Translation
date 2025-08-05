@@ -231,7 +231,8 @@ class PostEditEngine:
                      translation_job,
                      validation_report_path: str,
                      selected_issue_types: Dict[str, bool] = None,
-                     selected_issues: Dict[str, Any] = None) -> Tuple[List[str], Dict[str, Any]]:
+                     selected_issues: Dict[str, Any] = None,
+                     progress_callback=None) -> List[str]:
         """
         Post-edit an entire translation job based on validation report.
         
@@ -280,7 +281,7 @@ class PostEditEngine:
                 }
             }
             self._save_postedit_log(complete_log, summary, translation_job.user_base_filename)
-            return translation_job.translated_segments, summary
+            return translation_job.translated_segments
         
         print(f"\n{'='*60}")
         print(f"Starting Post-Edit Process")
@@ -314,6 +315,10 @@ class PostEditEngine:
                 
                 # Update the segment
                 edited_segments[segment_idx] = edited_translation
+
+                if progress_callback:
+                    progress = int(((pbar.n + 1) / len(segments_to_edit)) * 100)
+                    progress_callback(progress)
                 
                 pbar.update(1)
         
@@ -355,7 +360,7 @@ class PostEditEngine:
         # Update the translation job with edited segments
         translation_job.translated_segments = edited_segments
         
-        return edited_segments, summary
+        return edited_segments
     
     def _create_complete_log(self, 
                             translation_job,

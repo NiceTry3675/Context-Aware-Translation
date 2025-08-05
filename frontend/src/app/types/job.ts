@@ -14,6 +14,7 @@ export interface Job {
   validation_completed_at: string | null;
   post_edit_enabled: boolean;
   post_edit_status: string | null;
+  post_edit_progress: number;
   post_edit_completed_at: string | null;
 }
 

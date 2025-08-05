@@ -40,6 +40,7 @@ interface TranslationSidebarProps {
   validationStatus?: string;
   postEditStatus?: string;
   validationProgress?: number;
+  postEditProgress?: number;
   onRefresh?: () => void;
 }
 
@@ -71,6 +72,7 @@ export default function TranslationSidebar({
   validationStatus,
   postEditStatus,
   validationProgress,
+  postEditProgress,
   onRefresh,
 }: TranslationSidebarProps) {
   const [tabValue, setTabValue] = useState(0);
@@ -202,6 +204,8 @@ export default function TranslationSidebar({
               loading={loading}
               validationStatus={validationStatus}
               validationProgress={validationProgress}
+              postEditStatus={postEditStatus}
+              postEditProgress={postEditProgress}
             />
           </Paper>
 

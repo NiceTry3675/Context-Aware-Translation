@@ -21,8 +21,10 @@ interface JobStatusIndicatorProps {
   progress?: number;
   validationEnabled?: boolean;
   validationStatus?: string;
+  validationProgress?: number;
   postEditEnabled?: boolean;
   postEditStatus?: string;
+  postEditProgress?: number;
 }
 
 const getStatusIcon = (status: string) => {
@@ -40,8 +42,10 @@ export default function JobStatusIndicator({
   progress = 0,
   validationEnabled,
   validationStatus,
+  validationProgress,
   postEditEnabled,
   postEditStatus,
+  postEditProgress,
 }: JobStatusIndicatorProps) {
   const getChipColor = (status?: string): 'success' | 'warning' | 'error' | 'default' => {
     if (!status) return 'default';
@@ -84,6 +88,10 @@ export default function JobStatusIndicator({
           />
         </Box>
       )}
+
+      {validationStatus === 'IN_PROGRESS' && validationProgress !== undefined && (
+        <LinearProgress variant="determinate" value={validationProgress} sx={{ mt: 0.5 }} />
+      )}
       
       {postEditEnabled && (
         <Box sx={{ mt: 0.5 }}>
@@ -93,6 +101,10 @@ export default function JobStatusIndicator({
             color={getChipColor(postEditStatus)}
           />
         </Box>
+      )}
+
+      {postEditStatus === 'IN_PROGRESS' && postEditProgress !== undefined && (
+        <LinearProgress variant="determinate" value={postEditProgress} sx={{ mt: 0.5 }} />
       )}
     </>
   );

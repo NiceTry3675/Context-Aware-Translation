@@ -98,6 +98,25 @@ def update_job_final_glossary(db: Session, job_id: int, glossary: dict):
         db.refresh(db_job)
     return db_job
 
+
+def update_job_validation_progress(db: Session, job_id: int, progress: int):
+    db_job = get_job(db, job_id)
+    if db_job:
+        db_job.validation_progress = progress
+        db.commit()
+        db.refresh(db_job)
+    return db_job
+
+
+def update_job_post_edit_progress(db: Session, job_id: int, progress: int):
+    db_job = get_job(db, job_id)
+    if db_job:
+        db_job.post_edit_progress = progress
+        db.commit()
+        db.refresh(db_job)
+    return db_job
+
+
 def create_translation_usage_log(db: Session, log_data: schemas.TranslationUsageLogCreate):
     db_log = models.TranslationUsageLog(**log_data.dict())
     db.add(db_log)

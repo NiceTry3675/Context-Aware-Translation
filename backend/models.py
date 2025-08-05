@@ -47,6 +47,7 @@ class TranslationJob(Base):
     
     post_edit_enabled = Column(Boolean, default=False)
     post_edit_status = Column(String, nullable=True)  # PENDING, IN_PROGRESS, COMPLETED, FAILED
+    post_edit_progress = Column(Integer, default=0) # Progress percentage 0-100
     post_edit_log_path = Column(String, nullable=True)
     post_edit_completed_at = Column(DateTime(timezone=True), nullable=True)
 

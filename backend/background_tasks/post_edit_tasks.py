@@ -52,14 +52,20 @@ def run_post_edit_in_background(
             model_name=model_name
         )
         
+        # Define progress callback
+        def update_progress(progress: int):
+            crud.update_job_post_edit_progress(db, job_id, progress)
+            print(f"--- [POST-EDIT] Progress: {progress}% ---")
+
         # Run post-editing
-        postedited_path = PostEditService.run_post_edit(
+        PostEditService.run_post_edit(
             post_editor=post_editor,
             translation_job=translation_job,
             translated_path=translated_path,
             validation_report_path=validation_report_path,
             selected_issue_types=selected_issue_types,
-            selected_issues=selected_issues
+            selected_issues=selected_issues,
+            progress_callback=update_progress
         )
         
         # Get the post-edit log path
