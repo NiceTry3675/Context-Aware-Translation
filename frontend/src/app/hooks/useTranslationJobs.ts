@@ -58,7 +58,11 @@ export function useTranslationJobs({ apiUrl, pollInterval = 3000 }: UseTranslati
 
   // Poll for job status updates
   const pollJobStatus = useCallback(async () => {
-    const processingJobs = jobs.filter(job => ['PROCESSING', 'PENDING'].includes(job.status));
+    const processingJobs = jobs.filter(job => 
+      ['PROCESSING', 'PENDING'].includes(job.status) ||
+      job.validation_status === 'IN_PROGRESS' ||
+      job.post_edit_status === 'IN_PROGRESS'
+    );
     if (processingJobs.length === 0) return;
 
     const updatedJobs = await Promise.all(
@@ -99,8 +103,28 @@ export function useTranslationJobs({ apiUrl, pollInterval = 3000 }: UseTranslati
 
   // Refresh all jobs
   const refreshJobs = useCallback(async () => {
-    await pollJobStatus();
-  }, [pollJobStatus]);
+    // Refresh ALL jobs from localStorage, not just processing ones
+    if (jobs.length === 0) return;
+    
+    try {
+      const updatedJobs = await Promise.all(
+        jobs.map(async (job) => {
+          try {
+            const response = await fetch(`${apiUrl}/api/v1/jobs/${job.id}`);
+            return response.ok ? response.json() : job;
+          } catch {
+            return job;
+          }
+        })
+      );
+      
+      setJobs(updatedJobs.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      ));
+    } catch (err) {
+      console.error("Failed to refresh jobs:", err);
+    }
+  }, [jobs, apiUrl]);
 
   return {
     jobs,

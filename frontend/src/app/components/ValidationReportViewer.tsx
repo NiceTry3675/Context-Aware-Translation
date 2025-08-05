@@ -17,7 +17,8 @@ import {
   Paper,
   Divider,
   Stack,
-  Grid,
+  Checkbox,
+  ListItemIcon,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -28,10 +29,26 @@ import { ValidationReport } from '../utils/api';
 
 interface ValidationReportViewerProps {
   report: ValidationReport;
+  selectedIssues?: {
+    [segmentIndex: number]: {
+      [issueType: string]: boolean[]
+    }
+  };
+  onIssueSelectionChange?: (
+    segmentIndex: number,
+    issueType: string,
+    issueIndex: number,
+    selected: boolean
+  ) => void;
   onSegmentClick?: (segmentIndex: number) => void;
 }
 
-export default function ValidationReportViewer({ report, onSegmentClick }: ValidationReportViewerProps) {
+export default function ValidationReportViewer({ 
+  report, 
+  selectedIssues, 
+  onIssueSelectionChange, 
+  onSegmentClick 
+}: ValidationReportViewerProps) {
   const getSeverityColor = (issueType: string): 'error' | 'warning' | 'info' | 'default' => {
     if (issueType === 'critical') return 'error';
     if (issueType === 'missing_content' || issueType === 'added_content') return 'warning';
@@ -65,24 +82,24 @@ export default function ValidationReportViewer({ report, onSegmentClick }: Valid
           검증 요약
         </Typography>
         
-        <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid size={6}>
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+          <Box sx={{ flex: 1 }}>
             <Typography variant="body2" color="text.secondary">
               전체 세그먼트
             </Typography>
             <Typography variant="h4">
               {report.summary.total_segments}
             </Typography>
-          </Grid>
-          <Grid size={6}>
+          </Box>
+          <Box sx={{ flex: 1 }}>
             <Typography variant="body2" color="text.secondary">
               검증된 세그먼트
             </Typography>
             <Typography variant="h4">
               {report.summary.validated_segments}
             </Typography>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
 
         <Box sx={{ mb: 2 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
@@ -101,24 +118,24 @@ export default function ValidationReportViewer({ report, onSegmentClick }: Valid
           />
         </Box>
 
-        <Grid container spacing={1}>
-          <Grid size={6}>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ flex: 1 }}>
             <Stack direction="row" spacing={1} alignItems="center">
               <CheckCircleIcon color="success" fontSize="small" />
               <Typography variant="body2">
                 통과: {report.summary.passed}
               </Typography>
             </Stack>
-          </Grid>
-          <Grid size={6}>
+          </Box>
+          <Box sx={{ flex: 1 }}>
             <Stack direction="row" spacing={1} alignItems="center">
               <ErrorIcon color="error" fontSize="small" />
               <Typography variant="body2">
                 실패: {report.summary.failed}
               </Typography>
             </Stack>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
 
         {/* Issue Statistics */}
         <Divider sx={{ my: 2 }} />
@@ -229,62 +246,97 @@ export default function ValidationReportViewer({ report, onSegmentClick }: Valid
             </AccordionSummary>
             
             <AccordionDetails>
-              <Grid container spacing={2}>
-                {/* Source Text */}
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <Typography variant="subtitle2" gutterBottom color="text.secondary">
-                    원문
-                  </Typography>
-                  <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: 'grey.50' }}>
-                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                      {result.source_preview}
+              <Stack spacing={2}>
+                <Box sx={{ display: { xs: 'block', md: 'flex' }, gap: 2 }}>
+                  {/* Source Text */}
+                  <Box sx={{ flex: 1, mb: { xs: 2, md: 0 } }}>
+                    <Typography variant="subtitle2" gutterBottom color="text.secondary">
+                      원문
                     </Typography>
-                  </Paper>
-                </Grid>
-                
-                {/* Translated Text */}
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <Typography variant="subtitle2" gutterBottom color="text.secondary">
-                    번역문
-                  </Typography>
-                  <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: 'grey.50' }}>
-                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                      {result.translated_preview}
+                    <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: 'grey.50' }}>
+                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {result.source_preview}
+                      </Typography>
+                    </Paper>
+                  </Box>
+                  
+                  {/* Translated Text */}
+                  <Box sx={{ flex: 1 }}>
+                    <Typography variant="subtitle2" gutterBottom color="text.secondary">
+                      번역문
                     </Typography>
-                  </Paper>
-                </Grid>
+                    <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: 'grey.50' }}>
+                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {result.translated_preview}
+                      </Typography>
+                    </Paper>
+                  </Box>
+                </Box>
                 
                 {/* Issues List */}
                 {allIssues.length > 0 && (
-                  <Grid size={12}>
+                  <Box>
                     <Typography variant="subtitle2" gutterBottom>
                       발견된 문제
                     </Typography>
                     <List dense sx={{ bgcolor: 'background.paper', borderRadius: 1 }}>
-                      {allIssues.map((issue, idx) => (
-                        <ListItem key={idx} sx={{ py: 0.5 }}>
-                          <ListItemText
-                            primary={
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                {getSeverityIcon(issue.type)}
-                                <Chip 
-                                  label={formatIssueType(issue.type)} 
-                                  size="small" 
-                                  color={getSeverityColor(issue.type)}
-                                  variant="outlined"
-                                />
-                                <Typography variant="body2">
-                                  {issue.message}
-                                </Typography>
-                              </Box>
-                            }
-                          />
-                        </ListItem>
-                      ))}
+                      {(() => {
+                        // Track indices for each issue type
+                        const typeIndices: { [key: string]: number } = {
+                          critical: 0,
+                          missing_content: 0,
+                          added_content: 0,
+                          name_inconsistencies: 0,
+                          minor: 0,
+                        };
+                        
+                        return allIssues.map((issue, idx) => {
+                          const typeIndex = typeIndices[issue.type];
+                          typeIndices[issue.type]++;
+                          
+                          const isSelected = selectedIssues?.[result.segment_index]?.[issue.type]?.[typeIndex] ?? true;
+                          
+                          return (
+                            <ListItem key={idx} sx={{ py: 0.5 }}>
+                              {onIssueSelectionChange && (
+                                <ListItemIcon sx={{ minWidth: 'auto', mr: 1 }}>
+                                  <Checkbox
+                                    edge="start"
+                                    checked={isSelected}
+                                    onChange={(e) => onIssueSelectionChange(
+                                      result.segment_index,
+                                      issue.type,
+                                      typeIndex,
+                                      e.target.checked
+                                    )}
+                                    size="small"
+                                  />
+                                </ListItemIcon>
+                              )}
+                              <ListItemText
+                                primary={
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    {getSeverityIcon(issue.type)}
+                                    <Chip 
+                                      label={formatIssueType(issue.type)} 
+                                      size="small" 
+                                      color={getSeverityColor(issue.type)}
+                                      variant="outlined"
+                                    />
+                                    <Typography variant="body2">
+                                      {issue.message}
+                                    </Typography>
+                                  </Box>
+                                }
+                              />
+                            </ListItem>
+                          );
+                        });
+                      })()}
                     </List>
-                  </Grid>
+                  </Box>
                 )}
-              </Grid>
+              </Stack>
             </AccordionDetails>
           </Accordion>
         );

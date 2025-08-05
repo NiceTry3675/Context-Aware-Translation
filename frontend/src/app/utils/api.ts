@@ -128,12 +128,36 @@ export async function triggerValidation(
   }
 }
 
-export async function triggerPostEdit(jobId: string, token?: string): Promise<void> {
+export async function triggerPostEdit(
+  jobId: string, 
+  token?: string,
+  selectedIssueTypes?: {
+    critical_issues: boolean;
+    missing_content: boolean;
+    added_content: boolean;
+    name_inconsistencies: boolean;
+  },
+  selectedIssues?: {
+    [segmentIndex: number]: {
+      [issueType: string]: boolean[]
+    }
+  }
+): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/post-edit`, {
     method: 'PUT',
     headers: {
       'Authorization': token ? `Bearer ${token}` : '',
+      'Content-Type': 'application/json',
     },
+    body: JSON.stringify({
+      selected_issue_types: selectedIssueTypes || {
+        critical_issues: true,
+        missing_content: true,
+        added_content: true,
+        name_inconsistencies: true,
+      },
+      selected_issues: selectedIssues
+    }),
   });
 
   if (!response.ok) {

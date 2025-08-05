@@ -98,6 +98,17 @@ export default function TranslationSidebar({
   const [postEditDialogOpen, setPostEditDialogOpen] = useState(false);
   const [quickValidation, setQuickValidation] = useState(false);
   const [validationSampleRate, setValidationSampleRate] = useState(100);
+  const [selectedIssueTypes, setSelectedIssueTypes] = useState({
+    critical_issues: true,
+    missing_content: true,
+    added_content: true,
+    name_inconsistencies: true,
+  });
+  const [selectedIssues, setSelectedIssues] = useState<{
+    [segmentIndex: number]: {
+      [issueType: string]: boolean[]
+    }
+  }>({});
   const { getToken } = useAuth();
 
   // Load data when sidebar opens or job changes
@@ -114,10 +125,27 @@ export default function TranslationSidebar({
     }
   }, [validationStatus]);
   
-  // Auto-select validation tab when report is loaded
+  // Auto-select validation tab when report is loaded and initialize selected issues
   useEffect(() => {
-    if (validationReport && tabValue !== 0) {
-      setTabValue(0);
+    if (validationReport) {
+      if (tabValue !== 0) {
+        setTabValue(0);
+      }
+      
+      // Initialize all issues as selected by default
+      const initialSelection: typeof selectedIssues = {};
+      validationReport.detailed_results.forEach((result) => {
+        if (result.status === 'FAIL') {
+          initialSelection[result.segment_index] = {
+            critical_issues: new Array(result.critical_issues.length).fill(true),
+            missing_content: new Array(result.missing_content.length).fill(true),
+            added_content: new Array(result.added_content.length).fill(true),
+            name_inconsistencies: new Array(result.name_inconsistencies.length).fill(true),
+            minor_issues: new Array(result.minor_issues.length).fill(true),
+          };
+        }
+      });
+      setSelectedIssues(initialSelection);
     }
   }, [validationReport]);
 
@@ -183,7 +211,7 @@ export default function TranslationSidebar({
     
     try {
       const token = await getToken();
-      await triggerPostEdit(jobId, token || undefined);
+      await triggerPostEdit(jobId, token || undefined, selectedIssueTypes, selectedIssues);
       setPostEditDialogOpen(false);
       onRefresh?.();
       // Show success message
@@ -378,6 +406,18 @@ export default function TranslationSidebar({
               ) : validationReport ? (
                 <ValidationReportViewer 
                   report={validationReport}
+                  selectedIssues={selectedIssues}
+                  onIssueSelectionChange={(segmentIndex, issueType, issueIndex, selected) => {
+                    setSelectedIssues(prev => ({
+                      ...prev,
+                      [segmentIndex]: {
+                        ...prev[segmentIndex],
+                        [issueType]: prev[segmentIndex][issueType].map((val, idx) => 
+                          idx === issueIndex ? selected : val
+                        )
+                      }
+                    }));
+                  }}
                   onSegmentClick={(index) => {
                     // Handle segment click if needed
                     console.log('Segment clicked:', index);
@@ -474,7 +514,7 @@ export default function TranslationSidebar({
             포스트 에디팅은 검증 결과를 바탕으로 AI가 자동으로 번역을 수정합니다.
           </Alert>
           {validationReport && (
-            <Stack spacing={1}>
+            <Stack spacing={2}>
               <Typography variant="body2">
                 발견된 문제:
               </Typography>
@@ -492,6 +532,72 @@ export default function TranslationSidebar({
                   <Chip size="small" label={`이름 불일치 ${validationReport.summary.total_name_inconsistencies}개`} color="info" />
                 )}
               </Stack>
+              
+              <Divider />
+              
+              <Box>
+                <Typography variant="subtitle2" gutterBottom>
+                  수정할 문제 유형 선택:
+                </Typography>
+                <Stack spacing={1}>
+                  {validationReport.summary.total_critical_issues > 0 && (
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={selectedIssueTypes.critical_issues}
+                          onChange={(e) => setSelectedIssueTypes({
+                            ...selectedIssueTypes,
+                            critical_issues: e.target.checked
+                          })}
+                        />
+                      }
+                      label={`치명적 오류 (${validationReport.summary.total_critical_issues}개)`}
+                    />
+                  )}
+                  {validationReport.summary.total_missing_content > 0 && (
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={selectedIssueTypes.missing_content}
+                          onChange={(e) => setSelectedIssueTypes({
+                            ...selectedIssueTypes,
+                            missing_content: e.target.checked
+                          })}
+                        />
+                      }
+                      label={`누락된 내용 (${validationReport.summary.total_missing_content}개)`}
+                    />
+                  )}
+                  {validationReport.summary.total_added_content > 0 && (
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={selectedIssueTypes.added_content}
+                          onChange={(e) => setSelectedIssueTypes({
+                            ...selectedIssueTypes,
+                            added_content: e.target.checked
+                          })}
+                        />
+                      }
+                      label={`추가된 내용 (${validationReport.summary.total_added_content}개)`}
+                    />
+                  )}
+                  {validationReport.summary.total_name_inconsistencies > 0 && (
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={selectedIssueTypes.name_inconsistencies}
+                          onChange={(e) => setSelectedIssueTypes({
+                            ...selectedIssueTypes,
+                            name_inconsistencies: e.target.checked
+                          })}
+                        />
+                      }
+                      label={`이름 불일치 (${validationReport.summary.total_name_inconsistencies}개)`}
+                    />
+                  )}
+                </Stack>
+              </Box>
             </Stack>
           )}
         </DialogContent>
@@ -500,7 +606,7 @@ export default function TranslationSidebar({
           <Button 
             onClick={handleTriggerPostEdit} 
             variant="contained" 
-            disabled={loading}
+            disabled={loading || !Object.values(selectedIssueTypes).some(v => v)}
             startIcon={loading ? <CircularProgress size={16} /> : <PlayArrowIcon />}
           >
             포스트 에디팅 시작

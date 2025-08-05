@@ -68,12 +68,16 @@ class PostEditService:
         post_editor: PostEditEngine,
         translation_job: TranslationJob,
         translated_path: str,
-        validation_report_path: str
+        validation_report_path: str,
+        selected_issue_types: dict = None,
+        selected_issues: dict = None
     ) -> str:
         """Run the post-editing process."""
         postedited_path = post_editor.post_edit_job(
             translation_job,
-            validation_report_path
+            validation_report_path,
+            selected_issue_types,
+            selected_issues
         )
         
         return postedited_path

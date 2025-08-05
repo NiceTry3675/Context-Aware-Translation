@@ -4,12 +4,12 @@ import os
 import re
 import json
 import shutil
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, File, UploadFile, BackgroundTasks, Depends, HTTPException, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ...dependencies import get_db, get_required_user
 from ...services.translation_service import TranslationService
@@ -308,9 +308,22 @@ async def get_validation_report(
     return report
 
 
+class PostEditRequest(BaseModel):
+    selected_issue_types: Optional[dict] = Field(
+        default={
+            "critical_issues": True,
+            "missing_content": True,
+            "added_content": True,
+            "name_inconsistencies": True
+        }
+    )
+    selected_issues: Optional[dict] = Field(default=None)
+
+
 @router.put("/jobs/{job_id}/post-edit")
 async def trigger_post_edit(
     job_id: int,
+    request: PostEditRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_required_user)
@@ -339,7 +352,9 @@ async def trigger_post_edit(
     # Add background task to run post-editing
     background_tasks.add_task(
         run_post_edit_in_background,
-        job_id, db_job.filepath, db_job.validation_report_path
+        job_id, db_job.filepath, db_job.validation_report_path,
+        request.selected_issue_types,
+        request.selected_issues
     )
     
     return {"message": "Post-editing started", "job_id": job_id}
