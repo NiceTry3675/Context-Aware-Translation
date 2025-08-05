@@ -25,7 +25,6 @@ import InfoIcon from '@mui/icons-material/Info';
 import { ValidationReport } from '../utils/api';
 import { SummaryStatistics } from './shared/SummaryStatistics';
 import { TextSegmentDisplay } from './shared/TextSegmentDisplay';
-import { IssueChip } from './shared/IssueChip';
 
 interface ValidationReportViewerProps {
   report: ValidationReport;

@@ -100,7 +100,7 @@ export default function TranslationSidebar({
     if (validationReport && tabValue !== 0) {
       setTabValue(0);
     }
-  }, [validationReport]);
+  }, [validationReport, tabValue]);
 
   // Auto-refresh when validation is in progress
   useEffect(() => {

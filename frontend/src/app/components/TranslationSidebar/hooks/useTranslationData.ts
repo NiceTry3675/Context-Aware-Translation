@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import {
   ValidationReport,
@@ -34,7 +34,7 @@ export function useTranslationData({
   
   const { getToken } = useAuth();
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -77,21 +77,21 @@ export function useTranslationData({
     } finally {
       setLoading(false);
     }
-  };
+  }, [jobId, validationStatus, postEditStatus, getToken]);
 
   // Load data when sidebar opens or job changes
   useEffect(() => {
     if (open && jobId) {
       loadData();
     }
-  }, [open, jobId, validationStatus, postEditStatus]);
+  }, [open, jobId, loadData]);
   
   // Reload data when validation completes
   useEffect(() => {
     if (validationStatus === 'COMPLETED' && !validationReport) {
       loadData();
     }
-  }, [validationStatus]);
+  }, [validationStatus, validationReport, loadData]);
 
   return {
     validationReport,

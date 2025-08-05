@@ -13,8 +13,6 @@ export default function ModelSelector({ apiProvider, selectedModel, onModelChang
   const handleModelChange = (_: React.MouseEvent<HTMLElement>, newValue: string) => {
     if (!newValue) return;
 
-    const previousModel = selectedModel;
-
     if (apiProvider === 'gemini' && newValue === 'gemini-2.5-pro') {
       const confirmation = window.confirm(
         "⚠️ Pro 모델 경고 ⚠️\n\n" +

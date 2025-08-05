@@ -41,53 +41,6 @@ export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogVi
     return true;
   });
 
-  const getIssueChips = (issues: {
-    critical?: string[];
-    missing_content?: string[];
-    added_content?: string[];
-    name_inconsistencies?: string[];
-  }) => {
-    const chips = [];
-    if (issues.critical && issues.critical.length > 0) {
-      chips.push(
-        <IssueChip
-          key="critical"
-          type="critical"
-          label={`치명적 ${issues.critical.length}`}
-        />
-      );
-    }
-    if (issues.missing_content && issues.missing_content.length > 0) {
-      chips.push(
-        <IssueChip
-          key="missing"
-          type="missing_content"
-          label={`누락 ${issues.missing_content.length}`}
-        />
-      );
-    }
-    if (issues.added_content && issues.added_content.length > 0) {
-      chips.push(
-        <IssueChip
-          key="added"
-          type="added_content"
-          label={`추가 ${issues.added_content.length}`}
-        />
-      );
-    }
-    if (issues.name_inconsistencies && issues.name_inconsistencies.length > 0) {
-      chips.push(
-        <IssueChip
-          key="names"
-          type="name_inconsistencies"
-          label={`이름 ${issues.name_inconsistencies.length}`}
-        />
-      );
-    }
-    return chips;
-  };
-
-
   return (
     <Box sx={{ width: '100%' }}>
       {/* Summary Section */}
@@ -182,7 +135,34 @@ export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogVi
                 />
               )}
               <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                {getIssueChips(segment.issues)}
+                {segment.issues.critical && segment.issues.critical.length > 0 && (
+                  <IssueChip
+                    key="critical"
+                    type="critical"
+                    label={`치명적 ${segment.issues.critical.length}`}
+                  />
+                )}
+                {segment.issues.missing_content && segment.issues.missing_content.length > 0 && (
+                  <IssueChip
+                    key="missing"
+                    type="missing_content"
+                    label={`누락 ${segment.issues.missing_content.length}`}
+                  />
+                )}
+                {segment.issues.added_content && segment.issues.added_content.length > 0 && (
+                  <IssueChip
+                    key="added"
+                    type="added_content"
+                    label={`추가 ${segment.issues.added_content.length}`}
+                  />
+                )}
+                {segment.issues.name_inconsistencies && segment.issues.name_inconsistencies.length > 0 && (
+                  <IssueChip
+                    key="names"
+                    type="name_inconsistencies"
+                    label={`이름 ${segment.issues.name_inconsistencies.length}`}
+                  />
+                )}
               </Box>
             </Box>
           </AccordionSummary>

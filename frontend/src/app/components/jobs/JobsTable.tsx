@@ -1,6 +1,6 @@
 import {
   Paper, Typography, TableContainer, Table, TableHead, TableRow,
-  TableCell, TableBody, Alert, Link, Box
+  TableCell, TableBody, Alert, Link
 } from '@mui/material';
 import { AutoStories as AutoStoriesIcon, MenuBook as MenuBookIcon } from '@mui/icons-material';
 import JobRow from './JobRow';
