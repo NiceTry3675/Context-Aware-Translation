@@ -33,6 +33,13 @@ interface PostEditDialogProps {
   onIssueTypeChange: (issueType: keyof PostEditDialogProps['selectedIssueTypes'], checked: boolean) => void;
   validationReport: ValidationReport | null;
   loading: boolean;
+  selectedCounts?: {
+    critical: number;
+    missingContent: number;
+    addedContent: number;
+    nameInconsistencies: number;
+    total: number;
+  };
 }
 
 export default function PostEditDialog({
@@ -43,6 +50,7 @@ export default function PostEditDialog({
   onIssueTypeChange,
   validationReport,
   loading,
+  selectedCounts,
 }: PostEditDialogProps) {
   const isAnyIssueSelected = Object.values(selectedIssueTypes).some(v => v);
 
@@ -60,16 +68,40 @@ export default function PostEditDialog({
             </Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               {validationReport.summary.total_critical_issues > 0 && (
-                <Chip size="small" label={`치명적 오류 ${validationReport.summary.total_critical_issues}개`} color="error" />
+                <Chip 
+                  size="small" 
+                  label={selectedCounts && selectedCounts.critical < validationReport.summary.total_critical_issues 
+                    ? `치명적 오류 ${selectedCounts.critical}/${validationReport.summary.total_critical_issues}개` 
+                    : `치명적 오류 ${validationReport.summary.total_critical_issues}개`} 
+                  color="error" 
+                />
               )}
               {validationReport.summary.total_missing_content > 0 && (
-                <Chip size="small" label={`누락 내용 ${validationReport.summary.total_missing_content}개`} color="warning" />
+                <Chip 
+                  size="small" 
+                  label={selectedCounts && selectedCounts.missingContent < validationReport.summary.total_missing_content 
+                    ? `누락 내용 ${selectedCounts.missingContent}/${validationReport.summary.total_missing_content}개` 
+                    : `누락 내용 ${validationReport.summary.total_missing_content}개`} 
+                  color="warning" 
+                />
               )}
               {validationReport.summary.total_added_content > 0 && (
-                <Chip size="small" label={`추가 내용 ${validationReport.summary.total_added_content}개`} color="warning" />
+                <Chip 
+                  size="small" 
+                  label={selectedCounts && selectedCounts.addedContent < validationReport.summary.total_added_content 
+                    ? `추가 내용 ${selectedCounts.addedContent}/${validationReport.summary.total_added_content}개` 
+                    : `추가 내용 ${validationReport.summary.total_added_content}개`} 
+                  color="warning" 
+                />
               )}
               {validationReport.summary.total_name_inconsistencies > 0 && (
-                <Chip size="small" label={`이름 불일치 ${validationReport.summary.total_name_inconsistencies}개`} color="info" />
+                <Chip 
+                  size="small" 
+                  label={selectedCounts && selectedCounts.nameInconsistencies < validationReport.summary.total_name_inconsistencies 
+                    ? `이름 불일치 ${selectedCounts.nameInconsistencies}/${validationReport.summary.total_name_inconsistencies}개` 
+                    : `이름 불일치 ${validationReport.summary.total_name_inconsistencies}개`} 
+                  color="info" 
+                />
               )}
             </Stack>
             
@@ -88,7 +120,9 @@ export default function PostEditDialog({
                         onChange={(e) => onIssueTypeChange('critical_issues', e.target.checked)}
                       />
                     }
-                    label={`치명적 오류 (${validationReport.summary.total_critical_issues}개)`}
+                    label={selectedCounts && selectedCounts.critical < validationReport.summary.total_critical_issues
+                      ? `치명적 오류 (${selectedCounts.critical}/${validationReport.summary.total_critical_issues}개 선택됨)`
+                      : `치명적 오류 (${validationReport.summary.total_critical_issues}개)`}
                   />
                 )}
                 {validationReport.summary.total_missing_content > 0 && (
@@ -99,7 +133,9 @@ export default function PostEditDialog({
                         onChange={(e) => onIssueTypeChange('missing_content', e.target.checked)}
                       />
                     }
-                    label={`누락된 내용 (${validationReport.summary.total_missing_content}개)`}
+                    label={selectedCounts && selectedCounts.missingContent < validationReport.summary.total_missing_content
+                      ? `누락된 내용 (${selectedCounts.missingContent}/${validationReport.summary.total_missing_content}개 선택됨)`
+                      : `누락된 내용 (${validationReport.summary.total_missing_content}개)`}
                   />
                 )}
                 {validationReport.summary.total_added_content > 0 && (
@@ -110,7 +146,9 @@ export default function PostEditDialog({
                         onChange={(e) => onIssueTypeChange('added_content', e.target.checked)}
                       />
                     }
-                    label={`추가된 내용 (${validationReport.summary.total_added_content}개)`}
+                    label={selectedCounts && selectedCounts.addedContent < validationReport.summary.total_added_content
+                      ? `추가된 내용 (${selectedCounts.addedContent}/${validationReport.summary.total_added_content}개 선택됨)`
+                      : `추가된 내용 (${validationReport.summary.total_added_content}개)`}
                   />
                 )}
                 {validationReport.summary.total_name_inconsistencies > 0 && (
@@ -121,7 +159,9 @@ export default function PostEditDialog({
                         onChange={(e) => onIssueTypeChange('name_inconsistencies', e.target.checked)}
                       />
                     }
-                    label={`이름 불일치 (${validationReport.summary.total_name_inconsistencies}개)`}
+                    label={selectedCounts && selectedCounts.nameInconsistencies < validationReport.summary.total_name_inconsistencies
+                      ? `이름 불일치 (${selectedCounts.nameInconsistencies}/${validationReport.summary.total_name_inconsistencies}개 선택됨)`
+                      : `이름 불일치 (${validationReport.summary.total_name_inconsistencies}개)`}
                   />
                 )}
               </Stack>

@@ -114,6 +114,43 @@ export default function TranslationSidebar({
   const canRunValidation = jobStatus === 'COMPLETED' && (!validationStatus || validationStatus === 'FAILED');
   const canRunPostEdit = validationStatus === 'COMPLETED' && (!postEditStatus || postEditStatus === 'FAILED');
 
+  // Calculate selected issue counts
+  const calculateSelectedCounts = () => {
+    let critical = 0;
+    let missingContent = 0;
+    let addedContent = 0;
+    let nameInconsistencies = 0;
+
+    if (validationReport) {
+      validationReport.detailed_results.forEach((result) => {
+        const segmentSelection = selectedIssues?.[result.segment_index];
+        
+        if (segmentSelection) {
+          critical += segmentSelection.critical?.filter(selected => selected).length || 0;
+          missingContent += segmentSelection.missing_content?.filter(selected => selected).length || 0;
+          addedContent += segmentSelection.added_content?.filter(selected => selected).length || 0;
+          nameInconsistencies += segmentSelection.name_inconsistencies?.filter(selected => selected).length || 0;
+        } else {
+          // If no selection state exists, count all issues as selected (default behavior)
+          critical += result.critical_issues.length;
+          missingContent += result.missing_content.length;
+          addedContent += result.added_content.length;
+          nameInconsistencies += result.name_inconsistencies.length;
+        }
+      });
+    }
+
+    return {
+      critical,
+      missingContent,
+      addedContent,
+      nameInconsistencies,
+      total: critical + missingContent + addedContent + nameInconsistencies
+    };
+  };
+
+  const selectedCounts = calculateSelectedCounts();
+
   return (
     <>
       <Drawer
@@ -312,6 +349,7 @@ export default function TranslationSidebar({
         }
         validationReport={validationReport}
         loading={postEdit.loading}
+        selectedCounts={selectedCounts}
       />
     </>
   );

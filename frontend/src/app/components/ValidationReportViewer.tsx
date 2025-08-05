@@ -74,6 +74,41 @@ export default function ValidationReportViewer({
     return typeMap[type] || type;
   };
 
+  // Calculate selected issue counts
+  const calculateSelectedCounts = () => {
+    let critical = 0;
+    let missingContent = 0;
+    let addedContent = 0;
+    let nameInconsistencies = 0;
+
+    report.detailed_results.forEach((result) => {
+      const segmentSelection = selectedIssues?.[result.segment_index];
+      
+      if (segmentSelection) {
+        critical += segmentSelection.critical?.filter(selected => selected).length || 0;
+        missingContent += segmentSelection.missing_content?.filter(selected => selected).length || 0;
+        addedContent += segmentSelection.added_content?.filter(selected => selected).length || 0;
+        nameInconsistencies += segmentSelection.name_inconsistencies?.filter(selected => selected).length || 0;
+      } else {
+        // If no selection state exists, count all issues as selected (default behavior)
+        critical += result.critical_issues.length;
+        missingContent += result.missing_content.length;
+        addedContent += result.added_content.length;
+        nameInconsistencies += result.name_inconsistencies.length;
+      }
+    });
+
+    return {
+      critical,
+      missingContent,
+      addedContent,
+      nameInconsistencies,
+      total: critical + missingContent + addedContent + nameInconsistencies
+    };
+  };
+
+  const selectedCounts = calculateSelectedCounts();
+
   return (
     <Box sx={{ width: '100%' }}>
       {/* Summary Section */}
@@ -92,10 +127,34 @@ export default function ValidationReportViewer({
           failed: report.summary.failed
         }}
         issueStats={[
-          { type: 'critical', count: report.summary.total_critical_issues, label: '치명적' },
-          { type: 'missing_content', count: report.summary.total_missing_content, label: '누락' },
-          { type: 'added_content', count: report.summary.total_added_content, label: '추가' },
-          { type: 'name_inconsistencies', count: report.summary.total_name_inconsistencies, label: '이름 불일치' }
+          { 
+            type: 'critical', 
+            count: report.summary.total_critical_issues, 
+            label: onIssueSelectionChange && selectedCounts.critical < report.summary.total_critical_issues 
+              ? `치명적 (${selectedCounts.critical}/${report.summary.total_critical_issues})` 
+              : '치명적' 
+          },
+          { 
+            type: 'missing_content', 
+            count: report.summary.total_missing_content, 
+            label: onIssueSelectionChange && selectedCounts.missingContent < report.summary.total_missing_content 
+              ? `누락 (${selectedCounts.missingContent}/${report.summary.total_missing_content})` 
+              : '누락' 
+          },
+          { 
+            type: 'added_content', 
+            count: report.summary.total_added_content, 
+            label: onIssueSelectionChange && selectedCounts.addedContent < report.summary.total_added_content 
+              ? `추가 (${selectedCounts.addedContent}/${report.summary.total_added_content})` 
+              : '추가' 
+          },
+          { 
+            type: 'name_inconsistencies', 
+            count: report.summary.total_name_inconsistencies, 
+            label: onIssueSelectionChange && selectedCounts.nameInconsistencies < report.summary.total_name_inconsistencies 
+              ? `이름 불일치 (${selectedCounts.nameInconsistencies}/${report.summary.total_name_inconsistencies})` 
+              : '이름 불일치' 
+          }
         ]}
       />
 
@@ -120,7 +179,7 @@ export default function ValidationReportViewer({
             defaultExpanded={hasIssues}
             sx={{ 
               mb: 1,
-              backgroundColor: hasIssues ? 'error.50' : 'success.50',
+              backgroundColor: hasIssues ? 'rgba(244, 67, 54, 0.08)' : 'rgba(76, 175, 80, 0.08)',
               '&:before': { display: 'none' },
             }}
           >

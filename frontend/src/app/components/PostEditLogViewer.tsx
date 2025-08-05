@@ -152,7 +152,7 @@ export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogVi
           defaultExpanded={segment.was_edited}
           sx={{ 
             mb: 1,
-            backgroundColor: segment.was_edited ? 'info.50' : 'background.paper',
+            backgroundColor: segment.was_edited ? 'rgba(33, 150, 243, 0.08)' : 'background.paper',
             '&:before': { display: 'none' },
           }}
         >

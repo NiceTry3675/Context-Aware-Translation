@@ -24,7 +24,7 @@ export function TextSegmentDisplay({
           <Typography variant="subtitle2" gutterBottom color="text.secondary">
             원문
           </Typography>
-          <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: 'grey.50' }}>
+          <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: 'background.paper' }}>
             <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
               {sourceText}
             </Typography>
@@ -40,7 +40,7 @@ export function TextSegmentDisplay({
             variant="outlined" 
             sx={{ 
               p: 1.5, 
-              backgroundColor: 'error.50',
+              backgroundColor: 'rgba(244, 67, 54, 0.08)',
               borderColor: 'error.main'
             }}
           >
@@ -66,7 +66,7 @@ export function TextSegmentDisplay({
             variant="outlined" 
             sx={{ 
               p: 1.5, 
-              backgroundColor: 'success.50',
+              backgroundColor: 'rgba(76, 175, 80, 0.08)',
               borderColor: 'success.main'
             }}
           >
@@ -92,7 +92,7 @@ export function TextSegmentDisplay({
         <Typography variant="subtitle2" gutterBottom color="text.secondary">
           원문
         </Typography>
-        <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: 'grey.50' }}>
+        <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: 'background.paper' }}>
           <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
             {sourceText}
           </Typography>
@@ -105,7 +105,7 @@ export function TextSegmentDisplay({
           <Typography variant="subtitle2" gutterBottom color="text.secondary">
             번역문
           </Typography>
-          <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: 'grey.50' }}>
+          <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: 'background.paper' }}>
             <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
               {editedText || translatedText}
             </Typography>
