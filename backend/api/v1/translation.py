@@ -9,7 +9,7 @@ from typing import List, Optional
 from fastapi import APIRouter, File, UploadFile, BackgroundTasks, Depends, HTTPException, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from ...dependencies import get_db, get_required_user
 from ...services.translation_service import TranslationService
@@ -19,25 +19,12 @@ from ...background_tasks.translation_tasks import run_translation_in_background
 from ...background_tasks.validation_tasks import run_validation_in_background
 from ...background_tasks.post_edit_tasks import run_post_edit_in_background
 from ... import crud, models, schemas, auth
+from ...schemas import StyleAnalysisResponse, GlossaryTerm, GlossaryAnalysisResponse, PostEditRequest
 
 
 router = APIRouter(prefix="/api/v1", tags=["translation"])
 
 
-class StyleAnalysisResponse(BaseModel):
-    protagonist_name: str
-    narration_style_endings: str
-    tone_keywords: str
-    stylistic_rule: str
-
-
-class GlossaryTerm(BaseModel):
-    term: str
-    translation: str
-
-
-class GlossaryAnalysisResponse(BaseModel):
-    glossary: List[GlossaryTerm]
 
 
 @router.post("/analyze-style", response_model=StyleAnalysisResponse)
@@ -92,6 +79,18 @@ async def analyze_glossary(
                 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to extract glossary: {e}")
+
+
+@router.get("/jobs", response_model=List[schemas.TranslationJob])
+async def list_jobs(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_required_user)
+):
+    """List all translation jobs for the current user."""
+    jobs = crud.get_jobs_by_user(db, user_id=current_user.id, skip=skip, limit=limit)
+    return jobs
 
 
 @router.post("/jobs", response_model=schemas.TranslationJob)
@@ -308,16 +307,6 @@ async def get_validation_report(
     return report
 
 
-class PostEditRequest(BaseModel):
-    selected_issue_types: Optional[dict] = Field(
-        default={
-            "critical_issues": True,
-            "missing_content": True,
-            "added_content": True,
-            "name_inconsistencies": True
-        }
-    )
-    selected_issues: Optional[dict] = Field(default=None)
 
 
 @router.put("/jobs/{job_id}/post-edit")

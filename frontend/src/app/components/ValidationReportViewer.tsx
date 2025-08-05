@@ -13,9 +13,6 @@ import {
   ListItemText,
   Alert,
   AlertTitle,
-  LinearProgress,
-  Paper,
-  Divider,
   Stack,
   Checkbox,
   ListItemIcon,
@@ -26,6 +23,9 @@ import ErrorIcon from '@mui/icons-material/Error';
 import WarningIcon from '@mui/icons-material/Warning';
 import InfoIcon from '@mui/icons-material/Info';
 import { ValidationReport } from '../utils/api';
+import { SummaryStatistics } from './shared/SummaryStatistics';
+import { TextSegmentDisplay } from './shared/TextSegmentDisplay';
+import { IssueChip } from './shared/IssueChip';
 
 interface ValidationReportViewerProps {
   report: ValidationReport;
@@ -77,110 +77,27 @@ export default function ValidationReportViewer({
   return (
     <Box sx={{ width: '100%' }}>
       {/* Summary Section */}
-      <Paper elevation={1} sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          검증 요약
-        </Typography>
-        
-        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              전체 세그먼트
-            </Typography>
-            <Typography variant="h4">
-              {report.summary.total_segments}
-            </Typography>
-          </Box>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              검증된 세그먼트
-            </Typography>
-            <Typography variant="h4">
-              {report.summary.validated_segments}
-            </Typography>
-          </Box>
-        </Box>
-
-        <Box sx={{ mb: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="body2">
-              통과율
-            </Typography>
-            <Typography variant="body2" fontWeight="bold">
-              {report.summary.pass_rate.toFixed(1)}%
-            </Typography>
-          </Box>
-          <LinearProgress 
-            variant="determinate" 
-            value={report.summary.pass_rate} 
-            color={report.summary.pass_rate >= 80 ? 'success' : report.summary.pass_rate >= 60 ? 'warning' : 'error'}
-            sx={{ height: 8, borderRadius: 1 }}
-          />
-        </Box>
-
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Box sx={{ flex: 1 }}>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <CheckCircleIcon color="success" fontSize="small" />
-              <Typography variant="body2">
-                통과: {report.summary.passed}
-              </Typography>
-            </Stack>
-          </Box>
-          <Box sx={{ flex: 1 }}>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <ErrorIcon color="error" fontSize="small" />
-              <Typography variant="body2">
-                실패: {report.summary.failed}
-              </Typography>
-            </Stack>
-          </Box>
-        </Box>
-
-        {/* Issue Statistics */}
-        <Divider sx={{ my: 2 }} />
-        <Typography variant="subtitle2" gutterBottom>
-          발견된 문제
-        </Typography>
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-          {report.summary.total_critical_issues > 0 && (
-            <Chip
-              size="small"
-              icon={<ErrorIcon />}
-              label={`치명적: ${report.summary.total_critical_issues}`}
-              color="error"
-              variant="outlined"
-            />
-          )}
-          {report.summary.total_missing_content > 0 && (
-            <Chip
-              size="small"
-              icon={<WarningIcon />}
-              label={`누락: ${report.summary.total_missing_content}`}
-              color="warning"
-              variant="outlined"
-            />
-          )}
-          {report.summary.total_added_content > 0 && (
-            <Chip
-              size="small"
-              icon={<WarningIcon />}
-              label={`추가: ${report.summary.total_added_content}`}
-              color="warning"
-              variant="outlined"
-            />
-          )}
-          {report.summary.total_name_inconsistencies > 0 && (
-            <Chip
-              size="small"
-              icon={<InfoIcon />}
-              label={`이름 불일치: ${report.summary.total_name_inconsistencies}`}
-              color="info"
-              variant="outlined"
-            />
-          )}
-        </Stack>
-      </Paper>
+      <SummaryStatistics
+        title="검증 요약"
+        stats={[
+          { label: '전체 세그먼트', value: report.summary.total_segments },
+          { label: '검증된 세그먼트', value: report.summary.validated_segments }
+        ]}
+        progressBar={{
+          value: report.summary.pass_rate,
+          label: '통과율'
+        }}
+        passFailStats={{
+          passed: report.summary.passed,
+          failed: report.summary.failed
+        }}
+        issueStats={[
+          { type: 'critical', count: report.summary.total_critical_issues, label: '치명적' },
+          { type: 'missing_content', count: report.summary.total_missing_content, label: '누락' },
+          { type: 'added_content', count: report.summary.total_added_content, label: '추가' },
+          { type: 'name_inconsistencies', count: report.summary.total_name_inconsistencies, label: '이름 불일치' }
+        ]}
+      />
 
       {/* Detailed Results */}
       <Typography variant="h6" gutterBottom>
@@ -247,31 +164,10 @@ export default function ValidationReportViewer({
             
             <AccordionDetails>
               <Stack spacing={2}>
-                <Box sx={{ display: { xs: 'block', md: 'flex' }, gap: 2 }}>
-                  {/* Source Text */}
-                  <Box sx={{ flex: 1, mb: { xs: 2, md: 0 } }}>
-                    <Typography variant="subtitle2" gutterBottom color="text.secondary">
-                      원문
-                    </Typography>
-                    <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: 'grey.50' }}>
-                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                        {result.source_preview}
-                      </Typography>
-                    </Paper>
-                  </Box>
-                  
-                  {/* Translated Text */}
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="subtitle2" gutterBottom color="text.secondary">
-                      번역문
-                    </Typography>
-                    <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: 'grey.50' }}>
-                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                        {result.translated_preview}
-                      </Typography>
-                    </Paper>
-                  </Box>
-                </Box>
+                <TextSegmentDisplay
+                  sourceText={result.source_preview}
+                  translatedText={result.translated_preview}
+                />
                 
                 {/* Issues List */}
                 {allIssues.length > 0 && (
@@ -303,7 +199,7 @@ export default function ValidationReportViewer({
                                   <Checkbox
                                     edge="start"
                                     checked={isSelected}
-                                    onChange={(e) => onIssueSelectionChange(
+                                    onChange={(e) => onIssueSelectionChange?.(
                                       result.segment_index,
                                       issue.type,
                                       typeIndex,

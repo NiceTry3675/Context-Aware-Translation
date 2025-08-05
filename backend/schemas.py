@@ -197,6 +197,29 @@ class Comment(CommentBase, KSTTimezoneBase):
     post_id: int
     replies: List['Comment'] = []
 
+# --- Translation-related Schemas ---
+class StyleAnalysisResponse(BaseModel):
+    protagonist_name: str
+    narration_style_endings: str
+    tone_keywords: str
+    stylistic_rule: str
+
+class GlossaryTerm(BaseModel):
+    term: str
+    translation: str
+
+class GlossaryAnalysisResponse(BaseModel):
+    glossary: List[GlossaryTerm]
+
+class PostEditRequest(BaseModel):
+    selected_issue_types: Optional[dict] = {
+        "critical_issues": True,
+        "missing_content": True,
+        "added_content": True,
+        "name_inconsistencies": True
+    }
+    selected_issues: Optional[dict] = None
+
 # Update forward references
 Comment.model_rebuild()
 Post.model_rebuild()

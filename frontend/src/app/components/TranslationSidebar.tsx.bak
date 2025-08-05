@@ -108,7 +108,29 @@ export default function TranslationSidebar({
     [segmentIndex: number]: {
       [issueType: string]: boolean[]
     }
-  }>({});
+  }>(() => {
+    // Initialize selectedIssues immediately if we already have a validation report
+    if (validationReport) {
+      const initialSelection: {
+        [segmentIndex: number]: {
+          [issueType: string]: boolean[]
+        }
+      } = {};
+      validationReport.detailed_results.forEach((result) => {
+        if (result.status === 'FAIL') {
+          initialSelection[result.segment_index] = {
+            critical: new Array(result.critical_issues.length).fill(true),
+            missing_content: new Array(result.missing_content.length).fill(true),
+            added_content: new Array(result.added_content.length).fill(true),
+            name_inconsistencies: new Array(result.name_inconsistencies.length).fill(true),
+            minor: new Array(result.minor_issues.length).fill(true),
+          };
+        }
+      });
+      return initialSelection;
+    }
+    return {};
+  });
   const { getToken } = useAuth();
 
   // Load data when sidebar opens or job changes
@@ -125,27 +147,10 @@ export default function TranslationSidebar({
     }
   }, [validationStatus]);
   
-  // Auto-select validation tab when report is loaded and initialize selected issues
+  // Auto-select validation tab when report is loaded
   useEffect(() => {
-    if (validationReport) {
-      if (tabValue !== 0) {
-        setTabValue(0);
-      }
-      
-      // Initialize all issues as selected by default
-      const initialSelection: typeof selectedIssues = {};
-      validationReport.detailed_results.forEach((result) => {
-        if (result.status === 'FAIL') {
-          initialSelection[result.segment_index] = {
-            critical_issues: new Array(result.critical_issues.length).fill(true),
-            missing_content: new Array(result.missing_content.length).fill(true),
-            added_content: new Array(result.added_content.length).fill(true),
-            name_inconsistencies: new Array(result.name_inconsistencies.length).fill(true),
-            minor_issues: new Array(result.minor_issues.length).fill(true),
-          };
-        }
-      });
-      setSelectedIssues(initialSelection);
+    if (validationReport && tabValue !== 0) {
+      setTabValue(0);
     }
   }, [validationReport]);
 
@@ -172,7 +177,25 @@ export default function TranslationSidebar({
         console.log('Loading validation report for job:', jobId);
         const report = await fetchValidationReport(jobId, token || undefined);
         console.log('Validation report loaded:', report);
-        setValidationReport(report);
+        
+        if (report) {
+          // Initialize selected issues immediately when setting the report
+          const initialSelection: typeof selectedIssues = {};
+          report.detailed_results.forEach((result) => {
+            if (result.status === 'FAIL') {
+              initialSelection[result.segment_index] = {
+                critical: new Array(result.critical_issues.length).fill(true),
+                missing_content: new Array(result.missing_content.length).fill(true),
+                added_content: new Array(result.added_content.length).fill(true),
+                name_inconsistencies: new Array(result.name_inconsistencies.length).fill(true),
+                minor: new Array(result.minor_issues.length).fill(true),
+              };
+            }
+          });
+          
+          setValidationReport(report);
+          setSelectedIssues(initialSelection);
+        }
       }
       
       // Load post-edit log if available
@@ -408,15 +431,37 @@ export default function TranslationSidebar({
                   report={validationReport}
                   selectedIssues={selectedIssues}
                   onIssueSelectionChange={(segmentIndex, issueType, issueIndex, selected) => {
-                    setSelectedIssues(prev => ({
-                      ...prev,
-                      [segmentIndex]: {
-                        ...prev[segmentIndex],
-                        [issueType]: prev[segmentIndex][issueType].map((val, idx) => 
+                    setSelectedIssues(prev => {
+                      const newState = { ...prev };
+                      
+                      // Ensure the segment exists in the state
+                      if (!newState[segmentIndex]) {
+                        // Initialize the segment if it doesn't exist
+                        const segment = validationReport?.detailed_results.find(r => r.segment_index === segmentIndex);
+                        if (!segment) return prev;
+                        
+                        newState[segmentIndex] = {
+                          critical: new Array(segment.critical_issues.length).fill(true),
+                          missing_content: new Array(segment.missing_content.length).fill(true),
+                          added_content: new Array(segment.added_content.length).fill(true),
+                          name_inconsistencies: new Array(segment.name_inconsistencies.length).fill(true),
+                          minor: new Array(segment.minor_issues.length).fill(true),
+                        };
+                      }
+                      
+                      if (!newState[segmentIndex][issueType]) {
+                        return prev;
+                      }
+                      
+                      newState[segmentIndex] = {
+                        ...newState[segmentIndex],
+                        [issueType]: newState[segmentIndex][issueType].map((val, idx) => 
                           idx === issueIndex ? selected : val
                         )
-                      }
-                    }));
+                      };
+                      
+                      return newState;
+                    });
                   }}
                   onSegmentClick={(index) => {
                     // Handle segment click if needed

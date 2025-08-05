@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import { Job } from '../types/job';
 
 interface UseTranslationJobsOptions {
@@ -7,57 +8,64 @@ interface UseTranslationJobsOptions {
 }
 
 export function useTranslationJobs({ apiUrl, pollInterval = 3000 }: UseTranslationJobsOptions) {
+  const { getToken, isSignedIn, isLoaded } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load jobs from localStorage on mount
+  // Load jobs from server on mount
   useEffect(() => {
     const loadJobs = async () => {
+      if (!isLoaded) return;
+      if (!isSignedIn) {
+        setJobs([]);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
       
-      const storedJobIdsString = localStorage.getItem('jobIds');
-      if (!storedJobIdsString) {
-        setLoading(false);
-        return;
-      }
-      
-      const storedJobIds = JSON.parse(storedJobIdsString);
-      if (!Array.isArray(storedJobIds) || storedJobIds.length === 0) {
-        setLoading(false);
-        return;
-      }
-
-      const uniqueJobIds = [...new Set(storedJobIds)];
-
       try {
-        const fetchedJobs: Job[] = await Promise.all(
-          uniqueJobIds.map(async (id: number) => {
-            const response = await fetch(`${apiUrl}/api/v1/jobs/${id}`);
-            return response.ok ? response.json() : null;
-          })
-        );
+        const token = await getToken();
+        if (!token) {
+          throw new Error("Failed to get authentication token");
+        }
+
+        const response = await fetch(`${apiUrl}/api/v1/jobs`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         
-        const validJobs = fetchedJobs
-          .filter((job): job is Job => job !== null)
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        if (!response.ok) {
+          throw new Error(`Failed to fetch jobs: ${response.status}`);
+        }
         
-        setJobs(validJobs);
+        const fetchedJobs: Job[] = await response.json();
+        setJobs(fetchedJobs);
+        
+        // Migrate from localStorage if needed
+        const storedJobIdsString = localStorage.getItem('jobIds');
+        if (storedJobIdsString) {
+          console.log('Migrating from localStorage to server-based storage');
+          localStorage.removeItem('jobIds');
+        }
       } catch (err) {
-        console.error("Failed to load jobs from storage:", err);
-        setError("Failed to load saved jobs");
-        localStorage.removeItem('jobIds');
+        console.error("Failed to load jobs from server:", err);
+        setError("Failed to load jobs");
       } finally {
         setLoading(false);
       }
     };
     
     loadJobs();
-  }, [apiUrl]);
+  }, [apiUrl, getToken, isSignedIn, isLoaded]);
 
   // Poll for job status updates
   const pollJobStatus = useCallback(async () => {
+    if (!isSignedIn) return;
+    
     const processingJobs = jobs.filter(job => 
       ['PROCESSING', 'PENDING'].includes(job.status) ||
       job.validation_status === 'IN_PROGRESS' ||
@@ -65,21 +73,32 @@ export function useTranslationJobs({ apiUrl, pollInterval = 3000 }: UseTranslati
     );
     if (processingJobs.length === 0) return;
 
-    const updatedJobs = await Promise.all(
-      processingJobs.map(async (job) => {
-        try {
-          const response = await fetch(`${apiUrl}/api/v1/jobs/${job.id}`);
-          return response.ok ? response.json() : job;
-        } catch {
-          return job;
-        }
-      })
-    );
-    
-    setJobs(currentJobs =>
-      currentJobs.map(job => updatedJobs.find(updated => updated.id === job.id) || job)
-    );
-  }, [jobs, apiUrl]);
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      const updatedJobs = await Promise.all(
+        processingJobs.map(async (job) => {
+          try {
+            const response = await fetch(`${apiUrl}/api/v1/jobs/${job.id}`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            return response.ok ? response.json() : job;
+          } catch {
+            return job;
+          }
+        })
+      );
+      
+      setJobs(currentJobs =>
+        currentJobs.map(job => updatedJobs.find(updated => updated.id === job.id) || job)
+      );
+    } catch (err) {
+      console.error("Failed to poll job status:", err);
+    }
+  }, [jobs, apiUrl, getToken, isSignedIn]);
 
   // Set up polling interval
   useEffect(() => {
@@ -90,41 +109,40 @@ export function useTranslationJobs({ apiUrl, pollInterval = 3000 }: UseTranslati
   // Add a new job
   const addJob = useCallback((newJob: Job) => {
     setJobs(prevJobs => [newJob, ...prevJobs]);
-    const storedJobIds = JSON.parse(localStorage.getItem('jobIds') || '[]');
-    localStorage.setItem('jobIds', JSON.stringify([newJob.id, ...storedJobIds]));
   }, []);
 
   // Delete a job
   const deleteJob = useCallback((jobId: number) => {
     setJobs(prevJobs => prevJobs.filter(job => job.id !== jobId));
-    const storedJobIds = JSON.parse(localStorage.getItem('jobIds') || '[]');
-    localStorage.setItem('jobIds', JSON.stringify(storedJobIds.filter((id: number) => id !== jobId)));
   }, []);
 
   // Refresh all jobs
   const refreshJobs = useCallback(async () => {
-    // Refresh ALL jobs from localStorage, not just processing ones
-    if (jobs.length === 0) return;
+    if (!isSignedIn) return;
     
     try {
-      const updatedJobs = await Promise.all(
-        jobs.map(async (job) => {
-          try {
-            const response = await fetch(`${apiUrl}/api/v1/jobs/${job.id}`);
-            return response.ok ? response.json() : job;
-          } catch {
-            return job;
-          }
-        })
-      );
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Failed to get authentication token");
+      }
+
+      const response = await fetch(`${apiUrl}/api/v1/jobs`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
-      setJobs(updatedJobs.sort((a, b) => 
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      ));
+      if (!response.ok) {
+        throw new Error(`Failed to fetch jobs: ${response.status}`);
+      }
+      
+      const fetchedJobs: Job[] = await response.json();
+      setJobs(fetchedJobs);
     } catch (err) {
       console.error("Failed to refresh jobs:", err);
+      setError("Failed to refresh jobs");
     }
-  }, [jobs, apiUrl]);
+  }, [apiUrl, getToken, isSignedIn]);
 
   return {
     jobs,

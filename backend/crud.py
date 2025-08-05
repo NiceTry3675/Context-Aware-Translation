@@ -47,6 +47,13 @@ def filter_private_comments(comments: list[models.Comment], current_user: Option
 def get_job(db: Session, job_id: int):
     return db.query(models.TranslationJob).filter(models.TranslationJob.id == job_id).first()
 
+def get_jobs_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+    return db.query(models.TranslationJob).filter(
+        models.TranslationJob.owner_id == user_id
+    ).order_by(
+        models.TranslationJob.created_at.desc()
+    ).offset(skip).limit(limit).all()
+
 def create_translation_job(db: Session, job: schemas.TranslationJobCreate):
     db_job = models.TranslationJob(filename=job.filename, owner_id=job.owner_id, status="PENDING", progress=0)
     db.add(db_job)
