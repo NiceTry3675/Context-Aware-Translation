@@ -183,21 +183,34 @@ export async function triggerValidation(
   quickValidation: boolean = false,
   validationSampleRate: number = 1.0
 ): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/validation`, {
+  const url = `${API_BASE_URL}/api/v1/jobs/${jobId}/validation`;
+  const body = {
+    quick_validation: quickValidation,
+    validation_sample_rate: validationSampleRate,
+  };
+  
+  const headers = {
+    'Authorization': token ? `Bearer ${token}` : '',
+    'Content-Type': 'application/json',
+  };
+  
+  console.log('Triggering validation:', { url, body, hasToken: !!token, authHeader: headers.Authorization?.substring(0, 30) });
+  
+  const response = await fetch(url, {
     method: 'PUT',
-    headers: {
-      'Authorization': token ? `Bearer ${token}` : '',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      quick_validation: quickValidation,
-      validation_sample_rate: validationSampleRate,
-    }),
+    headers,
+    body: JSON.stringify(body),
   });
+  
+  console.log('Response status:', response.status, 'Response OK:', response.ok);
 
   if (!response.ok) {
-    throw new Error(`Failed to trigger validation: ${response.statusText}`);
+    const errorText = await response.text();
+    console.error('Validation error response:', errorText);
+    throw new Error(`Failed to trigger validation: ${response.statusText} - ${errorText}`);
   }
+  
+  console.log('Validation triggered successfully');
 }
 
 export async function triggerPostEdit(

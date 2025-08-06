@@ -24,6 +24,10 @@ import {
 import RefreshIcon from '@mui/icons-material/Refresh';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
+import FirstPageIcon from '@mui/icons-material/FirstPage';
+import LastPageIcon from '@mui/icons-material/LastPage';
+import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 
 // Import viewer components
 import ValidationReportViewer from '../components/ValidationReportViewer';
@@ -31,8 +35,12 @@ import PostEditLogViewer from '../components/PostEditLogViewer';
 import TranslationContentViewer from '../components/TranslationContentViewer';
 import JobSidebar from '../components/canvas/JobSidebar';
 import SegmentViewer from '../components/canvas/SegmentViewer';
-import ErrorNavigationBar from '../components/canvas/ErrorNavigationBar';
-import SegmentNavigation from '../components/canvas/SegmentNavigation';
+import ErrorIcon from '@mui/icons-material/Error';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import AddCircleIcon from '@mui/icons-material/AddCircle';
+import PersonIcon from '@mui/icons-material/Person';
+import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
+import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 
 // Import translation setup components
 import ApiSetup from '../components/ApiConfiguration/ApiSetup';
@@ -89,9 +97,17 @@ function CanvasContent() {
   
   const jobId = searchParams.get('jobId');
   const [tabValue, setTabValue] = useState(0);
+  const [showNewTranslation, setShowNewTranslation] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [viewMode, setViewMode] = useState<'full' | 'segment'>('segment'); // New view mode state
+  const [errorFilters, setErrorFilters] = useState({
+    critical: true,
+    missingContent: true,
+    addedContent: true,
+    nameInconsistencies: true,
+  });
   
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const { jobs, addJob, deleteJob, refreshJobs } = useTranslationJobs({ apiUrl: API_URL });
@@ -135,7 +151,9 @@ function CanvasContent() {
       // Navigate to the new job in canvas
       router.push(`/canvas?jobId=${job.id}`);
       // Switch to the translation result tab
-      setTabValue(1);
+      setTabValue(0);
+      // Collapse the new translation form
+      setShowNewTranslation(false);
     }
   });
   
@@ -184,6 +202,7 @@ function CanvasContent() {
     postEditLog,
     translationSegments,
     jobId: jobId || undefined,
+    errorFilters,
   });
 
   // Extract full source text from translation content or post-edit log
@@ -262,18 +281,25 @@ function CanvasContent() {
   const loading = dataLoading || validation.loading || postEdit.loading;
   const error = dataError || validation.error || postEdit.error || translationError;
 
-  // Load saved tab preference
+  // Load saved tab preference only on client side
   useEffect(() => {
+    setIsClient(true);
     const savedTab = localStorage.getItem('canvasTabValue');
     if (savedTab) {
       setTabValue(parseInt(savedTab));
     }
-  }, []);
+    // Show new translation form if no job is selected
+    if (!jobId) {
+      setShowNewTranslation(true);
+    }
+  }, [jobId]);
 
   // Save tab preference
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
-    localStorage.setItem('canvasTabValue', newValue.toString());
+    if (isClient) {
+      localStorage.setItem('canvasTabValue', newValue.toString());
+    }
   };
 
   // Auto-refresh when validation/post-edit is in progress
@@ -297,16 +323,16 @@ function CanvasContent() {
     setShowStyleForm(false);
   };
   
-  // Handle new translation - now switches to new translation tab
+  // Handle new translation - now toggles the new translation form
   const handleNewTranslation = () => {
-    // Clear job selection to show new translation form
-    router.push('/canvas');
-    setTabValue(0); // Switch to new translation tab
-    // Reset form state
-    setFile(null);
-    setStyleData(null);
-    setGlossaryData([]);
-    setShowStyleForm(false);
+    setShowNewTranslation(!showNewTranslation);
+    // Reset form state when opening
+    if (!showNewTranslation) {
+      setFile(null);
+      setStyleData(null);
+      setGlossaryData([]);
+      setShowStyleForm(false);
+    }
   };
   
   // Handle job deletion
@@ -444,15 +470,86 @@ function CanvasContent() {
         </Paper>
 
         {/* Main Content Area */}
-        <Container maxWidth={false} sx={{ flex: 1, display: 'flex', py: 2, gap: 2, overflow: 'hidden' }}>
+        <Container maxWidth={false} sx={{ flex: 1, display: 'flex', flexDirection: 'column', py: 2, gap: 2, overflow: 'hidden' }}>
+          {/* New Translation Section - Above tabs */}
+          {showNewTranslation && (
+            <Paper sx={{ p: 2, mb: 1 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">새 번역 시작</Typography>
+                <IconButton onClick={() => setShowNewTranslation(false)} size="small">
+                  <KeyboardArrowLeftIcon sx={{ transform: 'rotate(90deg)' }} />
+                </IconButton>
+              </Box>
+              <Card sx={{ maxWidth: '100%' }}>
+                <CardContent>
+                  {/* API Configuration */}
+                  <ApiSetup
+                    apiProvider={apiProvider}
+                    apiKey={apiKey}
+                    selectedModel={selectedModel}
+                    onProviderChange={setApiProvider}
+                    onApiKeyChange={setApiKey}
+                    onModelChange={setSelectedModel}
+                  />
+
+                  {/* File Upload */}
+                  <FileUploadSection
+                    isAnalyzing={isAnalyzing}
+                    isAnalyzingGlossary={isAnalyzingGlossary}
+                    uploading={uploading}
+                    error={translationError}
+                    onFileSelect={handleFileSelect}
+                  />
+                </CardContent>
+
+                {/* Advanced Settings */}
+                <CardContent sx={{ borderTop: 1, borderColor: 'divider', mt: 2 }}>
+                  <TranslationSettings
+                    settings={translationSettings}
+                    onChange={setTranslationSettings}
+                  />
+                </CardContent>
+
+                {/* Style & Glossary Configuration */}
+                {showStyleForm && styleData && (
+                  <CardContent sx={{ borderTop: 1, borderColor: 'divider', mt: 2 }}>
+                    <StyleConfigForm
+                      styleData={styleData}
+                      glossaryData={glossaryData}
+                      isAnalyzingGlossary={isAnalyzingGlossary}
+                      glossaryAnalysisError={glossaryAnalysisError}
+                      uploading={uploading}
+                      onStyleChange={setStyleData}
+                      onGlossaryChange={setGlossaryData}
+                      onSubmit={handleStartTranslation}
+                      onCancel={handleCancelStyleEdit}
+                    />
+                  </CardContent>
+                )}
+              </Card>
+            </Paper>
+          )}
+          
+          {/* Result Tabs Section */}
           <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {/* Tabs */}
+            {/* Show New Translation button when collapsed */}
+            {!showNewTranslation && (
+              <Box sx={{ px: 2, pt: 1 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<AddCircleIcon />}
+                  onClick={() => setShowNewTranslation(true)}
+                  size="small"
+                  sx={{ mb: 1 }}
+                >
+                  새 번역 시작
+                </Button>
+              </Box>
+            )}
+            
+            {/* Tabs - Now only for results */}
             <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
               <Tabs value={tabValue} onChange={handleTabChange}>
-                <Tab 
-                  label="새 번역"
-                  disabled={!!jobId && (uploading || isAnalyzing || isAnalyzingGlossary)} 
-                />
                 <Tab 
                   label="번역 결과"
                   disabled={!jobId || (!translationContent && selectedJob?.status !== 'COMPLETED')} 
@@ -470,36 +567,159 @@ function CanvasContent() {
 
           {/* Tab Content */}
           <Box sx={{ flex: 1, overflow: 'auto', position: 'relative' }}>
-            {/* Error Navigation Bar (shows when in segment view and validation data exists) */}
-            {viewMode === 'segment' && validationReport && tabValue === 2 && (
-              <ErrorNavigationBar
-                validationReport={validationReport}
-                currentSegmentIndex={segmentNav.currentSegmentIndex}
-                onSegmentChange={segmentNav.goToSegment}
-              />
-            )}
-            
-            {/* View Mode Toggle - only show for tabs with content */}
-            {tabValue !== 0 && (
-              <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Typography variant="body2" color="text.secondary">보기 모드:</Typography>
-                  <Chip
-                    label="전체 보기"
-                    onClick={() => setViewMode('full')}
-                    color={viewMode === 'full' ? 'primary' : 'default'}
-                    variant={viewMode === 'full' ? 'filled' : 'outlined'}
-                    size="small"
-                  />
-                  <Chip
-                    label="세그먼트 보기"
-                    onClick={() => setViewMode('segment')}
-                    color={viewMode === 'segment' ? 'primary' : 'default'}
-                    variant={viewMode === 'segment' ? 'filled' : 'outlined'}
-                    size="small"
-                    disabled={!validationReport && !postEditLog && (!translationSegments?.segments || translationSegments.segments.length === 0)}
-                  />
-                </Stack>
+            {/* View Mode Toggle and Segment Navigation - show for all tabs */}
+            {jobId && (
+              <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                <Box sx={{ p: 2 }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Stack direction="row" spacing={2} alignItems="center">
+                      <Typography variant="body2" color="text.secondary">보기 모드:</Typography>
+                      <Chip
+                        label="전체 보기"
+                        onClick={() => setViewMode('full')}
+                        color={viewMode === 'full' ? 'primary' : 'default'}
+                        variant={viewMode === 'full' ? 'filled' : 'outlined'}
+                        size="small"
+                      />
+                      <Chip
+                        label="세그먼트 보기"
+                        onClick={() => setViewMode('segment')}
+                        color={viewMode === 'segment' ? 'primary' : 'default'}
+                        variant={viewMode === 'segment' ? 'filled' : 'outlined'}
+                        size="small"
+                        disabled={!validationReport && !postEditLog && (!translationSegments?.segments || translationSegments.segments.length === 0)}
+                      />
+                    </Stack>
+                    
+                    {/* Inline Segment Navigation - only show in segment view */}
+                    {viewMode === 'segment' && segmentNav.totalSegments > 0 && (
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        {/* Error navigation for validation tab */}
+                        {tabValue === 1 && validationReport && segmentNav.hasErrors && (
+                          <>
+                            <Tooltip title="이전 오류">
+                              <IconButton 
+                                onClick={segmentNav.goToPreviousError}
+                                disabled={segmentNav.segmentsWithErrors.length === 0}
+                                size="small"
+                                color="warning"
+                              >
+                                <NavigateBeforeIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Box sx={{ 
+                              px: 1.5, 
+                              py: 0.5, 
+                              bgcolor: 'warning.main',
+                              color: 'white',
+                              borderRadius: 1,
+                              fontSize: '0.75rem',
+                              fontWeight: 'medium',
+                            }}>
+                              오류 {segmentNav.segmentsWithErrors.indexOf(segmentNav.currentSegmentIndex) + 1}/{segmentNav.segmentsWithErrors.length}
+                            </Box>
+                            <Tooltip title="다음 오류">
+                              <IconButton 
+                                onClick={segmentNav.goToNextError}
+                                disabled={segmentNav.segmentsWithErrors.length === 0}
+                                size="small"
+                                color="warning"
+                              >
+                                <NavigateNextIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Box sx={{ width: 1, height: 24, borderLeft: 1, borderColor: 'divider', mx: 0.5 }} />
+                          </>
+                        )}
+                        
+                        <IconButton 
+                          onClick={() => segmentNav.goToSegment(0)}
+                          disabled={segmentNav.currentSegmentIndex === 0}
+                          size="small"
+                        >
+                          <FirstPageIcon />
+                        </IconButton>
+                        <IconButton 
+                          onClick={() => segmentNav.goToSegment(Math.max(0, segmentNav.currentSegmentIndex - 1))}
+                          disabled={segmentNav.currentSegmentIndex === 0}
+                          size="small"
+                        >
+                          <NavigateBeforeIcon />
+                        </IconButton>
+                        <Box sx={{ 
+                          px: 2, 
+                          py: 0.5, 
+                          bgcolor: 'primary.main',
+                          color: 'primary.contrastText',
+                          borderRadius: 1,
+                          minWidth: 80,
+                          textAlign: 'center',
+                        }}>
+                          <Typography variant="caption" fontWeight="medium">
+                            {segmentNav.currentSegmentIndex + 1} / {segmentNav.totalSegments}
+                          </Typography>
+                        </Box>
+                        <IconButton 
+                          onClick={() => segmentNav.goToSegment(Math.min(segmentNav.totalSegments - 1, segmentNav.currentSegmentIndex + 1))}
+                          disabled={segmentNav.currentSegmentIndex >= segmentNav.totalSegments - 1}
+                          size="small"
+                        >
+                          <NavigateNextIcon />
+                        </IconButton>
+                        <IconButton 
+                          onClick={() => segmentNav.goToSegment(segmentNav.totalSegments - 1)}
+                          disabled={segmentNav.currentSegmentIndex >= segmentNav.totalSegments - 1}
+                          size="small"
+                        >
+                          <LastPageIcon />
+                        </IconButton>
+                      </Stack>
+                    )}
+                  </Stack>
+                </Box>
+                
+                {/* Error Filters - show only for validation tab in segment view */}
+                {tabValue === 1 && viewMode === 'segment' && validationReport && (
+                  <Box sx={{ px: 2, pb: 2 }}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
+                        오류 필터:
+                      </Typography>
+                      <Chip
+                        icon={<ErrorIcon />}
+                        label={`중요 (${validationReport.summary.total_critical_issues})`}
+                        size="small"
+                        color={errorFilters.critical ? 'error' : 'default'}
+                        onClick={() => setErrorFilters(prev => ({ ...prev, critical: !prev.critical }))}
+                        variant={errorFilters.critical ? 'filled' : 'outlined'}
+                      />
+                      <Chip
+                        icon={<ContentCopyIcon />}
+                        label={`누락 (${validationReport.summary.total_missing_content})`}
+                        size="small"
+                        color={errorFilters.missingContent ? 'warning' : 'default'}
+                        onClick={() => setErrorFilters(prev => ({ ...prev, missingContent: !prev.missingContent }))}
+                        variant={errorFilters.missingContent ? 'filled' : 'outlined'}
+                      />
+                      <Chip
+                        icon={<AddCircleIcon />}
+                        label={`추가 (${validationReport.summary.total_added_content})`}
+                        size="small"
+                        color={errorFilters.addedContent ? 'info' : 'default'}
+                        onClick={() => setErrorFilters(prev => ({ ...prev, addedContent: !prev.addedContent }))}
+                        variant={errorFilters.addedContent ? 'filled' : 'outlined'}
+                      />
+                      <Chip
+                        icon={<PersonIcon />}
+                        label={`이름 (${validationReport.summary.total_name_inconsistencies})`}
+                        size="small"
+                        color={errorFilters.nameInconsistencies ? 'secondary' : 'default'}
+                        onClick={() => setErrorFilters(prev => ({ ...prev, nameInconsistencies: !prev.nameInconsistencies }))}
+                        variant={errorFilters.nameInconsistencies ? 'filled' : 'outlined'}
+                      />
+                    </Stack>
+                  </Box>
+                )}
               </Box>
             )}
             
@@ -524,66 +744,8 @@ function CanvasContent() {
                 </Alert>
               )}
               
-              {/* New Translation Tab */}
-              <TabPanel value={tabValue} index={0}>
-                {!jobId ? (
-                  <Card sx={{ maxWidth: 800, mx: 'auto' }}>
-                    <CardContent>
-                      {/* API Configuration */}
-                      <ApiSetup
-                        apiProvider={apiProvider}
-                        apiKey={apiKey}
-                        selectedModel={selectedModel}
-                        onProviderChange={setApiProvider}
-                        onApiKeyChange={setApiKey}
-                        onModelChange={setSelectedModel}
-                      />
-
-                      {/* File Upload */}
-                      <FileUploadSection
-                        isAnalyzing={isAnalyzing}
-                        isAnalyzingGlossary={isAnalyzingGlossary}
-                        uploading={uploading}
-                        error={translationError}
-                        onFileSelect={handleFileSelect}
-                      />
-                    </CardContent>
-
-                    {/* Advanced Settings */}
-                    <CardContent sx={{ borderTop: 1, borderColor: 'divider', mt: 2 }}>
-                      <TranslationSettings
-                        settings={translationSettings}
-                        onChange={setTranslationSettings}
-                      />
-                    </CardContent>
-
-                    {/* Style & Glossary Configuration */}
-                    {showStyleForm && styleData && (
-                      <CardContent sx={{ borderTop: 1, borderColor: 'divider', mt: 2 }}>
-                        <StyleConfigForm
-                          styleData={styleData}
-                          glossaryData={glossaryData}
-                          isAnalyzingGlossary={isAnalyzingGlossary}
-                          glossaryAnalysisError={glossaryAnalysisError}
-                          uploading={uploading}
-                          onStyleChange={setStyleData}
-                          onGlossaryChange={setGlossaryData}
-                          onSubmit={handleStartTranslation}
-                          onCancel={handleCancelStyleEdit}
-                        />
-                      </CardContent>
-                    )}
-                  </Card>
-                ) : (
-                  <Alert severity="info">
-                    <AlertTitle>작업 진행 중</AlertTitle>
-                    다른 작업을 선택했습니다. 새 번역을 시작하려면 왼쪽 사이드바에서 "새 번역 시작" 버튼을 클릭하세요.
-                  </Alert>
-                )}
-              </TabPanel>
-              
               {/* Translation Result Tab */}
-              <TabPanel value={tabValue} index={1}>
+              <TabPanel value={tabValue} index={0}>
                 {viewMode === 'segment' ? (
                   validationReport || postEditLog || (translationSegments?.segments && translationSegments.segments.length > 0) ? (
                     <SegmentViewer
@@ -633,7 +795,7 @@ function CanvasContent() {
               </TabPanel>
               
               {/* Validation Result Tab */}
-              <TabPanel value={tabValue} index={2}>
+              <TabPanel value={tabValue} index={1}>
                 {viewMode === 'segment' && validationReport ? (
                   <SegmentViewer
                     mode="validation"
@@ -641,6 +803,7 @@ function CanvasContent() {
                     validationReport={validationReport}
                     postEditLog={postEditLog}
                     translationSegments={translationSegments}
+                    errorFilters={errorFilters}
                   />
                 ) : validationReport ? (
                   <ValidationReportViewer 
@@ -704,7 +867,7 @@ function CanvasContent() {
               </TabPanel>
               
               {/* Post-Edit Tab */}
-              <TabPanel value={tabValue} index={3}>
+              <TabPanel value={tabValue} index={2}>
                 {viewMode === 'segment' && postEditLog ? (
                   <SegmentViewer
                     mode="post-edit"
@@ -725,14 +888,6 @@ function CanvasContent() {
               </TabPanel>
             </Box>
             
-            {/* Segment Navigation (shows when in segment view) */}
-            {viewMode === 'segment' && segmentNav.totalSegments > 0 && (
-              <SegmentNavigation
-                currentSegmentIndex={segmentNav.currentSegmentIndex}
-                totalSegments={segmentNav.totalSegments}
-                onSegmentChange={segmentNav.goToSegment}
-              />
-            )}
           </Box>
         </Paper>
         </Container>

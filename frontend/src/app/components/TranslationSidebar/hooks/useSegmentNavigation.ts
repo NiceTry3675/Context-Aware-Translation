@@ -2,11 +2,19 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ValidationReport, PostEditLog, TranslationSegments } from '../../../utils/api';
 
+interface ErrorFilters {
+  critical: boolean;
+  missingContent: boolean;
+  addedContent: boolean;
+  nameInconsistencies: boolean;
+}
+
 interface UseSegmentNavigationProps {
   validationReport?: ValidationReport | null;
   postEditLog?: PostEditLog | null;
   translationSegments?: TranslationSegments | null;
   jobId?: string;
+  errorFilters?: ErrorFilters;
 }
 
 interface UseSegmentNavigationReturn {
@@ -31,10 +39,17 @@ export function useSegmentNavigation({
   postEditLog,
   translationSegments,
   jobId,
+  errorFilters = {
+    critical: true,
+    missingContent: true,
+    addedContent: true,
+    nameInconsistencies: true,
+  },
 }: UseSegmentNavigationProps): UseSegmentNavigationReturn {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [currentSegmentIndex, setCurrentSegmentIndexState] = useState(0);
+  const [isClient, setIsClient] = useState(false);
 
   // Calculate total segments
   const totalSegments = useMemo(() => {
@@ -50,15 +65,24 @@ export function useSegmentNavigation({
     return 0;
   }, [postEditLog, translationSegments, validationReport]);
 
-  // Calculate segments with errors
+  // Calculate segments with errors based on filters
   const segmentsWithErrors = useMemo(() => {
     if (!validationReport) return [];
     
     return validationReport.detailed_results
-      .filter((result) => result.status === 'FAIL')
+      .filter((result) => {
+        // Check if the segment has any errors that match our filters
+        const hasRelevantErrors = 
+          (errorFilters.critical && result.critical_issues.length > 0) ||
+          (errorFilters.missingContent && result.missing_content.length > 0) ||
+          (errorFilters.addedContent && result.added_content.length > 0) ||
+          (errorFilters.nameInconsistencies && result.name_inconsistencies.length > 0);
+        
+        return result.status === 'FAIL' && hasRelevantErrors;
+      })
       .map((result) => result.segment_index)
       .sort((a: number, b: number) => a - b);
-  }, [validationReport]);
+  }, [validationReport, errorFilters]);
 
   // Load segment from URL on mount and when URL changes
   useEffect(() => {
@@ -89,11 +113,11 @@ export function useSegmentNavigation({
       updateURL(index);
       
       // Save to localStorage for persistence
-      if (jobId) {
+      if (isClient && jobId) {
         localStorage.setItem(`segment_${jobId}`, index.toString());
       }
     }
-  }, [totalSegments, updateURL, jobId]);
+  }, [totalSegments, updateURL, jobId, isClient]);
 
   // Navigation functions
   const goToSegment = useCallback((index: number) => {
@@ -165,6 +189,7 @@ export function useSegmentNavigation({
 
   // Load saved segment position from localStorage
   useEffect(() => {
+    setIsClient(true);
     if (jobId && totalSegments > 0) {
       const savedSegment = localStorage.getItem(`segment_${jobId}`);
       if (savedSegment) {

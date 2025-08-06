@@ -321,9 +321,8 @@ async def get_job_content(
         if db_job.filepath and os.path.exists(db_job.filepath):
             try:
                 # Parse the original file to get the text content
-                from core.utils.file_parser import FileParser
-                parsed_data = FileParser.parse_file(db_job.filepath)
-                source_content = parsed_data.get('text', '')
+                from core.utils.file_parser import parse_document
+                source_content = parse_document(db_job.filepath)
             except Exception as e:
                 # Log error but don't fail the whole request
                 print(f"Error reading source file: {e}")
@@ -349,8 +348,13 @@ async def trigger_validation(
     current_user: models.User = Depends(get_required_user)
 ):
     """Trigger validation on a completed translation job."""
+    print(f"[VALIDATION API] Received validation request for job {job_id}")
+    print(f"[VALIDATION API] User: {current_user.clerk_user_id if current_user else 'None'}")
+    print(f"[VALIDATION API] Request params: quick={request.quick_validation}, rate={request.validation_sample_rate}")
+    
     db_job = crud.get_job(db, job_id=job_id)
     if db_job is None:
+        print(f"[VALIDATION API] Job {job_id} not found")
         raise HTTPException(status_code=404, detail="Job not found")
     
     # Check ownership or admin role

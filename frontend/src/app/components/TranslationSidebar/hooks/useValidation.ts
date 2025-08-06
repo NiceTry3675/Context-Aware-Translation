@@ -19,16 +19,25 @@ export function useValidation({ jobId, onRefresh }: UseValidationProps) {
   const { getToken } = useAuth();
 
   const handleTriggerValidation = async () => {
+    console.log('Starting validation for job:', jobId);
+    console.log('Quick validation:', quickValidation);
+    console.log('Validation sample rate:', validationSampleRate);
+    
     setLoading(true);
     setError(null);
     
     try {
       const token = await getToken();
+      console.log('Got token:', !!token);
+      
       await triggerValidation(jobId, token || undefined, quickValidation, validationSampleRate / 100);
+      console.log('Validation triggered successfully');
+      
       setValidationDialogOpen(false);
       onRefresh?.();
       setError(null);
     } catch (err) {
+      console.error('Validation error:', err);
       setError(err instanceof Error ? err.message : '검증 시작 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);

@@ -7,6 +7,7 @@ export function useApiKey() {
   const [apiKey, setApiKey] = useState<string>('');
   const [apiProvider, setApiProvider] = useState<ApiProvider>('gemini');
   const [selectedModel, setSelectedModel] = useState<string>('');
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -26,22 +27,25 @@ export function useApiKey() {
     } else {
       setSelectedModel(getDefaultModel('gemini'));
     }
+    setIsInitialized(true);
   }, []);
 
-  // Save to localStorage when values change
+  // Save to localStorage when values change (only after initialization)
   useEffect(() => {
-    if (apiKey) {
+    if (isInitialized && apiKey) {
       localStorage.setItem('geminiApiKey', apiKey);
       localStorage.setItem('apiProvider', apiProvider);
     }
-  }, [apiKey, apiProvider]);
+  }, [apiKey, apiProvider, isInitialized]);
 
-  // Update model when provider changes
+  // Update model when provider changes (only after initialization)
   useEffect(() => {
-    const newModel = getDefaultModel(apiProvider);
-    setSelectedModel(newModel);
-    localStorage.setItem(apiProvider === 'gemini' ? 'geminiModel' : 'openRouterModel', newModel);
-  }, [apiProvider]);
+    if (isInitialized) {
+      const newModel = getDefaultModel(apiProvider);
+      setSelectedModel(newModel);
+      localStorage.setItem(apiProvider === 'gemini' ? 'geminiModel' : 'openRouterModel', newModel);
+    }
+  }, [apiProvider, isInitialized]);
 
   // Handle model change with persistence
   const handleModelChange = (newModel: string) => {

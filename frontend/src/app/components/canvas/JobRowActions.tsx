@@ -86,55 +86,83 @@ export default function JobRowActions({ job, onRefresh, compact = false }: JobRo
 
   if (compact) {
     return (
-      <Stack direction="row" spacing={0.5} onClick={(e) => e.stopPropagation()}>
-        {/* Validation Button */}
-        {(canRunValidation || job.validation_status) && (
-          <Tooltip title={
-            job.validation_status === 'IN_PROGRESS' 
-              ? `검증 진행 중 (${job.validation_progress || 0}%)`
-              : job.validation_status === 'COMPLETED'
-              ? '검증 완료'
-              : job.validation_status === 'FAILED'
-              ? '검증 실패'
-              : '검증 실행'
-          }>
-            <span>
-              <IconButton
-                size="small"
-                onClick={() => validation.setValidationDialogOpen(true)}
-                disabled={!canRunValidation || job.validation_status === 'IN_PROGRESS'}
-                sx={{ p: 0.5 }}
-              >
-                {getValidationIcon()}
-              </IconButton>
-            </span>
-          </Tooltip>
-        )}
+      <>
+        <Stack direction="row" spacing={0.5} onClick={(e) => e.stopPropagation()}>
+          {/* Validation Button */}
+          {(canRunValidation || job.validation_status) && (
+            <Tooltip title={
+              job.validation_status === 'IN_PROGRESS' 
+                ? `검증 진행 중 (${job.validation_progress || 0}%)`
+                : job.validation_status === 'COMPLETED'
+                ? '검증 완료'
+                : job.validation_status === 'FAILED'
+                ? '검증 실패'
+                : '검증 실행'
+            }>
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={() => validation.setValidationDialogOpen(true)}
+                  disabled={!canRunValidation || job.validation_status === 'IN_PROGRESS'}
+                  sx={{ p: 0.5 }}
+                >
+                  {getValidationIcon()}
+                </IconButton>
+              </span>
+            </Tooltip>
+          )}
 
-        {/* Post-Edit Button */}
-        {(canRunPostEdit || job.post_edit_status) && (
-          <Tooltip title={
-            job.post_edit_status === 'IN_PROGRESS'
-              ? `포스트에디팅 진행 중 (${job.post_edit_progress || 0}%)`
-              : job.post_edit_status === 'COMPLETED'
-              ? '포스트에디팅 완료'
-              : job.post_edit_status === 'FAILED'
-              ? '포스트에디팅 실패'
-              : '포스트에디팅 실행'
-          }>
-            <span>
-              <IconButton
-                size="small"
-                onClick={() => postEdit.setPostEditDialogOpen(true)}
-                disabled={!canRunPostEdit || job.post_edit_status === 'IN_PROGRESS'}
-                sx={{ p: 0.5 }}
-              >
-                {getPostEditIcon()}
-              </IconButton>
-            </span>
-          </Tooltip>
-        )}
-      </Stack>
+          {/* Post-Edit Button */}
+          {(canRunPostEdit || job.post_edit_status) && (
+            <Tooltip title={
+              job.post_edit_status === 'IN_PROGRESS'
+                ? `포스트에디팅 진행 중 (${job.post_edit_progress || 0}%)`
+                : job.post_edit_status === 'COMPLETED'
+                ? '포스트에디팅 완료'
+                : job.post_edit_status === 'FAILED'
+                ? '포스트에디팅 실패'
+                : '포스트에디팅 실행'
+            }>
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={() => postEdit.setPostEditDialogOpen(true)}
+                  disabled={!canRunPostEdit || job.post_edit_status === 'IN_PROGRESS'}
+                  sx={{ p: 0.5 }}
+                >
+                  {getPostEditIcon()}
+                </IconButton>
+              </span>
+            </Tooltip>
+          )}
+        </Stack>
+
+        {/* Validation Dialog */}
+        <ValidationDialog
+          open={validation.validationDialogOpen}
+          onClose={() => validation.setValidationDialogOpen(false)}
+          onConfirm={validation.handleTriggerValidation}
+          quickValidation={validation.quickValidation}
+          onQuickValidationChange={validation.setQuickValidation}
+          validationSampleRate={validation.validationSampleRate}
+          onValidationSampleRateChange={validation.setValidationSampleRate}
+          loading={validation.loading}
+        />
+
+        {/* Post-Edit Dialog */}
+        <PostEditDialog
+          open={postEdit.postEditDialogOpen}
+          onClose={() => postEdit.setPostEditDialogOpen(false)}
+          onConfirm={postEdit.handleTriggerPostEdit}
+          selectedIssueTypes={postEdit.selectedIssueTypes}
+          onIssueTypeChange={(issueType, checked) => 
+            postEdit.setSelectedIssueTypes({ ...postEdit.selectedIssueTypes, [issueType]: checked })
+          }
+          validationReport={validationReport}
+          loading={postEdit.loading}
+          selectedCounts={selectedCounts}
+        />
+      </>
     );
   }
 

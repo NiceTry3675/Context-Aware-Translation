@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import {
   Box,
   List,
@@ -87,6 +88,7 @@ export default function JobSidebar({
   loading = false,
 }: JobSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const { getToken } = useAuth();
 
   const filteredJobs = jobs.filter(job =>
     job.filename.toLowerCase().includes(searchQuery.toLowerCase())
@@ -205,7 +207,12 @@ export default function JobSidebar({
                                 e.stopPropagation();
                                 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
                                 try {
-                                  const response = await fetch(`${API_URL}/download/${job.id}`);
+                                  const token = await getToken();
+                                  const response = await fetch(`${API_URL}/api/v1/download/${job.id}`, {
+                                    headers: {
+                                      'Authorization': token ? `Bearer ${token}` : '',
+                                    },
+                                  });
                                   if (!response.ok) throw new Error('Download failed');
                                   
                                   const blob = await response.blob();

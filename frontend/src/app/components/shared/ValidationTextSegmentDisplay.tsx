@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Box, 
   Typography, 
@@ -10,12 +10,18 @@ import {
   Stack,
   Divider,
   useTheme,
-  alpha
+  alpha,
+  Tabs,
+  Tab,
+  Tooltip,
+  Badge
 } from '@mui/material';
 import ErrorIcon from '@mui/icons-material/Error';
 import WarningIcon from '@mui/icons-material/Warning';
 import InfoIcon from '@mui/icons-material/Info';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
+import TextFieldsIcon from '@mui/icons-material/TextFields';
+import BugReportIcon from '@mui/icons-material/BugReport';
 
 interface Issue {
   type: string;
@@ -36,6 +42,7 @@ export function ValidationTextSegmentDisplay({
   status
 }: ValidationTextSegmentDisplayProps) {
   const theme = useTheme();
+  const [tabValue, setTabValue] = useState(0);
 
   const getSeverityColor = (issueType: string) => {
     switch(issueType) {
@@ -94,180 +101,301 @@ export function ValidationTextSegmentDisplay({
   );
 
   return (
-    <Stack spacing={2}>
-      <Box sx={{ display: { xs: 'block', md: 'flex' }, gap: 2 }}>
-        {/* Source Text */}
-        <Box sx={{ flex: 1, mb: { xs: 2, md: 0 } }}>
-          <Typography variant="subtitle2" gutterBottom color="text.secondary">
-            원문
-          </Typography>
-          <Paper 
-            variant="outlined" 
-            sx={{ 
-              p: 2, 
-              backgroundColor: 'background.paper',
-              minHeight: '120px'
-            }}
-          >
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                whiteSpace: 'pre-wrap', 
-                wordBreak: 'break-word',
-                lineHeight: 1.8
-              }}
-            >
-              {sourceText}
-            </Typography>
-          </Paper>
-        </Box>
-        
-        {/* Translated Text with Issue Indicators */}
-        <Box sx={{ flex: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-            <Typography variant="subtitle2" color="text.secondary">
-              번역문
-            </Typography>
-            {status === 'FAIL' && (
-              <Chip 
-                size="small" 
-                label={`${issues.length}개 문제`}
-                color="error"
-                variant="outlined"
-                icon={<ErrorIcon />}
-              />
-            )}
-          </Box>
-          <Paper 
-            variant="outlined" 
-            sx={{ 
-              p: 2, 
-              backgroundColor: status === 'FAIL' 
-                ? alpha(theme.palette.error.main, 0.05)
-                : 'background.paper',
-              borderColor: status === 'FAIL' 
-                ? theme.palette.error.main 
-                : theme.palette.divider,
-              minHeight: '120px',
-              position: 'relative'
-            }}
-          >
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                whiteSpace: 'pre-wrap', 
-                wordBreak: 'break-word',
-                lineHeight: 1.8
-              }}
-            >
-              {translatedText}
-            </Typography>
-          </Paper>
-        </Box>
+    <Box>
+      {/* Tab Navigation */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        <Tabs 
+          value={tabValue} 
+          onChange={(e, newValue) => setTabValue(newValue)}
+          aria-label="segment view tabs"
+        >
+          <Tab 
+            icon={<TextFieldsIcon />} 
+            iconPosition="start"
+            label="세그먼트" 
+          />
+          <Tab 
+            icon={
+              <Badge badgeContent={issues.length} color="error">
+                <BugReportIcon />
+              </Badge>
+            }
+            iconPosition="start"
+            label="문제점" 
+            disabled={issues.length === 0}
+          />
+        </Tabs>
       </Box>
 
-      {/* Issues Section - Displayed below both texts */}
-      {issues.length > 0 && (
-        <Paper 
-          sx={{ 
-            p: 2, 
-            backgroundColor: alpha(theme.palette.warning.main, 0.05),
-            borderLeft: `4px solid ${theme.palette.warning.main}`
-          }}
-        >
-          <Stack spacing={2}>
-            <Typography 
-              variant="subtitle2" 
+      {/* Tab Panel: Segment View */}
+      {tabValue === 0 && (
+        <Box sx={{ display: { xs: 'block', md: 'flex' }, gap: 2 }}>
+          {/* Source Text */}
+          <Box sx={{ flex: 1, mb: { xs: 2, md: 0 } }}>
+            <Typography variant="subtitle2" gutterBottom color="text.secondary">
+              원문
+            </Typography>
+            <Paper 
+              variant="outlined" 
               sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1,
-                fontWeight: 'bold'
+                p: 2, 
+                backgroundColor: 'background.paper',
+                minHeight: '120px'
               }}
             >
-              <WarningIcon color="warning" fontSize="small" />
-              검증 결과: {issues.length}개 문제 발견
-            </Typography>
-            
-            <Stack spacing={1.5}>
-              {sortedIssueTypes.map((issueType) => (
-                <Box key={issueType}>
-                  <Box 
-                    sx={{ 
-                      p: 1.5,
-                      backgroundColor: getSeverityBgColor(issueType),
-                      borderRadius: 1,
-                      border: `1px solid ${getSeverityColor(issueType)}`,
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                      {getSeverityIcon(issueType)}
-                      <Chip 
-                        label={formatIssueType(issueType)} 
-                        size="small" 
-                        sx={{ 
-                          backgroundColor: getSeverityColor(issueType),
-                          color: 'white',
-                          fontWeight: 'bold'
-                        }}
-                      />
-                      <Typography variant="caption" color="text.secondary">
-                        ({groupedIssues[issueType].length}개)
-                      </Typography>
-                    </Box>
-                    
-                    <Stack spacing={0.5} sx={{ ml: 3 }}>
-                      {groupedIssues[issueType].map((message, idx) => (
-                        <Box 
-                          key={idx}
-                          sx={{ 
-                            display: 'flex',
-                            alignItems: 'flex-start',
-                            gap: 1
-                          }}
-                        >
-                          <Typography 
-                            variant="caption" 
-                            sx={{ 
-                              color: getSeverityColor(issueType),
-                              fontWeight: 'bold',
-                              minWidth: '20px'
-                            }}
-                          >
-                            •
-                          </Typography>
-                          <Typography 
-                            variant="body2" 
-                            sx={{ 
-                              flex: 1,
-                              color: theme.palette.text.primary,
-                              lineHeight: 1.6
-                            }}
-                          >
-                            {message}
-                          </Typography>
-                        </Box>
-                      ))}
-                    </Stack>
-                  </Box>
-                </Box>
-              ))}
-            </Stack>
-
-            {/* Additional context for understanding issues */}
-            <Divider sx={{ my: 1 }} />
-            <Alert severity="info" variant="outlined" sx={{ py: 1 }}>
-              <Typography variant="caption">
-                💡 <strong>문제 해결 가이드:</strong> 
-                {groupedIssues['critical'] && ' 치명적 오류는 즉시 수정이 필요합니다.'}
-                {groupedIssues['missing_content'] && ' 누락된 내용은 원문을 다시 확인하세요.'}
-                {groupedIssues['added_content'] && ' 추가된 내용은 원문에 없는 내용입니다.'}
-                {groupedIssues['name_inconsistencies'] && ' 이름 불일치는 용어집을 확인하세요.'}
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  whiteSpace: 'pre-wrap', 
+                  wordBreak: 'break-word',
+                  lineHeight: 1.8
+                }}
+              >
+                {sourceText}
               </Typography>
-            </Alert>
-          </Stack>
-        </Paper>
+            </Paper>
+          </Box>
+          
+          {/* Translated Text */}
+          <Box sx={{ flex: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <Typography variant="subtitle2" color="text.secondary">
+                번역문
+              </Typography>
+              {status === 'FAIL' && (
+                <Chip 
+                  size="small" 
+                  label={`${issues.length}개 문제`}
+                  color="error"
+                  variant="outlined"
+                  icon={<ErrorIcon />}
+                />
+              )}
+            </Box>
+            <Paper 
+              variant="outlined" 
+              sx={{ 
+                p: 2, 
+                backgroundColor: status === 'FAIL' 
+                  ? alpha(theme.palette.error.main, 0.05)
+                  : 'background.paper',
+                borderColor: status === 'FAIL' 
+                  ? theme.palette.error.main 
+                  : theme.palette.divider,
+                minHeight: '120px'
+              }}
+            >
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  whiteSpace: 'pre-wrap', 
+                  wordBreak: 'break-word',
+                  lineHeight: 1.8
+                }}
+              >
+                {translatedText}
+              </Typography>
+            </Paper>
+          </Box>
+        </Box>
       )}
-    </Stack>
+
+      {/* Tab Panel: Issues View */}
+      {tabValue === 1 && issues.length > 0 && (
+        <Box>
+          {/* Text with Issue Highlights */}
+          <Box sx={{ display: { xs: 'block', md: 'flex' }, gap: 2, mb: 3 }}>
+            {/* Source Text */}
+            <Box sx={{ flex: 1, mb: { xs: 2, md: 0 } }}>
+              <Typography variant="subtitle2" gutterBottom color="text.secondary">
+                원문
+              </Typography>
+              <Paper 
+                variant="outlined" 
+                sx={{ 
+                  p: 2, 
+                  backgroundColor: 'background.paper',
+                  minHeight: '120px'
+                }}
+              >
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    whiteSpace: 'pre-wrap', 
+                    wordBreak: 'break-word',
+                    lineHeight: 1.8
+                  }}
+                >
+                  {sourceText}
+                </Typography>
+              </Paper>
+            </Box>
+            
+            {/* Translated Text with Issue Overlay */}
+            <Box sx={{ flex: 1, position: 'relative' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  번역문 (문제 영역 표시)
+                </Typography>
+              </Box>
+              <Paper 
+                variant="outlined" 
+                sx={{ 
+                  p: 2, 
+                  backgroundColor: alpha(theme.palette.error.main, 0.05),
+                  borderColor: theme.palette.error.main,
+                  minHeight: '120px',
+                  position: 'relative'
+                }}
+              >
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    whiteSpace: 'pre-wrap', 
+                    wordBreak: 'break-word',
+                    lineHeight: 1.8
+                  }}
+                >
+                  {translatedText}
+                </Typography>
+                
+                {/* Floating Issue Indicators */}
+                <Box sx={{ 
+                  position: 'absolute', 
+                  top: 8, 
+                  right: 8,
+                  display: 'flex',
+                  gap: 0.5,
+                  flexWrap: 'wrap',
+                  maxWidth: '40%'
+                }}>
+                  {sortedIssueTypes.map((issueType) => {
+                    const icon = getSeverityIcon(issueType);
+                    return (
+                      <Tooltip 
+                        key={issueType}
+                        title={`${formatIssueType(issueType)}: ${groupedIssues[issueType].length}개`}
+                      >
+                        <Chip 
+                          size="small" 
+                          label={groupedIssues[issueType].length}
+                          icon={icon || undefined}
+                          sx={{ 
+                            backgroundColor: getSeverityBgColor(issueType),
+                            borderColor: getSeverityColor(issueType),
+                            border: '1px solid'
+                          }}
+                        />
+                      </Tooltip>
+                    );
+                  })}
+                </Box>
+              </Paper>
+            </Box>
+          </Box>
+
+          {/* Detailed Issues List */}
+          <Paper 
+            sx={{ 
+              p: 2, 
+              backgroundColor: alpha(theme.palette.warning.main, 0.05),
+              borderTop: `4px solid ${theme.palette.warning.main}`
+            }}
+          >
+            <Stack spacing={2}>
+              <Typography 
+                variant="subtitle2" 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1,
+                  fontWeight: 'bold'
+                }}
+              >
+                <BugReportIcon color="warning" fontSize="small" />
+                발견된 문제 상세
+              </Typography>
+              
+              <Stack spacing={1.5}>
+                {sortedIssueTypes.map((issueType) => (
+                  <Box key={issueType}>
+                    <Box 
+                      sx={{ 
+                        p: 1.5,
+                        backgroundColor: getSeverityBgColor(issueType),
+                        borderRadius: 1,
+                        border: `1px solid ${getSeverityColor(issueType)}`,
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        {getSeverityIcon(issueType)}
+                        <Chip 
+                          label={formatIssueType(issueType)} 
+                          size="small" 
+                          sx={{ 
+                            backgroundColor: getSeverityColor(issueType),
+                            color: 'white',
+                            fontWeight: 'bold'
+                          }}
+                        />
+                        <Typography variant="caption" color="text.secondary">
+                          ({groupedIssues[issueType].length}개)
+                        </Typography>
+                      </Box>
+                      
+                      <Stack spacing={0.5} sx={{ ml: 3 }}>
+                        {groupedIssues[issueType].map((message, idx) => (
+                          <Box 
+                            key={idx}
+                            sx={{ 
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: 1
+                            }}
+                          >
+                            <Typography 
+                              variant="caption" 
+                              sx={{ 
+                                color: getSeverityColor(issueType),
+                                fontWeight: 'bold',
+                                minWidth: '20px'
+                              }}
+                            >
+                              •
+                            </Typography>
+                            <Typography 
+                              variant="body2" 
+                              sx={{ 
+                                flex: 1,
+                                color: theme.palette.text.primary,
+                                lineHeight: 1.6
+                              }}
+                            >
+                              {message}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Stack>
+                    </Box>
+                  </Box>
+                ))}
+              </Stack>
+
+              {/* Quick Fix Guide */}
+              <Divider sx={{ my: 1 }} />
+              <Alert severity="info" variant="outlined" sx={{ py: 1 }}>
+                <Typography variant="caption">
+                  💡 <strong>수정 우선순위:</strong> 
+                  {groupedIssues['critical'] && ' 1. 치명적 오류'}
+                  {groupedIssues['missing_content'] && ' 2. 누락된 내용'}
+                  {groupedIssues['added_content'] && ' 3. 추가된 내용'}
+                  {groupedIssues['name_inconsistencies'] && ' 4. 이름 불일치'}
+                </Typography>
+              </Alert>
+            </Stack>
+          </Paper>
+        </Box>
+      )}
+    </Box>
   );
 }

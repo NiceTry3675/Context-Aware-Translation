@@ -10,12 +10,17 @@ import {
   Alert,
   AlertTitle,
   Divider,
-  List,
-  ListItem,
-  ListItemText,
 } from '@mui/material';
 import { TextSegmentDisplay } from '../shared/TextSegmentDisplay';
+import { ValidationTextSegmentDisplay } from '../shared/ValidationTextSegmentDisplay';
 import { ValidationReport, PostEditLog, TranslationSegments } from '../../utils/api';
+
+interface ErrorFilters {
+  critical: boolean;
+  missingContent: boolean;
+  addedContent: boolean;
+  nameInconsistencies: boolean;
+}
 
 interface SegmentViewerProps {
   mode: 'translation' | 'validation' | 'post-edit';
@@ -24,6 +29,7 @@ interface SegmentViewerProps {
   postEditLog?: PostEditLog | null;
   translationContent?: string | null;
   translationSegments?: TranslationSegments | null;
+  errorFilters?: ErrorFilters;
 }
 
 interface SegmentData {
@@ -57,6 +63,12 @@ export default function SegmentViewer({
   postEditLog,
   translationContent,
   translationSegments,
+  errorFilters = {
+    critical: true,
+    missingContent: true,
+    addedContent: true,
+    nameInconsistencies: true,
+  },
 }: SegmentViewerProps) {
   // Extract segment data based on mode and available data
   const segmentData: SegmentData | null = useMemo(() => {
@@ -154,99 +166,6 @@ export default function SegmentViewer({
     );
   }
 
-  // Render issues if available
-  const renderIssues = () => {
-    if (!segmentData.issues) return null;
-
-    // Handle both field name formats
-    const missingContent = segmentData.issues.missingContent || segmentData.issues.missing_content || [];
-    const addedContent = segmentData.issues.addedContent || segmentData.issues.added_content || [];
-    const nameInconsistencies = segmentData.issues.nameInconsistencies || segmentData.issues.name_inconsistencies || [];
-    const minor = segmentData.issues.minor || [];
-
-    const hasIssues = 
-      segmentData.issues.critical.length > 0 ||
-      missingContent.length > 0 ||
-      addedContent.length > 0 ||
-      nameInconsistencies.length > 0 ||
-      minor.length > 0;
-
-    if (!hasIssues) return null;
-
-    return (
-      <Box sx={{ mt: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          검증 이슈
-        </Typography>
-        <Stack spacing={2}>
-          {segmentData.issues.critical.length > 0 && (
-            <Box>
-              <Chip label="치명적 오류" color="error" size="small" sx={{ mb: 1 }} />
-              <List dense>
-                {segmentData.issues.critical.map((issue, idx) => (
-                  <ListItem key={idx}>
-                    <ListItemText primary={issue} />
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          )}
-
-          {missingContent.length > 0 && (
-            <Box>
-              <Chip label="누락된 내용" color="warning" size="small" sx={{ mb: 1 }} />
-              <List dense>
-                {missingContent.map((issue, idx) => (
-                  <ListItem key={idx}>
-                    <ListItemText primary={issue} />
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          )}
-
-          {addedContent.length > 0 && (
-            <Box>
-              <Chip label="추가된 내용" color="info" size="small" sx={{ mb: 1 }} />
-              <List dense>
-                {addedContent.map((issue, idx) => (
-                  <ListItem key={idx}>
-                    <ListItemText primary={issue} />
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          )}
-
-          {nameInconsistencies.length > 0 && (
-            <Box>
-              <Chip label="이름 불일치" color="secondary" size="small" sx={{ mb: 1 }} />
-              <List dense>
-                {nameInconsistencies.map((issue, idx) => (
-                  <ListItem key={idx}>
-                    <ListItemText primary={issue} />
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          )}
-
-          {minor.length > 0 && (
-            <Box>
-              <Chip label="경미한 문제" color="default" size="small" sx={{ mb: 1 }} />
-              <List dense>
-                {minor.map((issue, idx) => (
-                  <ListItem key={idx}>
-                    <ListItemText primary={issue} />
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          )}
-        </Stack>
-      </Box>
-    );
-  };
 
   // Render changes if available (for post-edit mode)
   const renderChanges = () => {
@@ -325,19 +244,120 @@ export default function SegmentViewer({
 
       <Divider sx={{ mb: 3 }} />
 
-      {/* Text Display */}
-      <TextSegmentDisplay
-        sourceText={segmentData.sourceText}
-        translatedText={segmentData.translatedText}
-        editedText={segmentData.editedText}
-        showComparison={mode === 'post-edit' && segmentData.wasEdited}
-      />
+      {/* Text Display - Use ValidationTextSegmentDisplay when issues exist for consistent tabs interface */}
+      {mode === 'validation' && segmentData.issues ? (
+        (() => {
+          // Filter issues based on errorFilters
+          const filteredIssues: typeof segmentData.issues = {
+            critical: errorFilters.critical ? segmentData.issues.critical : [],
+            missingContent: errorFilters.missingContent ? (segmentData.issues.missingContent || segmentData.issues.missing_content || []) : [],
+            addedContent: errorFilters.addedContent ? (segmentData.issues.addedContent || segmentData.issues.added_content || []) : [],
+            nameInconsistencies: errorFilters.nameInconsistencies ? (segmentData.issues.nameInconsistencies || segmentData.issues.name_inconsistencies || []) : [],
+            missing_content: errorFilters.missingContent ? (segmentData.issues.missing_content || segmentData.issues.missingContent || []) : [],
+            added_content: errorFilters.addedContent ? (segmentData.issues.added_content || segmentData.issues.addedContent || []) : [],
+            name_inconsistencies: errorFilters.nameInconsistencies ? (segmentData.issues.name_inconsistencies || segmentData.issues.nameInconsistencies || []) : [],
+            minor: segmentData.issues.minor || [],
+          };
+          
+          // Check if there are any filtered issues to show
+          const hasFilteredIssues = 
+            filteredIssues.critical.length > 0 ||
+            (filteredIssues.missingContent || filteredIssues.missing_content || []).length > 0 ||
+            (filteredIssues.addedContent || filteredIssues.added_content || []).length > 0 ||
+            (filteredIssues.nameInconsistencies || filteredIssues.name_inconsistencies || []).length > 0;
+          
+          if (!hasFilteredIssues) {
+            // Show that issues exist but are filtered out
+            return (
+              <Box>
+                <Alert severity="info" sx={{ mb: 2 }}>
+                  이 세그먼트에는 문제가 있지만 현재 필터 설정으로 숨겨져 있습니다.
+                </Alert>
+                <TextSegmentDisplay
+                  sourceText={segmentData.sourceText}
+                  translatedText={segmentData.translatedText}
+                />
+              </Box>
+            );
+          }
+          
+          return (
+            <ValidationTextSegmentDisplay
+              sourceText={segmentData.sourceText}
+              translatedText={segmentData.translatedText}
+              issues={(() => {
+                // Convert filtered issues to the format expected by ValidationTextSegmentDisplay
+                const allIssues: { type: string; message: string; }[] = [];
+                
+                if (filteredIssues.critical) {
+                  filteredIssues.critical.forEach(msg => allIssues.push({ type: 'critical', message: msg }));
+                }
+                if (filteredIssues.missingContent || filteredIssues.missing_content) {
+                  const missingContent = filteredIssues.missingContent || filteredIssues.missing_content || [];
+                  missingContent.forEach(msg => allIssues.push({ type: 'missing_content', message: msg }));
+                }
+                if (filteredIssues.addedContent || filteredIssues.added_content) {
+                  const addedContent = filteredIssues.addedContent || filteredIssues.added_content || [];
+                  addedContent.forEach(msg => allIssues.push({ type: 'added_content', message: msg }));
+                }
+                if (filteredIssues.nameInconsistencies || filteredIssues.name_inconsistencies) {
+                  const nameInconsistencies = filteredIssues.nameInconsistencies || filteredIssues.name_inconsistencies || [];
+                  nameInconsistencies.forEach(msg => allIssues.push({ type: 'name_inconsistencies', message: msg }));
+                }
+                if (filteredIssues.minor) {
+                  filteredIssues.minor.forEach(msg => allIssues.push({ type: 'minor', message: msg }));
+                }
+                
+                return allIssues;
+              })()}
+              status={hasFilteredIssues ? 'FAIL' : 'PASS'}
+            />
+          );
+        })()
+      ) : mode === 'post-edit' && segmentData.issues && !segmentData.wasEdited ? (
+        // For post-edit mode showing unedited segments with issues
+        <ValidationTextSegmentDisplay
+          sourceText={segmentData.sourceText}
+          translatedText={segmentData.translatedText}
+          issues={(() => {
+            const allIssues: { type: string; message: string; }[] = [];
+            const issues = segmentData.issues;
+            
+            if (issues.critical) {
+              issues.critical.forEach(msg => allIssues.push({ type: 'critical', message: msg }));
+            }
+            if (issues.missingContent || issues.missing_content) {
+              const missingContent = issues.missingContent || issues.missing_content || [];
+              missingContent.forEach(msg => allIssues.push({ type: 'missing_content', message: msg }));
+            }
+            if (issues.addedContent || issues.added_content) {
+              const addedContent = issues.addedContent || issues.added_content || [];
+              addedContent.forEach(msg => allIssues.push({ type: 'added_content', message: msg }));
+            }
+            if (issues.nameInconsistencies || issues.name_inconsistencies) {
+              const nameInconsistencies = issues.nameInconsistencies || issues.name_inconsistencies || [];
+              nameInconsistencies.forEach(msg => allIssues.push({ type: 'name_inconsistencies', message: msg }));
+            }
+            if (issues.minor) {
+              issues.minor.forEach(msg => allIssues.push({ type: 'minor', message: msg }));
+            }
+            
+            return allIssues;
+          })()}
+          status='FAIL'
+        />
+      ) : (
+        // Use regular TextSegmentDisplay for other cases
+        <TextSegmentDisplay
+          sourceText={segmentData.sourceText}
+          translatedText={segmentData.translatedText}
+          editedText={segmentData.editedText}
+          showComparison={mode === 'post-edit' && segmentData.wasEdited}
+        />
+      )}
 
-      {/* Issues (for validation mode) */}
-      {(mode === 'validation' || mode === 'post-edit') && renderIssues()}
-
-      {/* Changes (for post-edit mode) */}
-      {mode === 'post-edit' && renderChanges()}
+      {/* Changes (for post-edit mode) - Only show when edited */}
+      {mode === 'post-edit' && segmentData.wasEdited && renderChanges()}
     </Paper>
   );
 }
