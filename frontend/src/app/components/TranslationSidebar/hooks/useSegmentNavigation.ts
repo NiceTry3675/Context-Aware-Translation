@@ -102,7 +102,7 @@ export function useSegmentNavigation({
     const params = new URLSearchParams(searchParams.toString());
     params.set('segment', (index + 1).toString()); // Convert to 1-based for URL
     
-    const newUrl = `/canvas?${params.toString()}`;
+    const newUrl = `/?${params.toString()}`;
     router.replace(newUrl, { scroll: false });
   }, [jobId, searchParams, router]);
 

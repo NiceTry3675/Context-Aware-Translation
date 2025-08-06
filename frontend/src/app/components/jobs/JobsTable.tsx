@@ -35,7 +35,7 @@ export default function JobsTable({
   const router = useRouter();
   
   const handleOpenCanvas = (job: Job) => {
-    router.push(`/canvas?jobId=${job.id}`);
+    router.push(`/?jobId=${job.id}`);
   };
   
   const hasProcessingJobs = jobs.some(job => job.status === 'PROCESSING');

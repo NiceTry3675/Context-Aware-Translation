@@ -3,7 +3,7 @@ import { SignIn } from "@clerk/nextjs";
 export default function Page() {
   return (
     <SignIn 
-      fallbackRedirectUrl="/canvas"
+      fallbackRedirectUrl="/"
       signUpUrl="/sign-up"
     />
   );
