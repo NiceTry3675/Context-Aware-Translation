@@ -19,7 +19,7 @@ from ...background_tasks.translation_tasks import run_translation_in_background
 from ...background_tasks.validation_tasks import run_validation_in_background
 from ...background_tasks.post_edit_tasks import run_post_edit_in_background
 from ... import crud, models, schemas, auth
-from ...schemas import StyleAnalysisResponse, GlossaryTerm, GlossaryAnalysisResponse, PostEditRequest
+from ...schemas import StyleAnalysisResponse, GlossaryTerm, GlossaryAnalysisResponse, PostEditRequest, ValidationRequest
 
 
 router = APIRouter(prefix="/api/v1", tags=["translation"])
@@ -146,6 +146,15 @@ def get_job(job_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Job not found")
     return db_job
 
+
+@router.get("/download/{job_id}")
+async def download_job_output_legacy(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_required_user)
+):
+    """Legacy download endpoint for backward compatibility."""
+    return await download_job_output(job_id, db, current_user)
 
 @router.get("/jobs/{job_id}/output")
 async def download_job_output(
@@ -312,7 +321,7 @@ async def get_job_content(
         if db_job.filepath and os.path.exists(db_job.filepath):
             try:
                 # Parse the original file to get the text content
-                from utils.file_parser import FileParser
+                from core.utils.file_parser import FileParser
                 parsed_data = FileParser.parse_file(db_job.filepath)
                 source_content = parsed_data.get('text', '')
             except Exception as e:
@@ -335,8 +344,7 @@ async def get_job_content(
 async def trigger_validation(
     job_id: int,
     background_tasks: BackgroundTasks,
-    quick_validation: bool = Form(False),
-    validation_sample_rate: int = Form(100),  # percentage 0-100
+    request: ValidationRequest,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_required_user)
 ):
@@ -353,17 +361,20 @@ async def trigger_validation(
     if db_job.status != "COMPLETED":
         raise HTTPException(status_code=400, detail=f"Can only validate completed jobs. Current status: {db_job.status}")
     
+    # Convert validation_sample_rate from 0-1 to 0-100 for storage
+    validation_sample_rate_percent = int(request.validation_sample_rate * 100)
+    
     # Update job with validation settings
     db_job.validation_enabled = True
     db_job.validation_status = "PENDING"
-    db_job.quick_validation = quick_validation
-    db_job.validation_sample_rate = validation_sample_rate
+    db_job.quick_validation = request.quick_validation
+    db_job.validation_sample_rate = validation_sample_rate_percent
     db.commit()
     
     # Add background task to run validation
     background_tasks.add_task(
         run_validation_in_background,
-        job_id, db_job.filepath, quick_validation, validation_sample_rate
+        job_id, db_job.filepath, request.quick_validation, validation_sample_rate_percent
     )
     
     return {"message": "Validation started", "job_id": job_id}

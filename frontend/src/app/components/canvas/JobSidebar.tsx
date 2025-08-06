@@ -105,7 +105,7 @@ export default function JobSidebar({
   return (
     <Box
       sx={{
-        width: 280,
+        width: 320,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
@@ -322,6 +322,9 @@ export default function JobSidebar({
                           )}
                         </Stack>
                       }
+                      secondaryTypographyProps={{
+                        component: 'div'
+                      }}
                     />
                   </ListItemButton>
                 </ListItem>

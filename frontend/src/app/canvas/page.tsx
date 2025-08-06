@@ -18,6 +18,8 @@ import {
   CircularProgress,
   Tooltip,
   Chip,
+  Card,
+  CardContent,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
@@ -32,6 +34,12 @@ import SegmentViewer from '../components/canvas/SegmentViewer';
 import ErrorNavigationBar from '../components/canvas/ErrorNavigationBar';
 import SegmentNavigation from '../components/canvas/SegmentNavigation';
 
+// Import translation setup components
+import ApiSetup from '../components/ApiConfiguration/ApiSetup';
+import FileUploadSection from '../components/FileUpload/FileUploadSection';
+import TranslationSettings from '../components/AdvancedSettings/TranslationSettings';
+import StyleConfigForm from '../components/StyleConfiguration/StyleConfigForm';
+
 // Import action components from sidebar
 import ValidationDialog from '../components/TranslationSidebar/ValidationDialog';
 import PostEditDialog from '../components/TranslationSidebar/PostEditDialog';
@@ -42,9 +50,17 @@ import { useValidation } from '../components/TranslationSidebar/hooks/useValidat
 import { usePostEdit } from '../components/TranslationSidebar/hooks/usePostEdit';
 import { useTranslationJobs } from '../hooks/useTranslationJobs';
 import { useSegmentNavigation } from '../components/TranslationSidebar/hooks/useSegmentNavigation';
+import { useApiKey } from '../hooks/useApiKey';
+import { useTranslationService } from '../hooks/useTranslationService';
+import { useJobActions } from '../hooks/useJobActions';
 
 // Types
 import { Job } from '../types/job';
+import { 
+  StyleData, 
+  GlossaryTerm, 
+  TranslationSettings as TSettings 
+} from '../types/translation';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -78,7 +94,57 @@ function CanvasContent() {
   const [viewMode, setViewMode] = useState<'full' | 'segment'>('segment'); // New view mode state
   
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  const { jobs, refreshJobs } = useTranslationJobs({ apiUrl: API_URL });
+  const { jobs, addJob, deleteJob, refreshJobs } = useTranslationJobs({ apiUrl: API_URL });
+  
+  // Translation setup states (moved from main page)
+  const { apiKey, setApiKey, apiProvider, setApiProvider, selectedModel, setSelectedModel } = useApiKey();
+  const [file, setFile] = useState<File | null>(null);
+  const [styleData, setStyleData] = useState<StyleData | null>(null);
+  const [showStyleForm, setShowStyleForm] = useState<boolean>(false);
+  const [glossaryData, setGlossaryData] = useState<GlossaryTerm[]>([]);
+  const [glossaryAnalysisError, setGlossaryAnalysisError] = useState<string>('');
+  
+  // Translation settings
+  const [translationSettings, setTranslationSettings] = useState<TSettings>({
+    segmentSize: 15000,
+    enableValidation: false,
+    quickValidation: false,
+    validationSampleRate: 100,
+    enablePostEdit: false
+  });
+  
+  // Translation service hook
+  const {
+    analyzeFile,
+    startTranslation,
+    isAnalyzing,
+    isAnalyzingGlossary,
+    uploading,
+    error: translationError,
+    setError: setTranslationError
+  } = useTranslationService({
+    apiUrl: API_URL,
+    apiKey,
+    selectedModel,
+    onJobCreated: (job) => {
+      addJob(job);
+      setFile(null);
+      setStyleData(null);
+      setGlossaryData([]);
+      setShowStyleForm(false);
+      // Navigate to the new job in canvas
+      router.push(`/canvas?jobId=${job.id}`);
+      // Switch to the translation result tab
+      setTabValue(1);
+    }
+  });
+  
+  // Job actions hook
+  const jobActions = useJobActions({
+    apiUrl: API_URL,
+    onError: setTranslationError,
+    onSuccess: refreshJobs
+  });
   
   // Find the current job from the jobs list
   useEffect(() => {
@@ -133,13 +199,68 @@ function CanvasContent() {
         .map(segment => segment.source_text)
         .join(' '); // Join with single space for natural flow
     }
+    // Third priority: use translation segments if available
+    if (translationSegments?.segments && translationSegments.segments.length > 0) {
+      return translationSegments.segments
+        .sort((a, b) => a.segment_index - b.segment_index)
+        .map(segment => segment.source_text)
+        .join(' '); // Join with single space for natural flow
+    }
     // Don't use validation report as it only has truncated source_preview
     return undefined;
-  }, [translationContent, postEditLog]);
+  }, [translationContent, postEditLog, translationSegments]);
+
+  // File analysis handler
+  const handleFileSelect = async (selectedFile: File, analyzeGlossary: boolean) => {
+    setFile(selectedFile);
+    setGlossaryAnalysisError('');
+    
+    const result = await analyzeFile(selectedFile, analyzeGlossary);
+    
+    if (result.styleData) {
+      setStyleData(result.styleData);
+      setGlossaryData(result.glossaryData);
+      setShowStyleForm(true);
+    }
+    
+    if (result.error) {
+      setGlossaryAnalysisError(result.error);
+    }
+    
+    return result;
+  };
+
+  // Start translation handler
+  const handleStartTranslation = async () => {
+    if (!file || !styleData) {
+      setTranslationError("번역을 시작할 파일과 스타일 정보가 필요합니다.");
+      return;
+    }
+
+    await startTranslation(file, styleData, glossaryData, translationSettings);
+  };
+
+  const handleCancelStyleEdit = () => {
+    setShowStyleForm(false);
+    setFile(null);
+    setStyleData(null);
+    setGlossaryData([]);
+    const fileInput = document.getElementById('file-upload-input') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+  };
+
+  // Wrapper function for job validation
+  const handleTriggerValidation = (jobId: number) => {
+    return jobActions.handleTriggerValidation(
+      jobId,
+      translationSettings.quickValidation,
+      translationSettings.validationSampleRate
+    );
+  };
 
   // Combine loading states
   const loading = dataLoading || validation.loading || postEdit.loading;
-  const error = dataError || validation.error || postEdit.error;
+  const error = dataError || validation.error || postEdit.error || translationError;
 
   // Load saved tab preference
   useEffect(() => {
@@ -169,11 +290,23 @@ function CanvasContent() {
   // Handle job selection change
   const handleJobChange = (newJobId: string) => {
     router.push(`/canvas?jobId=${newJobId}`);
+    // Reset translation form when switching jobs
+    setFile(null);
+    setStyleData(null);
+    setGlossaryData([]);
+    setShowStyleForm(false);
   };
   
-  // Handle new translation
+  // Handle new translation - now switches to new translation tab
   const handleNewTranslation = () => {
-    router.push('/?action=new');
+    // Clear job selection to show new translation form
+    router.push('/canvas');
+    setTabValue(0); // Switch to new translation tab
+    // Reset form state
+    setFile(null);
+    setStyleData(null);
+    setGlossaryData([]);
+    setShowStyleForm(false);
   };
   
   // Handle job deletion
@@ -312,51 +445,33 @@ function CanvasContent() {
 
         {/* Main Content Area */}
         <Container maxWidth={false} sx={{ flex: 1, display: 'flex', py: 2, gap: 2, overflow: 'hidden' }}>
-          {/* Check if job is selected */}
-          {!jobId ? (
-            <Paper sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Box sx={{ textAlign: 'center', p: 4 }}>
-                <Typography variant="h5" gutterBottom>
-                  번역 작업을 선택하거나 새로 시작하세요
-                </Typography>
-                <Typography color="text.secondary" paragraph>
-                  왼쪽 사이드바에서 기존 작업을 선택하거나 &ldquo;새 번역 시작&rdquo; 버튼을 클릭하세요.
-                </Typography>
-                <Button
-                  variant="contained"
-                  size="large"
-                  onClick={handleNewTranslation}
-                  sx={{ mt: 2 }}
-                >
-                  새 번역 시작
-                </Button>
-              </Box>
-            </Paper>
-          ) : (
-              <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                {/* Main Canvas */}
-          {/* Tabs */}
-          <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
-            <Tabs value={tabValue} onChange={handleTabChange}>
-              <Tab 
-                label="번역 결과"
-                disabled={!translationContent && selectedJob?.status !== 'COMPLETED'} 
-              />
-              <Tab 
-                label="검증 결과"
-                disabled={!validationReport && selectedJob?.validation_status !== 'COMPLETED'} 
-              />
-              <Tab 
-                label="포스트 에디팅"
-                disabled={!postEditLog && selectedJob?.post_edit_status !== 'COMPLETED'} 
-              />
-            </Tabs>
-          </Box>
+          <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            {/* Tabs */}
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
+              <Tabs value={tabValue} onChange={handleTabChange}>
+                <Tab 
+                  label="새 번역"
+                  disabled={!!jobId && (uploading || isAnalyzing || isAnalyzingGlossary)} 
+                />
+                <Tab 
+                  label="번역 결과"
+                  disabled={!jobId || (!translationContent && selectedJob?.status !== 'COMPLETED')} 
+                />
+                <Tab 
+                  label="검증 결과"
+                  disabled={!jobId || (!validationReport && selectedJob?.validation_status !== 'COMPLETED')} 
+                />
+                <Tab 
+                  label="포스트 에디팅"
+                  disabled={!jobId || (!postEditLog && selectedJob?.post_edit_status !== 'COMPLETED')} 
+                />
+              </Tabs>
+            </Box>
 
           {/* Tab Content */}
           <Box sx={{ flex: 1, overflow: 'auto', position: 'relative' }}>
             {/* Error Navigation Bar (shows when in segment view and validation data exists) */}
-            {viewMode === 'segment' && validationReport && tabValue === 1 && (
+            {viewMode === 'segment' && validationReport && tabValue === 2 && (
               <ErrorNavigationBar
                 validationReport={validationReport}
                 currentSegmentIndex={segmentNav.currentSegmentIndex}
@@ -364,27 +479,29 @@ function CanvasContent() {
               />
             )}
             
-            {/* View Mode Toggle */}
-            <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Typography variant="body2" color="text.secondary">보기 모드:</Typography>
-                <Chip
-                  label="전체 보기"
-                  onClick={() => setViewMode('full')}
-                  color={viewMode === 'full' ? 'primary' : 'default'}
-                  variant={viewMode === 'full' ? 'filled' : 'outlined'}
-                  size="small"
-                />
-                <Chip
-                  label="세그먼트 보기"
-                  onClick={() => setViewMode('segment')}
-                  color={viewMode === 'segment' ? 'primary' : 'default'}
-                  variant={viewMode === 'segment' ? 'filled' : 'outlined'}
-                  size="small"
-                  disabled={!validationReport && !postEditLog && (!translationSegments?.segments || translationSegments.segments.length === 0)}
-                />
-              </Stack>
-            </Box>
+            {/* View Mode Toggle - only show for tabs with content */}
+            {tabValue !== 0 && (
+              <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography variant="body2" color="text.secondary">보기 모드:</Typography>
+                  <Chip
+                    label="전체 보기"
+                    onClick={() => setViewMode('full')}
+                    color={viewMode === 'full' ? 'primary' : 'default'}
+                    variant={viewMode === 'full' ? 'filled' : 'outlined'}
+                    size="small"
+                  />
+                  <Chip
+                    label="세그먼트 보기"
+                    onClick={() => setViewMode('segment')}
+                    color={viewMode === 'segment' ? 'primary' : 'default'}
+                    variant={viewMode === 'segment' ? 'filled' : 'outlined'}
+                    size="small"
+                    disabled={!validationReport && !postEditLog && (!translationSegments?.segments || translationSegments.segments.length === 0)}
+                  />
+                </Stack>
+              </Box>
+            )}
             
             <Box sx={{ p: 3 }}>
               {loading && (
@@ -400,14 +517,73 @@ function CanvasContent() {
                 </Alert>
               )}
               
-              {!loading && !translationContent && !validationReport && !postEditLog && (
+              {!loading && !translationContent && !validationReport && !postEditLog && tabValue !== 0 && (
                 <Alert severity="info">
                   <AlertTitle>데이터 없음</AlertTitle>
                   번역이 아직 완료되지 않았습니다.
                 </Alert>
               )}
               
+              {/* New Translation Tab */}
               <TabPanel value={tabValue} index={0}>
+                {!jobId ? (
+                  <Card sx={{ maxWidth: 800, mx: 'auto' }}>
+                    <CardContent>
+                      {/* API Configuration */}
+                      <ApiSetup
+                        apiProvider={apiProvider}
+                        apiKey={apiKey}
+                        selectedModel={selectedModel}
+                        onProviderChange={setApiProvider}
+                        onApiKeyChange={setApiKey}
+                        onModelChange={setSelectedModel}
+                      />
+
+                      {/* File Upload */}
+                      <FileUploadSection
+                        isAnalyzing={isAnalyzing}
+                        isAnalyzingGlossary={isAnalyzingGlossary}
+                        uploading={uploading}
+                        error={translationError}
+                        onFileSelect={handleFileSelect}
+                      />
+                    </CardContent>
+
+                    {/* Advanced Settings */}
+                    <CardContent sx={{ borderTop: 1, borderColor: 'divider', mt: 2 }}>
+                      <TranslationSettings
+                        settings={translationSettings}
+                        onChange={setTranslationSettings}
+                      />
+                    </CardContent>
+
+                    {/* Style & Glossary Configuration */}
+                    {showStyleForm && styleData && (
+                      <CardContent sx={{ borderTop: 1, borderColor: 'divider', mt: 2 }}>
+                        <StyleConfigForm
+                          styleData={styleData}
+                          glossaryData={glossaryData}
+                          isAnalyzingGlossary={isAnalyzingGlossary}
+                          glossaryAnalysisError={glossaryAnalysisError}
+                          uploading={uploading}
+                          onStyleChange={setStyleData}
+                          onGlossaryChange={setGlossaryData}
+                          onSubmit={handleStartTranslation}
+                          onCancel={handleCancelStyleEdit}
+                        />
+                      </CardContent>
+                    )}
+                  </Card>
+                ) : (
+                  <Alert severity="info">
+                    <AlertTitle>작업 진행 중</AlertTitle>
+                    다른 작업을 선택했습니다. 새 번역을 시작하려면 왼쪽 사이드바에서 "새 번역 시작" 버튼을 클릭하세요.
+                  </Alert>
+                )}
+              </TabPanel>
+              
+              {/* Translation Result Tab */}
+              <TabPanel value={tabValue} index={1}>
                 {viewMode === 'segment' ? (
                   validationReport || postEditLog || (translationSegments?.segments && translationSegments.segments.length > 0) ? (
                     <SegmentViewer
@@ -456,7 +632,8 @@ function CanvasContent() {
                 )}
               </TabPanel>
               
-              <TabPanel value={tabValue} index={1}>
+              {/* Validation Result Tab */}
+              <TabPanel value={tabValue} index={2}>
                 {viewMode === 'segment' && validationReport ? (
                   <SegmentViewer
                     mode="validation"
@@ -526,7 +703,8 @@ function CanvasContent() {
                 )}
               </TabPanel>
               
-              <TabPanel value={tabValue} index={2}>
+              {/* Post-Edit Tab */}
+              <TabPanel value={tabValue} index={3}>
                 {viewMode === 'segment' && postEditLog ? (
                   <SegmentViewer
                     mode="post-edit"
@@ -556,8 +734,7 @@ function CanvasContent() {
               />
             )}
           </Box>
-            </Paper>
-        )}
+        </Paper>
         </Container>
       </Box>
     </Box>

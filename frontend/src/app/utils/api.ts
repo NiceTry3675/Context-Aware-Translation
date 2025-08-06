@@ -70,7 +70,8 @@ export async function fetchValidationReport(jobId: string, token?: string): Prom
     });
 
     if (!response.ok) {
-      if (response.status === 404) {
+      if (response.status === 404 || response.status === 400) {
+        // Return null for both 404 (report not found) and 400 (validation not completed)
         return null;
       }
       throw new Error(`Failed to fetch validation report: ${response.statusText}`);
@@ -92,7 +93,8 @@ export async function fetchPostEditLog(jobId: string, token?: string): Promise<P
     });
 
     if (!response.ok) {
-      if (response.status === 404) {
+      if (response.status === 404 || response.status === 400) {
+        // Return null for both 404 (log not found) and 400 (post-edit not completed)
         return null;
       }
       throw new Error(`Failed to fetch post-edit log: ${response.statusText}`);

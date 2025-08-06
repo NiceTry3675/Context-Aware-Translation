@@ -13,18 +13,15 @@ import {
   ListItemText,
   Alert,
   AlertTitle,
-  Stack,
   Checkbox,
   ListItemIcon,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
-import WarningIcon from '@mui/icons-material/Warning';
-import InfoIcon from '@mui/icons-material/Info';
 import { ValidationReport } from '../utils/api';
 import { SummaryStatistics } from './shared/SummaryStatistics';
-import { TextSegmentDisplay } from './shared/TextSegmentDisplay';
+import { ValidationTextSegmentDisplay } from './shared/ValidationTextSegmentDisplay';
 
 interface ValidationReportViewerProps {
   report: ValidationReport;
@@ -55,13 +52,6 @@ export default function ValidationReportViewer({
     return 'default';
   };
 
-  const getSeverityIcon = (issueType: string) => {
-    if (issueType === 'critical') return <ErrorIcon fontSize="small" />;
-    if (issueType === 'missing_content' || issueType === 'added_content') return <WarningIcon fontSize="small" />;
-    if (issueType === 'name_inconsistencies') return <InfoIcon fontSize="small" />;
-    return null;
-  };
-
   const formatIssueType = (type: string): string => {
     const typeMap: { [key: string]: string } = {
       'critical': '치명적 오류',
@@ -71,6 +61,28 @@ export default function ValidationReportViewer({
       'minor': '경미한 문제',
     };
     return typeMap[type] || type;
+  };
+
+  // Deduplicate validation errors - sometimes LLM produces duplicates
+  const deduplicateIssues = (issues: string[]): string[] => {
+    // Create a Set to remove exact duplicates
+    const uniqueIssues = new Set(issues);
+    
+    // Further deduplicate by checking for similar messages (removing whitespace differences)
+    const deduped: string[] = [];
+    const normalizedMessages = new Set<string>();
+    
+    for (const issue of uniqueIssues) {
+      // Normalize the message for comparison (lowercase, trim, collapse whitespace)
+      const normalized = issue.toLowerCase().replace(/\s+/g, ' ').trim();
+      
+      if (!normalizedMessages.has(normalized)) {
+        normalizedMessages.add(normalized);
+        deduped.push(issue);
+      }
+    }
+    
+    return deduped;
   };
 
   // Calculate selected issue counts
@@ -164,12 +176,20 @@ export default function ValidationReportViewer({
       
       {report.detailed_results.map((result) => {
         const hasIssues = result.status === 'FAIL';
+        
+        // Deduplicate issues for each type
+        const dedupedCritical = deduplicateIssues(result.critical_issues);
+        const dedupedMissing = deduplicateIssues(result.missing_content);
+        const dedupedAdded = deduplicateIssues(result.added_content);
+        const dedupedNames = deduplicateIssues(result.name_inconsistencies);
+        const dedupedMinor = deduplicateIssues(result.minor_issues);
+        
         const allIssues = [
-          ...result.critical_issues.map(issue => ({ type: 'critical', message: issue })),
-          ...result.missing_content.map(issue => ({ type: 'missing_content', message: issue })),
-          ...result.added_content.map(issue => ({ type: 'added_content', message: issue })),
-          ...result.name_inconsistencies.map(issue => ({ type: 'name_inconsistencies', message: issue })),
-          ...result.minor_issues.map(issue => ({ type: 'minor', message: issue })),
+          ...dedupedCritical.map(issue => ({ type: 'critical', message: issue })),
+          ...dedupedMissing.map(issue => ({ type: 'missing_content', message: issue })),
+          ...dedupedAdded.map(issue => ({ type: 'added_content', message: issue })),
+          ...dedupedNames.map(issue => ({ type: 'name_inconsistencies', message: issue })),
+          ...dedupedMinor.map(issue => ({ type: 'minor', message: issue })),
         ];
 
         return (
@@ -202,17 +222,17 @@ export default function ValidationReportViewer({
                 <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                   {allIssues.length > 0 && (
                     <>
-                      {result.critical_issues.length > 0 && (
-                        <Chip size="small" label={`${result.critical_issues.length}`} color="error" />
+                      {dedupedCritical.length > 0 && (
+                        <Chip size="small" label={`${dedupedCritical.length}`} color="error" />
                       )}
-                      {result.missing_content.length > 0 && (
-                        <Chip size="small" label={`누락 ${result.missing_content.length}`} color="warning" />
+                      {dedupedMissing.length > 0 && (
+                        <Chip size="small" label={`누락 ${dedupedMissing.length}`} color="warning" />
                       )}
-                      {result.added_content.length > 0 && (
-                        <Chip size="small" label={`추가 ${result.added_content.length}`} color="warning" />
+                      {dedupedAdded.length > 0 && (
+                        <Chip size="small" label={`추가 ${dedupedAdded.length}`} color="warning" />
                       )}
-                      {result.name_inconsistencies.length > 0 && (
-                        <Chip size="small" label={`이름 ${result.name_inconsistencies.length}`} color="info" />
+                      {dedupedNames.length > 0 && (
+                        <Chip size="small" label={`이름 ${dedupedNames.length}`} color="info" />
                       )}
                     </>
                   )}
@@ -221,76 +241,124 @@ export default function ValidationReportViewer({
             </AccordionSummary>
             
             <AccordionDetails>
-              <Stack spacing={2}>
-                <TextSegmentDisplay
-                  sourceText={result.source_preview}
-                  translatedText={result.translated_preview}
-                />
-                
-                {/* Issues List */}
-                {allIssues.length > 0 && (
-                  <Box>
-                    <Typography variant="subtitle2" gutterBottom>
-                      발견된 문제
+              <ValidationTextSegmentDisplay
+                sourceText={result.source_preview}
+                translatedText={result.translated_preview}
+                issues={allIssues}
+                status={result.status}
+              />
+              
+              {/* Selection checkboxes for post-edit with sticky error display */}
+              {onIssueSelectionChange && allIssues.length > 0 && (
+                <Box sx={{ 
+                  mt: 2, 
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 10,
+                  bgcolor: 'background.paper',
+                  borderRadius: 1,
+                  boxShadow: 2,
+                  maxHeight: '60vh',
+                  overflow: 'auto',
+                  border: '1px solid',
+                  borderColor: 'divider'
+                }}>
+                  <Box sx={{ 
+                    p: 2, 
+                    borderBottom: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: 'grey.50',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 1
+                  }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                      포스트 에디팅 선택 (오류 {allIssues.length}개)
                     </Typography>
-                    <List dense sx={{ bgcolor: 'background.paper', borderRadius: 1 }}>
-                      {(() => {
-                        // Track indices for each issue type
-                        const typeIndices: { [key: string]: number } = {
-                          critical: 0,
-                          missing_content: 0,
-                          added_content: 0,
-                          name_inconsistencies: 0,
-                          minor: 0,
-                        };
+                  </Box>
+                  <List dense sx={{ p: 2 }}>
+                    {(() => {
+                      // Track indices for each issue type
+                      const typeIndices: { [key: string]: number } = {
+                        critical: 0,
+                        missing_content: 0,
+                        added_content: 0,
+                        name_inconsistencies: 0,
+                        minor: 0,
+                      };
+                      
+                      return allIssues.map((issue, idx) => {
+                        const typeIndex = typeIndices[issue.type];
+                        typeIndices[issue.type]++;
                         
-                        return allIssues.map((issue, idx) => {
-                          const typeIndex = typeIndices[issue.type];
-                          typeIndices[issue.type]++;
-                          
-                          const isSelected = selectedIssues?.[result.segment_index]?.[issue.type]?.[typeIndex] ?? true;
-                          
-                          return (
-                            <ListItem key={idx} sx={{ py: 0.5 }}>
-                              {onIssueSelectionChange && (
-                                <ListItemIcon sx={{ minWidth: 'auto', mr: 1 }}>
-                                  <Checkbox
-                                    edge="start"
-                                    checked={isSelected}
-                                    onChange={(e) => onIssueSelectionChange?.(
-                                      result.segment_index,
-                                      issue.type,
-                                      typeIndex,
-                                      e.target.checked
-                                    )}
-                                    size="small"
-                                  />
-                                </ListItemIcon>
-                              )}
-                              <ListItemText
-                                primary={
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    {getSeverityIcon(issue.type)}
+                        const isSelected = selectedIssues?.[result.segment_index]?.[issue.type]?.[typeIndex] ?? true;
+                        
+                        return (
+                          <ListItem 
+                            key={idx} 
+                            sx={{ 
+                              py: 1, 
+                              pl: 0,
+                              borderRadius: 1,
+                              mb: 1,
+                              bgcolor: isSelected ? 'action.selected' : 'transparent',
+                              '&:hover': {
+                                bgcolor: 'action.hover'
+                              }
+                            }}
+                          >
+                            <ListItemIcon sx={{ minWidth: 'auto', mr: 1 }}>
+                              <Checkbox
+                                edge="start"
+                                checked={isSelected}
+                                onChange={(e) => onIssueSelectionChange?.(
+                                  result.segment_index,
+                                  issue.type,
+                                  typeIndex,
+                                  e.target.checked
+                                )}
+                                size="small"
+                              />
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={
+                                <Box>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                                     <Chip 
                                       label={formatIssueType(issue.type)} 
                                       size="small" 
                                       color={getSeverityColor(issue.type)}
-                                      variant="outlined"
+                                      variant="filled"
+                                      sx={{ height: '20px' }}
                                     />
-                                    <Typography variant="body2">
-                                      {issue.message}
+                                    <Typography variant="caption" color="text.secondary">
+                                      #{typeIndex + 1}
                                     </Typography>
                                   </Box>
-                                }
-                              />
-                            </ListItem>
-                          );
-                        });
-                      })()}
-                    </List>
-                  </Box>
-                )}
-              </Stack>
+                                  <Typography 
+                                    variant="body2" 
+                                    sx={{ 
+                                      ml: 1,
+                                      color: 'text.primary',
+                                      fontSize: '0.875rem',
+                                      lineHeight: 1.5
+                                    }}
+                                  >
+                                    {issue.message}
+                                  </Typography>
+                                </Box>
+                              }
+                              primaryTypographyProps={{
+                                component: 'div'
+                              }}
+                            />
+                          </ListItem>
+                        );
+                      });
+                    })()}
+                  </List>
+                </Box>
+              )}
             </AccordionDetails>
           </Accordion>
         );

@@ -212,6 +212,10 @@ class GlossaryTerm(BaseModel):
 class GlossaryAnalysisResponse(BaseModel):
     glossary: List[GlossaryTerm]
 
+class ValidationRequest(BaseModel):
+    quick_validation: bool = False
+    validation_sample_rate: float = 1.0  # 0.0 to 1.0
+
 class PostEditRequest(BaseModel):
     selected_issue_types: Optional[dict] = {
         "critical_issues": True,
