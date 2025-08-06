@@ -24,8 +24,11 @@ export function TextSegmentDisplay({
           <Typography variant="subtitle2" gutterBottom color="text.secondary">
             원문
           </Typography>
-          <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: 'background.paper' }}>
-            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+          <Paper variant="outlined" sx={{ 
+            p: 1.5, 
+            backgroundColor: 'background.paper'
+          }}>
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
               {sourceText}
             </Typography>
           </Paper>
@@ -92,8 +95,11 @@ export function TextSegmentDisplay({
         <Typography variant="subtitle2" gutterBottom color="text.secondary">
           원문
         </Typography>
-        <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: 'background.paper' }}>
-          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+        <Paper variant="outlined" sx={{ 
+          p: 1.5, 
+          backgroundColor: 'background.paper'
+        }}>
+          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
             {sourceText}
           </Typography>
         </Paper>
@@ -105,8 +111,11 @@ export function TextSegmentDisplay({
           <Typography variant="subtitle2" gutterBottom color="text.secondary">
             번역문
           </Typography>
-          <Paper variant="outlined" sx={{ p: 1.5, backgroundColor: 'background.paper' }}>
-            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+          <Paper variant="outlined" sx={{ 
+            p: 1.5, 
+            backgroundColor: 'background.paper'
+          }}>
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
               {editedText || translatedText}
             </Typography>
           </Paper>

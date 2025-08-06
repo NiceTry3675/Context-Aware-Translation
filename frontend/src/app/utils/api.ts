@@ -109,6 +109,7 @@ export interface TranslationContent {
   job_id: number;
   filename: string;
   content: string;
+  source_content?: string;
   completed_at: string | null;
 }
 

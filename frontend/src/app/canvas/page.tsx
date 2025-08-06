@@ -22,25 +22,26 @@ import {
 import RefreshIcon from '@mui/icons-material/Refresh';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
-import DownloadIcon from '@mui/icons-material/Download';
 
 // Import viewer components
 import ValidationReportViewer from '../components/ValidationReportViewer';
 import PostEditLogViewer from '../components/PostEditLogViewer';
 import TranslationContentViewer from '../components/TranslationContentViewer';
 import JobSidebar from '../components/canvas/JobSidebar';
+import SegmentViewer from '../components/canvas/SegmentViewer';
+import ErrorNavigationBar from '../components/canvas/ErrorNavigationBar';
+import SegmentNavigation from '../components/canvas/SegmentNavigation';
 
 // Import action components from sidebar
 import ValidationDialog from '../components/TranslationSidebar/ValidationDialog';
 import PostEditDialog from '../components/TranslationSidebar/PostEditDialog';
-import StatusChips from '../components/TranslationSidebar/StatusChips';
-import ActionButtons from '../components/TranslationSidebar/ActionButtons';
 
 // Import hooks
 import { useTranslationData } from '../components/TranslationSidebar/hooks/useTranslationData';
 import { useValidation } from '../components/TranslationSidebar/hooks/useValidation';
 import { usePostEdit } from '../components/TranslationSidebar/hooks/usePostEdit';
 import { useTranslationJobs } from '../hooks/useTranslationJobs';
+import { useSegmentNavigation } from '../components/TranslationSidebar/hooks/useSegmentNavigation';
 
 // Types
 import { Job } from '../types/job';
@@ -74,6 +75,7 @@ function CanvasContent() {
   const [tabValue, setTabValue] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [viewMode, setViewMode] = useState<'full' | 'segment'>('segment'); // New view mode state
   
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const { jobs, refreshJobs } = useTranslationJobs({ apiUrl: API_URL });
@@ -108,6 +110,30 @@ function CanvasContent() {
 
   const validation = useValidation({ jobId: jobId || '', onRefresh: refreshJobs });
   const postEdit = usePostEdit({ jobId: jobId || '', onRefresh: refreshJobs, selectedIssues });
+  
+  // Segment navigation hook
+  const segmentNav = useSegmentNavigation({
+    validationReport,
+    postEditLog,
+    jobId: jobId || undefined,
+  });
+
+  // Extract full source text from translation content or post-edit log
+  const fullSourceText = React.useMemo(() => {
+    // First priority: use source_content from translation content if available
+    if (translationContent?.source_content) {
+      return translationContent.source_content;
+    }
+    // Second priority: use post-edit log segments if available (has full source_text)
+    if (postEditLog?.segments) {
+      return postEditLog.segments
+        .sort((a, b) => a.segment_index - b.segment_index)
+        .map(segment => segment.source_text)
+        .join(' '); // Join with single space for natural flow
+    }
+    // Don't use validation report as it only has truncated source_preview
+    return undefined;
+  }, [translationContent, postEditLog]);
 
   // Combine loading states
   const loading = dataLoading || validation.loading || postEdit.loading;
@@ -168,32 +194,6 @@ function CanvasContent() {
     }
   };
 
-  // Handle download
-  const handleDownload = async () => {
-    if (!selectedJob || selectedJob.status !== 'COMPLETED') return;
-    
-    try {
-      const response = await fetch(`${API_URL}/download/${selectedJob.id}`);
-      if (!response.ok) throw new Error('Download failed');
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = selectedJob.filename || `translation_${selectedJob.id}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Download error:', error);
-    }
-  };
-
-  const canRunValidation = selectedJob?.status === 'COMPLETED' && 
-    (!selectedJob?.validation_status || selectedJob?.validation_status === 'FAILED');
-  const canRunPostEdit = selectedJob?.validation_status === 'COMPLETED' && 
-    (!selectedJob?.post_edit_status || selectedJob?.post_edit_status === 'FAILED');
 
   // Calculate selected issue counts
   const calculateSelectedCounts = () => {
@@ -331,94 +331,8 @@ function CanvasContent() {
               </Box>
             </Paper>
           ) : (
-            <>
-              {/* Right Side Panel */}
-              <Paper sx={{ width: 320, display: 'flex', flexDirection: 'column', p: 2, order: 2 }}>
-          {/* Job Info */}
-          <Typography variant="h6" gutterBottom>
-            작업 정보
-          </Typography>
-          
-          {selectedJob && (
-            <>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                파일: {selectedJob.filename}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                생성일: {new Date(selectedJob.created_at).toLocaleString()}
-              </Typography>
-              
-              {/* Status Chips */}
-              <Stack direction="row" spacing={1} sx={{ my: 2 }} flexWrap="wrap">
-                <StatusChips 
-                  validationStatus={selectedJob.validation_status ?? undefined} 
-                  postEditStatus={selectedJob.post_edit_status ?? undefined} 
-                />
-              </Stack>
-
-              {/* Progress Indicators */}
-              {selectedJob.validation_status === 'IN_PROGRESS' && selectedJob.validation_progress && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="body2" gutterBottom>
-                    검증 진행률: {selectedJob.validation_progress}%
-                  </Typography>
-                  <CircularProgress 
-                    variant="determinate" 
-                    value={selectedJob.validation_progress} 
-                    size={40}
-                  />
-                </Box>
-              )}
-              
-              {selectedJob.post_edit_status === 'IN_PROGRESS' && selectedJob.post_edit_progress && (
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="body2" gutterBottom>
-                    포스트에디팅 진행률: {selectedJob.post_edit_progress}%
-                  </Typography>
-                  <CircularProgress 
-                    variant="determinate" 
-                    value={selectedJob.post_edit_progress} 
-                    size={40}
-                  />
-                </Box>
-              )}
-
-              {/* Action Buttons */}
-              <Box sx={{ mt: 'auto', pt: 2, borderTop: 1, borderColor: 'divider' }}>
-                <ActionButtons
-                  canRunValidation={canRunValidation}
-                  canRunPostEdit={canRunPostEdit}
-                  onValidationClick={() => validation.setValidationDialogOpen(true)}
-                  onPostEditClick={() => postEdit.setPostEditDialogOpen(true)}
-                  validationReport={validationReport}
-                  postEditLog={postEditLog}
-                  jobId={jobId}
-                  loading={loading}
-                  validationStatus={selectedJob.validation_status ?? undefined}
-                  validationProgress={selectedJob.validation_progress}
-                  postEditStatus={selectedJob.post_edit_status ?? undefined}
-                  postEditProgress={selectedJob.post_edit_progress}
-                />
-                
-                {/* Download Button */}
-                {selectedJob.status === 'COMPLETED' && (
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    startIcon={<DownloadIcon />}
-                    onClick={handleDownload}
-                    sx={{ mt: 1 }}
-                  >
-                    번역 파일 다운로드
-                  </Button>
-                )}
-              </Box>
-            </>
-          )}
-              </Paper>
-
-              {/* Main Canvas */}
-              <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', order: 1 }}>
+              <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                {/* Main Canvas */}
           {/* Tabs */}
           <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
             <Tabs value={tabValue} onChange={handleTabChange}>
@@ -438,125 +352,198 @@ function CanvasContent() {
           </Box>
 
           {/* Tab Content */}
-          <Box sx={{ flex: 1, overflow: 'auto', p: 3 }}>
-            {loading && (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                <CircularProgress />
-              </Box>
+          <Box sx={{ flex: 1, overflow: 'auto', position: 'relative' }}>
+            {/* Error Navigation Bar (shows when in segment view and validation data exists) */}
+            {viewMode === 'segment' && validationReport && tabValue === 1 && (
+              <ErrorNavigationBar
+                validationReport={validationReport}
+                currentSegmentIndex={segmentNav.currentSegmentIndex}
+                onSegmentChange={segmentNav.goToSegment}
+              />
             )}
             
-            {error && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                <AlertTitle>오류</AlertTitle>
-                {error}
-              </Alert>
-            )}
+            {/* View Mode Toggle */}
+            <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography variant="body2" color="text.secondary">보기 모드:</Typography>
+                <Chip
+                  label="전체 보기"
+                  onClick={() => setViewMode('full')}
+                  color={viewMode === 'full' ? 'primary' : 'default'}
+                  variant={viewMode === 'full' ? 'filled' : 'outlined'}
+                  size="small"
+                />
+                <Chip
+                  label="세그먼트 보기"
+                  onClick={() => setViewMode('segment')}
+                  color={viewMode === 'segment' ? 'primary' : 'default'}
+                  variant={viewMode === 'segment' ? 'filled' : 'outlined'}
+                  size="small"
+                  disabled={!validationReport && !postEditLog}
+                />
+              </Stack>
+            </Box>
             
-            {!loading && !translationContent && !validationReport && !postEditLog && (
-              <Alert severity="info">
-                <AlertTitle>데이터 없음</AlertTitle>
-                번역이 아직 완료되지 않았습니다.
-              </Alert>
-            )}
-            
-            <TabPanel value={tabValue} index={0}>
-              {translationContent ? (
-                <TranslationContentViewer content={translationContent} />
-              ) : selectedJob?.status === 'COMPLETED' ? (
-                <Stack spacing={2}>
-                  <Alert severity="warning">
-                    <AlertTitle>번역 결과를 찾을 수 없습니다</AlertTitle>
-                    번역이 완료되었지만 결과를 불러올 수 없습니다.
-                  </Alert>
-                  <Button 
-                    variant="contained" 
-                    onClick={loadData}
-                    startIcon={<RefreshIcon />}
-                  >
-                    결과 다시 불러오기
-                  </Button>
-                </Stack>
-              ) : (
-                <Alert severity="info">
-                  번역이 완료되면 결과가 여기에 표시됩니다.
+            <Box sx={{ p: 3 }}>
+              {loading && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress />
+                </Box>
+              )}
+              
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  <AlertTitle>오류</AlertTitle>
+                  {error}
                 </Alert>
               )}
-            </TabPanel>
-            
-            <TabPanel value={tabValue} index={1}>
-              {validationReport ? (
-                <ValidationReportViewer 
-                  report={validationReport}
-                  selectedIssues={selectedIssues}
-                  onIssueSelectionChange={(segmentIndex, issueType, issueIndex, selected) => {
-                    setSelectedIssues(prev => {
-                      const newState = { ...prev };
-                      
-                      if (!newState[segmentIndex]) {
-                        const segment = validationReport?.detailed_results.find(r => r.segment_index === segmentIndex);
-                        if (!segment) return prev;
+              
+              {!loading && !translationContent && !validationReport && !postEditLog && (
+                <Alert severity="info">
+                  <AlertTitle>데이터 없음</AlertTitle>
+                  번역이 아직 완료되지 않았습니다.
+                </Alert>
+              )}
+              
+              <TabPanel value={tabValue} index={0}>
+                {viewMode === 'segment' && (validationReport || postEditLog) ? (
+                  <SegmentViewer
+                    mode="translation"
+                    currentSegmentIndex={segmentNav.currentSegmentIndex}
+                    validationReport={validationReport}
+                    postEditLog={postEditLog}
+                    translationContent={translationContent?.content || null}
+                  />
+                ) : viewMode === 'full' && translationContent ? (
+                  <TranslationContentViewer 
+                    content={translationContent} 
+                    sourceText={fullSourceText}
+                  />
+                ) : translationContent ? (
+                  <TranslationContentViewer 
+                    content={translationContent} 
+                    sourceText={fullSourceText}
+                  />
+                ) : selectedJob?.status === 'COMPLETED' ? (
+                  <Stack spacing={2}>
+                    <Alert severity="warning">
+                      <AlertTitle>번역 결과를 찾을 수 없습니다</AlertTitle>
+                      번역이 완료되었지만 결과를 불러올 수 없습니다.
+                    </Alert>
+                    <Button 
+                      variant="contained" 
+                      onClick={loadData}
+                      startIcon={<RefreshIcon />}
+                    >
+                      결과 다시 불러오기
+                    </Button>
+                  </Stack>
+                ) : (
+                  <Alert severity="info">
+                    번역이 완료되면 결과가 여기에 표시됩니다.
+                  </Alert>
+                )}
+              </TabPanel>
+              
+              <TabPanel value={tabValue} index={1}>
+                {viewMode === 'segment' && validationReport ? (
+                  <SegmentViewer
+                    mode="validation"
+                    currentSegmentIndex={segmentNav.currentSegmentIndex}
+                    validationReport={validationReport}
+                    postEditLog={postEditLog}
+                  />
+                ) : validationReport ? (
+                  <ValidationReportViewer 
+                    report={validationReport}
+                    selectedIssues={selectedIssues}
+                    onIssueSelectionChange={(segmentIndex, issueType, issueIndex, selected) => {
+                      setSelectedIssues(prev => {
+                        const newState = { ...prev };
+                        
+                        if (!newState[segmentIndex]) {
+                          const segment = validationReport?.detailed_results.find(r => r.segment_index === segmentIndex);
+                          if (!segment) return prev;
+                          
+                          newState[segmentIndex] = {
+                            critical: new Array(segment.critical_issues.length).fill(true),
+                            missing_content: new Array(segment.missing_content.length).fill(true),
+                            added_content: new Array(segment.added_content.length).fill(true),
+                            name_inconsistencies: new Array(segment.name_inconsistencies.length).fill(true),
+                            minor: new Array(segment.minor_issues.length).fill(true),
+                          };
+                        }
+                        
+                        if (!newState[segmentIndex][issueType]) {
+                          return prev;
+                        }
                         
                         newState[segmentIndex] = {
-                          critical: new Array(segment.critical_issues.length).fill(true),
-                          missing_content: new Array(segment.missing_content.length).fill(true),
-                          added_content: new Array(segment.added_content.length).fill(true),
-                          name_inconsistencies: new Array(segment.name_inconsistencies.length).fill(true),
-                          minor: new Array(segment.minor_issues.length).fill(true),
+                          ...newState[segmentIndex],
+                          [issueType]: newState[segmentIndex][issueType].map((val, idx) => 
+                            idx === issueIndex ? selected : val
+                          )
                         };
-                      }
-                      
-                      if (!newState[segmentIndex][issueType]) {
-                        return prev;
-                      }
-                      
-                      newState[segmentIndex] = {
-                        ...newState[segmentIndex],
-                        [issueType]: newState[segmentIndex][issueType].map((val, idx) => 
-                          idx === issueIndex ? selected : val
-                        )
-                      };
-                      
-                      return newState;
-                    });
-                  }}
-                  onSegmentClick={(index) => {
-                    console.log('Segment clicked:', index);
-                  }}
-                />
-              ) : selectedJob?.validation_status === 'COMPLETED' ? (
-                <Stack spacing={2}>
-                  <Alert severity="warning">
-                    <AlertTitle>검증 보고서를 찾을 수 없습니다</AlertTitle>
-                    검증이 완료되었지만 보고서를 불러올 수 없습니다.
+                        
+                        return newState;
+                      });
+                    }}
+                    onSegmentClick={(index) => {
+                      setViewMode('segment');
+                      segmentNav.goToSegment(index);
+                    }}
+                  />
+                ) : selectedJob?.validation_status === 'COMPLETED' ? (
+                  <Stack spacing={2}>
+                    <Alert severity="warning">
+                      <AlertTitle>검증 보고서를 찾을 수 없습니다</AlertTitle>
+                      검증이 완료되었지만 보고서를 불러올 수 없습니다.
+                    </Alert>
+                    <Button 
+                      variant="contained" 
+                      onClick={loadData}
+                      startIcon={<RefreshIcon />}
+                    >
+                      보고서 다시 불러오기
+                    </Button>
+                  </Stack>
+                ) : (
+                  <Alert severity="info">
+                    검증을 실행하면 결과가 여기에 표시됩니다.
                   </Alert>
-                  <Button 
-                    variant="contained" 
-                    onClick={loadData}
-                    startIcon={<RefreshIcon />}
-                  >
-                    보고서 다시 불러오기
-                  </Button>
-                </Stack>
-              ) : (
-                <Alert severity="info">
-                  검증을 실행하면 결과가 여기에 표시됩니다.
-                </Alert>
-              )}
-            </TabPanel>
+                )}
+              </TabPanel>
+              
+              <TabPanel value={tabValue} index={2}>
+                {viewMode === 'segment' && postEditLog ? (
+                  <SegmentViewer
+                    mode="post-edit"
+                    currentSegmentIndex={segmentNav.currentSegmentIndex}
+                    validationReport={validationReport}
+                    postEditLog={postEditLog}
+                  />
+                ) : postEditLog ? (
+                  <PostEditLogViewer 
+                    log={postEditLog}
+                    onSegmentClick={(index) => {
+                      setViewMode('segment');
+                      segmentNav.goToSegment(index);
+                    }}
+                  />
+                ) : null}
+              </TabPanel>
+            </Box>
             
-            <TabPanel value={tabValue} index={2}>
-              {postEditLog && (
-                <PostEditLogViewer 
-                  log={postEditLog}
-                  onSegmentClick={(index) => {
-                    console.log('Segment clicked:', index);
-                  }}
-                />
-              )}
-            </TabPanel>
-              </Box>
+            {/* Segment Navigation (shows when in segment view) */}
+            {viewMode === 'segment' && segmentNav.totalSegments > 0 && (
+              <SegmentNavigation
+                currentSegmentIndex={segmentNav.currentSegmentIndex}
+                totalSegments={segmentNav.totalSegments}
+                onSegmentChange={segmentNav.goToSegment}
+              />
+            )}
+          </Box>
             </Paper>
-          </>
         )}
         </Container>
       </Box>

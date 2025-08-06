@@ -267,11 +267,24 @@ async def get_job_content(
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
         
+        # Try to read the original source file
+        source_content = None
+        if db_job.filepath and os.path.exists(db_job.filepath):
+            try:
+                # Parse the original file to get the text content
+                from utils.file_parser import FileParser
+                parsed_data = FileParser.parse_file(db_job.filepath)
+                source_content = parsed_data.get('text', '')
+            except Exception as e:
+                # Log error but don't fail the whole request
+                print(f"Error reading source file: {e}")
+        
         # Return content as JSON with metadata
         return {
             "job_id": job_id,
             "filename": db_job.filename,
             "content": content,
+            "source_content": source_content,
             "completed_at": db_job.completed_at.isoformat() if db_job.completed_at else None
         }
     except Exception as e:

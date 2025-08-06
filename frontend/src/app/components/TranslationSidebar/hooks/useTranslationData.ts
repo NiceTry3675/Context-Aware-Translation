@@ -104,6 +104,49 @@ export function useTranslationData({
     }
   }, [validationStatus, validationReport, loadData]);
 
+  // Helper function to get segment data
+  const getSegmentData = useCallback((segmentIndex: number) => {
+    // Try to get from post-edit log first (most complete data)
+    if (postEditLog?.segments) {
+      const segment = postEditLog.segments.find(s => s.segment_index === segmentIndex);
+      if (segment) {
+        return {
+          sourceText: segment.source_text,
+          translatedText: segment.original_translation,
+          editedText: segment.edited_translation,
+          wasEdited: segment.was_edited,
+          issues: segment.issues,
+          changes: segment.changes_made,
+        };
+      }
+    }
+    
+    // Fall back to validation report
+    if (validationReport?.detailed_results) {
+      const result = validationReport.detailed_results.find(r => r.segment_index === segmentIndex);
+      if (result) {
+        return {
+          sourceText: result.source_preview,
+          translatedText: result.translated_preview,
+          issues: {
+            critical: result.critical_issues,
+            missingContent: result.missing_content,
+            addedContent: result.added_content,
+            nameInconsistencies: result.name_inconsistencies,
+            minor: result.minor_issues,
+          },
+        };
+      }
+    }
+    
+    return null;
+  }, [validationReport, postEditLog]);
+  
+  // Get total number of segments
+  const totalSegments = postEditLog?.segments?.length || 
+                       validationReport?.detailed_results?.length || 
+                       0;
+
   return {
     validationReport,
     postEditLog,
@@ -113,5 +156,7 @@ export function useTranslationData({
     selectedIssues,
     setSelectedIssues,
     loadData,
+    getSegmentData,
+    totalSegments,
   };
 }

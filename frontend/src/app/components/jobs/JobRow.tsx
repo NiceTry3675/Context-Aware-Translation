@@ -1,3 +1,5 @@
+'use client';
+
 import { TableRow, TableCell, Typography } from '@mui/material';
 import { Job } from '../../types/job';
 import JobStatusIndicator from './components/JobStatusIndicator';

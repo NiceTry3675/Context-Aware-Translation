@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Paper,
@@ -11,10 +11,7 @@ import {
   Select,
   MenuItem,
   FormControl,
-  InputLabel,
   Tooltip,
-  LinearProgress,
-  Badge,
 } from '@mui/material';
 import {
   NavigateBefore as PrevIcon,
@@ -25,9 +22,8 @@ import {
   ContentCopy as MissingIcon,
   AddCircle as AddedIcon,
   Person as NameIcon,
-  FilterList as FilterIcon,
 } from '@mui/icons-material';
-import { ValidationReport } from '../../types/validation';
+import { ValidationReport } from '../../utils/api';
 
 interface ErrorNavigationBarProps {
   validationReport: ValidationReport | null;
@@ -56,14 +52,12 @@ export default function ErrorNavigationBar({
     nameInconsistencies: true,
   });
 
-  const [showFilters, setShowFilters] = useState(false);
-
   // Calculate segments with errors based on filters
   const segmentsWithErrors = useMemo(() => {
     if (!validationReport) return [];
     
     return validationReport.detailed_results
-      .filter(result => {
+      .filter((result) => {
         const hasRelevantErrors = 
           (filters.critical && result.critical_issues.length > 0) ||
           (filters.missingContent && result.missing_content.length > 0) ||
@@ -72,8 +66,8 @@ export default function ErrorNavigationBar({
         
         return result.status === 'FAIL' && hasRelevantErrors;
       })
-      .map(result => result.segment_index)
-      .sort((a, b) => a - b);
+      .map((result) => result.segment_index)
+      .sort((a: number, b: number) => a - b);
   }, [validationReport, filters]);
 
   // Find current position in error list
@@ -89,7 +83,7 @@ export default function ErrorNavigationBar({
     let added = 0;
     let names = 0;
 
-    validationReport.detailed_results.forEach(result => {
+    validationReport.detailed_results.forEach((result) => {
       critical += result.critical_issues.length;
       missing += result.missing_content.length;
       added += result.added_content.length;
@@ -117,7 +111,7 @@ export default function ErrorNavigationBar({
       onSegmentChange(segmentsWithErrors[currentErrorIndex - 1]);
     } else if (segmentsWithErrors.length > 0) {
       // Find the nearest previous error
-      const previousErrors = segmentsWithErrors.filter(idx => idx < currentSegmentIndex);
+      const previousErrors = segmentsWithErrors.filter((idx: number) => idx < currentSegmentIndex);
       if (previousErrors.length > 0) {
         onSegmentChange(previousErrors[previousErrors.length - 1]);
       } else {
@@ -131,7 +125,7 @@ export default function ErrorNavigationBar({
       onSegmentChange(segmentsWithErrors[currentErrorIndex + 1]);
     } else if (segmentsWithErrors.length > 0) {
       // Find the nearest next error
-      const nextErrors = segmentsWithErrors.filter(idx => idx > currentSegmentIndex);
+      const nextErrors = segmentsWithErrors.filter((idx: number) => idx > currentSegmentIndex);
       if (nextErrors.length > 0) {
         onSegmentChange(nextErrors[0]);
       } else {
@@ -157,7 +151,7 @@ export default function ErrorNavigationBar({
     
     return (
       <Box sx={{ position: 'relative', width: mapWidth, height: 20, bgcolor: 'grey.200', borderRadius: 1 }}>
-        {validationReport.detailed_results.map((result, idx) => {
+        {validationReport.detailed_results.map((result, idx: number) => {
           const hasErrors = 
             (filters.critical && result.critical_issues.length > 0) ||
             (filters.missingContent && result.missing_content.length > 0) ||
@@ -293,7 +287,7 @@ export default function ErrorNavigationBar({
             displayEmpty
             size="small"
           >
-            {segmentsWithErrors.map(segIdx => (
+            {segmentsWithErrors.map((segIdx: number) => (
               <MenuItem key={segIdx} value={segIdx}>
                 Segment {segIdx + 1}
               </MenuItem>
