@@ -20,6 +20,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ValidationReportViewer from '../ValidationReportViewer';
 import PostEditLogViewer from '../PostEditLogViewer';
+import TranslationContentViewer from '../TranslationContentViewer';
 
 // Import extracted components
 import ValidationDialog from './ValidationDialog';
@@ -81,12 +82,13 @@ export default function TranslationSidebar({
   const {
     validationReport,
     postEditLog,
+    translationContent,
     loading: dataLoading,
     error: dataError,
     selectedIssues,
     setSelectedIssues,
     loadData,
-  } = useTranslationData({ open, jobId, validationStatus, postEditStatus });
+  } = useTranslationData({ open, jobId, jobStatus, validationStatus, postEditStatus });
 
   const validation = useValidation({ jobId, onRefresh });
   const postEdit = usePostEdit({ jobId, onRefresh, selectedIssues });
@@ -213,6 +215,10 @@ export default function TranslationSidebar({
           <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
             <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)}>
               <Tab 
+                label="번역 결과"
+                disabled={!translationContent && jobStatus !== 'COMPLETED'} 
+              />
+              <Tab 
                 label="검증 결과"
                 disabled={!validationReport && validationStatus !== 'COMPLETED'} 
               />
@@ -238,15 +244,38 @@ export default function TranslationSidebar({
               </Alert>
             )}
             
-            {!loading && !validationReport && !postEditLog && (
+            {!loading && !translationContent && !validationReport && !postEditLog && (
               <Alert severity="info">
                 <AlertTitle>데이터 없음</AlertTitle>
-                아직 검증이나 포스트 에디팅이 수행되지 않았습니다.
-                상단의 버튼을 사용하여 작업을 시작하세요.
+                번역이 아직 완료되지 않았습니다.
               </Alert>
             )}
             
             <TabPanel value={tabValue} index={0}>
+              {translationContent ? (
+                <TranslationContentViewer content={translationContent} />
+              ) : jobStatus === 'COMPLETED' ? (
+                <Stack spacing={2}>
+                  <Alert severity="warning">
+                    <AlertTitle>번역 결과를 찾을 수 없습니다</AlertTitle>
+                    번역이 완료되었지만 결과를 불러올 수 없습니다.
+                  </Alert>
+                  <Button 
+                    variant="contained" 
+                    onClick={loadData}
+                    startIcon={<RefreshIcon />}
+                  >
+                    결과 다시 불러오기
+                  </Button>
+                </Stack>
+              ) : (
+                <Alert severity="info">
+                  번역이 완료되면 결과가 여기에 표시됩니다.
+                </Alert>
+              )}
+            </TabPanel>
+            
+            <TabPanel value={tabValue} index={1}>
               {loading && validationStatus === 'COMPLETED' && !validationReport ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
                   <CircularProgress />
@@ -315,7 +344,7 @@ export default function TranslationSidebar({
               )}
             </TabPanel>
             
-            <TabPanel value={tabValue} index={1}>
+            <TabPanel value={tabValue} index={2}>
               {postEditLog && (
                 <PostEditLogViewer 
                   log={postEditLog}

@@ -105,6 +105,35 @@ export async function fetchPostEditLog(jobId: string, token?: string): Promise<P
   }
 }
 
+export interface TranslationContent {
+  job_id: number;
+  filename: string;
+  content: string;
+  completed_at: string | null;
+}
+
+export async function fetchTranslationContent(jobId: string, token?: string): Promise<TranslationContent | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/content`, {
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404 || response.status === 400) {
+        return null;
+      }
+      throw new Error(`Failed to fetch translation content: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching translation content:', error);
+    return null;
+  }
+}
+
 export async function triggerValidation(
   jobId: string,
   token?: string,

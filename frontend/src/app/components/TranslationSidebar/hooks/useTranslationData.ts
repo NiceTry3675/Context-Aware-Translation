@@ -5,13 +5,16 @@ import { useAuth } from '@clerk/nextjs';
 import {
   ValidationReport,
   PostEditLog,
+  TranslationContent,
   fetchValidationReport,
   fetchPostEditLog,
+  fetchTranslationContent,
 } from '../../../utils/api';
 
 interface UseTranslationDataProps {
   open: boolean;
   jobId: string;
+  jobStatus: string;
   validationStatus?: string;
   postEditStatus?: string;
 }
@@ -19,11 +22,13 @@ interface UseTranslationDataProps {
 export function useTranslationData({
   open,
   jobId,
+  jobStatus,
   validationStatus,
   postEditStatus,
 }: UseTranslationDataProps) {
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
   const [postEditLog, setPostEditLog] = useState<PostEditLog | null>(null);
+  const [translationContent, setTranslationContent] = useState<TranslationContent | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedIssues, setSelectedIssues] = useState<{
@@ -40,6 +45,12 @@ export function useTranslationData({
     
     try {
       const token = await getToken();
+      
+      // Load translation content if job is completed
+      if (jobStatus === 'COMPLETED') {
+        const content = await fetchTranslationContent(jobId, token || undefined);
+        setTranslationContent(content);
+      }
       
       // Load validation report if available
       if (validationStatus === 'COMPLETED') {
@@ -77,7 +88,7 @@ export function useTranslationData({
     } finally {
       setLoading(false);
     }
-  }, [jobId, validationStatus, postEditStatus, getToken]);
+  }, [jobId, jobStatus, validationStatus, postEditStatus, getToken]);
 
   // Load data when sidebar opens or job changes
   useEffect(() => {
@@ -96,6 +107,7 @@ export function useTranslationData({
   return {
     validationReport,
     postEditLog,
+    translationContent,
     loading,
     error,
     selectedIssues,

@@ -235,6 +235,49 @@ async def get_job_glossary(
     return db_job.final_glossary
 
 
+@router.get("/jobs/{job_id}/content")
+async def get_job_content(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_required_user)
+):
+    """Get the translated content as text for a completed translation job."""
+    db_job = crud.get_job(db, job_id=job_id)
+    if db_job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Check ownership
+    if not db_job.owner or db_job.owner.clerk_user_id != current_user.clerk_user_id:
+        user_is_admin = await auth.is_admin(current_user)
+        if not user_is_admin:
+            raise HTTPException(status_code=403, detail="Not authorized to access this content")
+    
+    if db_job.status != "COMPLETED":
+        raise HTTPException(status_code=400, detail=f"Translation content is available only for completed jobs. Current status: {db_job.status}")
+    
+    if not db_job.filepath:
+        raise HTTPException(status_code=404, detail="Filepath not found for this job.")
+    
+    file_path, _, _ = TranslationService.get_translated_file_path(db_job)
+    
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail=f"Translated file not found at path: {file_path}")
+    
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Return content as JSON with metadata
+        return {
+            "job_id": job_id,
+            "filename": db_job.filename,
+            "content": content,
+            "completed_at": db_job.completed_at.isoformat() if db_job.completed_at else None
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading translation content: {str(e)}")
+
+
 @router.put("/jobs/{job_id}/validation")
 async def trigger_validation(
     job_id: int,
