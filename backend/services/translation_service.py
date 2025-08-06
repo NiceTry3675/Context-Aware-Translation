@@ -214,3 +214,32 @@ class TranslationService:
         user_translated_filename = f"{original_filename_base}_translated{output_ext}"
         
         return file_path, user_translated_filename, media_type
+
+    @staticmethod
+    def delete_job_files(job: models.TranslationJob):
+        """Delete all files associated with a translation job."""
+        # 1. Source file
+        if job.filepath and os.path.exists(job.filepath):
+            os.remove(job.filepath)
+
+        # 2. Translated file
+        translated_path, _, _ = TranslationService.get_translated_file_path(job)
+        if os.path.exists(translated_path):
+            os.remove(translated_path)
+
+        # 3. Log files
+        base, _ = os.path.splitext(job.filename)
+        for log_type in ["prompts", "context"]:
+            log_dir = "debug_prompts" if log_type == "prompts" else "context_log"
+            log_filename = f"{log_type}_job_{job.id}_{base}.txt"
+            log_path = os.path.join(log_dir, log_filename)
+            if os.path.exists(log_path):
+                os.remove(log_path)
+
+        # 4. Validation report
+        if job.validation_report_path and os.path.exists(job.validation_report_path):
+            os.remove(job.validation_report_path)
+
+        # 5. Post-edit log
+        if job.post_edit_log_path and os.path.exists(job.post_edit_log_path):
+            os.remove(job.post_edit_log_path)

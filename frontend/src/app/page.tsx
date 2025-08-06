@@ -94,7 +94,35 @@ function TabPanel({ children, value, index, ...other }: TabPanelProps) {
 function CanvasContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, getToken } = useAuth();
+
+  useEffect(() => {
+    if (isSignedIn === false) {
+      router.push('/about');
+    }
+  }, [isSignedIn, router]);
+  
+  const mainContainerRef = React.useRef<HTMLDivElement>(null);
+
+  const handleToggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      mainContainerRef.current?.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
   
   const jobId = searchParams.get('jobId');
   const [tabValue, setTabValue] = useState(0);
@@ -340,6 +368,9 @@ function CanvasContent() {
       // Call delete API
       const response = await fetch(`${API_URL}/api/v1/jobs/${jobIdToDelete}`, {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${await getToken()}`,
+        },
       });
       
       if (response.ok) {
@@ -393,19 +424,9 @@ function CanvasContent() {
 
   if (!isSignedIn) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="warning">
-          <AlertTitle>로그인 필요</AlertTitle>
-          이 페이지를 보려면 로그인이 필요합니다.
-          <Button 
-            variant="contained" 
-            sx={{ ml: 2 }} 
-            onClick={() => router.push('/')}
-          >
-            메인 페이지로 이동
-          </Button>
-        </Alert>
-      </Container>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
@@ -417,8 +438,9 @@ function CanvasContent() {
         height: '100vh', 
         display: 'flex', 
         backgroundColor: 'background.default' 
-      }}>
-      {/* Left Sidebar */}
+      }}
+      ref={mainContainerRef}
+      >
       <JobSidebar
         jobs={jobs}
         selectedJobId={jobId}
@@ -453,7 +475,7 @@ function CanvasContent() {
                 {/* Right side - Actions */}
                 <Stack direction="row" spacing={1} alignItems="center">
                   <Tooltip title="새로고침">
-                    <IconButton onClick={() => { refreshJobs(); loadData(); }}>
+                    <IconButton onClick={() => window.location.reload()}>
                       <RefreshIcon />
                     </IconButton>
                   </Tooltip>
@@ -463,7 +485,7 @@ function CanvasContent() {
                     </IconButton>
                   </Tooltip>
                   <Tooltip title={fullscreen ? "전체화면 종료" : "전체화면"}>
-                    <IconButton onClick={() => setFullscreen(!fullscreen)}>
+                    <IconButton onClick={handleToggleFullscreen}>
                       {fullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
                     </IconButton>
                   </Tooltip>

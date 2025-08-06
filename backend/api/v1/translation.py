@@ -6,7 +6,7 @@ import json
 import shutil
 from typing import List, Optional
 
-from fastapi import APIRouter, File, UploadFile, BackgroundTasks, Depends, HTTPException, Form
+from fastapi import APIRouter, File, UploadFile, BackgroundTasks, Depends, HTTPException, Form, Response
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from pydantic import Field
@@ -145,6 +145,35 @@ def get_job(job_id: int, db: Session = Depends(get_db)):
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     return db_job
+
+
+@router.delete("/jobs/{job_id}", status_code=204)
+async def delete_job(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_required_user)
+):
+    """Delete a translation job and its associated files."""
+    db_job = crud.get_job(db, job_id=job_id)
+    if db_job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # Check ownership or admin role
+    user_is_admin = await auth.is_admin(current_user)
+    if not db_job.owner or (db_job.owner.clerk_user_id != current_user.clerk_user_id and not user_is_admin):
+        raise HTTPException(status_code=403, detail="Not authorized to delete this job")
+
+    # Delete associated files
+    try:
+        TranslationService.delete_job_files(db_job)
+    except Exception as e:
+        # Log the error but proceed with deleting the DB record
+        print(f"Error deleting files for job {job_id}: {e}")
+
+    # Delete the job from the database
+    crud.delete_job(db, job_id=job_id)
+
+    return Response(status_code=204)
 
 
 @router.get("/download/{job_id}")

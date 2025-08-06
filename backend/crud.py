@@ -106,6 +106,13 @@ def update_job_translation_segments(db: Session, job_id: int, segments: list):
         db.refresh(db_job)
     return db_job
 
+def delete_job(db: Session, job_id: int):
+    db_job = get_job(db, job_id)
+    if db_job:
+        db.delete(db_job)
+        db.commit()
+    return db_job
+
 
 def update_job_validation_progress(db: Session, job_id: int, progress: int):
     db_job = get_job(db, job_id)
