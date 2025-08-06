@@ -61,7 +61,7 @@ export default function DownloadActions({
               <MenuBookIcon />
             </IconButton>
           </Tooltip>
-          <Tooltip title="상세 보기">
+          <Tooltip title="캔버스에서 보기">
             <IconButton color="primary" onClick={onOpenSidebar}>
               <VisibilityIcon />
             </IconButton>

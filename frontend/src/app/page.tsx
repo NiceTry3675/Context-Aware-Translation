@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@clerk/nextjs';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Container, Box, Button, Card, CardContent
 } from '@mui/material';
@@ -11,7 +11,6 @@ import theme from '../theme';
 
 // Components
 import AuthButtons from './components/AuthButtons';
-import TranslationSidebar from './components/TranslationSidebar';
 import HeroSection from './components/sections/HeroSection';
 import FeatureSection from './components/sections/FeatureSection';
 import Footer from './components/sections/Footer';
@@ -28,16 +27,17 @@ import { useTranslationService } from './hooks/useTranslationService';
 import { useJobActions } from './hooks/useJobActions';
 
 // Types
-import { Job } from './types/job';
 import { 
   StyleData, 
   GlossaryTerm, 
   TranslationSettings as TSettings 
 } from './types/translation';
 
-export default function Home() {
-  const { isSignedIn } = useAuth();
+function HomeContent() {
+  const { isSignedIn, isLoaded } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const action = searchParams.get('action');
   
   // Use custom hooks
   const { apiKey, setApiKey, apiProvider, setApiProvider, selectedModel, setSelectedModel } = useApiKey();
@@ -63,10 +63,6 @@ export default function Home() {
   // Dev mode
   const [devMode, setDevMode] = useState<boolean>(false);
   
-  // Sidebar states
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
-  const [selectedJobForSidebar, setSelectedJobForSidebar] = useState<Job | null>(null);
-  
   // Translation service hook
   const {
     analyzeFile,
@@ -86,6 +82,8 @@ export default function Home() {
       setStyleData(null);
       setGlossaryData([]);
       setShowStyleForm(false);
+      // Navigate to canvas after job creation
+      router.push(`/canvas?jobId=${job.id}`);
     }
   });
   
@@ -100,6 +98,13 @@ export default function Home() {
   useEffect(() => {
     setDevMode(localStorage.getItem('devMode') === 'true');
   }, []);
+  
+  // Redirect logged-in users to canvas (unless they're creating a new translation)
+  useEffect(() => {
+    if (isLoaded && isSignedIn && action !== 'new') {
+      router.push('/canvas');
+    }
+  }, [isLoaded, isSignedIn, action, router]);
 
   // File analysis handler
   const handleFileSelect = async (selectedFile: File, analyzeGlossary: boolean) => {
@@ -147,11 +152,6 @@ export default function Home() {
       translationSettings.quickValidation,
       translationSettings.validationSampleRate
     );
-  };
-
-  const handleOpenSidebar = (job: Job) => {
-    setSelectedJobForSidebar(job);
-    setSidebarOpen(true);
   };
 
   return (
@@ -238,7 +238,6 @@ export default function Home() {
         jobs={jobs}
         onDelete={deleteJob}
         onDownload={jobActions.handleDownload}
-        onOpenSidebar={handleOpenSidebar}
         onTriggerValidation={handleTriggerValidation}
         onTriggerPostEdit={jobActions.handleTriggerPostEdit}
         onDownloadValidationReport={jobActions.handleDownloadValidationReport}
@@ -247,22 +246,16 @@ export default function Home() {
         apiUrl={API_URL}
       />
 
-      {/* Translation Sidebar */}
-      {selectedJobForSidebar && (
-        <TranslationSidebar
-          open={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-          jobId={selectedJobForSidebar.id.toString()}
-          jobStatus={selectedJobForSidebar.status}
-          validationStatus={selectedJobForSidebar.validation_status || undefined}
-          postEditStatus={selectedJobForSidebar.post_edit_status || undefined}
-          validationProgress={selectedJobForSidebar.validation_progress}
-          onRefresh={refreshJobs}
-        />
-      )}
-
       {/* Footer */}
       <Footer />
     </Container>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }

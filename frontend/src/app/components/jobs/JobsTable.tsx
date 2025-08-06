@@ -1,3 +1,6 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
 import {
   Paper, Typography, TableContainer, Table, TableHead, TableRow,
   TableCell, TableBody, Alert, Link
@@ -10,7 +13,6 @@ interface JobsTableProps {
   jobs: Job[];
   onDelete: (jobId: number) => void;
   onDownload: (url: string, filename: string) => void;
-  onOpenSidebar: (job: Job) => void;
   onTriggerValidation: (jobId: number) => void;
   onTriggerPostEdit: (jobId: number) => void;
   onDownloadValidationReport: (jobId: number) => void;
@@ -23,7 +25,6 @@ export default function JobsTable({
   jobs,
   onDelete,
   onDownload,
-  onOpenSidebar,
   onTriggerValidation,
   onTriggerPostEdit,
   onDownloadValidationReport,
@@ -31,6 +32,12 @@ export default function JobsTable({
   devMode = false,
   apiUrl
 }: JobsTableProps) {
+  const router = useRouter();
+  
+  const handleOpenCanvas = (job: Job) => {
+    router.push(`/canvas?jobId=${job.id}`);
+  };
+  
   const hasProcessingJobs = jobs.some(job => job.status === 'PROCESSING');
   const hasCompletedJobs = jobs.some(job => job.status === 'COMPLETED' && !job.filename.toLowerCase().endsWith('.epub'));
 
@@ -75,7 +82,7 @@ export default function JobsTable({
                   job={job}
                   onDelete={onDelete}
                   onDownload={onDownload}
-                  onOpenSidebar={onOpenSidebar}
+                  onOpenSidebar={handleOpenCanvas}
                   onTriggerValidation={onTriggerValidation}
                   onTriggerPostEdit={onTriggerPostEdit}
                   onDownloadValidationReport={onDownloadValidationReport}
