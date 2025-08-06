@@ -18,14 +18,11 @@ import {
   LinearProgress,
   Stack,
   Tooltip,
-  Menu,
-  MenuItem,
 } from '@mui/material';
 import {
   Article as ArticleIcon,
   Search as SearchIcon,
   Add as AddIcon,
-  MoreVert as MoreVertIcon,
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon,
   HourglassEmpty as PendingIcon,
@@ -90,55 +87,10 @@ export default function JobSidebar({
   loading = false,
 }: JobSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
   const filteredJobs = jobs.filter(job =>
     job.filename.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, job: Job) => {
-    event.stopPropagation();
-    setAnchorEl(event.currentTarget);
-    setSelectedJob(job);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedJob(null);
-  };
-
-  const handleDelete = () => {
-    if (selectedJob) {
-      onJobDelete(selectedJob.id);
-    }
-    handleMenuClose();
-  };
-
-  const handleDownload = async () => {
-    if (!selectedJob || selectedJob.status !== 'COMPLETED') return;
-    
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    
-    try {
-      const response = await fetch(`${API_URL}/download/${selectedJob.id}`);
-      if (!response.ok) throw new Error('Download failed');
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = selectedJob.filename || `translation_${selectedJob.id}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Download error:', error);
-    }
-    
-    handleMenuClose();
-  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -240,19 +192,55 @@ export default function JobSidebar({
                   secondaryAction={
                     <Stack direction="row" alignItems="center" spacing={0.5}>
                       {job.status === 'COMPLETED' && (
-                        <JobRowActions 
-                          job={job} 
-                          onRefresh={onRefreshJobs} 
-                          compact={true}
-                        />
+                        <>
+                          <JobRowActions 
+                            job={job} 
+                            onRefresh={onRefreshJobs} 
+                            compact={true}
+                          />
+                          <Tooltip title="다운로드">
+                            <IconButton
+                              size="small"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                                try {
+                                  const response = await fetch(`${API_URL}/download/${job.id}`);
+                                  if (!response.ok) throw new Error('Download failed');
+                                  
+                                  const blob = await response.blob();
+                                  const url = window.URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = job.filename || `translation_${job.id}.txt`;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  document.body.removeChild(a);
+                                  window.URL.revokeObjectURL(url);
+                                } catch (error) {
+                                  console.error('Download error:', error);
+                                }
+                              }}
+                            >
+                              <DownloadIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </>
                       )}
-                      <IconButton
-                        edge="end"
-                        size="small"
-                        onClick={(e) => handleMenuOpen(e, job)}
-                      >
-                        <MoreVertIcon fontSize="small" />
-                      </IconButton>
+                      <Tooltip title="삭제">
+                        <IconButton
+                          edge="end"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm(`정말로 "${job.filename}"을(를) 삭제하시겠습니까?`)) {
+                              onJobDelete(job.id);
+                            }
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </Stack>
                   }
                 >
@@ -342,28 +330,6 @@ export default function JobSidebar({
           </List>
         )}
       </Box>
-      
-      {/* Context Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-      >
-        {selectedJob?.status === 'COMPLETED' && (
-          <MenuItem onClick={handleDownload}>
-            <ListItemIcon>
-              <DownloadIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>다운로드</ListItemText>
-          </MenuItem>
-        )}
-        <MenuItem onClick={handleDelete}>
-          <ListItemIcon>
-            <DeleteIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>삭제</ListItemText>
-        </MenuItem>
-      </Menu>
     </Box>
   );
 }

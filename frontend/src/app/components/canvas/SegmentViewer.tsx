@@ -15,7 +15,7 @@ import {
   ListItemText,
 } from '@mui/material';
 import { TextSegmentDisplay } from '../shared/TextSegmentDisplay';
-import { ValidationReport, PostEditLog } from '../../utils/api';
+import { ValidationReport, PostEditLog, TranslationSegments } from '../../utils/api';
 
 interface SegmentViewerProps {
   mode: 'translation' | 'validation' | 'post-edit';
@@ -23,6 +23,7 @@ interface SegmentViewerProps {
   validationReport?: ValidationReport | null;
   postEditLog?: PostEditLog | null;
   translationContent?: string | null;
+  translationSegments?: TranslationSegments | null;
 }
 
 interface SegmentData {
@@ -55,28 +56,66 @@ export default function SegmentViewer({
   validationReport,
   postEditLog,
   translationContent,
+  translationSegments,
 }: SegmentViewerProps) {
   // Extract segment data based on mode and available data
   const segmentData: SegmentData | null = useMemo(() => {
-    // For post-edit mode, use post-edit log data
-    if (mode === 'post-edit' && postEditLog?.segments) {
+    // First, try to get full text from post-edit log if available (has full source_text)
+    if (postEditLog?.segments) {
       const segment = postEditLog.segments.find((s) => s.segment_index === currentSegmentIndex);
       if (segment) {
+        // For post-edit mode, show the editing comparison
+        if (mode === 'post-edit') {
+          return {
+            sourceText: segment.source_text,
+            translatedText: segment.original_translation,
+            editedText: segment.edited_translation,
+            wasEdited: segment.was_edited,
+            issues: segment.issues,
+            changes: segment.changes_made,
+          };
+        }
+        // For other modes, use the full text from post-edit log
         return {
           sourceText: segment.source_text,
-          translatedText: segment.original_translation,
-          editedText: segment.edited_translation,
-          wasEdited: segment.was_edited,
+          translatedText: segment.edited_translation || segment.original_translation,
           issues: segment.issues,
-          changes: segment.changes_made,
         };
       }
     }
 
-    // For validation mode or when post-edit data isn't available, use validation report
+    // Second, try to use translation segments from the new segments API (has full text)
+    if (translationSegments?.segments && translationSegments.segments.length > 0) {
+      const segment = translationSegments.segments.find((s) => s.segment_index === currentSegmentIndex);
+      if (segment) {
+        // Get issues from validation report if available
+        let issues = undefined;
+        if (validationReport?.detailed_results) {
+          const validationResult = validationReport.detailed_results.find((r) => r.segment_index === currentSegmentIndex);
+          if (validationResult) {
+            issues = {
+              critical: validationResult.critical_issues,
+              missingContent: validationResult.missing_content,
+              addedContent: validationResult.added_content,
+              nameInconsistencies: validationResult.name_inconsistencies,
+              minor: validationResult.minor_issues,
+            };
+          }
+        }
+        
+        return {
+          sourceText: segment.source_text,
+          translatedText: segment.translated_text,
+          issues,
+        };
+      }
+    }
+
+    // If segments are not available, use validation report (only has preview)
     if (validationReport?.detailed_results) {
       const result = validationReport.detailed_results.find((r) => r.segment_index === currentSegmentIndex);
       if (result) {
+        // Note: validation report only has preview text, not full text
         return {
           sourceText: result.source_preview,
           translatedText: result.translated_preview,
@@ -91,29 +130,18 @@ export default function SegmentViewer({
       }
     }
 
-    // For translation mode with post-edit data available
-    if (mode === 'translation' && postEditLog?.segments) {
-      const segment = postEditLog.segments.find((s) => s.segment_index === currentSegmentIndex);
-      if (segment) {
-        return {
-          sourceText: segment.source_text,
-          translatedText: segment.edited_translation || segment.original_translation,
-        };
-      }
-    }
-
     // Fallback: if we only have translation content (no segmentation available)
     if (mode === 'translation' && translationContent) {
       // We can't segment the content properly without segment boundaries
       // This is a limitation that needs backend support
       return {
-        sourceText: 'Original source text not available in segment view. Please use validation or post-edit to see segmented content.',
+        sourceText: 'Original source text not available in segment view. Please run validation to see segmented content.',
         translatedText: translationContent,
       };
     }
 
     return null;
-  }, [mode, currentSegmentIndex, validationReport, postEditLog, translationContent]);
+  }, [mode, currentSegmentIndex, validationReport, postEditLog, translationContent, translationSegments]);
 
   if (!segmentData) {
     return (
@@ -252,6 +280,9 @@ export default function SegmentViewer({
     );
   };
 
+  // Check if we're showing preview text (from validation report) vs full text
+  const isShowingPreview = !postEditLog && !translationSegments && validationReport;
+
   return (
     <Paper sx={{ p: 3 }}>
       {/* Segment Header */}
@@ -260,6 +291,15 @@ export default function SegmentViewer({
           세그먼트 {currentSegmentIndex + 1}
         </Typography>
         <Stack direction="row" spacing={1}>
+          {isShowingPreview && (
+            <Chip 
+              label="미리보기" 
+              color="info" 
+              size="small" 
+              variant="outlined"
+              title="전체 텍스트를 보려면 포스트 에디팅을 실행하세요"
+            />
+          )}
           {mode === 'post-edit' && segmentData.wasEdited && (
             <Chip label="수정됨" color="success" size="small" />
           )}
@@ -275,6 +315,13 @@ export default function SegmentViewer({
           )}
         </Stack>
       </Stack>
+
+      {/* Notice for preview mode */}
+      {isShowingPreview && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          현재 텍스트 미리보기만 표시됩니다. 전체 세그먼트 내용을 보려면 포스트 에디팅을 실행하세요.
+        </Alert>
+      )}
 
       <Divider sx={{ mb: 3 }} />
 

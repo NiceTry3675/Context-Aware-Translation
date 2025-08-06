@@ -95,6 +95,7 @@ function CanvasContent() {
     validationReport,
     postEditLog,
     translationContent,
+    translationSegments,
     loading: dataLoading,
     error: dataError,
     selectedIssues,
@@ -115,6 +116,7 @@ function CanvasContent() {
   const segmentNav = useSegmentNavigation({
     validationReport,
     postEditLog,
+    translationSegments,
     jobId: jobId || undefined,
   });
 
@@ -379,7 +381,7 @@ function CanvasContent() {
                   color={viewMode === 'segment' ? 'primary' : 'default'}
                   variant={viewMode === 'segment' ? 'filled' : 'outlined'}
                   size="small"
-                  disabled={!validationReport && !postEditLog}
+                  disabled={!validationReport && !postEditLog && (!translationSegments?.segments || translationSegments.segments.length === 0)}
                 />
               </Stack>
             </Box>
@@ -406,14 +408,23 @@ function CanvasContent() {
               )}
               
               <TabPanel value={tabValue} index={0}>
-                {viewMode === 'segment' && (validationReport || postEditLog) ? (
-                  <SegmentViewer
-                    mode="translation"
-                    currentSegmentIndex={segmentNav.currentSegmentIndex}
-                    validationReport={validationReport}
-                    postEditLog={postEditLog}
-                    translationContent={translationContent?.content || null}
-                  />
+                {viewMode === 'segment' ? (
+                  validationReport || postEditLog || (translationSegments?.segments && translationSegments.segments.length > 0) ? (
+                    <SegmentViewer
+                      mode="translation"
+                      currentSegmentIndex={segmentNav.currentSegmentIndex}
+                      validationReport={validationReport}
+                      postEditLog={postEditLog}
+                      translationContent={translationContent?.content || null}
+                      translationSegments={translationSegments}
+                    />
+                  ) : (
+                    <Alert severity="info">
+                      <AlertTitle>세그먼트 보기 사용 불가</AlertTitle>
+                      이 번역 작업은 세그먼트 저장 기능이 구현되기 전에 완료되었습니다. 
+                      세그먼트 보기를 사용하려면 검증(Validation) 또는 포스트 에디팅을 실행해 주세요.
+                    </Alert>
+                  )
                 ) : viewMode === 'full' && translationContent ? (
                   <TranslationContentViewer 
                     content={translationContent} 
@@ -452,6 +463,7 @@ function CanvasContent() {
                     currentSegmentIndex={segmentNav.currentSegmentIndex}
                     validationReport={validationReport}
                     postEditLog={postEditLog}
+                    translationSegments={translationSegments}
                   />
                 ) : validationReport ? (
                   <ValidationReportViewer 
@@ -521,6 +533,7 @@ function CanvasContent() {
                     currentSegmentIndex={segmentNav.currentSegmentIndex}
                     validationReport={validationReport}
                     postEditLog={postEditLog}
+                    translationSegments={translationSegments}
                   />
                 ) : postEditLog ? (
                   <PostEditLogViewer 

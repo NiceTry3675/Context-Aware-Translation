@@ -98,6 +98,14 @@ def update_job_final_glossary(db: Session, job_id: int, glossary: dict):
         db.refresh(db_job)
     return db_job
 
+def update_job_translation_segments(db: Session, job_id: int, segments: list):
+    db_job = get_job(db, job_id)
+    if db_job:
+        db_job.translation_segments = segments
+        db.commit()
+        db.refresh(db_job)
+    return db_job
+
 
 def update_job_validation_progress(db: Session, job_id: int, progress: int):
     db_job = get_job(db, job_id)

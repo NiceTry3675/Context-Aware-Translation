@@ -6,9 +6,11 @@ import {
   ValidationReport,
   PostEditLog,
   TranslationContent,
+  TranslationSegments,
   fetchValidationReport,
   fetchPostEditLog,
   fetchTranslationContent,
+  fetchTranslationSegments,
 } from '../../../utils/api';
 
 interface UseTranslationDataProps {
@@ -29,6 +31,7 @@ export function useTranslationData({
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
   const [postEditLog, setPostEditLog] = useState<PostEditLog | null>(null);
   const [translationContent, setTranslationContent] = useState<TranslationContent | null>(null);
+  const [translationSegments, setTranslationSegments] = useState<TranslationSegments | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedIssues, setSelectedIssues] = useState<{
@@ -46,10 +49,14 @@ export function useTranslationData({
     try {
       const token = await getToken();
       
-      // Load translation content if job is completed
+      // Load translation content and segments if job is completed
       if (jobStatus === 'COMPLETED') {
-        const content = await fetchTranslationContent(jobId, token || undefined);
+        const [content, segments] = await Promise.all([
+          fetchTranslationContent(jobId, token || undefined),
+          fetchTranslationSegments(jobId, token || undefined)
+        ]);
         setTranslationContent(content);
+        setTranslationSegments(segments);
       }
       
       // Load validation report if available
@@ -151,6 +158,7 @@ export function useTranslationData({
     validationReport,
     postEditLog,
     translationContent,
+    translationSegments,
     loading,
     error,
     selectedIssues,

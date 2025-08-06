@@ -177,6 +177,16 @@ class TranslationEngine:
 
         if crud and self.db and self.job_id:
             crud.update_job_final_glossary(self.db, self.job_id, job.glossary)
+            
+            # Save translation segments for segment view
+            segments_data = []
+            for i, (source_segment, translated_segment) in enumerate(zip(job.segments, job.translated_segments)):
+                segments_data.append({
+                    "segment_index": i,
+                    "source_text": source_segment.text,
+                    "translated_text": translated_segment
+                })
+            crud.update_job_translation_segments(self.db, self.job_id, segments_data)
 
         print(f"\n--- Translation Complete! ---")
         print(f"Output: {job.output_filename}")

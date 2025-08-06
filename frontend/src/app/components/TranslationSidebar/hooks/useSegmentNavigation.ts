@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ValidationReport, PostEditLog } from '../../../utils/api';
+import { ValidationReport, PostEditLog, TranslationSegments } from '../../../utils/api';
 
 interface UseSegmentNavigationProps {
   validationReport?: ValidationReport | null;
   postEditLog?: PostEditLog | null;
+  translationSegments?: TranslationSegments | null;
   jobId?: string;
 }
 
@@ -28,6 +29,7 @@ interface UseSegmentNavigationReturn {
 export function useSegmentNavigation({
   validationReport,
   postEditLog,
+  translationSegments,
   jobId,
 }: UseSegmentNavigationProps): UseSegmentNavigationReturn {
   const router = useRouter();
@@ -39,11 +41,14 @@ export function useSegmentNavigation({
     if (postEditLog?.segments) {
       return postEditLog.segments.length;
     }
+    if (translationSegments?.segments && translationSegments.segments.length > 0) {
+      return translationSegments.segments.length;
+    }
     if (validationReport?.detailed_results) {
       return validationReport.detailed_results.length;
     }
     return 0;
-  }, [postEditLog, validationReport]);
+  }, [postEditLog, translationSegments, validationReport]);
 
   // Calculate segments with errors
   const segmentsWithErrors = useMemo(() => {

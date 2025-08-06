@@ -36,6 +36,9 @@ class TranslationJob(Base):
     final_glossary = Column(JSON, nullable=True)
     # -----------------------
     
+    # Segment data for displaying in segment view
+    translation_segments = Column(JSON, nullable=True)  # Stores both source and translated segments
+    
     # Validation and Post-Edit fields
     validation_enabled = Column(Boolean, default=False)
     validation_status = Column(String, nullable=True)  # PENDING, IN_PROGRESS, COMPLETED, FAILED

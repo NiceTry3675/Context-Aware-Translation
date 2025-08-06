@@ -235,6 +235,46 @@ async def get_job_glossary(
     return db_job.final_glossary
 
 
+@router.get("/jobs/{job_id}/segments")
+async def get_job_segments(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_required_user)
+):
+    """Get the segmented translation data for a completed translation job."""
+    db_job = crud.get_job(db, job_id=job_id)
+    if db_job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Check ownership
+    if not db_job.owner or db_job.owner.clerk_user_id != current_user.clerk_user_id:
+        user_is_admin = await auth.is_admin(current_user)
+        if not user_is_admin:
+            raise HTTPException(status_code=403, detail="Not authorized to access this content")
+    
+    if db_job.status != "COMPLETED":
+        raise HTTPException(status_code=400, detail=f"Translation segments are available only for completed jobs. Current status: {db_job.status}")
+    
+    # Return empty segments if not available (for jobs completed before segmentation was implemented)
+    if not db_job.translation_segments:
+        return {
+            "job_id": job_id,
+            "filename": db_job.filename,
+            "segments": [],
+            "total_segments": 0,
+            "completed_at": db_job.completed_at.isoformat() if db_job.completed_at else None,
+            "message": "This job was completed before segment storage was implemented. Please run validation or post-editing to see segmented content."
+        }
+    
+    # Return segments as JSON
+    return {
+        "job_id": job_id,
+        "filename": db_job.filename,
+        "segments": db_job.translation_segments,
+        "total_segments": len(db_job.translation_segments),
+        "completed_at": db_job.completed_at.isoformat() if db_job.completed_at else None
+    }
+
 @router.get("/jobs/{job_id}/content")
 async def get_job_content(
     job_id: int,

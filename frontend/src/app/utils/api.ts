@@ -113,6 +113,19 @@ export interface TranslationContent {
   completed_at: string | null;
 }
 
+export interface TranslationSegments {
+  job_id: number;
+  filename: string;
+  segments: Array<{
+    segment_index: number;
+    source_text: string;
+    translated_text: string;
+  }>;
+  total_segments: number;
+  completed_at: string | null;
+  message?: string; // Optional message for jobs without segments
+}
+
 export async function fetchTranslationContent(jobId: string, token?: string): Promise<TranslationContent | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/content`, {
@@ -131,6 +144,33 @@ export async function fetchTranslationContent(jobId: string, token?: string): Pr
     return await response.json();
   } catch (error) {
     console.error('Error fetching translation content:', error);
+    return null;
+  }
+}
+
+export async function fetchTranslationSegments(jobId: string, token?: string): Promise<TranslationSegments | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/segments`, {
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404 || response.status === 400) {
+        // Return null for error statuses
+        return null;
+      }
+      throw new Error(`Failed to fetch translation segments: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    // Even if segments are empty, return the data structure
+    // This allows the UI to handle empty segments appropriately
+    return data;
+  } catch (error) {
+    console.error('Error fetching translation segments:', error);
     return null;
   }
 }
