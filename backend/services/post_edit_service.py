@@ -41,7 +41,11 @@ class PostEditService:
         post_editor = PostEditEngine(model_api)
         
         # Create translation job for post-editing
-        translation_job = TranslationJob(job.filepath, original_filename=job.filename)
+        translation_job = TranslationJob(
+            job.filepath, 
+            original_filename=job.filename,
+            target_segment_size=job.segment_size
+        )
         
         # Load the translated segments from the translated file
         with open(translated_path, 'r', encoding='utf-8') as f:

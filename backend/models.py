@@ -35,7 +35,7 @@ class TranslationJob(Base):
     owner = relationship("User", back_populates="jobs")
     final_glossary = Column(JSON, nullable=True)
     # -----------------------
-    
+    segment_size = Column(Integer, default=15000)
     # Segment data for displaying in segment view
     translation_segments = Column(JSON, nullable=True)  # Stores both source and translated segments
     

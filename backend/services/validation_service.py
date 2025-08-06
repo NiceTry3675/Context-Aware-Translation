@@ -41,7 +41,11 @@ class ValidationService:
         validator = TranslationValidator(model_api)
         
         # Create validation job
-        validation_job = TranslationJob(job.filepath, original_filename=job.filename)
+        validation_job = TranslationJob(
+            job.filepath, 
+            original_filename=job.filename,
+            target_segment_size=job.segment_size
+        )
         
         # Load the translated segments from the translated file
         with open(translated_path, 'r', encoding='utf-8') as f:

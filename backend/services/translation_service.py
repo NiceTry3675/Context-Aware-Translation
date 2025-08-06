@@ -107,22 +107,20 @@ class TranslationService:
     @staticmethod
     def prepare_translation_job(
         job_id: int,
-        file_path: str,
-        filename: str,
+        job: models.TranslationJob,  # Pass the full job object
         api_key: str,
         model_name: str,
         style_data: Optional[str] = None,
-        glossary_data: Optional[str] = None,
-        segment_size: int = 15000
+        glossary_data: Optional[str] = None
     ) -> Dict[str, Any]:
         """Prepare all the necessary components for a translation job."""
         config = load_config()
         gemini_api = TranslationService.get_model_api(api_key, model_name, config)
         
         translation_job = TranslationJob(
-            file_path,
-            original_filename=filename,
-            target_segment_size=segment_size
+            job.filepath,
+            original_filename=job.filename,
+            target_segment_size=job.segment_size
         )
         
         # Process style data

@@ -55,7 +55,13 @@ def get_jobs_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100)
     ).offset(skip).limit(limit).all()
 
 def create_translation_job(db: Session, job: schemas.TranslationJobCreate):
-    db_job = models.TranslationJob(filename=job.filename, owner_id=job.owner_id, status="PENDING", progress=0)
+    db_job = models.TranslationJob(
+        filename=job.filename, 
+        owner_id=job.owner_id, 
+        status="PENDING", 
+        progress=0,
+        segment_size=job.segment_size
+    )
     db.add(db_job)
     db.commit()
     db.refresh(db_job)

@@ -14,10 +14,10 @@ def backup_database():
     backup_name = f"database_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
     try:
         shutil.copy2("database.db", backup_name)
-        print(f"✓ Database backed up to {backup_name}")
+        print(f"Database backed up to {backup_name}")
         return backup_name
     except Exception as e:
-        print(f"✗ Failed to backup database: {e}")
+        print(f"Failed to backup database: {e}")
         return None
 
 def check_column_exists(cursor, table_name, column_name):
@@ -31,10 +31,10 @@ def add_column_if_not_exists(cursor, table_name, column_name, column_definition)
     if not check_column_exists(cursor, table_name, column_name):
         try:
             cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}")
-            print(f"  ✓ Added column {column_name}")
+            print(f"  Added column {column_name}")
             return True
         except sqlite3.OperationalError as e:
-            print(f"  ✗ Failed to add column {column_name}: {e}")
+            print(f"  Failed to add column {column_name}: {e}")
             return False
     else:
         print(f"  - Column {column_name} already exists")
@@ -42,7 +42,7 @@ def add_column_if_not_exists(cursor, table_name, column_name, column_definition)
 
 def migrate_database():
     """Add missing post-editing columns to the translation_jobs table."""
-    print("\n=== Database Migration: Adding Post-Edit Columns ===\n")
+    print('\n=== Database Migration: Adding Post-Edit Columns ===\n')
     
     # Backup first
     backup_file = backup_database()
@@ -57,7 +57,7 @@ def migrate_database():
         conn = sqlite3.connect("database.db")
         cursor = conn.cursor()
         
-        print("\nAdding missing columns to translation_jobs table:")
+        print('\nAdding missing columns to translation_jobs table:')
         
         # List of columns to add with their definitions
         columns_to_add = [
@@ -74,7 +74,8 @@ def migrate_database():
             ("post_edit_log_path", "VARCHAR"),
             ("post_edit_completed_at", "TIMESTAMP"),
             ("final_glossary", "JSON"),
-            ("owner_id", "INTEGER REFERENCES users(id)")
+            ("owner_id", "INTEGER REFERENCES users(id)"),
+            ("segment_size", "INTEGER DEFAULT 15000")
         ]
         
         # Add each column if it doesn't exist
@@ -86,22 +87,22 @@ def migrate_database():
         if success:
             # Commit changes
             conn.commit()
-            print("\n✓ Migration completed successfully!")
+            print('\nMigration completed successfully!')
             
             # Verify the schema
             cursor.execute("PRAGMA table_info(translation_jobs)")
             columns = cursor.fetchall()
-            print(f"\nTable now has {len(columns)} columns")
+            print(f'\nTable now has {len(columns)} columns')
             
         else:
-            print("\n✗ Some columns failed to add. Rolling back...")
+            print('\nSome columns failed to add. Rolling back...')
             conn.rollback()
             
         conn.close()
         return success
         
     except Exception as e:
-        print(f"\n✗ Migration failed: {e}")
+        print(f'\nMigration failed: {e}')
         if backup_file:
             print(f"You can restore from backup: {backup_file}")
         return False

@@ -110,7 +110,11 @@ async def create_job(
         raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
     
     # Create job in database
-    job_create = schemas.TranslationJobCreate(filename=file.filename, owner_id=current_user.id)
+    job_create = schemas.TranslationJobCreate(
+        filename=file.filename, 
+        owner_id=current_user.id,
+        segment_size=segment_size
+    )
     db_job = crud.create_translation_job(db, job_create)
     
     # Save uploaded file
@@ -131,8 +135,8 @@ async def create_job(
     # Start translation in background
     background_tasks.add_task(
         run_translation_in_background,
-        db_job.id, file_path, file.filename, api_key, model_name,
-        style_data, glossary_data, segment_size
+        db_job.id, api_key, model_name,
+        style_data, glossary_data
     )
     
     return db_job

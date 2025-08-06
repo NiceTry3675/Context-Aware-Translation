@@ -307,7 +307,8 @@ function CanvasContent() {
   };
 
   // Combine loading states
-  const loading = dataLoading || validation.loading || postEdit.loading;
+  const loading = validation.loading || postEdit.loading;
+  const isPolling = selectedJob?.status === 'IN_PROGRESS' || selectedJob?.validation_status === 'IN_PROGRESS' || selectedJob?.post_edit_status === 'IN_PROGRESS';
   const error = dataError || validation.error || postEdit.error || translationError;
 
   // Load saved tab preference only on client side
@@ -329,16 +330,21 @@ function CanvasContent() {
     }
   };
 
-  // Auto-refresh when validation/post-edit is in progress
+  // Auto-refresh when translation, validation, or post-edit is in progress
   useEffect(() => {
-    if (selectedJob?.validation_status === 'IN_PROGRESS' || selectedJob?.post_edit_status === 'IN_PROGRESS') {
+    if (
+      selectedJob?.status === 'IN_PROGRESS' ||
+      selectedJob?.validation_status === 'IN_PROGRESS' || 
+      selectedJob?.post_edit_status === 'IN_PROGRESS'
+    ) {
       const interval = setInterval(() => {
+        console.log('Refreshing job status...');
         refreshJobs();
         loadData();
       }, 2000);
       return () => clearInterval(interval);
     }
-  }, [selectedJob?.validation_status, selectedJob?.post_edit_status, refreshJobs, loadData]);
+  }, [selectedJob?.status, selectedJob?.validation_status, selectedJob?.post_edit_status, refreshJobs, loadData]);
 
   // Handle job selection change
   const handleJobChange = (newJobId: string) => {
@@ -744,7 +750,16 @@ function CanvasContent() {
                 )}
                 
                 <Box sx={{ p: 3 }}>
-                  {loading && (
+                  {isPolling && (
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      <AlertTitle>작업 진행 중</AlertTitle>
+                      {selectedJob?.status === 'IN_PROGRESS' && `번역 작업이 진행 중입니다... (${selectedJob?.progress || 0}%)`}
+                      {selectedJob?.validation_status === 'IN_PROGRESS' && `검증 작업이 진행 중입니다... (${selectedJob?.validation_progress || 0}%)`}
+                      {selectedJob?.post_edit_status === 'IN_PROGRESS' && `포스트에디팅 작업이 진행 중입니다... (${selectedJob?.post_edit_progress || 0}%)`}
+                    </Alert>
+                  )}
+
+                  {dataLoading && !isPolling && (
                     <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
                       <CircularProgress />
                     </Box>

@@ -63,11 +63,13 @@ class TranslationJobBase(BaseModel):
 
 class TranslationJobCreate(TranslationJobBase):
     owner_id: int
+    segment_size: int
 
 class TranslationJob(TranslationJobBase):
     id: int
     status: str
     progress: int
+    segment_size: int
     created_at: datetime.datetime
     completed_at: Optional[datetime.datetime] = None
     error_message: Optional[str] = None
