@@ -52,6 +52,7 @@ def run_migrations():
                 {'type': 'add_column', 'table': 'comments', 'column': 'is_private', 'definition': 'BOOLEAN DEFAULT FALSE'},
                 {'type': 'add_column', 'table': 'users', 'column': 'role', 'definition': "VARCHAR(50) DEFAULT 'user'"},
                 {'type': 'add_column', 'table': 'translation_jobs', 'column': 'final_glossary', 'definition': 'JSON'},
+                {'type': 'add_column', 'table': 'translation_jobs', 'column': 'segment_size', 'definition': 'INTEGER DEFAULT 15000'},
                 
                 # Validation and Post-Edit columns
                 {'type': 'add_column', 'table': 'translation_jobs', 'column': 'validation_enabled', 'definition': 'BOOLEAN DEFAULT FALSE'},
