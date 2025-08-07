@@ -236,14 +236,14 @@ function CanvasContent() {
       return postEditLog.segments
         .sort((a, b) => a.segment_index - b.segment_index)
         .map(segment => segment.source_text)
-        .join(' '); // Join with single space for natural flow
+        .join('\n'); // Join with newline to preserve paragraph structure
     }
     // Third priority: use translation segments if available
     if (translationSegments?.segments && translationSegments.segments.length > 0) {
       return translationSegments.segments
         .sort((a, b) => a.segment_index - b.segment_index)
         .map(segment => segment.source_text)
-        .join(' '); // Join with single space for natural flow
+        .join('\n'); // Join with newline to preserve paragraph structure
     }
     // Don't use validation report as it only has truncated source_preview
     return undefined;
@@ -617,13 +617,15 @@ function CanvasContent() {
                                   </IconButton>
                                 </Tooltip>
                                 <Box sx={{ 
-                                  px: 1.5, 
+                                  px: 2, 
                                   py: 0.5, 
                                   bgcolor: 'warning.main',
-                                  color: 'white',
+                                  color: 'black',
                                   borderRadius: 1,
                                   fontSize: '0.75rem',
                                   fontWeight: 'medium',
+                                  minWidth: 100,
+                                  textAlign: 'center',
                                 }}>
                                   오류 {segmentNav.segmentsWithErrors.indexOf(segmentNav.currentSegmentIndex) + 1}/{segmentNav.segmentsWithErrors.length}
                                 </Box>
@@ -661,10 +663,10 @@ function CanvasContent() {
                               bgcolor: 'primary.main',
                               color: 'primary.contrastText',
                               borderRadius: 1,
-                              minWidth: 80,
+                              minWidth: 100,
                               textAlign: 'center',
                             }}>
-                              <Typography variant="caption" fontWeight="medium">
+                              <Typography variant="body2" fontWeight="medium">
                                 {segmentNav.currentSegmentIndex + 1} / {segmentNav.totalSegments}
                               </Typography>
                             </Box>
@@ -783,11 +785,15 @@ function CanvasContent() {
                       <TranslationContentViewer 
                         content={translationContent} 
                         sourceText={fullSourceText}
+                        segments={translationSegments}
+                        postEditLog={postEditLog}
                       />
                     ) : translationContent ? (
                       <TranslationContentViewer 
                         content={translationContent} 
                         sourceText={fullSourceText}
+                        segments={translationSegments}
+                        postEditLog={postEditLog}
                       />
                     ) : selectedJob?.status === 'COMPLETED' ? (
                       <Stack spacing={2}>

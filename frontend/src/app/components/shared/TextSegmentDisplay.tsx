@@ -8,31 +8,35 @@ interface TextSegmentDisplayProps {
   translatedText?: string;
   editedText?: string;
   showComparison?: boolean;
+  hideSource?: boolean;
 }
 
 export function TextSegmentDisplay({ 
   sourceText, 
   translatedText, 
   editedText,
-  showComparison = false 
+  showComparison = false,
+  hideSource = false 
 }: TextSegmentDisplayProps) {
   if (showComparison && translatedText && editedText) {
     return (
       <Grid container spacing={2}>
-        {/* Source Text */}
-        <Grid size={12}>
-          <Typography variant="subtitle2" gutterBottom color="text.secondary">
-            원문
-          </Typography>
-          <Paper variant="outlined" sx={{ 
-            p: 1.5, 
-            backgroundColor: 'background.paper'
-          }}>
-            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {sourceText}
+        {/* Source Text - only show if not hidden */}
+        {!hideSource && (
+          <Grid size={12}>
+            <Typography variant="subtitle2" gutterBottom color="text.secondary">
+              원문
             </Typography>
-          </Paper>
-        </Grid>
+            <Paper variant="outlined" sx={{ 
+              p: 1.5, 
+              backgroundColor: 'background.paper'
+            }}>
+              <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {sourceText}
+              </Typography>
+            </Paper>
+          </Grid>
+        )}
         
         {/* Original Translation */}
         <Grid size={{ xs: 12, md: 6 }}>
@@ -51,8 +55,7 @@ export function TextSegmentDisplay({
               variant="body2" 
               sx={{ 
                 whiteSpace: 'pre-wrap',
-                textDecoration: 'line-through',
-                opacity: 0.8
+                wordBreak: 'break-word'
               }}
             >
               {translatedText}

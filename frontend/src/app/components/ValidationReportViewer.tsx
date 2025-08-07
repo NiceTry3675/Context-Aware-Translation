@@ -120,8 +120,51 @@ export default function ValidationReportViewer({
 
   const selectedCounts = calculateSelectedCounts();
 
+  // Collect all issues with selection capability
+  const allIssuesWithSelection = React.useMemo(() => {
+    const issues: Array<{
+      segmentIndex: number;
+      issueType: string;
+      typeIndex: number;
+      message: string;
+      isSelected: boolean;
+    }> = [];
+
+    report.detailed_results.forEach((result) => {
+      const dedupedCritical = deduplicateIssues(result.critical_issues);
+      const dedupedMissing = deduplicateIssues(result.missing_content);
+      const dedupedAdded = deduplicateIssues(result.added_content);
+      const dedupedNames = deduplicateIssues(result.name_inconsistencies);
+
+      const issuesByType = {
+        critical: dedupedCritical,
+        missing_content: dedupedMissing,
+        added_content: dedupedAdded,
+        name_inconsistencies: dedupedNames,
+      };
+
+      Object.entries(issuesByType).forEach(([type, typeIssues]) => {
+        typeIssues.forEach((message, index) => {
+          const isSelected = selectedIssues?.[result.segment_index]?.[type]?.[index] ?? true;
+          if (isSelected) {
+            issues.push({
+              segmentIndex: result.segment_index,
+              issueType: type,
+              typeIndex: index,
+              message,
+              isSelected,
+            });
+          }
+        });
+      });
+    });
+
+    // Sort by segment index for easier navigation
+    return issues.sort((a, b) => a.segmentIndex - b.segmentIndex);
+  }, [report, selectedIssues]);
+
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: '100%', position: 'relative' }}>
       {/* Summary Section */}
       <SummaryStatistics
         title="검증 요약"
@@ -168,6 +211,79 @@ export default function ValidationReportViewer({
           }
         ]}
       />
+
+      {/* Sticky Selected Issues Box */}
+      {onIssueSelectionChange && allIssuesWithSelection.length > 0 && (
+        <Box
+          sx={{
+            position: 'sticky',
+            top: 0, // Positioned right at the top of the scrollable area
+            zIndex: 100,
+            bgcolor: 'background.paper',
+            borderRadius: 1,
+            boxShadow: 2,
+            mb: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            maxHeight: '40vh',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          <Box
+            sx={{
+              p: 2,
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              bgcolor: 'grey.800',
+            }}
+          >
+            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'white' }}>
+              발견된 문제 상세 ({allIssuesWithSelection.length}개 선택됨)
+            </Typography>
+          </Box>
+          <Box sx={{ overflow: 'auto', p: 2 }}>
+            <List dense>
+              {allIssuesWithSelection.slice(0, 20).map((issue, idx) => (
+                <ListItem key={`${issue.segmentIndex}-${issue.issueType}-${issue.typeIndex}`} sx={{ py: 0.5 }}>
+                  <ListItemText
+                    primary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          세그먼트 #{issue.segmentIndex + 1}
+                        </Typography>
+                        <Chip
+                          label={formatIssueType(issue.issueType)}
+                          size="small"
+                          color={getSeverityColor(issue.issueType)}
+                          sx={{ height: '18px' }}
+                        />
+                        <Typography variant="body2" sx={{ flex: 1 }}>
+                          {issue.message.length > 50 
+                            ? issue.message.substring(0, 50) + '...' 
+                            : issue.message}
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                </ListItem>
+              ))}
+              {allIssuesWithSelection.length > 20 && (
+                <ListItem>
+                  <ListItemText
+                    primary={
+                      <Typography variant="caption" color="text.secondary">
+                        ...그 외 {allIssuesWithSelection.length - 20}개 문제
+                      </Typography>
+                    }
+                  />
+                </ListItem>
+              )}
+            </List>
+          </Box>
+        </Box>
+      )}
 
       {/* Detailed Results */}
       <Typography variant="h6" gutterBottom>
@@ -251,32 +367,12 @@ export default function ValidationReportViewer({
               {/* Selection checkboxes for post-edit with sticky error display */}
               {onIssueSelectionChange && allIssues.length > 0 && (
                 <Box sx={{ 
-                  mt: 2, 
-                  position: 'sticky',
-                  top: 0,
-                  zIndex: 10,
-                  bgcolor: 'background.paper',
-                  borderRadius: 1,
-                  boxShadow: 2,
-                  maxHeight: '60vh',
-                  overflow: 'auto',
-                  border: '1px solid',
-                  borderColor: 'divider'
+                  mt: 2
                 }}>
-                  <Box sx={{ 
-                    p: 2, 
-                    borderBottom: '1px solid',
-                    borderColor: 'divider',
-                    bgcolor: 'grey.50',
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 1
-                  }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                      포스트 에디팅 선택 (오류 {allIssues.length}개)
-                    </Typography>
-                  </Box>
-                  <List dense sx={{ p: 2 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
+                    발견된 문제 상세
+                  </Typography>
+                  <List dense sx={{ pl: 1 }}>
                     {(() => {
                       // Track indices for each issue type
                       const typeIndices: { [key: string]: number } = {
