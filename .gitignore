@@ -18,7 +18,7 @@ ngrok.exe
 .gemini/
 .qwen/
 CLAUDE.md
-TODO.md
+docs/TODO.md
 GEMINI.md
 QWEN.md
 
