@@ -63,15 +63,27 @@ class TranslationJobBase(BaseModel):
 
 class TranslationJobCreate(TranslationJobBase):
     owner_id: int
+    segment_size: int
 
 class TranslationJob(TranslationJobBase):
     id: int
     status: str
     progress: int
+    segment_size: int
     created_at: datetime.datetime
     completed_at: Optional[datetime.datetime] = None
     error_message: Optional[str] = None
     owner_id: Optional[int] = None
+    validation_enabled: Optional[bool] = None
+    validation_status: Optional[str] = None
+    validation_progress: Optional[int] = None
+    validation_sample_rate: Optional[int] = None
+    quick_validation: Optional[bool] = None
+    validation_completed_at: Optional[datetime.datetime] = None
+    post_edit_enabled: Optional[bool] = None
+    post_edit_status: Optional[str] = None
+    post_edit_progress: Optional[int] = None
+    post_edit_completed_at: Optional[datetime.datetime] = None
 
     class Config:
         from_attributes = True
@@ -187,6 +199,33 @@ class Comment(CommentBase, KSTTimezoneBase):
     author: User
     post_id: int
     replies: List['Comment'] = []
+
+# --- Translation-related Schemas ---
+class StyleAnalysisResponse(BaseModel):
+    protagonist_name: str
+    narration_style_endings: str
+    tone_keywords: str
+    stylistic_rule: str
+
+class GlossaryTerm(BaseModel):
+    term: str
+    translation: str
+
+class GlossaryAnalysisResponse(BaseModel):
+    glossary: List[GlossaryTerm]
+
+class ValidationRequest(BaseModel):
+    quick_validation: bool = False
+    validation_sample_rate: float = 1.0  # 0.0 to 1.0
+
+class PostEditRequest(BaseModel):
+    selected_issue_types: Optional[dict] = {
+        "critical_issues": True,
+        "missing_content": True,
+        "added_content": True,
+        "name_inconsistencies": True
+    }
+    selected_issues: Optional[dict] = None
 
 # Update forward references
 Comment.model_rebuild()

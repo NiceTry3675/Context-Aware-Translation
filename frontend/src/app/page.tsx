@@ -1,492 +1,282 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useAuth, useClerk } from '@clerk/nextjs';
-import { useRouter } from 'next/navigation';
-
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useAuth } from '@clerk/nextjs';
 import {
-  Container, Box, Typography, TextField, Button, CircularProgress, Alert,
-  Card, CardContent, CardActions, IconButton, Tooltip, Chip,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-  LinearProgress, ToggleButtonGroup, ToggleButton, InputAdornment, Link, Slider,
-  Switch, FormControlLabel
+  Box,
+  Container,
+  Paper,
+  Typography,
+  Tabs,
+  Tab,
+  IconButton,
+  Button,
+  Stack,
+  Alert,
+  AlertTitle,
+  CircularProgress,
+  Tooltip,
+  Chip,
+  Card,
+  CardContent,
 } from '@mui/material';
-import {
-  UploadFile as UploadFileIcon,
-  Delete as DeleteIcon,
-  Download as DownloadIcon,
-  Coffee as CoffeeIcon,
-  Email as EmailIcon,
-  CheckCircle as CheckCircleIcon,
-  Error as ErrorIcon,
-  Pending as PendingIcon,
-  AccountTree as AccountTreeIcon,
-  Spellcheck as SpellcheckIcon,
-  Style as StyleIcon,
-  Description as DescriptionIcon,
-  Chat as ChatIcon,
-  Add as AddIcon,
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
+import FirstPageIcon from '@mui/icons-material/FirstPage';
+import LastPageIcon from '@mui/icons-material/LastPage';
+import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 
-  Person as PersonIcon,
-  TextFields as TextFieldsIcon,
-  Palette as PaletteIcon,
-  Gavel as GavelIcon,
-  OpenInNew as OpenInNewIcon,
-  AutoStories as AutoStoriesIcon,
-  MenuBook as MenuBookIcon,
-  Forum as ForumIcon,
-} from '@mui/icons-material';
-import theme from '../theme';
+// Import viewer components
+import ValidationReportViewer from './components/ValidationReportViewer';
+import PostEditLogViewer from './components/PostEditLogViewer';
+import TranslationContentViewer from './components/TranslationContentViewer';
+import JobSidebar from './components/canvas/JobSidebar';
+import SegmentViewer from './components/canvas/SegmentViewer';
+import ErrorIcon from '@mui/icons-material/Error';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import AddCircleIcon from '@mui/icons-material/AddCircle';
+import PersonIcon from '@mui/icons-material/Person';
+import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 
-import AuthButtons from './components/AuthButtons';
+// Import translation setup components
+import ApiSetup from './components/ApiConfiguration/ApiSetup';
+import FileUploadSection from './components/FileUpload/FileUploadSection';
+import TranslationSettings from './components/AdvancedSettings/TranslationSettings';
+import StyleConfigForm from './components/StyleConfiguration/StyleConfigForm';
 
-// --- Type Definitions ---
-interface Job {
-  id: number;
-  filename: string;
-  status: string;
-  progress: number;
-  created_at: string;
-  completed_at: string | null;
-  error_message: string | null;
+// Import action components from sidebar
+import ValidationDialog from './components/TranslationSidebar/ValidationDialog';
+import PostEditDialog from './components/TranslationSidebar/PostEditDialog';
+
+// Import hooks
+import { useTranslationData } from './components/TranslationSidebar/hooks/useTranslationData';
+import { useValidation } from './components/TranslationSidebar/hooks/useValidation';
+import { usePostEdit } from './components/TranslationSidebar/hooks/usePostEdit';
+import { useTranslationJobs } from './hooks/useTranslationJobs';
+import { useSegmentNavigation } from './components/TranslationSidebar/hooks/useSegmentNavigation';
+import { useApiKey } from './hooks/useApiKey';
+import { useTranslationService } from './hooks/useTranslationService';
+
+// Types
+import { Job } from './types/job';
+import { 
+  StyleData, 
+  GlossaryTerm, 
+  TranslationSettings as TSettings 
+} from './types/translation';
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
 }
 
-interface StyleData {
-  protagonist_name: string;
-  narration_style_endings: string;
-  tone_keywords: string;
-  stylistic_rule: string;
+function TabPanel({ children, value, index, ...other }: TabPanelProps) {
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`canvas-tabpanel-${index}`}
+      aria-labelledby={`canvas-tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box sx={{ height: '100%' }}>{children}</Box>}
+    </div>
+  );
 }
 
-interface GlossaryTerm {
-  term: string;
-  translation: string;
-}
-
-const geminiModelOptions = [
-    {
-      value: "gemini-2.5-flash-lite",
-      label: "Flash Lite (추천)",
-      description: "가장 빠른 속도와 저렴한 비용으로 빠르게 결과물을 확인하고 싶을 때 적합합니다.",
-      chip: "속도",
-      chipColor: "primary" as "primary" | "success" | "info" | "error",
-    },
-    {
-      value: "gemini-2.5-flash",
-      label: "Flash",
-      description: "준수한 품질과 합리적인 속도의 균형을 원할 때 가장 이상적인 선택입니다.",
-      chip: "균형",
-      chipColor: "info" as "primary" | "success" | "info" | "error",
-    },
-    {
-      value: "gemini-2.5-pro",
-      label: "Pro",
-      description: "최고 수준의 문학적 번역 품질을 원하신다면 선택하세요. (느리고 비쌀 수 있음)",
-      chip: "품질",
-      chipColor: "error" as "primary" | "success" | "info" | "error",
-    },
-];
-
-const openRouterModelOptions = [
-    {
-      value: "google/gemini-2.5-flash-lite",
-      label: "Gemini 2.5 Flash Lite",
-      description: " ",
-      chip: "속도",
-      chipColor: "primary" as "primary" | "success" | "info" | "error",
-    },
-    {
-        value: "google/gemini-2.5-flash",
-        label: "Gemini 2.5 Flash",
-        description: " ",
-        chip: "균형",
-        chipColor: "success" as "primary" | "success" | "info" | "error",
-    },
-    {
-        value: "google/gemini-2.5-pro",
-        label: "Gemini 2.5 Pro",
-        description: " ",
-        chip: "품질",
-        chipColor: "info" as "primary" | "success" | "info" | "error",
-    },
-    {
-        value: "openai/gpt-4o",
-        label: "GPT-4o",
-        description: " ",
-        chip: "품질",
-        chipColor: "warning" as "primary" | "success" | "info" | "error",
-    },
-    {
-        value: "anthropic/claude-sonnet-4",
-        label: "Claude Sonnet 4",
-        description: " ",
-        chip: "품질",
-        chipColor: "info" as "primary" | "success" | "info" | "error",
-    },
-    {
-        value: "openai/gpt-4.1",
-        label: "GPT-4.1",
-        description: " ",
-        chip: "속도",
-        chipColor: "success" as "primary" | "success" | "info" | "error",
-    },
-    {
-        value: "x-ai/grok-4",
-        label: "Grok-4",
-        description: " ",
-        chip: "품질",
-        chipColor: "success" as "primary" | "success" | "info" | "error",
-    },
-    {
-        value: "tngtech/deepseek-r1t2-chimera:free",
-        label: "DeepSeek R1 T2 Chimera (무료)",
-        description: " ",
-        chip: "속도",
-        chipColor: "success" as "primary" | "success" | "info" | "error",
-    },
-    {
-        value: "deepseek/deepseek-r1-0528:free",
-        label: "DeepSeek R1 (무료)",
-        description: " ",
-        chip: "품질",
-        chipColor: "success" as "primary" | "success" | "info" | "error",
-    },
-];
-
-const featureItems = [
-  {
-    icon: <AccountTreeIcon sx={{ fontSize: 40 }} />,
-    title: "문맥 유지",
-    text: "소설 전체의 분위기와 등장인물의 말투를 분석하여, 챕터가 넘어가도 번역 품질이 흔들리지 않습니다.",
-    color: theme.palette.primary.main,
-  },
-  {
-    icon: <SpellcheckIcon sx={{ fontSize: 40 }} />,
-    title: "용어 일관성",
-    text: "고유명사나 특정 용어가 번역될 때마다 달라지는 문제를 해결했습니니다. 중요한 단어는 항상 동일하게 번역됩니다.",
-    color: theme.palette.success.main,
-  },
-  {
-    icon: <StyleIcon sx={{ fontSize: 40 }} />,
-    title: "스타일 유지",
-    text: "작가 특유의 문체나 작품의 스타일을 학습하여, 원작의 느낌을 최대한 살린 번역을 제공합니다.",
-    color: theme.palette.info.main,
-  },
-];
-
-const formatDuration = (start: string, end: string | null): string => {
-  if (!end) return '';
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  const seconds = Math.floor((endDate.getTime() - startDate.getTime()) / 1000);
-  if (seconds < 60) return `${seconds}초`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}분 ${remainingSeconds}초`;
-};
-
-
-// --- Main Component ---
-export default function Home() {
-  const { getToken, isSignedIn, isLoaded } = useAuth();
-  const { openSignIn } = useClerk();
+function CanvasContent() {
+  const searchParams = useSearchParams();
   const router = useRouter();
-  // --- State Management ---
-  const [apiKey, setApiKey] = useState<string>('');
+  const { isSignedIn, getToken } = useAuth();
+
+  useEffect(() => {
+    if (isSignedIn === false) {
+      router.push('/about');
+    }
+  }, [isSignedIn, router]);
+  
+  const mainContainerRef = React.useRef<HTMLDivElement>(null);
+
+  const handleToggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      mainContainerRef.current?.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+  
+  const jobId = searchParams.get('jobId');
+  const [tabValue, setTabValue] = useState(0);
+  const [showNewTranslation, setShowNewTranslation] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [viewMode, setViewMode] = useState<'full' | 'segment'>('segment'); // New view mode state
+  const [errorFilters, setErrorFilters] = useState({
+    critical: true,
+    missingContent: true,
+    addedContent: true,
+    nameInconsistencies: true,
+  });
+  
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const { jobs, addJob, refreshJobs } = useTranslationJobs({ apiUrl: API_URL });
+  
+  // Translation setup states (moved from main page)
+  const { apiKey, setApiKey, apiProvider, setApiProvider, selectedModel, setSelectedModel } = useApiKey();
   const [file, setFile] = useState<File | null>(null);
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [apiProvider, setApiProvider] = useState<'gemini' | 'openrouter'>('gemini');
-  const [selectedModel, setSelectedModel] = useState<string>(geminiModelOptions[0].value);
-  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
-  const [isAnalyzingGlossary, setIsAnalyzingGlossary] = useState<boolean>(false);
-  const [analysisError, setAnalysisError] = useState<string>('');
-  const [glossaryAnalysisError, setGlossaryAnalysisError] = useState<string>('');
   const [styleData, setStyleData] = useState<StyleData | null>(null);
   const [showStyleForm, setShowStyleForm] = useState<boolean>(false);
   const [glossaryData, setGlossaryData] = useState<GlossaryTerm[]>([]);
-  const [analyzeGlossary, setAnalyzeGlossary] = useState<boolean>(true);
-  const [devMode, setDevMode] = useState<boolean>(false);
-  const [segmentSize, setSegmentSize] = useState<number>(15000);
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-  // --- Effects ---
-  useEffect(() => {
-    const storedApiKey = localStorage.getItem('geminiApiKey');
-    const storedProvider = localStorage.getItem('apiProvider') as 'gemini' | 'openrouter' | null;
-    
-    if (storedApiKey) {
-        const provider = storedProvider || (storedApiKey.startsWith('sk-or-') ? 'openrouter' : 'gemini');
-        setApiProvider(provider);
-        setApiKey(storedApiKey);
-
-        if (provider === 'openrouter') {
-            setSelectedModel(localStorage.getItem('openRouterModel') || openRouterModelOptions[0].value);
-        } else {
-            setSelectedModel(localStorage.getItem('geminiModel') || geminiModelOptions[0].value);
-        }
-    }
-    setDevMode(localStorage.getItem('devMode') === 'true');
-  }, []);
-
-  useEffect(() => {
-    if (!apiKey) return;
-    localStorage.setItem('geminiApiKey', apiKey);
-    localStorage.setItem('apiProvider', apiProvider);
-  }, [apiKey, apiProvider]);
-
-  useEffect(() => {
-    if (apiProvider === 'gemini') {
-        const newModel = geminiModelOptions[0].value;
-        setSelectedModel(newModel);
-        localStorage.setItem('geminiModel', newModel);
-    } else {
-        const newModel = openRouterModelOptions[0].value;
-        setSelectedModel(newModel);
-        localStorage.setItem('openRouterModel', newModel);
-    }
-  }, [apiProvider]);
-
-
-  const handleModelChange = (newValue: string) => {
-    if (!newValue) return;
-
-    const previousModel = selectedModel;
-    setSelectedModel(newValue);
-
-    if (apiProvider === 'gemini' && newValue === 'gemini-2.5-pro') {
-      const confirmation = window.confirm(
-        "⚠️ Pro 모델 경고 ⚠️\n\n" +
-        "Pro 모델은 최고의 번역 품질을 제공하지만, 다음과 같은 단점이 있을 수 있습니다:\n\n" +
-        "1. 번역 속도가 매우 느립니다.\n" +
-        "2. API 비용이 다른 모델보다 훨씬 비쌉니다.\n" +
-        "3. 현재 서비스는 베타 버전으로, 긴 작업 중 서버가 중단될 수 있습니다.\n\n" +
-        "계속 진행하시겠습니까?"
-      );
-
-      if (!confirmation) {
-        setSelectedModel(previousModel);
-      }
-    }
-    
-    if (apiProvider === 'gemini') {
-        localStorage.setItem('geminiModel', newValue);
-    } else {
-        localStorage.setItem('openRouterModel', newValue);
-    }
-  };
-
+  const [glossaryAnalysisError, setGlossaryAnalysisError] = useState<string>('');
   
-  useEffect(() => {
-    const loadJobs = async () => {
-      const storedJobIdsString = localStorage.getItem('jobIds');
-      if (!storedJobIdsString) return;
-      const storedJobIds = JSON.parse(storedJobIdsString);
-      if (!Array.isArray(storedJobIds) || storedJobIds.length === 0) return;
-
-      const uniqueJobIds = [...new Set(storedJobIds)];
-
-      try {
-        const fetchedJobs: Job[] = await Promise.all(
-          uniqueJobIds.map(async (id: number) => {
-            const response = await fetch(`${API_URL}/status/${id}`);
-            return response.ok ? response.json() : null;
-          })
-        );
-        const validJobs = fetchedJobs
-          .filter((job): job is Job => job !== null)
-          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        setJobs(validJobs);
-      } catch (error) {
-        console.error("Failed to load jobs from storage:", error);
-        localStorage.removeItem('jobIds');
-      }
-    };
-    loadJobs();
-  }, [API_URL]);
-
-  const pollJobStatus = useCallback(async () => {
-    const processingJobs = jobs.filter(job => ['PROCESSING', 'PENDING'].includes(job.status));
-    if (processingJobs.length === 0) return;
-
-    const updatedJobs = await Promise.all(
-      processingJobs.map(async (job) => {
-        try {
-          const response = await fetch(`${API_URL}/status/${job.id}`);
-          return response.ok ? response.json() : job;
-        } catch {
-          return job;
-        }
-      })
-    );
-    setJobs(currentJobs =>
-      currentJobs.map(job => updatedJobs.find(updated => updated.id === job.id) || job)
-    );
-  }, [jobs, API_URL]);
-
-  useEffect(() => {
-    const interval = setInterval(pollJobStatus, 3000);
-    return () => clearInterval(interval);
-  }, [pollJobStatus]);
-
-  // --- Handlers ---
-  const handleFileChange = async (selectedFile: File | null) => {
-    if (!selectedFile) {
-        setFile(null);
-        return;
-    }
-    setFile(selectedFile);
-    if (!apiKey) {
-        setError("API 키를 먼저 입력해주세요.");
-        return;
-    }
-
-    setIsAnalyzing(true);
-    setAnalysisError('');
-    setGlossaryAnalysisError('');
-    setError(null);
-    setStyleData(null);
-    setGlossaryData([]);
-    setShowStyleForm(false);
-
-    const styleFormData = new FormData();
-    styleFormData.append('file', selectedFile);
-    styleFormData.append('api_key', apiKey);
-    styleFormData.append('model_name', selectedModel);
-
-    try {
-        // --- 1. Analyze Style ---
-        const styleResponse = await fetch(`${API_URL}/api/v1/analyze-style`, {
-            method: 'POST',
-            body: styleFormData,
-        });
-
-        if (!styleResponse.ok) {
-            const errorData = await styleResponse.json();
-            throw new Error(errorData.detail || '스타일 분석에 실패했습니다.');
-        }
-
-        const analyzedStyle = await styleResponse.json();
-        setStyleData(analyzedStyle);
-        setShowStyleForm(true);
-
-        // --- 2. Analyze Glossary (if toggled) ---
-        if (analyzeGlossary) {
-            setIsAnalyzingGlossary(true);
-            const glossaryFormData = new FormData();
-            glossaryFormData.append('file', selectedFile);
-            glossaryFormData.append('api_key', apiKey);
-            glossaryFormData.append('model_name', selectedModel);
-
-            try {
-                const glossaryResponse = await fetch(`${API_URL}/api/v1/analyze-glossary`, {
-                    method: 'POST',
-                    body: glossaryFormData,
-                });
-
-                if (glossaryResponse.ok) {
-                    const result = await glossaryResponse.json();
-                    setGlossaryData(result.glossary || []);
-                } else {
-                    const errorData = await glossaryResponse.json();
-                    const errorMessage = errorData.detail || 'AI 용어집 분석에 실패했습니다. 수동으로 추가하거나, 기본 설정으로 번역을 시작할 수 있습니다.';
-                    setGlossaryAnalysisError(errorMessage);
-                    setGlossaryData([]); // Clear any previous data
-                }
-            } catch (err) {
-                const errorMessage = err instanceof Error ? err.message : '용어집 분석 중 예기치 않은 오류가 발생했습니다. 네트워크 연결을 확인해주세요.';
-                setGlossaryAnalysisError(errorMessage);
-                setGlossaryData([]);
-            } finally {
-                setIsAnalyzingGlossary(false);
-            }
-        }
-
-    } catch (err) {
-        setAnalysisError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
-        setShowStyleForm(false); // Hide form on critical error
-    } finally {
-        setIsAnalyzing(false);
-    }
-};
-
-
-  const handleGlossaryChange = (index: number, field: keyof GlossaryTerm, value: string) => {
-    const updatedGlossary = [...glossaryData];
-    updatedGlossary[index] = { ...updatedGlossary[index], [field]: value };
-    setGlossaryData(updatedGlossary);
-  };
-
-  const handleAddGlossaryTerm = () => {
-    setGlossaryData([...glossaryData, { term: '', translation: '' }]);
-  };
-
-  const handleRemoveGlossaryTerm = (index: number) => {
-    const updatedGlossary = glossaryData.filter((_, i) => i !== index);
-    setGlossaryData(updatedGlossary);
-  };
-
-  const handleStartTranslation = async () => {
-    if (!file || !styleData) {
-      setError("번역을 시작할 파일과 스타일 정보가 필요합니다.");
-      return;
-    }
-
-    if (!isLoaded) {
-      setError("인증 정보를 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
-      return;
-    }
-
-    if (!isSignedIn) {
-      openSignIn({ redirectUrl: '/' });
-      return;
-    }
-
-    const token = await getToken();
-    if (!token) {
-        setError("로그인은 되었으나, 인증 토큰을 가져오지 못했습니다. 잠시 후 다시 시도하거나, 페이지를 새로고침해주세요.");
-        return;
-    }
-
-    setUploading(true);
-    setError(null);
-    setShowStyleForm(false);
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("api_key", apiKey);
-    formData.append("model_name", selectedModel);
-    formData.append("style_data", JSON.stringify(styleData));
-    if (glossaryData.length > 0) {
-      formData.append("glossary_data", JSON.stringify(glossaryData));
-    }
-    formData.append("segment_size", segmentSize.toString());
-
-    try {
-      const token = await getToken();
-      const response = await fetch(`${API_URL}/uploadfile/`, { 
-        method: 'POST', 
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData 
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "File upload failed");
-      }
-      const newJob: Job = await response.json();
-      setJobs(prevJobs => [newJob, ...prevJobs]);
-      const storedJobIds = JSON.parse(localStorage.getItem('jobIds') || '[]');
-      localStorage.setItem('jobIds', JSON.stringify([newJob.id, ...storedJobIds]));
+  // Translation settings
+  const [translationSettings, setTranslationSettings] = useState<TSettings>({
+    segmentSize: 15000,
+    enableValidation: false,
+    quickValidation: false,
+    validationSampleRate: 100,
+    enablePostEdit: false
+  });
+  
+  // Translation service hook
+  const {
+    analyzeFile,
+    startTranslation,
+    isAnalyzing,
+    isAnalyzingGlossary,
+    uploading,
+    error: translationError,
+    setError: setTranslationError
+  } = useTranslationService({
+    apiUrl: API_URL,
+    apiKey,
+    selectedModel,
+    onJobCreated: (job) => {
+      addJob(job);
       setFile(null);
       setStyleData(null);
       setGlossaryData([]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An unknown error occurred.");
-    } finally {
-      setUploading(false);
+      setShowStyleForm(false);
+      // Navigate to the new job in canvas
+      router.push(`/?jobId=${job.id}`);
+      // Switch to the translation result tab
+      setTabValue(0);
+      // Collapse the new translation form
+      setShowNewTranslation(false);
     }
+  });
+  
+  // Find the current job from the jobs list
+  useEffect(() => {
+    if (jobId && jobs.length > 0) {
+      const job = jobs.find(j => j.id.toString() === jobId);
+      if (job) {
+        setSelectedJob(job);
+      }
+    }
+  }, [jobId, jobs]);
+  
+  // Use translation data hooks
+  const {
+    validationReport,
+    postEditLog,
+    translationContent,
+    translationSegments,
+    loading: dataLoading,
+    error: dataError,
+    selectedIssues,
+    setSelectedIssues,
+    loadData,
+  } = useTranslationData({ 
+    open: true, 
+    jobId: jobId || '', 
+    jobStatus: selectedJob?.status || '', 
+    validationStatus: selectedJob?.validation_status || undefined,
+    postEditStatus: selectedJob?.post_edit_status || undefined
+  });
+
+  const validation = useValidation({ jobId: jobId || '', onRefresh: refreshJobs });
+  const postEdit = usePostEdit({ jobId: jobId || '', onRefresh: refreshJobs, selectedIssues });
+  
+  // Segment navigation hook
+  const segmentNav = useSegmentNavigation({
+    validationReport,
+    postEditLog,
+    translationSegments,
+    jobId: jobId || undefined,
+    errorFilters,
+  });
+
+  // Extract full source text from translation content or post-edit log
+  const fullSourceText = React.useMemo(() => {
+    // First priority: use source_content from translation content if available
+    if (translationContent?.source_content) {
+      return translationContent.source_content;
+    }
+    // Second priority: use post-edit log segments if available (has full source_text)
+    if (postEditLog?.segments) {
+      return postEditLog.segments
+        .sort((a, b) => a.segment_index - b.segment_index)
+        .map(segment => segment.source_text)
+        .join(' '); // Join with single space for natural flow
+    }
+    // Third priority: use translation segments if available
+    if (translationSegments?.segments && translationSegments.segments.length > 0) {
+      return translationSegments.segments
+        .sort((a, b) => a.segment_index - b.segment_index)
+        .map(segment => segment.source_text)
+        .join(' '); // Join with single space for natural flow
+    }
+    // Don't use validation report as it only has truncated source_preview
+    return undefined;
+  }, [translationContent, postEditLog, translationSegments]);
+
+  // File analysis handler
+  const handleFileSelect = async (selectedFile: File, analyzeGlossary: boolean) => {
+    setFile(selectedFile);
+    setGlossaryAnalysisError('');
+    
+    const result = await analyzeFile(selectedFile, analyzeGlossary);
+    
+    if (result.styleData) {
+      setStyleData(result.styleData);
+      setGlossaryData(result.glossaryData);
+      setShowStyleForm(true);
+    }
+    
+    if (result.error) {
+      setGlossaryAnalysisError(result.error);
+    }
+    
+    return result;
+  };
+
+  // Start translation handler
+  const handleStartTranslation = async () => {
+    if (!file || !styleData) {
+      setTranslationError("번역을 시작할 파일과 스타일 정보가 필요합니다.");
+      return;
+    }
+
+    await startTranslation(file, styleData, glossaryData, translationSettings);
   };
 
   const handleCancelStyleEdit = () => {
@@ -498,640 +288,662 @@ export default function Home() {
     if (fileInput) fileInput.value = '';
   };
 
-  const handleDelete = (jobId: number) => {
-    setJobs(prevJobs => prevJobs.filter(job => job.id !== jobId));
-    const storedJobIds = JSON.parse(localStorage.getItem('jobIds') || '[]');
-    localStorage.setItem('jobIds', JSON.stringify(storedJobIds.filter((id: number) => id !== jobId)));
+  // Combine loading states
+  const loading = validation.loading || postEdit.loading;
+  const isPolling = selectedJob?.status === 'IN_PROGRESS' || selectedJob?.validation_status === 'IN_PROGRESS' || selectedJob?.post_edit_status === 'IN_PROGRESS';
+  const error = dataError || validation.error || postEdit.error || translationError;
+
+  // Load saved tab preference only on client side
+  useEffect(() => {
+    setIsClient(true);
+    const savedTab = localStorage.getItem('canvasTabValue');
+    if (savedTab) {
+      setTabValue(parseInt(savedTab));
+    }
+    // Show new translation form if no job is selected, or hide it if a job is selected.
+    setShowNewTranslation(!jobId);
+  }, [jobId]);
+
+  // Save tab preference
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+    if (isClient) {
+      localStorage.setItem('canvasTabValue', newValue.toString());
+    }
   };
 
-  const handleDownload = async (url: string, filename: string) => {
-    if (!isSignedIn) {
-      openSignIn({ redirectUrl: '/' });
-      return;
+  // Auto-refresh when translation, validation, or post-edit is in progress
+  useEffect(() => {
+    if (
+      selectedJob?.status === 'IN_PROGRESS' ||
+      selectedJob?.validation_status === 'IN_PROGRESS' || 
+      selectedJob?.post_edit_status === 'IN_PROGRESS'
+    ) {
+      const interval = setInterval(() => {
+        console.log('Refreshing job status...');
+        refreshJobs();
+        loadData();
+      }, 2000);
+      return () => clearInterval(interval);
     }
+  }, [selectedJob?.status, selectedJob?.validation_status, selectedJob?.post_edit_status, refreshJobs, loadData]);
+
+  // Handle job selection change
+  const handleJobChange = (newJobId: string) => {
+    router.push(`/?jobId=${newJobId}`);
+    // Reset translation form when switching jobs
+    setFile(null);
+    setStyleData(null);
+    setGlossaryData([]);
+    setShowStyleForm(false);
+  };
+  
+  // Handle new translation - now toggles the new translation form
+  const handleNewTranslation = () => {
+    setShowNewTranslation(!showNewTranslation);
+    // Reset form state when opening
+    if (!showNewTranslation) {
+      setFile(null);
+      setStyleData(null);
+      setGlossaryData([]);
+      setShowStyleForm(false);
+    }
+  };
+  
+  // Handle job deletion
+  const handleJobDelete = async (jobIdToDelete: number) => {
     try {
-      const token = await getToken();
-      if (!token) {
-        setError("다운로드에 필요한 인증 토큰을 가져올 수 없습니다.");
-        return;
-      }
-      const response = await fetch(url, {
+      // Call delete API
+      const response = await fetch(`${API_URL}/api/v1/jobs/${jobIdToDelete}`, {
+        method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${await getToken()}`,
+        },
+      });
+      
+      if (response.ok) {
+        refreshJobs();
+        // If deleted job was selected, clear selection
+        if (jobIdToDelete.toString() === jobId) {
+          router.push('/');
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete job:', error);
+    }
+  };
+
+
+  // Calculate selected issue counts
+  const calculateSelectedCounts = () => {
+    let critical = 0;
+    let missingContent = 0;
+    let addedContent = 0;
+    let nameInconsistencies = 0;
+
+    if (validationReport) {
+      validationReport.detailed_results.forEach((result) => {
+        const segmentSelection = selectedIssues?.[result.segment_index];
+        
+        if (segmentSelection) {
+          critical += segmentSelection.critical?.filter(selected => selected).length || 0;
+          missingContent += segmentSelection.missing_content?.filter(selected => selected).length || 0;
+          addedContent += segmentSelection.added_content?.filter(selected => selected).length || 0;
+          nameInconsistencies += segmentSelection.name_inconsistencies?.filter(selected => selected).length || 0;
+        } else {
+          critical += result.critical_issues.length;
+          missingContent += result.missing_content.length;
+          addedContent += result.added_content.length;
+          nameInconsistencies += result.name_inconsistencies.length;
         }
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `Failed to download file from ${url}`);
-      }
-
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(downloadUrl);
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An unknown error occurred during download.");
     }
+
+    return {
+      critical,
+      missingContent,
+      addedContent,
+      nameInconsistencies,
+      total: critical + missingContent + addedContent + nameInconsistencies
+    };
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'COMPLETED': return <CheckCircleIcon color="success" />;
-      case 'FAILED': return <ErrorIcon color="error" />;
-      case 'PENDING': return <PendingIcon color="warning" />;
-      default: return <CircularProgress size={20} />;
-    }
-  };
+  const selectedCounts = calculateSelectedCounts();
 
-  // --- Render ---
+  if (!isSignedIn) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  // Remove the early return for no jobId - we'll handle it in the main layout
+
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ position: 'fixed', top: 32, right: 32, zIndex: 1000, display: 'flex', gap: 2 }}>
-        {isSignedIn && (
-          <Button
-            variant="outlined"
-            startIcon={<ForumIcon />}
-            onClick={() => router.push('/community')}
-            sx={{
-              borderColor: theme.palette.primary.main,
-              color: theme.palette.primary.main,
-              '&:hover': {
-                borderColor: theme.palette.primary.dark,
-                backgroundColor: `${theme.palette.primary.main}10`,
-              }
-            }}
-          >
-            커뮤니티
-          </Button>
-        )}
-        <AuthButtons />
-      </Box>
-      {/* Header */}
-      <Box textAlign="center" mb={10}>
-        <Box display="flex" justifyContent="center" alignItems="center" gap={2}>
-          <Typography variant="h1" component="h1" sx={{
-            background: `linear-gradient(45deg, #00BFFF 30%, #FF69B4 90%)`,
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}>
-            냥번역
-          </Typography>
-          <Chip label="beta" color="secondary" size="small" />
-        </Box>
-        <Typography variant="h5" color="text.secondary" component="p" mt={1}>
-          <Box component="span" sx={{ color: 'primary.main', fontWeight: 'bold' }}>C</Box>ontext-
-          <Box component="span" sx={{ color: 'primary.main', fontWeight: 'bold' }}>A</Box>ware{' '}
-          <Box component="span" sx={{ color: 'primary.main', fontWeight: 'bold' }}>T</Box>ranslator
-        </Typography>
-      </Box>
+    <>
+      <Box sx={{ 
+        height: '100vh', 
+        display: 'flex', 
+        backgroundColor: 'background.default' 
+      }}
+      ref={mainContainerRef}
+      >
+      <JobSidebar
+        jobs={jobs}
+        selectedJobId={jobId}
+        onJobSelect={handleJobChange}
+        onJobDelete={handleJobDelete}
+        onNewTranslation={handleNewTranslation}
+        onRefreshJobs={refreshJobs}
+        loading={dataLoading}
+      />
+      
+      {/* Main Content Area */}
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Header */}
+        <Paper elevation={1} sx={{ borderRadius: 0 }}>
+          <Container maxWidth={false}>
+            <Box sx={{ py: 2 }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                {/* Left side - Navigation */}
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Typography variant="h6" component="h1">
+                    번역 캔버스
+                  </Typography>
+                  {selectedJob && (
+                    <Chip
+                      label={selectedJob.filename}
+                      size="small"
+                      sx={{ maxWidth: 300 }}
+                    />
+                  )}
+                </Stack>
 
-      {/* Features Section */}
-      <Box mb={10}>
-        <Typography variant="h2" component="h2" textAlign="center" gutterBottom>
-          냥번역은 무엇이 다른가요?
-        </Typography>
-        <Typography textAlign="center" color="text.secondary" maxWidth="md" mx="auto" mb={5}>
-          단순한 번역기를 넘어, 소설의 맛을 살리는 데 집중했습니다. 일반 생성형 AI 번역에서 발생하는 고질적인 문제들을 해결하여, 처음부터 끝까지 일관성 있는 고품질 번역을 경험할 수 있습니다.
-        </Typography>
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 4 }}>
-          {featureItems.map(item => (
-            <Card key={item.title} sx={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', p: 3, textAlign: 'center' }}>
-              <Box mb={2} sx={{
-                width: 80,
-                height: 80,
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: `${item.color}20`,
-                color: item.color,
-                boxShadow: `0 0 20px ${item.color}40`,
-              }}>
-                {item.icon}
+                {/* Right side - Actions */}
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Tooltip title="새로고침">
+                    <IconButton onClick={() => window.location.reload()}>
+                      <RefreshIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="About">
+                    <IconButton onClick={() => router.push('/about')}>
+                      <InfoOutlinedIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title={fullscreen ? "전체화면 종료" : "전체화면"}>
+                    <IconButton onClick={handleToggleFullscreen}>
+                      {fullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+              </Stack>
+            </Box>
+          </Container>
+        </Paper>
+
+        {/* Main Content Area */}
+        <Container maxWidth={false} sx={{ flex: 1, display: 'flex', flexDirection: 'column', py: 2, gap: 2, overflow: 'hidden' }}>
+          {showNewTranslation ? (
+            // New Translation View
+            <Paper sx={{ p: 3, overflowY: 'auto', height: '100%' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">새 번역 시작</Typography>
+                {jobId && ( // Only show close button if there's a job to go back to
+                  <IconButton onClick={() => setShowNewTranslation(false)} size="small">
+                    <KeyboardArrowLeftIcon />
+                  </IconButton>
+                )}
               </Box>
-              <Typography variant="h5" component="h3" gutterBottom>{item.title}</Typography>
-              <Typography color="text.secondary">{item.text}</Typography>
-            </Card>
-          ))}
-        </Box>
-      </Box>
-
-      {/* Main Action Card */}
-      <Card sx={{ p: { xs: 2, md: 4 }, mb: 8 }}>
-        <CardContent>
-          {/* Step 1: API Provider Selection */}
-          <Typography variant="h5" component="h3" gutterBottom>1. API 제공자 선택</Typography>
-          <ToggleButtonGroup
-            value={apiProvider}
-            exclusive
-            onChange={(_, newProvider) => { if (newProvider) setApiProvider(newProvider); }}
-            aria-label="API Provider"
-            fullWidth
-            sx={{ mb: 4 }}
-          >
-            <ToggleButton value="gemini" aria-label="Gemini">
-              Google Gemini
-            </ToggleButton>
-            <ToggleButton value="openrouter" aria-label="OpenRouter">
-              OpenRouter
-            </ToggleButton>
-          </ToggleButtonGroup>
-
-          {/* Step 2: Model Selection */}
-          <Typography variant="h5" component="h3" gutterBottom>2. 번역 모델 선택</Typography>
-          <ToggleButtonGroup
-            value={selectedModel}
-            exclusive
-            onChange={(_, newValue) => handleModelChange(newValue)}
-            aria-label="Translation Model Selection"
-            fullWidth
-            sx={{ mb: 4, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 1 }}
-          >
-            {(apiProvider === 'gemini' ? geminiModelOptions : openRouterModelOptions).map(opt => (
-              <ToggleButton value={opt.value} key={opt.value} sx={{ flexDirection: 'column', flex: 1, p: 2, alignItems: 'center', height: '100%' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <Typography variant="button" sx={{ lineHeight: 1.2 }}>{opt.label}</Typography>
-                  <Chip label={opt.chip} color={opt.chipColor} size="small" />
-                </Box>
-                <Typography variant="caption" sx={{ textTransform: 'none', mt: 0.5, textAlign: 'center' }}>
-                  {opt.description}
-                </Typography>
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
-
-          {apiProvider === 'openrouter' && (
-            <Alert severity="info" sx={{ mb: 4 }}>
-              <strong>참고:</strong> 현재 프롬프트는 Gemini 모델에 최적화되어 설계되었습니다. DEEPSEEK 모델은 무료!지만 많이 느립니다.
-            </Alert>
-          )}
-
-          {/* Step 3: API Key */}
-          <Typography variant="h5" component="h3" gutterBottom>3. {apiProvider === 'gemini' ? 'Gemini' : 'OpenRouter'} API 키 입력</Typography>
-          <TextField
-            type="password"
-            label={`${apiProvider === 'gemini' ? 'Gemini' : 'OpenRouter'} API Key`}
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            fullWidth
-            sx={{ mb: 1 }}
-            placeholder={apiProvider === 'openrouter' ? 'sk-or-... 형식의 키를 입력하세요' : ''}
-          />
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 4 }}>
-            <Link 
-              href={apiProvider === 'gemini' ? "https://aistudio.google.com/app/apikey" : "https://openrouter.ai/keys"}
-              target="_blank" 
-              rel="noopener noreferrer"
-              variant="body2"
-              sx={{ display: 'inline-flex', alignItems: 'center' }}
-            >
-              API 키 발급받기
-              <OpenInNewIcon sx={{ ml: 0.5, fontSize: 'inherit' }} />
-            </Link>
-          </Box>
-
-          {/* Step 4: File Upload */}
-          <Typography variant="h5" component="h3" gutterBottom>4. 소설 파일 업로드</Typography>
-          <FormControlLabel
-            control={<Switch checked={analyzeGlossary} onChange={(e) => setAnalyzeGlossary(e.target.checked)} />}
-            label="AI 용어집 사전분석 및 수정 활성화"
-            sx={{ mb: 1 }}
-          />
-          <Button
-            variant="contained"
-            component="label"
-            startIcon={<UploadFileIcon />}
-            disabled={isAnalyzing || uploading}
-            fullWidth
-            size="large"
-          >
-            {file ? file.name : '파일 선택'}
-            <input
-              id="file-upload-input"
-              type="file"
-              hidden
-              onChange={(e) => handleFileChange(e.target.files ? e.target.files[0] : null)}
-            />
-          </Button>
-
-          {(isAnalyzing || isAnalyzingGlossary) && <LinearProgress color="secondary" sx={{ mt: 2 }} />}
-          {analysisError && <Alert severity="error" sx={{ mt: 2 }}>{analysisError}</Alert>}
-          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-        </CardContent>
-
-        {/* Step 4.5: Advanced Settings */}
-        <CardContent sx={{ borderTop: 1, borderColor: 'divider', mt: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Typography variant="h5" component="h3">4.5 고급 설정 (선택)</Typography>
-                <Chip label="Beta" color="info" size="small" />
-            </Box>
-            <Typography color="text.secondary" mb={2}>
-              한 번에 번역할 최대 글자 수를 조절합니다. 일본어/중국어의 경우 5000자 내외를 권장합니다.
-            </Typography>
-            <Box>
-                <Typography gutterBottom>
-                    세그먼트 크기: <strong>{segmentSize.toLocaleString()}자</strong>
-                </Typography>
-                <Slider
-                    value={segmentSize}
-                    onChange={(_, newValue) => setSegmentSize(newValue as number)}
-                    aria-labelledby="segment-size-slider"
-                    valueLabelDisplay="auto"
-                    step={1000}
-                    marks={[
-                        { value: 2000, label: '최소' },
-                        { value: 5000, label: '일/중' },
-                        { value: 15000, label: '기본' },
-                        { value: 25000, label: '최대' },
-                    ]}
-                    min={2000}
-                    max={25000}
-                    color="secondary"
-                />
-            </Box>
-        </CardContent>
-
-        {/* Step 5: Style and Glossary Form */}
-        {showStyleForm && styleData && (
-          <CardContent sx={{ borderTop: 1, borderColor: 'divider', mt: 2 }}>
-            <Typography variant="h5" component="h3" gutterBottom>5. 핵심 서사 스타일 확인 및 수정</Typography>
-            <Typography color="text.secondary" mb={3}>AI가 분석한 소설의 핵심 스타일입니다. 필요하다면 직접 수정할 수 있습니다.</Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mb: 4 }}>
-                <TextField 
-                  label="1. 주인공 이름" 
-                  value={styleData.protagonist_name} 
-                  onChange={(e) => setStyleData(prev => prev ? { ...prev, protagonist_name: e.target.value } : null)} 
-                  fullWidth
-                  variant="outlined"
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <PersonIcon />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-                <TextField 
-                  label="2. 서술 문체 및 어미" 
-                  value={styleData.narration_style_endings} 
-                  onChange={(e) => setStyleData(prev => prev ? { ...prev, narration_style_endings: e.target.value } : null)} 
-                  fullWidth
-                  multiline
-                  rows={4}
-                  variant="outlined"
-                   InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <TextFieldsIcon />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-                <TextField 
-                  label="3. 핵심 톤과 키워드 (전체 분위기)" 
-                  value={styleData.tone_keywords} 
-                  onChange={(e) => setStyleData(prev => prev ? { ...prev, tone_keywords: e.target.value } : null)} 
-                  fullWidth
-                  multiline
-                  rows={3}
-                  variant="outlined"
-                   InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <PaletteIcon />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-                <TextField 
-                  label="4. 가장 중요한 스타일 규칙 (Golden Rule)" 
-                  value={styleData.stylistic_rule} 
-                  onChange={(e) => setStyleData(prev => prev ? { ...prev, stylistic_rule: e.target.value } : null)} 
-                  fullWidth
-                  multiline
-                  rows={3}
-                  variant="outlined"
-                   InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <GavelIcon />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-            </Box>
-
-            <>
-              <Typography variant="h5" component="h3" gutterBottom>6. 고유명사 번역 노트</Typography>
-              <Typography color="text.secondary" mb={2}>
-                {analyzeGlossary
-                  ? "AI가 추천한 용어집입니다. 번역을 수정하거나, 새로운 용어를 추가/삭제할 수 있습니다."
-                  : "번역에 사용할 고유명사(인물, 지명 등)를 직접 추가할 수 있습니다. AI 분석은 비활성화됩니다."
-                }
-              </Typography>
-
-              {glossaryAnalysisError && <Alert severity="warning" sx={{ mb: 2 }}>{glossaryAnalysisError}</Alert>}
-              
-              {isAnalyzingGlossary ? (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2}}>
-                      <CircularProgress size={24} />
-                      <Typography>용어집 분석 중...</Typography>
-                  </Box>
-              ) : glossaryData.length > 0 ? (
-                <TableContainer component={Paper} sx={{ mb: 2 }}>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>원문 (Term)</TableCell>
-                        <TableCell>번역 (Translation)</TableCell>
-                        <TableCell align="right">삭제</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {glossaryData.map((term, index) => (
-                        <TableRow key={index}>
-                          <TableCell>
-                            <TextField
-                              value={term.term}
-                              onChange={(e) => handleGlossaryChange(index, 'term', e.target.value)}
-                              variant="standard"
-                              fullWidth
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <TextField
-                              value={term.translation}
-                              onChange={(e) => handleGlossaryChange(index, 'translation', e.target.value)}
-                              variant="standard"
-                              fullWidth
-                            />
-                          </TableCell>
-                          <TableCell align="right">
-                            <IconButton onClick={() => handleRemoveGlossaryTerm(index)} size="small">
-                              <DeleteIcon />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              ) : (
-                null
-              )}
-
-              <Button onClick={handleAddGlossaryTerm} startIcon={<AddIcon />} sx={{ mb: 3 }}>
-                용어 추가
-              </Button>
-
-              <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-                <Button
-                  component="label"
-                  variant="outlined"
-                  startIcon={<UploadFileIcon />}
-                >
-                  용어집 불러오기 (.json)
-                  <input
-                    type="file"
-                    hidden
-                    accept=".json"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                          try {
-                            const newGlossaryJson = JSON.parse(event.target?.result as string);
-                            
-                            // Create a Map to merge glossaries, ensuring new terms overwrite old ones
-                            const mergedGlossaryMap = new Map<string, string>();
-
-                            // Add existing terms to the map
-                            glossaryData.forEach(term => mergedGlossaryMap.set(term.term, term.translation));
-
-                            // Add new/updated terms from the file to the map
-                            Object.entries(newGlossaryJson).forEach(([term, translation]) => {
-                              if (typeof term === 'string' && typeof translation === 'string') {
-                                mergedGlossaryMap.set(term, translation);
-                              }
-                            });
-
-                            // Convert the map back to an array of objects
-                            const mergedGlossary = Array.from(mergedGlossaryMap, ([term, translation]) => ({ term, translation }));
-
-                            setGlossaryData(mergedGlossary);
-                          } catch (error) {
-                            console.error("Error parsing glossary file:", error);
-                            setError("용어집 파일을 읽는 데 실패했습니다. 유효한 JSON 파일인지 확인해주세요.");
-                          }
-                        };
-                        reader.readAsText(file);
-                      }
-                    }}
+              <Card sx={{ maxWidth: '100%' }}>
+                <CardContent>
+                  {/* API Configuration */}
+                  <ApiSetup
+                    apiProvider={apiProvider}
+                    apiKey={apiKey}
+                    selectedModel={selectedModel}
+                    onProviderChange={setApiProvider}
+                    onApiKeyChange={setApiKey}
+                    onModelChange={setSelectedModel}
                   />
+
+                  {/* File Upload */}
+                  <FileUploadSection
+                    isAnalyzing={isAnalyzing}
+                    isAnalyzingGlossary={isAnalyzingGlossary}
+                    uploading={uploading}
+                    error={translationError}
+                    onFileSelect={handleFileSelect}
+                  />
+                </CardContent>
+
+                {/* Advanced Settings */}
+                <CardContent sx={{ borderTop: 1, borderColor: 'divider', mt: 2 }}>
+                  <TranslationSettings
+                    settings={translationSettings}
+                    onChange={setTranslationSettings}
+                  />
+                </CardContent>
+
+                {/* Style & Glossary Configuration */}
+                {showStyleForm && styleData && (
+                  <CardContent sx={{ borderTop: 1, borderColor: 'divider', mt: 2 }}>
+                    <StyleConfigForm
+                      styleData={styleData}
+                      glossaryData={glossaryData}
+                      isAnalyzingGlossary={isAnalyzingGlossary}
+                      glossaryAnalysisError={glossaryAnalysisError}
+                      uploading={uploading}
+                      onStyleChange={setStyleData}
+                      onGlossaryChange={setGlossaryData}
+                      onSubmit={handleStartTranslation}
+                      onCancel={handleCancelStyleEdit}
+                    />
+                  </CardContent>
+                )}
+              </Card>
+            </Paper>
+          ) : (
+            // Results View
+            <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <Box sx={{ px: 2, pt: 1 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<AddCircleIcon />}
+                  onClick={() => setShowNewTranslation(true)}
+                  size="small"
+                  sx={{ mb: 1 }}
+                >
+                  새 번역 시작
                 </Button>
               </Box>
-            </>
+              
+              <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
+                <Tabs value={tabValue} onChange={handleTabChange}>
+                  <Tab 
+                    label="번역 결과"
+                    disabled={!jobId || (!translationContent && selectedJob?.status !== 'COMPLETED')} 
+                  />
+                  <Tab 
+                    label="검증 결과"
+                    disabled={!jobId || (!validationReport && selectedJob?.validation_status !== 'COMPLETED')} 
+                  />
+                  <Tab 
+                    label="포스트 에디팅"
+                    disabled={!jobId || (!postEditLog && selectedJob?.post_edit_status !== 'COMPLETED')} 
+                  />
+                </Tabs>
+              </Box>
 
-            <CardActions sx={{ justifyContent: 'flex-end', mt: 3, p: 0 }}>
-              <Button onClick={handleCancelStyleEdit} color="secondary">취소</Button>
-              <Button 
-                onClick={handleStartTranslation} 
-                variant="contained" 
-                disabled={uploading}
-                size="large"
-                sx={{
-                  background: `linear-gradient(45deg, ${theme.palette.primary.main} 30%, ${theme.palette.secondary.main} 90%)`,
-                  color: 'white',
-                  '&:hover': {
-                    opacity: 0.9,
-                    boxShadow: `0 0 15px ${theme.palette.primary.main}`,
-                  }
-                }}
-              >
-                {uploading ? <CircularProgress size={24} color="inherit" /> : '이 설정으로 번역 시작'}
-              </Button>
-            </CardActions>
-          </CardContent>
-        ) }
-      </Card>
-
-      {/* Jobs Section */}
-      <Typography variant="h2" component="h2" textAlign="center" gutterBottom>Translation Jobs</Typography>
-      
-      {jobs.some(job => job.status === 'PROCESSING') && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          <strong>안내:</strong> 번역 작업은 내부적으로 여러 단계를 거칩니다. 첫 챕터(약 5~10분)의 분석 및 번역이 완료될 때까지 진행률이 0%로 표시될 수 있으니 잠시만 기다려주세요.
-        </Alert>
-      )}
-
-      {jobs.some(job => job.status === 'COMPLETED' && !job.filename.toLowerCase().endsWith('.epub')) && (
-        <Alert severity="success" icon={<MenuBookIcon fontSize="inherit" />} sx={{ mb: 2 }}>
-          <strong>팁:</strong> 완료된 TXT 파일은{' '}
-          <Link href="https://calibre-ebook.com/download" target="_blank" rel="noopener noreferrer" sx={{ fontWeight: 'bold' }}>
-            Calibre
-          </Link>
-          {' '}
-          를 사용하여 EPUB 등 원하는 전자책 형식으로 쉽게 변환할 수 있습니다.
-        </Alert>
-      )}
-
-      {jobs.length > 0 ? (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>파일명</TableCell>
-                <TableCell>상태</TableCell>
-                <TableCell>소요 시간</TableCell>
-                <TableCell align="right">작업</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {jobs.map((job) => (
-                <TableRow key={`job-row-${job.id}`} hover>
-                  <TableCell component="th" scope="row">
-                    <Typography variant="body2" noWrap title={job.filename} sx={{ maxWidth: '300px' }}>
-                      {job.filename}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {new Date(job.created_at).toLocaleString()}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    {job.status === 'FAILED' && job.error_message ? (
-                      <Tooltip title={job.error_message} arrow>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'help' }}>
-                          {getStatusIcon(job.status)}
-                          <Typography variant="body2">
-                            {job.status}
+              {/* Tab Content */}
+              <Box sx={{ flex: 1, overflow: 'auto', position: 'relative' }}>
+                {/* View Mode Toggle and Segment Navigation */}
+                {jobId && (
+                  <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                    <Box sx={{ p: 2 }}>
+                      <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Stack direction="row" spacing={2} alignItems="center">
+                          <Typography variant="body2" color="text.secondary">보기 모드:</Typography>
+                          <Chip
+                            label="전체 보기"
+                            onClick={() => setViewMode('full')}
+                            color={viewMode === 'full' ? 'primary' : 'default'}
+                            variant={viewMode === 'full' ? 'filled' : 'outlined'}
+                            size="small"
+                          />
+                          <Chip
+                            label="세그먼트 보기"
+                            onClick={() => setViewMode('segment')}
+                            color={viewMode === 'segment' ? 'primary' : 'default'}
+                            variant={viewMode === 'segment' ? 'filled' : 'outlined'}
+                            size="small"
+                            disabled={!validationReport && !postEditLog && (!translationSegments?.segments || translationSegments.segments.length === 0)}
+                          />
+                        </Stack>
+                        
+                        {viewMode === 'segment' && segmentNav.totalSegments > 0 && (
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            {tabValue === 1 && validationReport && segmentNav.hasErrors && (
+                              <>
+                                <Tooltip title="이전 오류">
+                                  <IconButton 
+                                    onClick={segmentNav.goToPreviousError}
+                                    disabled={segmentNav.segmentsWithErrors.length === 0}
+                                    size="small"
+                                    color="warning"
+                                  >
+                                    <NavigateBeforeIcon />
+                                  </IconButton>
+                                </Tooltip>
+                                <Box sx={{ 
+                                  px: 1.5, 
+                                  py: 0.5, 
+                                  bgcolor: 'warning.main',
+                                  color: 'white',
+                                  borderRadius: 1,
+                                  fontSize: '0.75rem',
+                                  fontWeight: 'medium',
+                                }}>
+                                  오류 {segmentNav.segmentsWithErrors.indexOf(segmentNav.currentSegmentIndex) + 1}/{segmentNav.segmentsWithErrors.length}
+                                </Box>
+                                <Tooltip title="다음 오류">
+                                  <IconButton 
+                                    onClick={segmentNav.goToNextError}
+                                    disabled={segmentNav.segmentsWithErrors.length === 0}
+                                    size="small"
+                                    color="warning"
+                                  >
+                                    <NavigateNextIcon />
+                                  </IconButton>
+                                </Tooltip>
+                                <Box sx={{ width: 1, height: 24, borderLeft: 1, borderColor: 'divider', mx: 0.5 }} />
+                              </>
+                            )}
+                            
+                            <IconButton 
+                              onClick={() => segmentNav.goToSegment(0)}
+                              disabled={segmentNav.currentSegmentIndex === 0}
+                              size="small"
+                            >
+                              <FirstPageIcon />
+                            </IconButton>
+                            <IconButton 
+                              onClick={() => segmentNav.goToSegment(Math.max(0, segmentNav.currentSegmentIndex - 1))}
+                              disabled={segmentNav.currentSegmentIndex === 0}
+                              size="small"
+                            >
+                              <NavigateBeforeIcon />
+                            </IconButton>
+                            <Box sx={{ 
+                              px: 2, 
+                              py: 0.5, 
+                              bgcolor: 'primary.main',
+                              color: 'primary.contrastText',
+                              borderRadius: 1,
+                              minWidth: 80,
+                              textAlign: 'center',
+                            }}>
+                              <Typography variant="caption" fontWeight="medium">
+                                {segmentNav.currentSegmentIndex + 1} / {segmentNav.totalSegments}
+                              </Typography>
+                            </Box>
+                            <IconButton 
+                              onClick={() => segmentNav.goToSegment(Math.min(segmentNav.totalSegments - 1, segmentNav.currentSegmentIndex + 1))}
+                              disabled={segmentNav.currentSegmentIndex >= segmentNav.totalSegments - 1}
+                              size="small"
+                            >
+                              <NavigateNextIcon />
+                            </IconButton>
+                            <IconButton 
+                              onClick={() => segmentNav.goToSegment(segmentNav.totalSegments - 1)}
+                              disabled={segmentNav.currentSegmentIndex >= segmentNav.totalSegments - 1}
+                              size="small"
+                            >
+                              <LastPageIcon />
+                            </IconButton>
+                          </Stack>
+                        )}
+                      </Stack>
+                    </Box>
+                    
+                    {tabValue === 1 && viewMode === 'segment' && validationReport && (
+                      <Box sx={{ px: 2, pb: 2 }}>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
+                            오류 필터:
                           </Typography>
-                        </Box>
-                      </Tooltip>
-                    ) : (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {getStatusIcon(job.status)}
-                        <Typography variant="body2">
-                          {job.status} {job.status === 'PROCESSING' && `(${job.progress}%)`}
-                        </Typography>
+                          <Chip
+                            icon={<ErrorIcon />}
+                            label={`중요 (${validationReport.summary.total_critical_issues})`}
+                            size="small"
+                            color={errorFilters.critical ? 'error' : 'default'}
+                            onClick={() => setErrorFilters(prev => ({ ...prev, critical: !prev.critical }))}
+                            variant={errorFilters.critical ? 'filled' : 'outlined'}
+                          />
+                          <Chip
+                            icon={<ContentCopyIcon />}
+                            label={`누락 (${validationReport.summary.total_missing_content})`}
+                            size="small"
+                            color={errorFilters.missingContent ? 'warning' : 'default'}
+                            onClick={() => setErrorFilters(prev => ({ ...prev, missingContent: !prev.missingContent }))}
+                            variant={errorFilters.missingContent ? 'filled' : 'outlined'}
+                          />
+                          <Chip
+                            icon={<AddCircleIcon />}
+                            label={`추가 (${validationReport.summary.total_added_content})`}
+                            size="small"
+                            color={errorFilters.addedContent ? 'info' : 'default'}
+                            onClick={() => setErrorFilters(prev => ({ ...prev, addedContent: !prev.addedContent }))}
+                            variant={errorFilters.addedContent ? 'filled' : 'outlined'}
+                          />
+                          <Chip
+                            icon={<PersonIcon />}
+                            label={`이름 (${validationReport.summary.total_name_inconsistencies})`}
+                            size="small"
+                            color={errorFilters.nameInconsistencies ? 'secondary' : 'default'}
+                            onClick={() => setErrorFilters(prev => ({ ...prev, nameInconsistencies: !prev.nameInconsistencies }))}
+                            variant={errorFilters.nameInconsistencies ? 'filled' : 'outlined'}
+                          />
+                        </Stack>
                       </Box>
                     )}
-                    {job.status === 'PROCESSING' && <LinearProgress variant="determinate" value={job.progress} sx={{ mt: 0.5 }} />}
-                  </TableCell>
-                  <TableCell>
-                    {job.status === 'COMPLETED' ? formatDuration(job.created_at, job.completed_at) : '-'}
-                  </TableCell>
-                  <TableCell align="right">
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-                      {(job.status === 'COMPLETED' || job.status === 'FAILED') && (
-                        <Tooltip title="번역 파일 다운로드">
-                          <IconButton 
-                            color="primary" 
-                            onClick={() => handleDownload(`${API_URL}/download/${job.id}`, `${job.filename.split('.')[0]}_translated.${job.filename.toLowerCase().endsWith('.epub') ? 'epub' : 'txt'}`)}
-                          >
-                            <DownloadIcon />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                      {job.status === 'COMPLETED' && (
-                        <Tooltip title="용어집 다운로드">
-                          <IconButton 
-                            color="secondary"
-                            onClick={() => handleDownload(`${API_URL}/api/v1/jobs/${job.id}/glossary`, `${job.filename.split('.')[0]}_glossary.json`)}
-                          >
-                            <MenuBookIcon />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                      {devMode && (job.status === 'COMPLETED' || job.status === 'FAILED') && (
-                        <>
-                          <Tooltip title="프롬프트 로그 다운로드">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => handleDownload(`${API_URL}/download/logs/${job.id}/prompts`, `prompts_job_${job.id}_${job.filename.split('.')[0]}.txt`)}
-                            >
-                              <ChatIcon />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="컨텍스트 로그 다운로드">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => handleDownload(`${API_URL}/download/logs/${job.id}/context`, `context_job_${job.id}_${job.filename.split('.')[0]}.txt`)}
-                            >
-                              <DescriptionIcon />
-                            </IconButton>
-                          </Tooltip>
-                        </>
-                      )}
-                      <Tooltip title="작업 삭제">
-                        <IconButton onClick={() => handleDelete(job.id)}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      ) : (
-        <Paper sx={{ p: 4, textAlign: 'center', backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
-          <AutoStoriesIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-          <Typography variant="h6" component="p">
-            아직 번역한 작업이 없네요.
-          </Typography>
-          <Typography color="text.secondary">
-            첫 번째 소설을 번역해보세요!
-          </Typography>
-        </Paper>
-      )}
+                  </Box>
+                )}
+                
+                <Box sx={{ p: 3 }}>
+                  {isPolling && (
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      <AlertTitle>작업 진행 중</AlertTitle>
+                      {selectedJob?.status === 'IN_PROGRESS' && `번역 작업이 진행 중입니다... (${selectedJob?.progress || 0}%)`}
+                      {selectedJob?.validation_status === 'IN_PROGRESS' && `검증 작업이 진행 중입니다... (${selectedJob?.validation_progress || 0}%)`}
+                      {selectedJob?.post_edit_status === 'IN_PROGRESS' && `포스트에디팅 작업이 진행 중입니다... (${selectedJob?.post_edit_progress || 0}%)`}
+                    </Alert>
+                  )}
 
-      {/* Footer */}
-      <Box textAlign="center" mt={10} pt={4} borderTop={1} borderColor="divider">
-        <Typography variant="h6" gutterBottom>이 서비스가 마음에 드셨나요?</Typography>
-        <Typography color="text.secondary" mb={2}>여러분의 소중한 후원은 서비스 유지 및 기능 개선에 큰 힘이 됩니다.</Typography>
-        <Box>
-          <Button
-            variant="contained"
-            startIcon={<CoffeeIcon />}
-            href="https://coff.ee/nicetry3675"
-            target="_blank"
-            rel="noopener noreferrer"
-            sx={{
-              mr: 1,
-              backgroundColor: theme.palette.warning.main,
-              color: theme.palette.getContrastText(theme.palette.warning.main),
-              '&:hover': {
-                backgroundColor: '#ffca28'
-              }
-            }}
-          >
-            Buy Me a Coffee
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<EmailIcon />}
-            href="https://forms.gle/st93J7NT2PLcxgaj9"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Contact Us
-          </Button>
-        </Box>
-        <Box mt={2}>
-          <Link href="/privacy" color="text.secondary" variant="body2">
-            개인정보처리방침
-          </Link>
-        </Box>
+                  {dataLoading && !isPolling && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                      <CircularProgress />
+                    </Box>
+                  )}
+                  
+                  {error && (
+                    <Alert severity="error" sx={{ mb: 2 }}>
+                      <AlertTitle>오류</AlertTitle>
+                      {error}
+                    </Alert>
+                  )}
+                  
+                  {!loading && !translationContent && !validationReport && !postEditLog && tabValue !== 0 && (
+                    <Alert severity="info">
+                      <AlertTitle>데이터 없음</AlertTitle>
+                      번역이 아직 완료되지 않았습니다.
+                    </Alert>
+                  )}
+                  
+                  <TabPanel value={tabValue} index={0}>
+                    {viewMode === 'segment' ? (
+                      validationReport || postEditLog || (translationSegments?.segments && translationSegments.segments.length > 0) ? (
+                        <SegmentViewer
+                          mode="translation"
+                          currentSegmentIndex={segmentNav.currentSegmentIndex}
+                          validationReport={validationReport}
+                          postEditLog={postEditLog}
+                          translationContent={translationContent?.content || null}
+                          translationSegments={translationSegments}
+                        />
+                      ) : (
+                        <Alert severity="info">
+                          <AlertTitle>세그먼트 보기 사용 불가</AlertTitle>
+                          이 번역 작업은 세그먼트 저장 기능이 구현되기 전에 완료되었습니다. 
+                          세그먼트 보기를 사용하려면 검증(Validation) 또는 포스트 에디팅을 실행해 주세요.
+                        </Alert>
+                      )
+                    ) : viewMode === 'full' && translationContent ? (
+                      <TranslationContentViewer 
+                        content={translationContent} 
+                        sourceText={fullSourceText}
+                      />
+                    ) : translationContent ? (
+                      <TranslationContentViewer 
+                        content={translationContent} 
+                        sourceText={fullSourceText}
+                      />
+                    ) : selectedJob?.status === 'COMPLETED' ? (
+                      <Stack spacing={2}>
+                        <Alert severity="warning">
+                          <AlertTitle>번역 결과를 찾을 수 없습니다</AlertTitle>
+                          번역이 완료되었지만 결과를 불러올 수 없습니다.
+                        </Alert>
+                        <Button 
+                          variant="contained" 
+                          onClick={loadData}
+                          startIcon={<RefreshIcon />}
+                        >
+                          결과 다시 불러오기
+                        </Button>
+                      </Stack>
+                    ) : (
+                      <Alert severity="info">
+                        번역이 완료되면 결과가 여기에 표시됩니다.
+                      </Alert>
+                    )}
+                  </TabPanel>
+                  
+                  <TabPanel value={tabValue} index={1}>
+                    {viewMode === 'segment' && validationReport ? (
+                      <SegmentViewer
+                        mode="validation"
+                        currentSegmentIndex={segmentNav.currentSegmentIndex}
+                        validationReport={validationReport}
+                        postEditLog={postEditLog}
+                        translationSegments={translationSegments}
+                        errorFilters={errorFilters}
+                      />
+                    ) : validationReport ? (
+                      <ValidationReportViewer 
+                        report={validationReport}
+                        selectedIssues={selectedIssues}
+                        onIssueSelectionChange={(segmentIndex, issueType, issueIndex, selected) => {
+                          setSelectedIssues(prev => {
+                            const newState = { ...prev };
+                            
+                            if (!newState[segmentIndex]) {
+                              const segment = validationReport?.detailed_results.find(r => r.segment_index === segmentIndex);
+                              if (!segment) return prev;
+                              
+                              newState[segmentIndex] = {
+                                critical: new Array(segment.critical_issues.length).fill(true),
+                                missing_content: new Array(segment.missing_content.length).fill(true),
+                                added_content: new Array(segment.added_content.length).fill(true),
+                                name_inconsistencies: new Array(segment.name_inconsistencies.length).fill(true),
+                                minor: new Array(segment.minor_issues.length).fill(true),
+                              };
+                            }
+                            
+                            if (!newState[segmentIndex][issueType]) {
+                              return prev;
+                            }
+                            
+                            newState[segmentIndex] = {
+                              ...newState[segmentIndex],
+                              [issueType]: newState[segmentIndex][issueType].map((val, idx) => 
+                                idx === issueIndex ? selected : val
+                              )
+                            };
+                            
+                            return newState;
+                          });
+                        }}
+                        onSegmentClick={(index) => {
+                          setViewMode('segment');
+                          segmentNav.goToSegment(index);
+                        }}
+                      />
+                    ) : selectedJob?.validation_status === 'COMPLETED' ? (
+                      <Stack spacing={2}>
+                        <Alert severity="warning">
+                          <AlertTitle>검증 보고서를 찾을 수 없습니다</AlertTitle>
+                          검증이 완료되었지만 보고서를 불러올 수 없습니다.
+                        </Alert>
+                        <Button 
+                          variant="contained" 
+                          onClick={loadData}
+                          startIcon={<RefreshIcon />}
+                        >
+                          보고서 다시 불러오기
+                        </Button>
+                      </Stack>
+                    ) : (
+                      <Alert severity="info">
+                        검증을 실행하면 결과가 여기에 표시됩니다.
+                      </Alert>
+                    )}
+                  </TabPanel>
+                  
+                  <TabPanel value={tabValue} index={2}>
+                    {viewMode === 'segment' && postEditLog ? (
+                      <SegmentViewer
+                        mode="post-edit"
+                        currentSegmentIndex={segmentNav.currentSegmentIndex}
+                        validationReport={validationReport}
+                        postEditLog={postEditLog}
+                        translationSegments={translationSegments}
+                      />
+                    ) : postEditLog ? (
+                      <PostEditLogViewer 
+                        log={postEditLog}
+                        onSegmentClick={(index) => {
+                          setViewMode('segment');
+                          segmentNav.goToSegment(index);
+                        }}
+                      />
+                    ) : null}
+                  </TabPanel>
+                </Box>
+              </Box>
+            </Paper>
+          )}
+        </Container>
       </Box>
-    </Container>
+    </Box>
+
+    {/* Dialogs */}
+    <ValidationDialog
+        open={validation.validationDialogOpen}
+        onClose={() => validation.setValidationDialogOpen(false)}
+        onConfirm={validation.handleTriggerValidation}
+        quickValidation={validation.quickValidation}
+        onQuickValidationChange={validation.setQuickValidation}
+        validationSampleRate={validation.validationSampleRate}
+        onValidationSampleRateChange={validation.setValidationSampleRate}
+        loading={validation.loading}
+      />
+
+      <PostEditDialog
+        open={postEdit.postEditDialogOpen}
+        onClose={() => postEdit.setPostEditDialogOpen(false)}
+        onConfirm={postEdit.handleTriggerPostEdit}
+        selectedIssueTypes={postEdit.selectedIssueTypes}
+        onIssueTypeChange={(issueType, checked) => 
+          postEdit.setSelectedIssueTypes({ ...postEdit.selectedIssueTypes, [issueType]: checked })
+        }
+        validationReport={validationReport}
+        loading={postEdit.loading}
+        selectedCounts={selectedCounts}
+    />
+  </>
+  );
+}
+
+export default function CanvasPage() {
+  return (
+    <Suspense fallback={
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    }>
+      <CanvasContent />
+    </Suspense>
   );
 }

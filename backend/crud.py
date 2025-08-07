@@ -47,8 +47,21 @@ def filter_private_comments(comments: list[models.Comment], current_user: Option
 def get_job(db: Session, job_id: int):
     return db.query(models.TranslationJob).filter(models.TranslationJob.id == job_id).first()
 
+def get_jobs_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+    return db.query(models.TranslationJob).filter(
+        models.TranslationJob.owner_id == user_id
+    ).order_by(
+        models.TranslationJob.created_at.desc()
+    ).offset(skip).limit(limit).all()
+
 def create_translation_job(db: Session, job: schemas.TranslationJobCreate):
-    db_job = models.TranslationJob(filename=job.filename, owner_id=job.owner_id, status="PENDING", progress=0)
+    db_job = models.TranslationJob(
+        filename=job.filename, 
+        owner_id=job.owner_id, 
+        status="PENDING", 
+        progress=0,
+        segment_size=job.segment_size
+    )
     db.add(db_job)
     db.commit()
     db.refresh(db_job)
@@ -90,6 +103,40 @@ def update_job_final_glossary(db: Session, job_id: int, glossary: dict):
         db.commit()
         db.refresh(db_job)
     return db_job
+
+def update_job_translation_segments(db: Session, job_id: int, segments: list):
+    db_job = get_job(db, job_id)
+    if db_job:
+        db_job.translation_segments = segments
+        db.commit()
+        db.refresh(db_job)
+    return db_job
+
+def delete_job(db: Session, job_id: int):
+    db_job = get_job(db, job_id)
+    if db_job:
+        db.delete(db_job)
+        db.commit()
+    return db_job
+
+
+def update_job_validation_progress(db: Session, job_id: int, progress: int):
+    db_job = get_job(db, job_id)
+    if db_job:
+        db_job.validation_progress = progress
+        db.commit()
+        db.refresh(db_job)
+    return db_job
+
+
+def update_job_post_edit_progress(db: Session, job_id: int, progress: int):
+    db_job = get_job(db, job_id)
+    if db_job:
+        db_job.post_edit_progress = progress
+        db.commit()
+        db.refresh(db_job)
+    return db_job
+
 
 def create_translation_usage_log(db: Session, log_data: schemas.TranslationUsageLogCreate):
     db_log = models.TranslationUsageLog(**log_data.dict())

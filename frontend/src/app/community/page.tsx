@@ -341,6 +341,9 @@ export default function CommunityPage() {
                                   </Typography>
                                 </span>
                               }
+                              secondaryTypographyProps={{
+                                component: 'div'
+                              }}
                             />
                           </ListItem>
                         ))}

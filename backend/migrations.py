@@ -52,6 +52,23 @@ def run_migrations():
                 {'type': 'add_column', 'table': 'comments', 'column': 'is_private', 'definition': 'BOOLEAN DEFAULT FALSE'},
                 {'type': 'add_column', 'table': 'users', 'column': 'role', 'definition': "VARCHAR(50) DEFAULT 'user'"},
                 {'type': 'add_column', 'table': 'translation_jobs', 'column': 'final_glossary', 'definition': 'JSON'},
+                
+                # Validation and Post-Edit columns
+                {'type': 'add_column', 'table': 'translation_jobs', 'column': 'validation_enabled', 'definition': 'BOOLEAN DEFAULT FALSE'},
+                {'type': 'add_column', 'table': 'translation_jobs', 'column': 'validation_status', 'definition': 'VARCHAR(50)'},
+                {'type': 'add_column', 'table': 'translation_jobs', 'column': 'validation_progress', 'definition': 'INTEGER DEFAULT 0'},
+                {'type': 'add_column', 'table': 'translation_jobs', 'column': 'validation_sample_rate', 'definition': 'INTEGER DEFAULT 100'},
+                {'type': 'add_column', 'table': 'translation_jobs', 'column': 'quick_validation', 'definition': 'BOOLEAN DEFAULT FALSE'},
+                {'type': 'add_column', 'table': 'translation_jobs', 'column': 'validation_report_path', 'definition': 'VARCHAR(500)'},
+                {'type': 'add_column', 'table': 'translation_jobs', 'column': 'validation_completed_at', 'definition': 'TIMESTAMP'},
+                {'type': 'add_column', 'table': 'translation_jobs', 'column': 'post_edit_enabled', 'definition': 'BOOLEAN DEFAULT FALSE'},
+                {'type': 'add_column', 'table': 'translation_jobs', 'column': 'post_edit_status', 'definition': 'VARCHAR(50)'},
+                {'type': 'add_column', 'table': 'translation_jobs', 'column': 'post_edit_log_path', 'definition': 'VARCHAR(500)'},
+                {'type': 'add_column', 'table': 'translation_jobs', 'column': 'post_edit_completed_at', 'definition': 'TIMESTAMP'},
+                {'type': 'add_column', 'table': 'translation_jobs', 'column': 'post_edit_progress', 'definition': 'INTEGER DEFAULT 0'},
+                
+                # Translation segments for segment view
+                {'type': 'add_column', 'table': 'translation_jobs', 'column': 'translation_segments', 'definition': 'JSON'},
 
                 # Index creations (each as a separate statement)
                 {'type': 'create_index', 'name': 'idx_posts_is_private', 'sql': 'CREATE INDEX IF NOT EXISTS idx_posts_is_private ON posts(is_private)'},

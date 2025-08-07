@@ -44,27 +44,78 @@ class PostEditEngine:
         with open(report_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     
-    def identify_segments_needing_edit(self, validation_report: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def identify_segments_needing_edit(self, 
+                                      validation_report: Dict[str, Any], 
+                                      selected_issue_types: Dict[str, bool] = None,
+                                      selected_issues: Dict[str, Any] = None) -> List[Dict[str, Any]]:
         """
-        Identify segments that need post-editing based on validation results.
+        Identify segments that need post-editing based on validation results and selected issue types.
         
         Args:
             validation_report: The loaded validation report
+            selected_issue_types: Dictionary of issue types to fix (default: all True)
+            selected_issues: Dictionary of selected issues by segment and type
             
         Returns:
             List of segments that need editing with their issues
         """
+        # Default to all issue types if not specified
+        if selected_issue_types is None:
+            selected_issue_types = {
+                'critical_issues': True,
+                'missing_content': True,
+                'added_content': True,
+                'name_inconsistencies': True
+            }
+        
         segments_to_edit = []
         
         for result in validation_report.get('detailed_results', []):
-            # Only process segments that have actual issues
+            # Filter issues based on selected types
+            filtered_result = result.copy()
+            segment_idx = str(result['segment_index'])  # Convert to string for dict key
+            
+            # If we have selected_issues, use individual issue selection
+            if selected_issues and segment_idx in selected_issues:
+                segment_selections = selected_issues[segment_idx]
+                
+                # Filter each issue type based on individual selections
+                for issue_type in ['critical_issues', 'missing_content', 'added_content', 'name_inconsistencies']:
+                    if issue_type in filtered_result and issue_type in segment_selections:
+                        # Filter issues based on boolean array
+                        selected_indices = segment_selections[issue_type]
+                        if isinstance(selected_indices, list):
+                            filtered_issues = [
+                                issue for i, issue in enumerate(filtered_result[issue_type])
+                                if i < len(selected_indices) and selected_indices[i]
+                            ]
+                            filtered_result[issue_type] = filtered_issues
+                        else:
+                            # If not a list, treat as boolean for all issues of this type
+                            if not selected_indices:
+                                filtered_result[issue_type] = []
+                    else:
+                        # Clear if not in selections
+                        filtered_result[issue_type] = []
+            else:
+                # Fall back to issue type selection
+                if not selected_issue_types.get('critical_issues', True):
+                    filtered_result['critical_issues'] = []
+                if not selected_issue_types.get('missing_content', True):
+                    filtered_result['missing_content'] = []
+                if not selected_issue_types.get('added_content', True):
+                    filtered_result['added_content'] = []
+                if not selected_issue_types.get('name_inconsistencies', True):
+                    filtered_result['name_inconsistencies'] = []
+            
+            # Only process segments that have selected issues
             if result['status'] == 'FAIL' and (
-                result.get('critical_issues', []) or
-                result.get('missing_content', []) or
-                result.get('added_content', []) or
-                result.get('name_inconsistencies', [])
+                filtered_result.get('critical_issues', []) or
+                filtered_result.get('missing_content', []) or
+                filtered_result.get('added_content', []) or
+                filtered_result.get('name_inconsistencies', [])
             ):
-                segments_to_edit.append(result)
+                segments_to_edit.append(filtered_result)
         
         return segments_to_edit
     
@@ -178,13 +229,18 @@ class PostEditEngine:
     
     def post_edit_job(self,
                      translation_job,
-                     validation_report_path: str) -> Tuple[List[str], Dict[str, Any]]:
+                     validation_report_path: str,
+                     selected_issue_types: Dict[str, bool] = None,
+                     selected_issues: Dict[str, Any] = None,
+                     progress_callback=None) -> List[str]:
         """
         Post-edit an entire translation job based on validation report.
         
         Args:
             translation_job: The TranslationJob object
             validation_report_path: Path to the validation report JSON file
+            selected_issue_types: Dictionary of issue types to fix (default: all True)
+            selected_issues: Dictionary of selected issues by segment and type
             
         Returns:
             Tuple of (post-edited translations, summary statistics)
@@ -192,8 +248,8 @@ class PostEditEngine:
         # Load validation report
         validation_report = self.load_validation_report(validation_report_path)
         
-        # Identify segments needing edit
-        segments_to_edit = self.identify_segments_needing_edit(validation_report)
+        # Identify segments needing edit based on selected issue types and individual issues
+        segments_to_edit = self.identify_segments_needing_edit(validation_report, selected_issue_types, selected_issues)
         segments_to_edit_idx = {s['segment_index'] for s in segments_to_edit}
         
         if not segments_to_edit:
@@ -203,12 +259,20 @@ class PostEditEngine:
                 translation_job, 
                 translation_job.translated_segments, 
                 validation_report,
-                segments_to_edit_idx
+                segments_to_edit_idx,
+                selected_issue_types
             )
             summary = {
                 'segments_edited': 0,
                 'total_segments': len(translation_job.translated_segments),
                 'edit_percentage': 0.0,
+                'selected_issue_types': selected_issue_types or {
+                    'critical_issues': True,
+                    'missing_content': True,
+                    'added_content': True,
+                    'name_inconsistencies': True
+                },
+                'has_individual_selection': selected_issues is not None,
                 'issues_addressed': {
                     'critical': 0,
                     'missing_content': 0,
@@ -217,7 +281,7 @@ class PostEditEngine:
                 }
             }
             self._save_postedit_log(complete_log, summary, translation_job.user_base_filename)
-            return translation_job.translated_segments, summary
+            return translation_job.translated_segments
         
         print(f"\n{'='*60}")
         print(f"Starting Post-Edit Process")
@@ -251,6 +315,10 @@ class PostEditEngine:
                 
                 # Update the segment
                 edited_segments[segment_idx] = edited_translation
+
+                if progress_callback:
+                    progress = int(((pbar.n + 1) / len(segments_to_edit)) * 100)
+                    progress_callback(progress)
                 
                 pbar.update(1)
         
@@ -259,7 +327,8 @@ class PostEditEngine:
             translation_job, 
             edited_segments, 
             validation_report,
-            segments_to_edit_idx
+            segments_to_edit_idx,
+            selected_issue_types
         )
         
         # Calculate summary
@@ -267,6 +336,13 @@ class PostEditEngine:
             'segments_edited': len(segments_to_edit),
             'total_segments': len(translation_job.translated_segments),
             'edit_percentage': (len(segments_to_edit) / len(translation_job.translated_segments) * 100),
+            'selected_issue_types': selected_issue_types or {
+                'critical_issues': True,
+                'missing_content': True,
+                'added_content': True,
+                'name_inconsistencies': True
+            },
+            'has_individual_selection': selected_issues is not None,
             'issues_addressed': {
                 'critical': sum(len(s.get('critical_issues', [])) for s in segments_to_edit),
                 'missing_content': sum(len(s.get('missing_content', [])) for s in segments_to_edit),
@@ -284,13 +360,14 @@ class PostEditEngine:
         # Update the translation job with edited segments
         translation_job.translated_segments = edited_segments
         
-        return edited_segments, summary
+        return edited_segments
     
     def _create_complete_log(self, 
                             translation_job,
                             edited_segments: List[str],
                             validation_report: Dict[str, Any],
-                            edited_indices: set) -> List[Dict[str, Any]]:
+                            edited_indices: set,
+                            selected_issue_types: Dict[str, bool] = None) -> List[Dict[str, Any]]:
         """
         Create a comprehensive log containing all segments with their complete translations.
         
@@ -299,6 +376,7 @@ class PostEditEngine:
             edited_segments: The edited translations
             validation_report: The validation report data
             edited_indices: Set of segment indices that were edited
+            selected_issue_types: Dictionary of issue types that were selected for fixing
             
         Returns:
             List of all segments with complete information

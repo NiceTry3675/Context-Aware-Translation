@@ -215,7 +215,8 @@ class TranslationValidator:
     def validate_job(self, 
                     translation_job,
                     sample_rate: float = 1.0,
-                    quick_mode: bool = False) -> Tuple[List[ValidationResult], Dict[str, Any]]:
+                    quick_mode: bool = False,
+                    progress_callback=None) -> Tuple[List[ValidationResult], Dict[str, Any]]:
         """
         Validate an entire translation job.
         
@@ -285,6 +286,11 @@ class TranslationValidator:
                 # Show issues immediately if found
                 if result.has_issues() and self.verbose:
                     self._print_segment_issues(result)
+                
+                # Update progress callback if provided
+                if progress_callback:
+                    progress = int(((i + 1) / segments_to_validate) * 100)
+                    progress_callback(progress)
                 
                 pbar.update(1)
         
