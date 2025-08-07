@@ -6,8 +6,8 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up(.*)',
 ]);
 
-export default clerkMiddleware((auth, req) => {
-  const { userId, orgId } = auth();
+export default clerkMiddleware(async (auth, req) => {
+  const { userId, orgId } = await auth();
 
   // If the user is not logged in and trying to access the root, redirect to about page
   if (!userId && req.nextUrl.pathname === '/') {
@@ -17,7 +17,7 @@ export default clerkMiddleware((auth, req) => {
 
   // Protect all other routes
   if (!isPublicRoute(req)) {
-    auth().protect();
+    auth.protect();
   }
 });
 

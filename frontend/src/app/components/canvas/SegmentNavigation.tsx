@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -35,18 +35,18 @@ export default function SegmentNavigation({
   const [jumpToValue, setJumpToValue] = React.useState('');
 
   // Navigation functions
-  const goToFirst = () => onSegmentChange(0);
-  const goToLast = () => onSegmentChange(totalSegments - 1);
-  const goToPrevious = () => {
+  const goToFirst = useCallback(() => onSegmentChange(0), [onSegmentChange]);
+  const goToLast = useCallback(() => onSegmentChange(totalSegments - 1), [onSegmentChange, totalSegments]);
+  const goToPrevious = useCallback(() => {
     if (currentSegmentIndex > 0) {
       onSegmentChange(currentSegmentIndex - 1);
     }
-  };
-  const goToNext = () => {
+  }, [currentSegmentIndex, onSegmentChange]);
+  const goToNext = useCallback(() => {
     if (currentSegmentIndex < totalSegments - 1) {
       onSegmentChange(currentSegmentIndex + 1);
     }
-  };
+  }, [currentSegmentIndex, totalSegments, onSegmentChange]);
 
   // Handle jump to segment
   const handleJumpTo = (e: React.FormEvent) => {

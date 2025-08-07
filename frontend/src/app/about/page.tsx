@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, Suspense } from 'react';
+import { Suspense } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import {
@@ -16,7 +16,7 @@ import FeatureSection from '../components/sections/FeatureSection';
 import Footer from '../components/sections/Footer';
 
 function HomeContent() {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn } = useAuth();
   const router = useRouter();
   
   

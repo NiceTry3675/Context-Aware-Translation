@@ -43,8 +43,6 @@ export default function JobRowActions({ job, onRefresh, compact = false }: JobRo
 
   // We don't load validation report for all jobs to prevent unnecessary API calls
   // Issue counts are not displayed in the sidebar actions
-  const issueCount = 0;
-  const hasIssues = false;
 
   // Since we don't load validation report for all jobs, we can't calculate counts
   const selectedCounts = {

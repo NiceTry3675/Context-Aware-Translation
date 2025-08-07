@@ -41,7 +41,6 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import PersonIcon from '@mui/icons-material/Person';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
-import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 
 // Import translation setup components
 import ApiSetup from './components/ApiConfiguration/ApiSetup';
@@ -61,7 +60,6 @@ import { useTranslationJobs } from './hooks/useTranslationJobs';
 import { useSegmentNavigation } from './components/TranslationSidebar/hooks/useSegmentNavigation';
 import { useApiKey } from './hooks/useApiKey';
 import { useTranslationService } from './hooks/useTranslationService';
-import { useJobActions } from './hooks/useJobActions';
 
 // Types
 import { Job } from './types/job';
@@ -139,7 +137,7 @@ function CanvasContent() {
   });
   
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  const { jobs, addJob, deleteJob, refreshJobs } = useTranslationJobs({ apiUrl: API_URL });
+  const { jobs, addJob, refreshJobs } = useTranslationJobs({ apiUrl: API_URL });
   
   // Translation setup states (moved from main page)
   const { apiKey, setApiKey, apiProvider, setApiProvider, selectedModel, setSelectedModel } = useApiKey();
@@ -184,13 +182,6 @@ function CanvasContent() {
       // Collapse the new translation form
       setShowNewTranslation(false);
     }
-  });
-  
-  // Job actions hook
-  const jobActions = useJobActions({
-    apiUrl: API_URL,
-    onError: setTranslationError,
-    onSuccess: refreshJobs
   });
   
   // Find the current job from the jobs list
@@ -295,15 +286,6 @@ function CanvasContent() {
     setGlossaryData([]);
     const fileInput = document.getElementById('file-upload-input') as HTMLInputElement;
     if (fileInput) fileInput.value = '';
-  };
-
-  // Wrapper function for job validation
-  const handleTriggerValidation = (jobId: number) => {
-    return jobActions.handleTriggerValidation(
-      jobId,
-      translationSettings.quickValidation,
-      translationSettings.validationSampleRate
-    );
   };
 
   // Combine loading states
