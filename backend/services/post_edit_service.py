@@ -47,23 +47,37 @@ class PostEditService:
             target_segment_size=job.segment_size
         )
         
-        # Load the translated segments from the translated file
-        with open(translated_path, 'r', encoding='utf-8') as f:
-            translated_text = f.read()
-            translation_job.translated_segments = translated_text.split('\n')
-            # Filter out empty strings from the list
-            translation_job.translated_segments = [s for s in translation_job.translated_segments if s.strip()]
-        
-        # Handle segment count mismatch
-        if len(translation_job.segments) != len(translation_job.translated_segments):
-            print(f"Warning: Segment count mismatch - Source: {len(translation_job.segments)}, Translated: {len(translation_job.translated_segments)}")
-            if len(translation_job.translated_segments) > len(translation_job.segments):
-                # Too many translated segments, might be due to line breaks
-                combined_segments = []
-                lines_per_segment = len(translation_job.translated_segments) // len(translation_job.segments)
-                for i in range(0, len(translation_job.translated_segments), lines_per_segment):
-                    combined_segments.append('\n'.join(translation_job.translated_segments[i:i+lines_per_segment]))
-                translation_job.translated_segments = combined_segments[:len(translation_job.segments)]
+        # Fail-fast: Use stored translation segments from DB for exact alignment only
+        db_segments = getattr(job, 'translation_segments', None)
+        if not db_segments or not isinstance(db_segments, list):
+            raise ValueError(
+                "Translation segments not found for this job. Post-editing requires saved segments."
+            )
+
+        # Extract translated_text list from DB segments
+        if any(isinstance(seg, dict) for seg in db_segments):
+            translated_list = [
+                (seg.get('translated_text') if isinstance(seg, dict) else None)
+                for seg in db_segments
+            ]
+        else:
+            # Legacy format: list of plain strings
+            translated_list = [seg for seg in db_segments if isinstance(seg, str)]
+
+        # Validate extracted list
+        if not translated_list or any(t is None for t in translated_list):
+            raise ValueError(
+                "Invalid translation segments schema. Expected 'translated_text' per segment."
+            )
+
+        translation_job.translated_segments = translated_list[:]
+
+        # Strict count match with source segments
+        if len(translation_job.translated_segments) != len(translation_job.segments):
+            raise ValueError(
+                f"Translation segments count mismatch (source={len(translation_job.segments)}, "
+                f"translated={len(translation_job.translated_segments)})."
+            )
         
         return post_editor, translation_job, translated_path
     
