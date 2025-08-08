@@ -9,10 +9,7 @@ import {
   Stack,
   Alert,
   AlertTitle,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
+  
 } from '@mui/material';
 import { TextSegmentDisplay } from '../shared/TextSegmentDisplay';
 import { ValidationTextSegmentDisplay } from '../shared/ValidationTextSegmentDisplay';
@@ -73,65 +70,7 @@ export default function SegmentViewer({
     nameInconsistencies: true,
   },
 }: SegmentViewerProps) {
-  // Collect issues for the current segment only
-  const currentSegmentIssues = useMemo(() => {
-    if (!validationReport?.detailed_results || mode !== 'validation') return [];
-
-    const issues: Array<{
-      issueType: string;
-      message: string;
-    }> = [];
-
-    // Find the current segment's validation result
-    const currentResult = validationReport.detailed_results.find(
-      result => result.segment_index === currentSegmentIndex
-    );
-
-    if (!currentResult) return [];
-
-    // Add filtered issues for the current segment
-    if (errorFilters.critical) {
-      currentResult.critical_issues.forEach(msg => 
-        issues.push({ issueType: 'critical', message: msg })
-      );
-    }
-    if (errorFilters.missingContent) {
-      currentResult.missing_content.forEach(msg => 
-        issues.push({ issueType: 'missing_content', message: msg })
-      );
-    }
-    if (errorFilters.addedContent) {
-      currentResult.added_content.forEach(msg => 
-        issues.push({ issueType: 'added_content', message: msg })
-      );
-    }
-    if (errorFilters.nameInconsistencies) {
-      currentResult.name_inconsistencies.forEach(msg => 
-        issues.push({ issueType: 'name_inconsistencies', message: msg })
-      );
-    }
-
-    return issues;
-  }, [validationReport, mode, errorFilters, currentSegmentIndex]);
-
-  // Helper functions for issue formatting
-  const getSeverityColor = (issueType: string): 'error' | 'warning' | 'info' | 'default' => {
-    if (issueType === 'critical') return 'error';
-    if (issueType === 'missing_content' || issueType === 'added_content') return 'warning';
-    if (issueType === 'name_inconsistencies') return 'info';
-    return 'default';
-  };
-
-  const formatIssueType = (type: string): string => {
-    const typeMap: { [key: string]: string } = {
-      'critical': '치명적',
-      'missing_content': '누락',
-      'added_content': '추가',
-      'name_inconsistencies': '이름',
-      'minor': '경미',
-    };
-    return typeMap[type] || type;
-  };
+  // Simplified UI: sticky issue summary removed
 
   // Extract segment data based on mode and available data
   const segmentData: SegmentData | null = useMemo(() => {
@@ -267,65 +206,7 @@ export default function SegmentViewer({
 
   return (
     <Box sx={{ width: '100%' }}>
-      {/* Sticky Selected Issues Box for validation mode */}
-      {mode === 'validation' && currentSegmentIssues.length > 0 && (
-        <Box
-          sx={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 100,
-            bgcolor: 'background.paper',
-            borderRadius: 1,
-            boxShadow: 2,
-            mb: 2,
-            border: '1px solid',
-            borderColor: 'divider',
-            maxHeight: '30vh',
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
-          <Box
-            sx={{
-              p: 2,
-              borderBottom: '1px solid',
-              borderColor: 'divider',
-              bgcolor: 'grey.800',
-            }}
-          >
-            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'white' }}>
-              세그먼트 #{currentSegmentIndex + 1} 문제 상세 ({currentSegmentIssues.length}개)
-            </Typography>
-          </Box>
-          <Box sx={{ overflow: 'auto', p: 2 }}>
-            <List dense>
-              {currentSegmentIssues.map((issue, idx) => (
-                <ListItem 
-                  key={`${issue.issueType}-${idx}`} 
-                  sx={{ py: 0.5 }}
-                >
-                  <ListItemText
-                    primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Chip
-                          label={formatIssueType(issue.issueType)}
-                          size="small"
-                          color={getSeverityColor(issue.issueType)}
-                          sx={{ height: '18px', minWidth: '45px' }}
-                        />
-                        <Typography variant="body2" sx={{ flex: 1 }}>
-                          {issue.message}
-                        </Typography>
-                      </Box>
-                    }
-                  />
-                </ListItem>
-              ))}
-            </List>
-          </Box>
-        </Box>
-      )}
+      {/* Sticky issue summary removed to minimize visual obstruction */}
 
       <Paper sx={{ p: 3 }}>
       {/* Segment Header - Only show in validation mode */}

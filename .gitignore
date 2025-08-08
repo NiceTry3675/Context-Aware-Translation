@@ -13,6 +13,7 @@ ngrok.exe
 .env
 
 # IDE / Editor specific
+.github/
 .vscode/
 .idea/
 .gemini/
