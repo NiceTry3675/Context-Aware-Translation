@@ -83,6 +83,7 @@ export default function TranslationSidebar({
     validationReport,
     postEditLog,
     translationContent,
+    translationSegments,
     loading: dataLoading,
     error: dataError,
     selectedIssues,
@@ -253,7 +254,11 @@ export default function TranslationSidebar({
             
             <TabPanel value={tabValue} index={0}>
               {translationContent ? (
-                <TranslationContentViewer content={translationContent} />
+                <TranslationContentViewer 
+                  content={translationContent} 
+                  segments={translationSegments}
+                  postEditLog={postEditLog}
+                />
               ) : jobStatus === 'COMPLETED' ? (
                 <Stack spacing={2}>
                   <Alert severity="warning">

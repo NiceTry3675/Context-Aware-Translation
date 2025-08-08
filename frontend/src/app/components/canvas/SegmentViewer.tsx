@@ -10,6 +10,9 @@ import {
   Alert,
   AlertTitle,
   Divider,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
 import { TextSegmentDisplay } from '../shared/TextSegmentDisplay';
 import { ValidationTextSegmentDisplay } from '../shared/ValidationTextSegmentDisplay';
@@ -70,6 +73,66 @@ export default function SegmentViewer({
     nameInconsistencies: true,
   },
 }: SegmentViewerProps) {
+  // Collect issues for the current segment only
+  const currentSegmentIssues = useMemo(() => {
+    if (!validationReport?.detailed_results || mode !== 'validation') return [];
+
+    const issues: Array<{
+      issueType: string;
+      message: string;
+    }> = [];
+
+    // Find the current segment's validation result
+    const currentResult = validationReport.detailed_results.find(
+      result => result.segment_index === currentSegmentIndex
+    );
+
+    if (!currentResult) return [];
+
+    // Add filtered issues for the current segment
+    if (errorFilters.critical) {
+      currentResult.critical_issues.forEach(msg => 
+        issues.push({ issueType: 'critical', message: msg })
+      );
+    }
+    if (errorFilters.missingContent) {
+      currentResult.missing_content.forEach(msg => 
+        issues.push({ issueType: 'missing_content', message: msg })
+      );
+    }
+    if (errorFilters.addedContent) {
+      currentResult.added_content.forEach(msg => 
+        issues.push({ issueType: 'added_content', message: msg })
+      );
+    }
+    if (errorFilters.nameInconsistencies) {
+      currentResult.name_inconsistencies.forEach(msg => 
+        issues.push({ issueType: 'name_inconsistencies', message: msg })
+      );
+    }
+
+    return issues;
+  }, [validationReport, mode, errorFilters, currentSegmentIndex]);
+
+  // Helper functions for issue formatting
+  const getSeverityColor = (issueType: string): 'error' | 'warning' | 'info' | 'default' => {
+    if (issueType === 'critical') return 'error';
+    if (issueType === 'missing_content' || issueType === 'added_content') return 'warning';
+    if (issueType === 'name_inconsistencies') return 'info';
+    return 'default';
+  };
+
+  const formatIssueType = (type: string): string => {
+    const typeMap: { [key: string]: string } = {
+      'critical': '치명적',
+      'missing_content': '누락',
+      'added_content': '추가',
+      'name_inconsistencies': '이름',
+      'minor': '경미',
+    };
+    return typeMap[type] || type;
+  };
+
   // Extract segment data based on mode and available data
   const segmentData: SegmentData | null = useMemo(() => {
     // First, try to get full text from post-edit log if available (has full source_text)
@@ -203,14 +266,73 @@ export default function SegmentViewer({
   const isShowingPreview = !postEditLog && !translationSegments && validationReport;
 
   return (
-    <Paper sx={{ p: 3 }}>
-      {/* Segment Header */}
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h6">
-          세그먼트 {currentSegmentIndex + 1}
-        </Typography>
-        <Stack direction="row" spacing={1}>
-          {isShowingPreview && (
+    <Box sx={{ width: '100%' }}>
+      {/* Sticky Selected Issues Box for validation mode */}
+      {mode === 'validation' && currentSegmentIssues.length > 0 && (
+        <Box
+          sx={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 100,
+            bgcolor: 'background.paper',
+            borderRadius: 1,
+            boxShadow: 2,
+            mb: 2,
+            border: '1px solid',
+            borderColor: 'divider',
+            maxHeight: '30vh',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          <Box
+            sx={{
+              p: 2,
+              borderBottom: '1px solid',
+              borderColor: 'divider',
+              bgcolor: 'grey.800',
+            }}
+          >
+            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'white' }}>
+              세그먼트 #{currentSegmentIndex + 1} 문제 상세 ({currentSegmentIssues.length}개)
+            </Typography>
+          </Box>
+          <Box sx={{ overflow: 'auto', p: 2 }}>
+            <List dense>
+              {currentSegmentIssues.map((issue, idx) => (
+                <ListItem 
+                  key={`${issue.issueType}-${idx}`} 
+                  sx={{ py: 0.5 }}
+                >
+                  <ListItemText
+                    primary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Chip
+                          label={formatIssueType(issue.issueType)}
+                          size="small"
+                          color={getSeverityColor(issue.issueType)}
+                          sx={{ height: '18px', minWidth: '45px' }}
+                        />
+                        <Typography variant="body2" sx={{ flex: 1 }}>
+                          {issue.message}
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Box>
+        </Box>
+      )}
+
+      <Paper sx={{ p: 3 }}>
+      {/* Segment Header - Only show in validation mode */}
+      {mode === 'validation' && (isShowingPreview || segmentData.issues) && (
+        <Stack direction="row" justifyContent="flex-end" alignItems="center" mb={2}>
+          <Stack direction="row" spacing={1}>
+            {isShowingPreview && (
             <Chip 
               label="미리보기" 
               color="info" 
@@ -218,9 +340,6 @@ export default function SegmentViewer({
               variant="outlined"
               title="전체 텍스트를 보려면 포스트 에디팅을 실행하세요"
             />
-          )}
-          {mode === 'post-edit' && segmentData.wasEdited && (
-            <Chip label="수정됨" color="success" size="small" />
           )}
           {segmentData.issues && (
             <Chip 
@@ -232,17 +351,16 @@ export default function SegmentViewer({
               size="small" 
             />
           )}
+          </Stack>
         </Stack>
-      </Stack>
+      )}
 
-      {/* Notice for preview mode */}
-      {isShowingPreview && (
+      {/* Notice for preview mode - only in validation mode */}
+      {mode === 'validation' && isShowingPreview && (
         <Alert severity="info" sx={{ mb: 2 }}>
           현재 텍스트 미리보기만 표시됩니다. 전체 세그먼트 내용을 보려면 포스트 에디팅을 실행하세요.
         </Alert>
       )}
-
-      <Divider sx={{ mb: 3 }} />
 
       {/* Text Display - Use ValidationTextSegmentDisplay when issues exist for consistent tabs interface */}
       {mode === 'validation' && segmentData.issues ? (
@@ -346,18 +464,28 @@ export default function SegmentViewer({
           })()}
           status='FAIL'
         />
+      ) : mode === 'post-edit' ? (
+        // For post-edit mode, only show original vs edited translation (no source text)
+        <TextSegmentDisplay
+          sourceText=""
+          translatedText={segmentData.translatedText}
+          editedText={segmentData.editedText || segmentData.translatedText}
+          showComparison={true}
+          hideSource={true}
+        />
       ) : (
         // Use regular TextSegmentDisplay for other cases
         <TextSegmentDisplay
           sourceText={segmentData.sourceText}
           translatedText={segmentData.translatedText}
           editedText={segmentData.editedText}
-          showComparison={mode === 'post-edit' && segmentData.wasEdited}
+          showComparison={false}
         />
       )}
 
       {/* Changes (for post-edit mode) - Only show when edited */}
       {mode === 'post-edit' && segmentData.wasEdited && renderChanges()}
     </Paper>
+    </Box>
   );
 }

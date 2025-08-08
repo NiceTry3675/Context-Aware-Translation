@@ -12,21 +12,69 @@ import {
   Grid,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import { TranslationContent } from '../utils/api';
+import { TranslationContent, TranslationSegments, PostEditLog } from '../utils/api';
 
 interface TranslationContentViewerProps {
   content: TranslationContent;
   sourceText?: string;
+  segments?: TranslationSegments | null;
+  postEditLog?: PostEditLog | null;
 }
 
-export default function TranslationContentViewer({ content, sourceText }: TranslationContentViewerProps) {
+export default function TranslationContentViewer({ content, sourceText, segments, postEditLog }: TranslationContentViewerProps) {
+  // Merge translated text from segments if available for consistency
+  const mergedTranslatedText = React.useMemo(() => {
+    // First priority: use post-edit log segments if available (has edited translations)
+    if (postEditLog?.segments) {
+      return postEditLog.segments
+        .sort((a, b) => a.segment_index - b.segment_index)
+        .map(segment => segment.edited_translation || segment.original_translation)
+        .join('\n');
+    }
+    // Second priority: use translation segments if available
+    if (segments?.segments && segments.segments.length > 0) {
+      return segments.segments
+        .sort((a, b) => a.segment_index - b.segment_index)
+        .map(segment => segment.translated_text)
+        .join('\n');
+    }
+    // Fallback: use content from translation content
+    return content.content;
+  }, [content.content, segments, postEditLog]);
+
+  // Merge source text from segments if available for consistency
+  const mergedSourceText = React.useMemo(() => {
+    // First priority: use the sourceText prop if provided (already merged)
+    if (sourceText) {
+      return sourceText;
+    }
+    // Second priority: use source_content from content if available
+    if (content.source_content) {
+      return content.source_content;
+    }
+    // Third priority: merge from post-edit log segments
+    if (postEditLog?.segments) {
+      return postEditLog.segments
+        .sort((a, b) => a.segment_index - b.segment_index)
+        .map(segment => segment.source_text)
+        .join('\n');
+    }
+    // Fourth priority: merge from translation segments
+    if (segments?.segments && segments.segments.length > 0) {
+      return segments.segments
+        .sort((a, b) => a.segment_index - b.segment_index)
+        .map(segment => segment.source_text)
+        .join('\n');
+    }
+    return undefined;
+  }, [sourceText, content.source_content, segments, postEditLog]);
   const handleCopyContent = () => {
-    navigator.clipboard.writeText(content.content);
+    navigator.clipboard.writeText(mergedTranslatedText);
   };
 
   const handleCopySource = () => {
-    if (sourceText) {
-      navigator.clipboard.writeText(sourceText);
+    if (mergedSourceText) {
+      navigator.clipboard.writeText(mergedSourceText);
     }
   };
 
@@ -55,12 +103,12 @@ export default function TranslationContentViewer({ content, sourceText }: Transl
         <Divider />
 
         {/* Content display - side by side if source is available */}
-        {sourceText ? (
-          <Grid container spacing={2}>
-            {/* Source content */}
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Paper elevation={0} sx={{ p: 3, height: '100%' }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+        {mergedSourceText ? (
+          <Box>
+            {/* Fixed headers */}
+            <Grid container spacing={2} sx={{ mb: 2 }}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
                   <Typography variant="h6" color="text.secondary">
                     원문
                   </Typography>
@@ -70,27 +118,9 @@ export default function TranslationContentViewer({ content, sourceText }: Transl
                     </IconButton>
                   </Tooltip>
                 </Stack>
-                <Box
-                  sx={{
-                    fontFamily: 'monospace',
-                    fontSize: '0.95rem',
-                    lineHeight: 1.8,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    color: 'text.primary',
-                    maxHeight: '70vh',
-                    overflowY: 'auto',
-                  }}
-                >
-                  {sourceText}
-                </Box>
-              </Paper>
-            </Grid>
-
-            {/* Translated content */}
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Paper elevation={0} sx={{ p: 3, height: '100%' }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
                   <Typography variant="h6" color="text.secondary">
                     번역문
                   </Typography>
@@ -100,26 +130,55 @@ export default function TranslationContentViewer({ content, sourceText }: Transl
                     </IconButton>
                   </Tooltip>
                 </Stack>
-                <Box
-                  sx={{
-                    fontFamily: '"Noto Sans KR", "Malgun Gothic", sans-serif',
-                    fontSize: '0.95rem',
-                    lineHeight: 1.8,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    color: 'text.primary',
-                    maxHeight: '70vh',
-                    overflowY: 'auto',
-                  }}
-                >
-                  {content.content}
-                </Box>
-              </Paper>
+              </Grid>
             </Grid>
-          </Grid>
+            
+            {/* Shared scrollable content area */}
+            <Box
+              sx={{
+                maxHeight: '70vh',
+                overflowY: 'auto',
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 1,
+              }}
+            >
+              <Grid container spacing={0}>
+                {/* Source content */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Paper elevation={0} sx={{ p: 3, height: '100%', borderRadius: 0, borderRight: { md: 1 }, borderColor: 'divider' }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {mergedSourceText}
+                    </Typography>
+                  </Paper>
+                </Grid>
+
+                {/* Translated content */}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Paper elevation={0} sx={{ p: 3, height: '100%', borderRadius: 0 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {mergedTranslatedText}
+                    </Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
+            </Box>
+          </Box>
         ) : (
           // Original single column view when no source text
-          <Paper elevation={0} sx={{ p: 3 }}>
+          <Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
               <Typography variant="h6" color="text.secondary">
                 번역문
@@ -132,17 +191,26 @@ export default function TranslationContentViewer({ content, sourceText }: Transl
             </Stack>
             <Box
               sx={{
-                fontFamily: '"Noto Sans KR", "Malgun Gothic", sans-serif',
-                fontSize: '0.95rem',
-                lineHeight: 1.8,
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                color: 'text.primary',
+                maxHeight: '70vh',
+                overflowY: 'auto',
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 1,
               }}
             >
-              {content.content}
+              <Paper elevation={0} sx={{ p: 3, borderRadius: 0 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {mergedTranslatedText}
+                </Typography>
+              </Paper>
             </Box>
-          </Paper>
+          </Box>
         )}
       </Stack>
     </Box>

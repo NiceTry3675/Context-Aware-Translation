@@ -1,18 +1,23 @@
 # Backend Architecture
 
 ## Overview
-The backend has been refactored from a monolithic 1387-line `main.py` file into a clean, modular architecture following the separation of concerns principle.
+The backend has been refactored from a monolithic 1387-line `main.py` file into a clean, modular architecture following the separation of concerns principle. The translation API module has been further decomposed from a single 522-line file into 5 focused modules for better maintainability.
 
 ## Directory Structure
 
 ```
 backend/
 ├── api/v1/                     # API Layer - HTTP request handling
-│   ├── translation.py          # Translation endpoints
-│   ├── community.py            # Community board endpoints  
-│   ├── admin.py               # Admin management endpoints
-│   ├── webhooks.py            # Webhook handlers (Clerk)
-│   └── announcements.py       # SSE streaming endpoints
+│   ├── translation.py          # Router aggregator for translation APIs
+│   ├── analysis.py            # Style and glossary analysis endpoints
+│   ├── jobs.py                # Translation job CRUD operations
+│   ├── downloads.py           # File downloads and content retrieval
+│   ├── validation_routes.py   # Translation validation endpoints
+│   ├── post_edit_routes.py    # Post-editing endpoints
+│   ├── community.py           # Community board endpoints  
+│   ├── admin.py              # Admin management endpoints
+│   ├── webhooks.py           # Webhook handlers (Clerk)
+│   └── announcements.py      # SSE streaming endpoints
 │
 ├── services/                   # Business Logic Layer
 │   ├── translation_service.py  # Translation business logic
@@ -104,16 +109,32 @@ backend/
 
 ## API Endpoint Organization
 
-### Translation API (`/api/v1/translation/`)
+### Translation API (`/api/v1/`)
+The translation endpoints are organized into logical modules for better maintainability:
+
+#### Analysis Endpoints (`analysis.py`)
 - **POST** `/analyze-style` - Analyze narrative style
 - **POST** `/analyze-glossary` - Extract glossary terms
+
+#### Job Management (`jobs.py`)
+- **GET** `/jobs` - List all translation jobs for current user
 - **POST** `/jobs` - Create translation job (upload file)
 - **GET** `/jobs/{id}` - Get job details and status
+- **DELETE** `/jobs/{id}` - Delete translation job
+
+#### Downloads & Content (`downloads.py`)
+- **GET** `/download/{id}` - Download translated file (legacy)
 - **GET** `/jobs/{id}/output` - Download translated file
 - **GET** `/jobs/{id}/logs/{type}` - Download debug logs
 - **GET** `/jobs/{id}/glossary` - Get final glossary
+- **GET** `/jobs/{id}/segments` - Get segmented translation data
+- **GET** `/jobs/{id}/content` - Get translated content as text
+
+#### Validation (`validation_routes.py`)
 - **PUT** `/jobs/{id}/validation` - Trigger validation
 - **GET** `/jobs/{id}/validation-report` - Get validation report
+
+#### Post-Editing (`post_edit_routes.py`)
 - **PUT** `/jobs/{id}/post-edit` - Trigger post-editing
 - **GET** `/jobs/{id}/post-edit-log` - Get post-edit log
 
