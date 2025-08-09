@@ -63,3 +63,7 @@ uploads/
 database.db
 /validation_logs/
 /postedit_logs/
+prohibited_content_logs/
+frontend/.next/
+.env.*
+frontend/node_modules/
