@@ -44,9 +44,10 @@ function TabPanel({ children, value, index, ...other }: TabPanelProps) {
       hidden={value !== index}
       id={`canvas-tabpanel-${index}`}
       aria-labelledby={`canvas-tab-${index}`}
+      style={{ height: '100%', display: value === index ? 'flex' : 'none', flexDirection: 'column' }}
       {...other}
     >
-      {value === index && <Box sx={{ height: '100%' }}>{children}</Box>}
+      {value === index && <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>{children}</Box>}
     </div>
   );
 }
@@ -149,9 +150,9 @@ export default function ResultsView({
         </Tabs>
       </Box>
 
-      <Box sx={{ flex: 1, overflow: 'auto', position: 'relative' }}>
+      <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {jobId && (
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
             <Box sx={{ p: 2 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
                 <Stack direction="row" spacing={2} alignItems="center">
@@ -304,7 +305,7 @@ export default function ResultsView({
           </Box>
         )}
         
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ p: 3, flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {isPolling && (
             <Alert severity="info" sx={{ mb: 2 }}>
               <AlertTitle>작업 진행 중</AlertTitle>

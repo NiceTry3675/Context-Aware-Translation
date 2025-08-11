@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Paper,
@@ -9,10 +9,20 @@ import {
   Stack,
   Alert,
   AlertTitle,
-  
+  FormControlLabel,
+  Switch,
+  ToggleButtonGroup,
+  ToggleButton,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
+import CompareIcon from '@mui/icons-material/Compare';
+import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import { TextSegmentDisplay } from '../shared/TextSegmentDisplay';
 import { ValidationTextSegmentDisplay } from '../shared/ValidationTextSegmentDisplay';
+import { DiffMode, ViewMode } from '../shared/DiffViewer';
 import { ValidationReport, PostEditLog, TranslationSegments } from '../../utils/api';
 
 interface ErrorFilters {
@@ -70,6 +80,11 @@ export default function SegmentViewer({
     nameInconsistencies: true,
   },
 }: SegmentViewerProps) {
+  // State for diff view settings (only for post-edit mode)
+  const [showDiff, setShowDiff] = useState(true);
+  const [diffMode, setDiffMode] = useState<DiffMode>('word');
+  const [diffViewMode, setDiffViewMode] = useState<ViewMode>('unified');
+  
   // Simplified UI: sticky issue summary removed
 
   // Extract segment data based on mode and available data
@@ -208,6 +223,61 @@ export default function SegmentViewer({
     <Box sx={{ width: '100%' }}>
       {/* Sticky issue summary removed to minimize visual obstruction */}
 
+      {/* Diff View Controls for Post-Edit Mode */}
+      {mode === 'post-edit' && segmentData?.wasEdited && (
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Stack spacing={2}>
+            <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
+              <Typography variant="body2" fontWeight="medium">
+                비교 보기 설정
+              </Typography>
+              <FormControlLabel
+                control={
+                  <Switch 
+                    checked={showDiff} 
+                    onChange={(e) => setShowDiff(e.target.checked)}
+                  />
+                }
+                label="변경 사항 강조"
+              />
+            </Stack>
+
+            {showDiff && (
+              <Stack direction="row" spacing={2} alignItems="center">
+                <ToggleButtonGroup
+                  value={diffViewMode}
+                  exclusive
+                  onChange={(e, newMode) => newMode && setDiffViewMode(newMode)}
+                  size="small"
+                >
+                  <ToggleButton value="unified">
+                    <CompareIcon fontSize="small" sx={{ mr: 0.5 }} />
+                    통합 보기
+                  </ToggleButton>
+                  <ToggleButton value="side-by-side">
+                    <ViewColumnIcon fontSize="small" sx={{ mr: 0.5 }} />
+                    나란히 보기
+                  </ToggleButton>
+                </ToggleButtonGroup>
+
+                <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <InputLabel>비교 단위</InputLabel>
+                  <Select
+                    value={diffMode}
+                    label="비교 단위"
+                    onChange={(e) => setDiffMode(e.target.value as DiffMode)}
+                  >
+                    <MenuItem value="word">단어</MenuItem>
+                    <MenuItem value="character">문자</MenuItem>
+                    <MenuItem value="line">줄</MenuItem>
+                  </Select>
+                </FormControl>
+              </Stack>
+            )}
+          </Stack>
+        </Paper>
+      )}
+
       <Paper sx={{ p: 3 }}>
       {/* Segment Header - Only show in validation mode */}
       {mode === 'validation' && (isShowingPreview || segmentData.issues) && (
@@ -329,6 +399,9 @@ export default function SegmentViewer({
           editedText={segmentData.editedText || segmentData.translatedText}
           showComparison={true}
           hideSource={true}
+          showDiff={showDiff && segmentData.wasEdited}
+          diffMode={diffMode}
+          diffViewMode={diffViewMode}
         />
       ) : (
         // Use regular TextSegmentDisplay for other cases

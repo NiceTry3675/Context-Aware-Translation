@@ -123,7 +123,7 @@ export default function ValidationReportViewer({
   // Removed sticky summary: no need to pre-aggregate issues for top-level box
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
       {/* Summary Section */}
       <SummaryStatistics
         title="검증 요약"

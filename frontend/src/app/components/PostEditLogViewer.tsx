@@ -17,14 +17,21 @@ import {
   FormControlLabel,
   Switch,
   Badge,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EditIcon from '@mui/icons-material/Edit';
+import CompareIcon from '@mui/icons-material/Compare';
+import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import { PostEditLog } from '../utils/api';
 import { SummaryStatistics } from './shared/SummaryStatistics';
 import { TextSegmentDisplay } from './shared/TextSegmentDisplay';
 import { IssueChip } from './shared/IssueChip';
+import { DiffMode, ViewMode } from './shared/DiffViewer';
 
 interface PostEditLogViewerProps {
   log: PostEditLog;
@@ -34,6 +41,8 @@ interface PostEditLogViewerProps {
 export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogViewerProps) {
   const [viewMode, setViewMode] = useState<'all' | 'edited' | 'unedited'>('edited');
   const [showDiff, setShowDiff] = useState(true);
+  const [diffMode, setDiffMode] = useState<DiffMode>('word');
+  const [diffViewMode, setDiffViewMode] = useState<ViewMode>('unified');
 
   const filteredSegments = log.segments.filter(segment => {
     if (viewMode === 'edited') return segment.was_edited;
@@ -42,7 +51,7 @@ export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogVi
   });
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
       {/* Summary Section */}
       <SummaryStatistics
         title="포스트 에디팅 요약"
@@ -61,36 +70,73 @@ export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogVi
 
       {/* Filter Controls */}
       <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
-        <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
-          <ToggleButtonGroup
-            value={viewMode}
-            exclusive
-            onChange={(e, newMode) => newMode && setViewMode(newMode)}
-            size="small"
-          >
-            <ToggleButton value="all">
-              전체 ({log.segments.length})
-            </ToggleButton>
-            <ToggleButton value="edited">
-              <Badge badgeContent={log.summary.segments_edited} color="primary">
-                <EditIcon fontSize="small" sx={{ mr: 0.5 }} />
-              </Badge>
-              수정됨
-            </ToggleButton>
-            <ToggleButton value="unedited">
-              수정 안됨 ({log.summary.total_segments - log.summary.segments_edited})
-            </ToggleButton>
-          </ToggleButtonGroup>
-          
-          <FormControlLabel
-            control={
-              <Switch 
-                checked={showDiff} 
-                onChange={(e) => setShowDiff(e.target.checked)}
-              />
-            }
-            label="변경 사항 강조"
-          />
+        <Stack spacing={2}>
+          {/* View Mode Selection */}
+          <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
+            <ToggleButtonGroup
+              value={viewMode}
+              exclusive
+              onChange={(e, newMode) => newMode && setViewMode(newMode)}
+              size="small"
+            >
+              <ToggleButton value="all">
+                전체 ({log.segments.length})
+              </ToggleButton>
+              <ToggleButton value="edited">
+                <Badge badgeContent={log.summary.segments_edited} color="primary">
+                  <EditIcon fontSize="small" sx={{ mr: 0.5 }} />
+                </Badge>
+                수정됨
+              </ToggleButton>
+              <ToggleButton value="unedited">
+                수정 안됨 ({log.summary.total_segments - log.summary.segments_edited})
+              </ToggleButton>
+            </ToggleButtonGroup>
+            
+            <FormControlLabel
+              control={
+                <Switch 
+                  checked={showDiff} 
+                  onChange={(e) => setShowDiff(e.target.checked)}
+                />
+              }
+              label="변경 사항 강조"
+            />
+          </Stack>
+
+          {/* Diff View Controls - only show when diff is enabled */}
+          {showDiff && (
+            <Stack direction="row" spacing={2} alignItems="center">
+              <ToggleButtonGroup
+                value={diffViewMode}
+                exclusive
+                onChange={(e, newMode) => newMode && setDiffViewMode(newMode)}
+                size="small"
+              >
+                <ToggleButton value="unified">
+                  <CompareIcon fontSize="small" sx={{ mr: 0.5 }} />
+                  통합 보기
+                </ToggleButton>
+                <ToggleButton value="side-by-side">
+                  <ViewColumnIcon fontSize="small" sx={{ mr: 0.5 }} />
+                  나란히 보기
+                </ToggleButton>
+              </ToggleButtonGroup>
+
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>비교 단위</InputLabel>
+                <Select
+                  value={diffMode}
+                  label="비교 단위"
+                  onChange={(e) => setDiffMode(e.target.value as DiffMode)}
+                >
+                  <MenuItem value="word">단어</MenuItem>
+                  <MenuItem value="character">문자</MenuItem>
+                  <MenuItem value="line">줄</MenuItem>
+                </Select>
+              </FormControl>
+            </Stack>
+          )}
         </Stack>
       </Paper>
 
@@ -105,7 +151,9 @@ export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogVi
           defaultExpanded={segment.was_edited}
           sx={{ 
             mb: 1,
-            backgroundColor: segment.was_edited ? 'rgba(33, 150, 243, 0.08)' : 'background.paper',
+            backgroundColor: 'background.paper',
+            borderLeft: segment.was_edited ? '4px solid' : 'none',
+            borderLeftColor: segment.was_edited ? 'primary.main' : 'transparent',
             '&:before': { display: 'none' },
           }}
         >
@@ -175,6 +223,9 @@ export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogVi
                 editedText={segment.edited_translation}
                 showComparison={true}
                 hideSource={true}
+                showDiff={showDiff && segment.was_edited}
+                diffMode={diffMode}
+                diffViewMode={diffViewMode}
               />
               
               {/* Changes Made */}

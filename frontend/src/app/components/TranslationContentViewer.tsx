@@ -79,10 +79,10 @@ export default function TranslationContentViewer({ content, sourceText, segments
   };
 
   return (
-    <Box>
-      <Stack spacing={2}>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <Stack spacing={2} sx={{ height: '100%', minHeight: 0 }}>
         {/* Header with file info */}
-        <Paper elevation={0} sx={{ p: 2, backgroundColor: 'background.default' }}>
+        <Paper elevation={0} sx={{ p: 2, backgroundColor: 'background.default', flexShrink: 0 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Box>
               <Typography variant="subtitle1" fontWeight="medium">
@@ -104,7 +104,7 @@ export default function TranslationContentViewer({ content, sourceText, segments
 
         {/* Content display - side by side if source is available */}
         {mergedSourceText ? (
-          <Box>
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             {/* Fixed headers */}
             <Grid container spacing={2} sx={{ mb: 2 }}>
               <Grid size={{ xs: 12, md: 6 }}>
@@ -136,7 +136,7 @@ export default function TranslationContentViewer({ content, sourceText, segments
             {/* Shared scrollable content area */}
             <Box
               sx={{
-                maxHeight: '70vh',
+                flex: 1,
                 overflowY: 'auto',
                 border: 1,
                 borderColor: 'divider',
@@ -178,7 +178,7 @@ export default function TranslationContentViewer({ content, sourceText, segments
           </Box>
         ) : (
           // Original single column view when no source text
-          <Box>
+          <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
               <Typography variant="h6" color="text.secondary">
                 번역문
@@ -191,7 +191,7 @@ export default function TranslationContentViewer({ content, sourceText, segments
             </Stack>
             <Box
               sx={{
-                maxHeight: '70vh',
+                flex: 1,
                 overflowY: 'auto',
                 border: 1,
                 borderColor: 'divider',
