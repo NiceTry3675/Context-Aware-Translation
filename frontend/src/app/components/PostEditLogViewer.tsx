@@ -174,6 +174,7 @@ export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogVi
                 translatedText={segment.original_translation}
                 editedText={segment.edited_translation}
                 showComparison={true}
+                hideSource={true}
               />
               
               {/* Changes Made */}

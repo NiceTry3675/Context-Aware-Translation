@@ -125,6 +125,7 @@ function CanvasContent() {
                 onErrorFiltersChange={state.setErrorFilters}
                 onShowNewTranslation={state.handleNewTranslation}
                 onLoadData={state.loadData}
+                onLoadMoreSegments={state.loadMoreSegments}
                 onIssueSelectionChange={(segmentIndex, issueType, issueIndex, selected) => {
                   state.setSelectedIssues(prev => {
                     const newState = { ...prev };

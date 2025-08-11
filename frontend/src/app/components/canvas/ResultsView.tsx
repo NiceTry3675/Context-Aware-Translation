@@ -28,6 +28,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import ValidationReportViewer from '../ValidationReportViewer';
 import PostEditLogViewer from '../PostEditLogViewer';
 import TranslationContentViewer from '../TranslationContentViewer';
+import InfiniteScrollTranslationViewer from '../InfiniteScrollTranslationViewer';
 import SegmentViewer from './SegmentViewer';
 
 interface TabPanelProps {
@@ -77,6 +78,11 @@ interface ResultsViewProps {
   onErrorFiltersChange: (filters: any) => void;
   onShowNewTranslation: () => void;
   onLoadData: () => void;
+  onLoadMoreSegments?: (offset: number, limit: number) => Promise<{
+    segments: any[];
+    has_more: boolean;
+    total_segments: number;
+  }>;
   onIssueSelectionChange: (
     segmentIndex: number,
     issueType: string,
@@ -108,6 +114,7 @@ export default function ResultsView({
   onErrorFiltersChange,
   onShowNewTranslation,
   onLoadData,
+  onLoadMoreSegments,
   onIssueSelectionChange,
   onSegmentClick,
 }: ResultsViewProps) {
@@ -346,12 +353,23 @@ export default function ResultsView({
                 </Alert>
               )
             ) : viewMode === 'full' && translationContent ? (
-              <TranslationContentViewer 
-                content={translationContent} 
-                sourceText={fullSourceText}
-                segments={translationSegments}
-                postEditLog={postEditLog}
-              />
+              onLoadMoreSegments && jobId ? (
+                <InfiniteScrollTranslationViewer 
+                  content={translationContent} 
+                  sourceText={fullSourceText}
+                  segments={translationSegments}
+                  postEditLog={postEditLog}
+                  jobId={jobId}
+                  onLoadMoreSegments={onLoadMoreSegments}
+                />
+              ) : (
+                <TranslationContentViewer 
+                  content={translationContent} 
+                  sourceText={fullSourceText}
+                  segments={translationSegments}
+                  postEditLog={postEditLog}
+                />
+              )
             ) : translationContent ? (
               <TranslationContentViewer 
                 content={translationContent} 

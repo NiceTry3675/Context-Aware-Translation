@@ -314,41 +314,17 @@ export default function SegmentViewer({
           );
         })()
       ) : mode === 'post-edit' && segmentData.issues && !segmentData.wasEdited ? (
-        // For post-edit mode showing unedited segments with issues
-        <ValidationTextSegmentDisplay
+        // For post-edit mode showing unedited segments with issues - hide source text
+        <TextSegmentDisplay
           sourceText={segmentData.sourceText}
           translatedText={segmentData.translatedText}
-          issues={(() => {
-            const allIssues: { type: string; message: string; }[] = [];
-            const issues = segmentData.issues;
-            
-            if (issues.critical) {
-              issues.critical.forEach(msg => allIssues.push({ type: 'critical', message: msg }));
-            }
-            if (issues.missingContent || issues.missing_content) {
-              const missingContent = issues.missingContent || issues.missing_content || [];
-              missingContent.forEach(msg => allIssues.push({ type: 'missing_content', message: msg }));
-            }
-            if (issues.addedContent || issues.added_content) {
-              const addedContent = issues.addedContent || issues.added_content || [];
-              addedContent.forEach(msg => allIssues.push({ type: 'added_content', message: msg }));
-            }
-            if (issues.nameInconsistencies || issues.name_inconsistencies) {
-              const nameInconsistencies = issues.nameInconsistencies || issues.name_inconsistencies || [];
-              nameInconsistencies.forEach(msg => allIssues.push({ type: 'name_inconsistencies', message: msg }));
-            }
-            if (issues.minor) {
-              issues.minor.forEach(msg => allIssues.push({ type: 'minor', message: msg }));
-            }
-            
-            return allIssues;
-          })()}
-          status='FAIL'
+          showComparison={false}
+          hideSource={true}
         />
       ) : mode === 'post-edit' ? (
         // For post-edit mode, only show original vs edited translation (no source text)
         <TextSegmentDisplay
-          sourceText=""
+          sourceText={segmentData.sourceText}
           translatedText={segmentData.translatedText}
           editedText={segmentData.editedText || segmentData.translatedText}
           showComparison={true}
