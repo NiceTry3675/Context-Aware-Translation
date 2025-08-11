@@ -75,7 +75,7 @@ function CanvasContent() {
             onToggleFullscreen={handleToggleFullscreen}
           />
 
-          <Container maxWidth={false} sx={{ flex: 1, display: 'flex', flexDirection: 'column', py: 2, gap: 2, overflow: 'hidden' }}>
+          <Container maxWidth={false} sx={{ flex: 1, display: 'flex', flexDirection: 'column', py: 2, gap: 2, overflow: 'auto' }}>
             {state.showNewTranslation ? (
               <NewTranslationForm
                 jobId={state.jobId}

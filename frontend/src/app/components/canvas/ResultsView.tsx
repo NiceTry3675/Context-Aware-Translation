@@ -47,7 +47,7 @@ function TabPanel({ children, value, index, ...other }: TabPanelProps) {
       style={{ height: '100%', display: value === index ? 'flex' : 'none', flexDirection: 'column' }}
       {...other}
     >
-      {value === index && <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>{children}</Box>}
+      {value === index && <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>{children}</Box>}
     </div>
   );
 }
@@ -305,7 +305,7 @@ export default function ResultsView({
           </Box>
         )}
         
-        <Box sx={{ p: 3, flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <Box sx={{ p: 3, flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {isPolling && (
             <Alert severity="info" sx={{ mb: 2 }}>
               <AlertTitle>작업 진행 중</AlertTitle>
