@@ -53,7 +53,7 @@ export function useTranslationData({
       if (jobStatus === 'COMPLETED') {
         const [content, segments] = await Promise.all([
           fetchTranslationContent(jobId, token || undefined),
-          fetchTranslationSegments(jobId, token || undefined)
+          fetchTranslationSegments(jobId, token || undefined, 0, 200) // Load up to 200 segments for segment view navigation
         ]);
         setTranslationContent(content);
         setTranslationSegments(segments);
