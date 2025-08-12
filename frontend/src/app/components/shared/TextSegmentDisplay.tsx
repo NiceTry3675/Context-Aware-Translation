@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Box, Typography, Paper, Grid } from '@mui/material';
+import { DiffViewer, DiffMode, ViewMode } from './DiffViewer';
 
 interface TextSegmentDisplayProps {
   sourceText: string;
@@ -9,6 +10,9 @@ interface TextSegmentDisplayProps {
   editedText?: string;
   showComparison?: boolean;
   hideSource?: boolean;
+  showDiff?: boolean;
+  diffMode?: DiffMode;
+  diffViewMode?: ViewMode;
 }
 
 export function TextSegmentDisplay({ 
@@ -16,14 +20,17 @@ export function TextSegmentDisplay({
   translatedText, 
   editedText,
   showComparison = false,
-  hideSource = false 
+  hideSource = false,
+  showDiff = false,
+  diffMode = 'word',
+  diffViewMode = 'unified'
 }: TextSegmentDisplayProps) {
   if (showComparison && translatedText && editedText) {
     return (
       <Grid container spacing={2}>
         {/* Source Text - only show if not hidden */}
         {!hideSource && (
-          <Grid size={12}>
+          <Grid size={14}>
             <Typography variant="subtitle2" gutterBottom color="text.secondary">
               원문
             </Typography>
@@ -38,55 +45,75 @@ export function TextSegmentDisplay({
           </Grid>
         )}
         
-        {/* Original Translation */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Typography variant="subtitle2" gutterBottom color="text.secondary">
-            수정 전 번역
-          </Typography>
-          <Paper 
-            variant="outlined" 
-            sx={{ 
-              p: 1.5, 
-              backgroundColor: 'rgba(244, 67, 54, 0.08)',
-              borderColor: 'error.main'
-            }}
-          >
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word'
-              }}
-            >
-              {translatedText}
+        {/* Diff View or Side-by-Side Comparison */}
+        {showDiff ? (
+          <Grid size={14}>
+            <Typography variant="subtitle2" gutterBottom color="text.secondary">
+              변경 사항
             </Typography>
-          </Paper>
-        </Grid>
-        
-        {/* Edited Translation */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Typography variant="subtitle2" gutterBottom color="text.secondary">
-            수정 후 번역
-          </Typography>
-          <Paper 
-            variant="outlined" 
-            sx={{ 
-              p: 1.5, 
-              backgroundColor: 'rgba(76, 175, 80, 0.08)',
-              borderColor: 'success.main'
-            }}
-          >
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                whiteSpace: 'pre-wrap',
-                fontWeight: 'medium'
-              }}
-            >
-              {editedText}
-            </Typography>
-          </Paper>
-        </Grid>
+            <DiffViewer
+              oldText={translatedText}
+              newText={editedText}
+              mode={diffMode}
+              viewMode={diffViewMode}
+              showDiff={showDiff}
+            />
+          </Grid>
+        ) : (
+          <>
+            {/* Original Translation */}
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Typography variant="subtitle2" gutterBottom color="text.secondary">
+                수정 전 번역
+              </Typography>
+              <Paper 
+                variant="outlined" 
+                sx={{ 
+                  p: 1.5, 
+                  backgroundColor: 'background.paper',
+                  borderColor: 'error.main',
+                  borderWidth: 2
+                }}
+              >
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word'
+                  }}
+                >
+                  {translatedText}
+                </Typography>
+              </Paper>
+            </Grid>
+            
+            {/* Edited Translation */}
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Typography variant="subtitle2" gutterBottom color="text.secondary">
+                수정 후 번역
+              </Typography>
+              <Paper 
+                variant="outlined" 
+                sx={{ 
+                  p: 1.5, 
+                  backgroundColor: 'background.paper',
+                  borderColor: 'success.main',
+                  borderWidth: 2
+                }}
+              >
+                <Typography 
+                  variant="body2" 
+                  sx={{ 
+                    whiteSpace: 'pre-wrap',
+                    fontWeight: 'medium'
+                  }}
+                >
+                  {editedText}
+                </Typography>
+              </Paper>
+            </Grid>
+          </>
+        )}
       </Grid>
     );
   }

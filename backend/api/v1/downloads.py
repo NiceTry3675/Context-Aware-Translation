@@ -2,7 +2,7 @@
 
 import os
 import json
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -114,10 +114,12 @@ async def get_job_glossary(
 @router.get("/jobs/{job_id}/segments")
 async def get_job_segments(
     job_id: int,
+    offset: int = Query(0, ge=0, description="Starting segment index"),
+    limit: int = Query(3, ge=1, le=200, description="Number of segments to return"),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_required_user)
 ):
-    """Get the segmented translation data for a completed translation job."""
+    """Get the segmented translation data for a completed translation job with pagination support."""
     db_job = crud.get_job(db, job_id=job_id)
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -138,16 +140,29 @@ async def get_job_segments(
             "filename": db_job.filename,
             "segments": [],
             "total_segments": 0,
+            "has_more": False,
+            "offset": offset,
+            "limit": limit,
             "completed_at": db_job.completed_at.isoformat() if db_job.completed_at else None,
             "message": "This job was completed before segment storage was implemented. Please run validation or post-editing to see segmented content."
         }
     
-    # Return segments as JSON
+    # Get total segments
+    total_segments = len(db_job.translation_segments)
+    
+    # Apply pagination
+    end_index = min(offset + limit, total_segments)
+    paginated_segments = db_job.translation_segments[offset:end_index]
+    
+    # Return paginated segments as JSON
     return {
         "job_id": job_id,
         "filename": db_job.filename,
-        "segments": db_job.translation_segments,
-        "total_segments": len(db_job.translation_segments),
+        "segments": paginated_segments,
+        "total_segments": total_segments,
+        "has_more": end_index < total_segments,
+        "offset": offset,
+        "limit": limit,
         "completed_at": db_job.completed_at.isoformat() if db_job.completed_at else None
     }
 

@@ -75,7 +75,7 @@ function CanvasContent() {
             onToggleFullscreen={handleToggleFullscreen}
           />
 
-          <Container maxWidth={false} sx={{ flex: 1, display: 'flex', flexDirection: 'column', py: 2, gap: 2, overflow: 'hidden' }}>
+          <Container maxWidth={false} sx={{ flex: 1, display: 'flex', flexDirection: 'column', py: 2, gap: 2, overflow: 'auto' }}>
             {state.showNewTranslation ? (
               <NewTranslationForm
                 jobId={state.jobId}
@@ -125,6 +125,7 @@ function CanvasContent() {
                 onErrorFiltersChange={state.setErrorFilters}
                 onShowNewTranslation={state.handleNewTranslation}
                 onLoadData={state.loadData}
+                onLoadMoreSegments={state.loadMoreSegments}
                 onIssueSelectionChange={(segmentIndex, issueType, issueIndex, selected) => {
                   state.setSelectedIssues(prev => {
                     const newState = { ...prev };

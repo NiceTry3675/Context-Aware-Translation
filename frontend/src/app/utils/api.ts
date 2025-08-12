@@ -126,6 +126,9 @@ export interface TranslationSegments {
   total_segments: number;
   completed_at: string | null;
   message?: string; // Optional message for jobs without segments
+  has_more?: boolean; // For pagination
+  offset?: number; // For pagination
+  limit?: number; // For pagination
 }
 
 export async function fetchTranslationContent(jobId: string, token?: string): Promise<TranslationContent | null> {
@@ -150,9 +153,20 @@ export async function fetchTranslationContent(jobId: string, token?: string): Pr
   }
 }
 
-export async function fetchTranslationSegments(jobId: string, token?: string): Promise<TranslationSegments | null> {
+export async function fetchTranslationSegments(
+  jobId: string, 
+  token?: string,
+  offset?: number,
+  limit?: number
+): Promise<TranslationSegments | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/segments`, {
+    const params = new URLSearchParams();
+    if (offset !== undefined) params.append('offset', offset.toString());
+    if (limit !== undefined) params.append('limit', limit.toString());
+    
+    const url = `${API_BASE_URL}/api/v1/jobs/${jobId}/segments${params.toString() ? '?' + params.toString() : ''}`;
+    
+    const response = await fetch(url, {
       headers: {
         'Authorization': token ? `Bearer ${token}` : '',
       },

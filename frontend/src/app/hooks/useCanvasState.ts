@@ -99,6 +99,7 @@ export function useCanvasState() {
     selectedIssues,
     setSelectedIssues,
     loadData,
+    loadMoreSegments,
   } = useTranslationData({ 
     open: true, 
     jobId: jobId || '', 
@@ -370,6 +371,7 @@ export function useCanvasState() {
     handleCancelStyleEdit,
     refreshJobs,
     loadData,
+    loadMoreSegments,
     
     // Hooks
     validation,

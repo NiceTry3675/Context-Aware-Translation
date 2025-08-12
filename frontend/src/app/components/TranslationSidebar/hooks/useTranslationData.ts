@@ -53,7 +53,7 @@ export function useTranslationData({
       if (jobStatus === 'COMPLETED') {
         const [content, segments] = await Promise.all([
           fetchTranslationContent(jobId, token || undefined),
-          fetchTranslationSegments(jobId, token || undefined)
+          fetchTranslationSegments(jobId, token || undefined, 0, 200) // Load up to 200 segments for segment view navigation
         ]);
         setTranslationContent(content);
         setTranslationSegments(segments);
@@ -96,6 +96,22 @@ export function useTranslationData({
       setLoading(false);
     }
   }, [jobId, jobStatus, validationStatus, postEditStatus, getToken]);
+
+  // Function to load more segments with pagination
+  const loadMoreSegments = useCallback(async (offset: number, limit: number) => {
+    const token = await getToken();
+    const result = await fetchTranslationSegments(jobId, token || undefined, offset, limit);
+    
+    if (!result) {
+      throw new Error('Failed to load segments');
+    }
+    
+    return {
+      segments: result.segments,
+      has_more: result.has_more || false,
+      total_segments: result.total_segments || 0,
+    };
+  }, [jobId, getToken]);
 
   // Load data when sidebar opens or job changes
   useEffect(() => {
@@ -164,6 +180,7 @@ export function useTranslationData({
     selectedIssues,
     setSelectedIssues,
     loadData,
+    loadMoreSegments,
     getSegmentData,
     totalSegments,
   };
