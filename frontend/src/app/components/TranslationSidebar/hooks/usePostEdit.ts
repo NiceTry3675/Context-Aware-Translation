@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
+import { getCachedClerkToken } from '../../../utils/authToken';
 import { triggerPostEdit } from '../../../utils/api';
 
 interface UsePostEditProps {
@@ -23,7 +24,7 @@ export function usePostEdit({ jobId, onRefresh, selectedCases }: UsePostEditProp
     setError(null);
     
     try {
-      const token = await getToken();
+      const token = await getCachedClerkToken(getToken);
       await triggerPostEdit(jobId, token || undefined, selectedCases || {});
       setPostEditDialogOpen(false);
       onRefresh?.();

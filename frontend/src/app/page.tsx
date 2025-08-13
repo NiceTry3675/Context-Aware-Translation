@@ -126,37 +126,7 @@ function CanvasContent() {
                 onShowNewTranslation={state.handleNewTranslation}
                 onLoadData={state.loadData}
                 onLoadMoreSegments={state.loadMoreSegments}
-                onIssueSelectionChange={(segmentIndex, issueType, issueIndex, selected) => {
-                  state.setSelectedIssues(prev => {
-                    const newState = { ...prev };
-                    
-                    if (!newState[segmentIndex]) {
-                      const segment = state.validationReport?.detailed_results.find(r => r.segment_index === segmentIndex);
-                      if (!segment) return prev;
-                      
-                      newState[segmentIndex] = {
-                        critical: new Array(segment.critical_issues.length).fill(true),
-                        missing_content: new Array(segment.missing_content.length).fill(true),
-                        added_content: new Array(segment.added_content.length).fill(true),
-                        name_inconsistencies: new Array(segment.name_inconsistencies.length).fill(true),
-                        minor: new Array(segment.minor_issues.length).fill(true),
-                      };
-                    }
-                    
-                    if (!newState[segmentIndex][issueType]) {
-                      return prev;
-                    }
-                    
-                    newState[segmentIndex] = {
-                      ...newState[segmentIndex],
-                      [issueType]: newState[segmentIndex][issueType].map((val, idx) => 
-                        idx === issueIndex ? selected : val
-                      )
-                    };
-                    
-                    return newState;
-                  });
-                }}
+                onIssueSelectionChange={() => { /* structured-only: legacy issue selection not used */ }}
                 onSegmentClick={(index) => {
                   state.setViewMode('segment');
                   state.segmentNav.goToSegment(index);
@@ -182,13 +152,9 @@ function CanvasContent() {
         open={state.postEdit.postEditDialogOpen}
         onClose={() => state.postEdit.setPostEditDialogOpen(false)}
         onConfirm={state.postEdit.handleTriggerPostEdit}
-        selectedIssueTypes={state.postEdit.selectedIssueTypes}
-        onIssueTypeChange={(issueType, checked) => 
-          state.postEdit.setSelectedIssueTypes({ ...state.postEdit.selectedIssueTypes, [issueType]: checked })
-        }
         validationReport={state.validationReport}
         loading={state.postEdit.loading}
-        selectedCounts={state.selectedCounts}
+        selectedCounts={{ total: state.selectedCounts?.total ?? 0 }}
       />
     </>
   );

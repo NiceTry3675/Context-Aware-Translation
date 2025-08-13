@@ -214,7 +214,7 @@ translation:
 validation:
 
   structured_comprehensive: |
-    ROLE: Expert translation quality validator for EN → KO.
+    ROLE: Expert translation quality validator for source language → Korean.
     TASK: Identify every issue and return JSON that matches the response schema. No extra commentary.
 
     Source Text:
@@ -235,8 +235,8 @@ validation:
     - Return JSON only.
 
   structured_quick: |
-    ROLE: Translation validator (quick mode).
-    TASK: Return JSON per schema focusing on only the most important issues.
+    ROLE: Expert translation quality validator for source language → Korean.
+    TASK: Return JSON per schema focusing on only the most important issues. No extra commentary.
 
     Source:
     ---
@@ -255,7 +255,7 @@ post_edit:
   correction: |
     You are an expert Korean literary translator performing post-editing to fix specific issues identified in a translation.
     
-    **Original Source Text (English):**
+    **Original Source Text (source language):**
     ---
     {source_text}
     ---

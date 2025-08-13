@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
+import { getCachedClerkToken } from '../../utils/authToken';
 import {
   Box,
   List,
@@ -207,7 +208,7 @@ export default function JobSidebar({
                                 e.stopPropagation();
                                 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
                                 try {
-                                  const token = await getToken();
+                                  const token = await getCachedClerkToken(getToken);
                                   const response = await fetch(`${API_URL}/api/v1/download/${job.id}`, {
                                     headers: {
                                       'Authorization': token ? `Bearer ${token}` : '',

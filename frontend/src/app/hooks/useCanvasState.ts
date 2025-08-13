@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
+import { getCachedClerkToken } from '../utils/authToken';
 import { useTranslationData } from '../components/TranslationSidebar/hooks/useTranslationData';
 import { useValidation } from '../components/TranslationSidebar/hooks/useValidation';
 import { usePostEdit } from '../components/TranslationSidebar/hooks/usePostEdit';
@@ -109,7 +110,28 @@ export function useCanvasState() {
   });
 
   const validation = useValidation({ jobId: jobId || '', onRefresh: refreshJobs });
-  const postEdit = usePostEdit({ jobId: jobId || '', onRefresh: refreshJobs, selectedIssues });
+  // Build selectedCases from selectedIssues by concatenating per-type selections
+  const selectedCases = useMemo(() => {
+    const cases: Record<number, boolean[]> = {};
+    if (validationReport && selectedIssues) {
+      for (const result of validationReport.detailed_results) {
+        const idx = result.segment_index;
+        const selection = selectedIssues[idx as unknown as number];
+        if (selection) {
+          const concatenated: boolean[] = [
+            ...(selection.critical || []),
+            ...(selection.missing_content || []),
+            ...(selection.added_content || []),
+            ...(selection.name_inconsistencies || []),
+            ...(selection.minor || []),
+          ];
+          cases[idx] = concatenated;
+        }
+      }
+    }
+    return cases;
+  }, [validationReport, selectedIssues]);
+  const postEdit = usePostEdit({ jobId: jobId || '', onRefresh: refreshJobs, selectedCases });
   
   // Segment navigation hook
   const segmentNav = useSegmentNavigation({
@@ -197,10 +219,11 @@ export function useCanvasState() {
   // Handle job deletion
   const handleJobDelete = async (jobIdToDelete: number) => {
     try {
+      const token = await getCachedClerkToken(getToken);
       const response = await fetch(`${API_URL}/api/v1/jobs/${jobIdToDelete}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${await getToken()}`,
+          'Authorization': token ? `Bearer ${token}` : '',
         },
       });
       
@@ -271,10 +294,11 @@ export function useCanvasState() {
           addedContent += segmentSelection.added_content?.filter(selected => selected).length || 0;
           nameInconsistencies += segmentSelection.name_inconsistencies?.filter(selected => selected).length || 0;
         } else {
-          critical += result.critical_issues.length;
-          missingContent += result.missing_content.length;
-          addedContent += result.added_content.length;
-          nameInconsistencies += result.name_inconsistencies.length;
+          const nested: any = (result as any).validation_result || {};
+          critical += (result.critical_issues?.length ?? nested.critical_issues?.length ?? 0);
+          missingContent += (result.missing_content?.length ?? nested.missing_content?.length ?? 0);
+          addedContent += (result.added_content?.length ?? nested.added_content?.length ?? 0);
+          nameInconsistencies += (result.name_inconsistencies?.length ?? nested.name_inconsistencies?.length ?? 0);
         }
       });
     }

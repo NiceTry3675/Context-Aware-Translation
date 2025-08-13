@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useAuth, useClerk } from '@clerk/nextjs';
+import { getCachedClerkToken } from '../utils/authToken';
 
 interface UseJobActionsOptions {
   apiUrl: string;
@@ -18,7 +19,7 @@ export function useJobActions({ apiUrl, onError, onSuccess }: UseJobActionsOptio
     }
     
     try {
-      const token = await getToken();
+      const token = await getCachedClerkToken(getToken);
       if (!token) {
         onError?.("다운로드에 필요한 인증 토큰을 가져올 수 없습니다.");
         return;
@@ -57,7 +58,7 @@ export function useJobActions({ apiUrl, onError, onSuccess }: UseJobActionsOptio
     validationSampleRate: number = 100
   ) => {
     try {
-      const token = await getToken();
+      const token = await getCachedClerkToken(getToken);
       const formData = new FormData();
       formData.append('quick_validation', quickValidation.toString());
       formData.append('validation_sample_rate', (validationSampleRate / 100).toString());
@@ -84,7 +85,7 @@ export function useJobActions({ apiUrl, onError, onSuccess }: UseJobActionsOptio
 
   const handleTriggerPostEdit = useCallback(async (jobId: number) => {
     try {
-      const token = await getToken();
+      const token = await getCachedClerkToken(getToken);
       const response = await fetch(`${apiUrl}/api/v1/jobs/${jobId}/post-edit`, {
         method: 'PUT',
         headers: {

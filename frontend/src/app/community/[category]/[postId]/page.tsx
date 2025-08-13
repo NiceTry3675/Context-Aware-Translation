@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
+import { buildOptionalAuthHeader, getCachedClerkToken } from '../../../utils/authToken';
 import UserDisplayName from '../../../components/UserDisplayName';
 import {
   Container, Box, Typography, Card, CardContent, Button, Alert,
@@ -84,11 +85,8 @@ function PostDetailPageContent() {
 
   const fetchPost = useCallback(async () => {
     try {
-      const token = await getToken();
       const response = await fetch(`${API_URL}/api/v1/community/posts/${postId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: buildOptionalAuthHeader()
       });
       
       if (response.status === 403) {
@@ -108,11 +106,8 @@ function PostDetailPageContent() {
 
   const fetchComments = useCallback(async () => {
     try {
-      const token = await getToken();
       const response = await fetch(`${API_URL}/api/v1/community/posts/${postId}/comments`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: buildOptionalAuthHeader()
       });
       if (!response.ok) throw new Error('Failed to fetch comments');
       const data = await response.json();
@@ -124,12 +119,9 @@ function PostDetailPageContent() {
 
   const incrementViewCount = useCallback(async () => {
     try {
-      const token = await getToken();
       await fetch(`${API_URL}/api/v1/community/posts/${postId}/view`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: buildOptionalAuthHeader()
       });
       // No need to refetch here, view count is not critical to be real-time
     } catch (err) {
@@ -154,7 +146,7 @@ function PostDetailPageContent() {
     if (!confirm('정말로 이 게시글을 삭제하시겠습니까?')) return;
 
     try {
-      const token = await getToken();
+      const token = await getCachedClerkToken(getToken);
       const response = await fetch(`${API_URL}/api/v1/community/posts/${postId}`, {
         method: 'DELETE',
         headers: {
@@ -176,7 +168,7 @@ function PostDetailPageContent() {
 
     setSubmittingComment(true);
     try {
-      const token = await getToken();
+      const token = await getCachedClerkToken(getToken);
       const response = await fetch(`${API_URL}/api/v1/community/posts/${postId}/comments`, {
         method: 'POST',
         headers: {
@@ -206,7 +198,7 @@ function PostDetailPageContent() {
     if (!editingCommentContent.trim()) return;
 
     try {
-      const token = await getToken();
+      const token = await getCachedClerkToken(getToken);
       const response = await fetch(`${API_URL}/api/v1/community/comments/${commentId}`, {
         method: 'PUT',
         headers: {
@@ -232,7 +224,7 @@ function PostDetailPageContent() {
     if (!confirm('정말로 이 댓글을 삭제하시겠습니까?')) return;
 
     try {
-      const token = await getToken();
+      const token = await getCachedClerkToken(getToken);
       const response = await fetch(`${API_URL}/api/v1/community/comments/${commentId}`, {
         method: 'DELETE',
         headers: {

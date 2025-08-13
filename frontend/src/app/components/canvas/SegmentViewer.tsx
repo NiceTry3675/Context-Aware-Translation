@@ -116,25 +116,9 @@ export default function SegmentViewer({
     if (translationSegments?.segments && translationSegments.segments.length > 0) {
       const segment = translationSegments.segments.find((s) => s.segment_index === currentSegmentIndex);
       if (segment) {
-        // Get issues from validation report if available
-        let issues = undefined;
-        if (validationReport?.detailed_results) {
-          const validationResult = validationReport.detailed_results.find((r) => r.segment_index === currentSegmentIndex);
-          if (validationResult) {
-            issues = {
-              critical: validationResult.critical_issues,
-              missingContent: validationResult.missing_content,
-              addedContent: validationResult.added_content,
-              nameInconsistencies: validationResult.name_inconsistencies,
-              minor: validationResult.minor_issues,
-            };
-          }
-        }
-        
         return {
           sourceText: segment.source_text,
           translatedText: segment.translated_text,
-          issues,
         };
       }
     }

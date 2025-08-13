@@ -16,6 +16,12 @@ export interface ValidationReport {
   detailed_results: Array<{
     segment_index: number;
     status: 'PASS' | 'FAIL';
+    // Optional flat fields for legacy/current validators
+    critical_issues?: string[];
+    missing_content?: string[];
+    added_content?: string[];
+    name_inconsistencies?: string[];
+    minor_issues?: string[];
     structured_cases?: Array<{
       current_korean_sentence: string;
       problematic_source_sentence: string;
@@ -26,6 +32,24 @@ export interface ValidationReport {
     }>;
     source_preview: string;
     translated_preview: string;
+    // Some reports may nest results here; keep it permissive for parsing
+    validation_result?: {
+      critical_issues?: string[];
+      missing_content?: string[];
+      added_content?: string[];
+      name_inconsistencies?: string[];
+      minor_issues?: string[];
+      source_preview?: string;
+      translated_preview?: string;
+      structured_cases?: Array<{
+        current_korean_sentence: string;
+        problematic_source_sentence: string;
+        reason: string;
+        corrected_korean_sentence?: string;
+        issue_type?: string;
+        severity?: number;
+      }>;
+    };
   }>;
 }
 

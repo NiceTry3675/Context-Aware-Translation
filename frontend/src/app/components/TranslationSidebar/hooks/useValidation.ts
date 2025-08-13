@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
+import { getCachedClerkToken } from '../../../utils/authToken';
 import { triggerValidation } from '../../../utils/api';
 
 interface UseValidationProps {
@@ -27,7 +28,7 @@ export function useValidation({ jobId, onRefresh }: UseValidationProps) {
     setError(null);
     
     try {
-      const token = await getToken();
+      const token = await getCachedClerkToken(getToken);
       console.log('Got token:', !!token);
       
       await triggerValidation(jobId, token || undefined, quickValidation, validationSampleRate / 100);

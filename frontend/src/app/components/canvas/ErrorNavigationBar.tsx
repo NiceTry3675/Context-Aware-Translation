@@ -58,11 +58,41 @@ export default function ErrorNavigationBar({
     
     return validationReport.detailed_results
       .filter((result) => {
-        const hasRelevantErrors = 
-          (filters.critical && result.critical_issues.length > 0) ||
-          (filters.missingContent && result.missing_content.length > 0) ||
-          (filters.addedContent && result.added_content.length > 0) ||
-          (filters.nameInconsistencies && result.name_inconsistencies.length > 0);
+        const cases = (result as any).structured_cases || [];
+        if (!Array.isArray(cases) || cases.length === 0) return false;
+
+        const normalizeSeverity = (s: any) => {
+          if (typeof s === 'number') return Math.max(1, Math.min(3, s));
+          if (typeof s === 'string') {
+            const t = s.toLowerCase();
+            if (['critical', 'high', 'severe'].includes(t)) return 3;
+            if (['major', 'medium', 'moderate', 'important'].includes(t)) return 2;
+            if (['minor', 'low', 'trivial'].includes(t)) return 1;
+            const n = parseInt(s, 10);
+            if (!Number.isNaN(n)) return Math.max(1, Math.min(3, n));
+          }
+          return 2;
+        };
+
+        const hasCritical = cases.some((c: any) => normalizeSeverity(c.severity) === 3);
+        const hasMissing = cases.some((c: any) => {
+          const t = (c.issue_type || c.dimension || '').toLowerCase();
+          return t.includes('missing') || /누락/.test(c.reason || '');
+        });
+        const hasAdded = cases.some((c: any) => {
+          const t = (c.issue_type || c.dimension || '').toLowerCase();
+          return t.includes('added') || /추가/.test(c.reason || '');
+        });
+        const hasName = cases.some((c: any) => {
+          const t = (c.issue_type || c.dimension || '').toLowerCase();
+          return t.includes('name') || /이름|고유명/.test(c.reason || '');
+        });
+
+        const hasRelevantErrors =
+          (filters.critical && hasCritical) ||
+          (filters.missingContent && hasMissing) ||
+          (filters.addedContent && hasAdded) ||
+          (filters.nameInconsistencies && hasName);
         
         return result.status === 'FAIL' && hasRelevantErrors;
       })
@@ -78,19 +108,13 @@ export default function ErrorNavigationBar({
   const errorCounts = useMemo(() => {
     if (!validationReport) return { critical: 0, missing: 0, added: 0, names: 0 };
     
-    let critical = 0;
-    let missing = 0;
-    let added = 0;
-    let names = 0;
-
-    validationReport.detailed_results.forEach((result) => {
-      critical += result.critical_issues.length;
-      missing += result.missing_content.length;
-      added += result.added_content.length;
-      names += result.name_inconsistencies.length;
-    });
-
-    return { critical, missing, added, names };
+    // Use summary from report for counts (kept for backward compatibility)
+    return {
+      critical: validationReport.summary.total_critical_issues || 0,
+      missing: validationReport.summary.total_missing_content || 0,
+      added: validationReport.summary.total_added_content || 0,
+      names: validationReport.summary.total_name_inconsistencies || 0,
+    };
   }, [validationReport]);
 
   // Navigation functions
@@ -152,18 +176,43 @@ export default function ErrorNavigationBar({
     return (
       <Box sx={{ position: 'relative', width: mapWidth, height: 20, bgcolor: 'grey.200', borderRadius: 1 }}>
         {validationReport.detailed_results.map((result, idx: number) => {
-          const hasErrors = 
-            (filters.critical && result.critical_issues.length > 0) ||
-            (filters.missingContent && result.missing_content.length > 0) ||
-            (filters.addedContent && result.added_content.length > 0) ||
-            (filters.nameInconsistencies && result.name_inconsistencies.length > 0);
+          const cases = (result as any).structured_cases || [];
+          if (!Array.isArray(cases) || cases.length === 0) return null;
+
+          const normalizeSeverity = (s: any) => {
+            if (typeof s === 'number') return Math.max(1, Math.min(3, s));
+            if (typeof s === 'string') {
+              const t = s.toLowerCase();
+              if (['critical', 'high', 'severe'].includes(t)) return 3;
+              if (['major', 'medium', 'moderate', 'important'].includes(t)) return 2;
+              if (['minor', 'low', 'trivial'].includes(t)) return 1;
+              const n = parseInt(s, 10);
+              if (!Number.isNaN(n)) return Math.max(1, Math.min(3, n));
+            }
+            return 2;
+          };
+
+          const hasRelevant = cases.some((c: any) => {
+            const sev = normalizeSeverity(c.severity);
+            const type = (c.issue_type || c.dimension || '').toLowerCase();
+            const isCritical = sev === 3;
+            const isMissing = type.includes('missing') || /누락/.test(c.reason || '');
+            const isAdded = type.includes('added') || /추가/.test(c.reason || '');
+            const isName = type.includes('name') || /이름|고유명/.test(c.reason || '');
+            return (
+              (filters.critical && isCritical) ||
+              (filters.missingContent && isMissing) ||
+              (filters.addedContent && isAdded) ||
+              (filters.nameInconsistencies && isName)
+            );
+          });
+
+          if (!hasRelevant) return null;
           
-          if (!hasErrors) return null;
-          
-          const severity = result.critical_issues.length > 0 ? 'error' : 'warning';
+          const severity = cases.some((c: any) => normalizeSeverity(c.severity) === 3) ? 'error' : 'warning';
           
           return (
-            <Tooltip key={idx} title={`Segment ${idx + 1}: ${result.critical_issues.length + result.missing_content.length + result.added_content.length + result.name_inconsistencies.length} issues`}>
+            <Tooltip key={idx} title={`Segment ${idx + 1}: ${cases.length} issues`}>
               <Box
                 sx={{
                   position: 'absolute',

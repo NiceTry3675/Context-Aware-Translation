@@ -71,13 +71,27 @@ export function useSegmentNavigation({
     
     return validationReport.detailed_results
       .filter((result) => {
-        // Check if the segment has any errors that match our filters
-        const hasRelevantErrors = 
-          (errorFilters.critical && result.critical_issues.length > 0) ||
-          (errorFilters.missingContent && result.missing_content.length > 0) ||
-          (errorFilters.addedContent && result.added_content.length > 0) ||
-          (errorFilters.nameInconsistencies && result.name_inconsistencies.length > 0);
-        
+        // Support both flat fields and nested validation_result
+        const flat = {
+          critical: result.critical_issues?.length || 0,
+          missing: result.missing_content?.length || 0,
+          added: result.added_content?.length || 0,
+          names: result.name_inconsistencies?.length || 0,
+        };
+        const nested = result.validation_result || {} as any;
+        const counts = {
+          critical: flat.critical || (nested.critical_issues?.length || 0),
+          missing: flat.missing || (nested.missing_content?.length || 0),
+          added: flat.added || (nested.added_content?.length || 0),
+          names: flat.names || (nested.name_inconsistencies?.length || 0),
+        };
+
+        const hasRelevantErrors =
+          (errorFilters.critical && counts.critical > 0) ||
+          (errorFilters.missingContent && counts.missing > 0) ||
+          (errorFilters.addedContent && counts.added > 0) ||
+          (errorFilters.nameInconsistencies && counts.names > 0);
+
         return result.status === 'FAIL' && hasRelevantErrors;
       })
       .map((result) => result.segment_index)

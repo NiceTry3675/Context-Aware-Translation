@@ -31,10 +31,10 @@ export default function JobRowActions({ job, onRefresh, compact = false }: JobRo
   // Don't load data for all jobs - only display status based on job object
   // This prevents unnecessary API calls for all jobs in the sidebar
   const validationReport = null;
-  const selectedIssues = {};
+  const selectedCases: Record<number, boolean[]> = {};
 
   const validation = useValidation({ jobId, onRefresh });
-  const postEdit = usePostEdit({ jobId, onRefresh, selectedIssues });
+  const postEdit = usePostEdit({ jobId, onRefresh, selectedCases });
 
   const canRunValidation = job.status === 'COMPLETED' && 
     (!job.validation_status || job.validation_status === 'FAILED');
@@ -45,13 +45,7 @@ export default function JobRowActions({ job, onRefresh, compact = false }: JobRo
   // Issue counts are not displayed in the sidebar actions
 
   // Since we don't load validation report for all jobs, we can't calculate counts
-  const selectedCounts = {
-    critical: 0,
-    missingContent: 0,
-    addedContent: 0,
-    nameInconsistencies: 0,
-    total: 0
-  };
+  const selectedCounts = { total: 0 };
 
   // Get appropriate icon for validation status
   const getValidationIcon = () => {
@@ -152,10 +146,6 @@ export default function JobRowActions({ job, onRefresh, compact = false }: JobRo
           open={postEdit.postEditDialogOpen}
           onClose={() => postEdit.setPostEditDialogOpen(false)}
           onConfirm={postEdit.handleTriggerPostEdit}
-          selectedIssueTypes={postEdit.selectedIssueTypes}
-          onIssueTypeChange={(issueType, checked) => 
-            postEdit.setSelectedIssueTypes({ ...postEdit.selectedIssueTypes, [issueType]: checked })
-          }
           validationReport={validationReport}
           loading={postEdit.loading}
           selectedCounts={selectedCounts}
@@ -215,10 +205,6 @@ export default function JobRowActions({ job, onRefresh, compact = false }: JobRo
         open={postEdit.postEditDialogOpen}
         onClose={() => postEdit.setPostEditDialogOpen(false)}
         onConfirm={postEdit.handleTriggerPostEdit}
-        selectedIssueTypes={postEdit.selectedIssueTypes}
-        onIssueTypeChange={(issueType, checked) => 
-          postEdit.setSelectedIssueTypes({ ...postEdit.selectedIssueTypes, [issueType]: checked })
-        }
         validationReport={validationReport}
         loading={postEdit.loading}
         selectedCounts={selectedCounts}

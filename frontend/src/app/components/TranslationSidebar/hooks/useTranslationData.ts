@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
+import { getCachedClerkToken } from '../../../utils/authToken';
 import {
   ValidationReport,
   PostEditLog,
@@ -47,7 +48,7 @@ export function useTranslationData({
     setError(null);
     
     try {
-      const token = await getToken();
+      const token = await getCachedClerkToken(getToken);
       
       // Load translation content and segments if job is completed
       if (jobStatus === 'COMPLETED') {
@@ -66,22 +67,8 @@ export function useTranslationData({
         console.log('Validation report loaded:', report);
         
         if (report) {
-          // Initialize selected issues immediately when setting the report
-          const initialSelection: typeof selectedIssues = {};
-          report.detailed_results.forEach((result) => {
-            if (result.status === 'FAIL') {
-              initialSelection[result.segment_index] = {
-                critical: new Array(result.critical_issues.length).fill(true),
-                missing_content: new Array(result.missing_content.length).fill(true),
-                added_content: new Array(result.added_content.length).fill(true),
-                name_inconsistencies: new Array(result.name_inconsistencies.length).fill(true),
-                minor: new Array(result.minor_issues.length).fill(true),
-              };
-            }
-          });
-          
+          // Store report; structured selection is managed elsewhere (selectedCases)
           setValidationReport(report);
-          setSelectedIssues(initialSelection);
         }
       }
       
@@ -99,7 +86,7 @@ export function useTranslationData({
 
   // Function to load more segments with pagination
   const loadMoreSegments = useCallback(async (offset: number, limit: number) => {
-    const token = await getToken();
+    const token = await getCachedClerkToken(getToken);
     const result = await fetchTranslationSegments(jobId, token || undefined, offset, limit);
     
     if (!result) {
@@ -144,20 +131,13 @@ export function useTranslationData({
       }
     }
     
-    // Fall back to validation report
+    // Fall back to validation report (structured-only flow: provide previews)
     if (validationReport?.detailed_results) {
       const result = validationReport.detailed_results.find(r => r.segment_index === segmentIndex);
       if (result) {
         return {
           sourceText: result.source_preview,
           translatedText: result.translated_preview,
-          issues: {
-            critical: result.critical_issues,
-            missingContent: result.missing_content,
-            addedContent: result.added_content,
-            nameInconsistencies: result.name_inconsistencies,
-            minor: result.minor_issues,
-          },
         };
       }
     }

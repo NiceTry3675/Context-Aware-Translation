@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
+import { buildOptionalAuthHeader } from '../../utils/authToken';
 import UserDisplayName from '../../components/UserDisplayName';
 import {
   Container, Box, Typography, Button, Alert,
@@ -71,11 +72,6 @@ function CategoryPostsPageContent() {
   useEffect(() => {
     if (!isLoaded) return;
 
-    if (!isSignedIn) {
-      router.push('/');
-      return;
-    }
-
     // 먼저 카테고리 정보를 가져온 다음 게시글을 가져옴
     fetchCategoryInfo();
     fetchPosts();
@@ -100,13 +96,10 @@ function CategoryPostsPageContent() {
   const fetchPosts = async () => {
     try {
       console.log('Fetching posts for category:', categoryName);
-      const token = await getToken();
       const response = await fetch(
         `${API_URL}/api/v1/community/posts?category=${categoryName}&skip=${page * rowsPerPage}&limit=${rowsPerPage}${searchTerm ? `&search=${searchTerm}` : ''}`,
         {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: buildOptionalAuthHeader()
         }
       );
       if (!response.ok) throw new Error('Failed to fetch posts');

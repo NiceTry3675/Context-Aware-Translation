@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
+import { getCachedClerkToken } from '../utils/authToken';
 import { Job } from '../types/job';
 
 interface UseTranslationJobsOptions {
@@ -27,7 +28,7 @@ export function useTranslationJobs({ apiUrl, pollInterval = 3000 }: UseTranslati
       setError(null);
       
       try {
-        const token = await getToken();
+        const token = await getCachedClerkToken(getToken);
         if (!token) {
           throw new Error("Failed to get authentication token");
         }
@@ -74,17 +75,10 @@ export function useTranslationJobs({ apiUrl, pollInterval = 3000 }: UseTranslati
     if (processingJobs.length === 0) return;
 
     try {
-      const token = await getToken();
-      if (!token) return;
-
       const updatedJobs = await Promise.all(
         processingJobs.map(async (job) => {
           try {
-            const response = await fetch(`${apiUrl}/api/v1/jobs/${job.id}`, {
-              headers: {
-                'Authorization': `Bearer ${token}`
-              }
-            });
+            const response = await fetch(`${apiUrl}/api/v1/jobs/${job.id}`);
             return response.ok ? response.json() : job;
           } catch {
             return job;
@@ -98,7 +92,7 @@ export function useTranslationJobs({ apiUrl, pollInterval = 3000 }: UseTranslati
     } catch (err) {
       console.error("Failed to poll job status:", err);
     }
-  }, [jobs, apiUrl, getToken, isSignedIn]);
+  }, [jobs, apiUrl, isSignedIn]);
 
   // Set up polling interval
   useEffect(() => {
@@ -121,7 +115,7 @@ export function useTranslationJobs({ apiUrl, pollInterval = 3000 }: UseTranslati
     if (!isSignedIn) return;
     
     try {
-      const token = await getToken();
+      const token = await getCachedClerkToken(getToken);
       if (!token) {
         throw new Error("Failed to get authentication token");
       }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
+import { buildOptionalAuthHeader } from '../utils/authToken';
 import {
   Container, Box, Typography, Card, CardContent,
   Button, Alert, CircularProgress, Chip, Divider, List, ListItem, ListItemText, IconButton
@@ -87,11 +88,6 @@ export default function CommunityPage() {
   useEffect(() => {
     if (!isLoaded) return;
 
-    if (!isSignedIn) {
-      router.push('/');
-      return;
-    }
-
     fetchCategoriesOverview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn]);
@@ -99,12 +95,7 @@ export default function CommunityPage() {
   const fetchCategoriesOverview = async () => {
     try {
       console.log('Fetching categories overview from:', `${API_URL}/api/v1/community/categories/overview`);
-      const token = await getToken();
-      const response = await fetch(`${API_URL}/api/v1/community/categories/overview`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await fetch(`${API_URL}/api/v1/community/categories/overview`, { headers: buildOptionalAuthHeader() });
       
       if (!response.ok) {
         const errorText = await response.text();

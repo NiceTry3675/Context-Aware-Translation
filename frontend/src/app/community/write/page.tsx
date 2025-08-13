@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
+import { getCachedClerkToken } from '../../utils/authToken';
 import {
   Container, Box, Typography, TextField, Button, Alert,
   CircularProgress, FormControl, InputLabel, Select, MenuItem,
@@ -108,7 +109,7 @@ function PostWritePageContent() {
 
   const fetchPost = async () => {
     try {
-      const token = await getToken();
+      const token = await getCachedClerkToken(getToken);
       const response = await fetch(`${API_URL}/api/v1/community/posts/${editParam}`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -166,7 +167,7 @@ function PostWritePageContent() {
         const formData = new FormData();
         formData.append('file', file);
 
-        const token = await getToken();
+        const token = await getCachedClerkToken(getToken);
         const response = await fetch(`${API_URL}/api/v1/community/upload-image`, {
           method: 'POST',
           headers: {
@@ -216,7 +217,7 @@ function PostWritePageContent() {
     setError(null);
 
     try {
-      const token = await getToken();
+      const token = await getCachedClerkToken(getToken);
       const url = isEditMode 
         ? `${API_URL}/api/v1/community/posts/${editParam}`
         : `${API_URL}/api/v1/community/posts`;

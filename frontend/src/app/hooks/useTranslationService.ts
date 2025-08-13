@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useAuth, useClerk } from '@clerk/nextjs';
+import { getCachedClerkToken } from '../utils/authToken';
 import { StyleData, GlossaryTerm, TranslationSettings, FileAnalysisResult } from '../types/translation';
 import { Job } from '../types/job';
 
@@ -146,8 +147,8 @@ export function useTranslationService({
       }
     }
 
-    try {
-      const token = await getToken();
+      try {
+      const token = await getCachedClerkToken(getToken);
       if (!token) {
         throw new Error("로그인은 되었으나, 인증 토큰을 가져오지 못했습니다.");
       }
