@@ -14,27 +14,16 @@ from typing import Dict, List, Any
 
 
 # --------------------
-# Single source of truth for categories (dimensions)
+# Allowed dimensions are enumerated directly in the schema enum for simplicity
 # --------------------
-DIMENSIONS_DEF: Dict[str, str] = {
-    "completeness": "원문 내용 누락/부분 누락",
-    "accuracy": "의미/뉘앙스/사실/용어 오류 (mistranslation 포함)",
-    "addition": "원문에 없는 내용이 번역에 추가됨",
-    "name_consistency": "고유명사가 용어집과 불일치",
-    "dialogue_style": "대화체 높임/격식 등 말투 부적절",
-    "flow": "어색하거나 부자연스러운 한국어 표현",
-    "other": "상기 범주에 명확히 속하지 않는 기타 문제",
-}
 
 
 # --------------------
 # Response schema (JSON Schema for Gemini)
 # --------------------
 def make_response_schema(dim_def: Dict[str, str] | None = None) -> Dict[str, Any]:
-    dim_def = dim_def or DIMENSIONS_DEF
-    allowed = list(dim_def.keys())
     # Gemini Structured Output uses a simplified schema subset. Avoid unsupported
-    # keywords like minimum/maximum, and prefer enum or type-only constraints.
+    # keywords like minimum/maximum. Prefer enum or type-only constraints.
     return {
         "type": "object",
         "properties": {
@@ -61,12 +50,28 @@ def make_response_schema(dim_def: Dict[str, str] | None = None) -> Dict[str, Any
                             "type": "string",
                             "description": "권장 수정 번역문",
                         },
+                        # 차원(enum) – DIMENSIONS_DEF 제거, enum으로 직접 관리
+                        "dimension": {
+                            "type": "string",
+                            "enum": [
+                                "completeness",
+                                "accuracy",
+                                "addition",
+                                "name_consistency",
+                                "dialogue_style",
+                                "flow",
+                                "other",
+                            ],
+                            "description": "이슈 차원(카테고리)",
+                        },
+                        # 과거 호환을 위한 선택 필드
                         "issue_type": {
                             "type": "string",
-                            "description": "이슈 유형",
+                            "description": "이슈 유형(구버전 호환)",
                         },
                         "severity": {
                             "type": "integer",
+                            "enum": [1, 2, 3],
                             "description": "1=minor, 2=major, 3=critical",
                         },
                     },
@@ -85,46 +90,8 @@ def make_response_schema(dim_def: Dict[str, str] | None = None) -> Dict[str, Any
 # 4) Mapping: structured cases -> legacy report fields
 # --------------------
 def _case_to_message(case: Dict[str, Any]) -> str:
+    """Kept for potential logging; not used for legacy mapping anymore."""
     reason = str(case.get("reason", "")).strip()
     return reason if reason else "(no reason provided)"
-
-
-def map_cases_to_v1_fields(cases: List[Dict[str, Any]]) -> Dict[str, List[str]]:
-    """Map structured cases to the legacy fields used by the frontend/report.
-
-    Returns a dict with keys: critical_issues, minor_issues, missing_content,
-    added_content, name_inconsistencies
-    """
-    critical: List[str] = []
-    minor: List[str] = []
-    missing: List[str] = []
-    added: List[str] = []
-    names: List[str] = []
-
-    for case in cases or []:
-        dimension = str(case.get("dimension", "")).strip()
-        severity = int(case.get("severity", 0) or 0)
-        msg = _case_to_message(case)
-
-        if dimension == "completeness":
-            missing.append(msg)
-        elif dimension == "addition":
-            added.append(msg)
-        elif dimension == "name_consistency":
-            names.append(msg)
-        else:
-            # accuracy/dialogue_style/flow/other → severity-based routing
-            if severity >= 3:
-                critical.append(msg)
-            else:
-                minor.append(msg)
-
-    return {
-        "critical_issues": critical,
-        "minor_issues": minor,
-        "missing_content": missing,
-        "added_content": added,
-        "name_inconsistencies": names,
-    }
 
 

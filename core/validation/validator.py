@@ -2,8 +2,8 @@
 Structured-only translation validation.
 
 This validator uses Gemini Structured Output with a minimal schema to
-produce deterministic JSON, then maps it to the legacy report format
-consumed by the frontend and post-edit modules.
+produce deterministic JSON results that are consumed directly by the
+frontend and post-edit modules (no legacy arrays, no raw_response).
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 
-from core.validation.structured import make_response_schema, map_cases_to_v1_fields
+from core.validation.structured import make_response_schema
 from core.prompts.manager import PromptManager
 
 
@@ -24,38 +24,20 @@ class ValidationResult:
         self.source_text = source_text
         self.translated_text = translated_text
         self.status = "PENDING"
-        self.critical_issues: List[str] = []
-        self.minor_issues: List[str] = []
-        self.missing_content: List[str] = []
-        self.added_content: List[str] = []
-        self.name_inconsistencies: List[str] = []
-        self.raw_response: str = ""
         self.structured_cases: Optional[List[Dict[str, Any]]] = None
 
     def has_issues(self) -> bool:
-        return (
-            len(self.critical_issues) > 0
-            or len(self.missing_content) > 0
-            or len(self.added_content) > 0
-            or len(self.name_inconsistencies) > 0
-        )
+        return bool(self.structured_cases and len(self.structured_cases) > 0)
 
     def to_dict(self) -> Dict[str, Any]:
-        result = {
+        result: Dict[str, Any] = {
             'segment_index': self.segment_index,
             'status': self.status,
-            'critical_issues': self.critical_issues,
-            'minor_issues': self.minor_issues,
-            'missing_content': self.missing_content,
-            'added_content': self.added_content,
-            'name_inconsistencies': self.name_inconsistencies,
             'source_preview': self.source_text[:100] + '...' if len(self.source_text) > 100 else self.source_text,
             'translated_preview': self.translated_text[:100] + '...' if len(self.translated_text) > 100 else self.translated_text,
         }
         if self.structured_cases is not None:
             result['structured_cases'] = self.structured_cases
-        if self.status == "FAIL" and not self.has_issues() and self.raw_response:
-            result['debug_raw_response'] = self.raw_response
         return result
 
 
@@ -97,13 +79,6 @@ class TranslationValidator:
         try:
             data = self.ai_model.generate_structured(prompt, schema)
             cases = (data or {}).get('cases', [])
-
-            # Store raw JSON for traceability
-            try:
-                import json as _json
-                result.raw_response = _json.dumps(data, ensure_ascii=False)
-            except Exception:
-                result.raw_response = str(data)
             result.structured_cases = cases
 
             # 새 단순화 스키마에 맞춰, 결과는 전체 리포트에서 요약만 사용
@@ -113,7 +88,6 @@ class TranslationValidator:
         except Exception as e:
             print(f"Warning: Structured validation failed for segment {segment_index}: {e}")
             result.status = "ERROR"
-            result.critical_issues.append(f"Validation error: {str(e)}")
 
         return result
 
@@ -183,11 +157,42 @@ class TranslationValidator:
         passed = sum(1 for r in results if r.status == "PASS")
         failed = sum(1 for r in results if r.status == "FAIL")
         errors = sum(1 for r in results if r.status == "ERROR")
-        total_critical = sum(len(r.critical_issues) for r in results)
-        total_minor = sum(len(r.minor_issues) for r in results)
-        total_missing = sum(len(r.missing_content) for r in results)
-        total_added = sum(len(r.added_content) for r in results)
-        total_name_issues = sum(len(r.name_inconsistencies) for r in results)
+
+        def normalize_severity(s: Any) -> int:
+            if isinstance(s, int):
+                return max(1, min(3, s))
+            if isinstance(s, str):
+                t = s.lower()
+                if t in {"critical", "high", "severe"}: return 3
+                if t in {"major", "medium", "moderate", "important"}: return 2
+                if t in {"minor", "low", "trivial"}: return 1
+                try:
+                    n = int(s)
+                    return max(1, min(3, n))
+                except Exception:
+                    return 2
+            return 2
+
+        total_critical = 0
+        total_minor = 0
+        total_missing = 0
+        total_added = 0
+        total_name_issues = 0
+
+        for r in results:
+            for c in (r.structured_cases or []):
+                sev = normalize_severity(c.get('severity'))
+                dim = (c.get('dimension') or c.get('issue_type') or 'other')
+                if sev == 3:
+                    total_critical += 1
+                if sev == 1:
+                    total_minor += 1
+                if dim == 'completeness':
+                    total_missing += 1
+                elif dim == 'addition':
+                    total_added += 1
+                elif dim == 'name_consistency':
+                    total_name_issues += 1
         return {
             'total_segments': total_segments,
             'validated_segments': validated_segments,
@@ -222,8 +227,7 @@ class TranslationValidator:
             'validation_result': result.to_dict(),
             'timestamp': datetime.now().isoformat(),
         }
-        if result.status == "FAIL" and result.raw_response:
-            segment_report['full_raw_response'] = result.raw_response
+        # raw_response is intentionally not persisted
         import json
         with open(segment_report_path, 'w', encoding='utf-8') as f:
             json.dump(segment_report, f, ensure_ascii=False, indent=2)
