@@ -71,7 +71,6 @@ def make_response_schema(dim_def: Dict[str, str] | None = None) -> Dict[str, Any
                         },
                         "severity": {
                             "type": "integer",
-                            "enum": [1, 2, 3],
                             "description": "1=minor, 2=major, 3=critical",
                         },
                     },
