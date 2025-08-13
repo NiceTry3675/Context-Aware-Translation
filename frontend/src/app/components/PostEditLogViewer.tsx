@@ -60,12 +60,6 @@ export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogVi
           { label: '수정된 세그먼트', value: log.summary.segments_edited, color: 'primary' },
           { label: '수정 비율', value: `${log.summary.edit_percentage.toFixed(1)}%`, color: 'secondary' }
         ]}
-        issueStats={[
-          { type: 'success', count: log.summary.issues_addressed.critical, label: '치명적 오류 수정' },
-          { type: 'success', count: log.summary.issues_addressed.missing_content, label: '누락 내용 복원' },
-          { type: 'success', count: log.summary.issues_addressed.added_content, label: '불필요 내용 제거' },
-          { type: 'success', count: log.summary.issues_addressed.name_inconsistencies, label: '이름 불일치 수정' }
-        ]}
       />
 
       {/* Filter Controls */}
@@ -183,33 +177,8 @@ export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogVi
                 />
               )}
               <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                {segment.issues.critical && segment.issues.critical.length > 0 && (
-                  <IssueChip
-                    key="critical"
-                    type="critical"
-                    label={`치명적 ${segment.issues.critical.length}`}
-                  />
-                )}
-                {segment.issues.missing_content && segment.issues.missing_content.length > 0 && (
-                  <IssueChip
-                    key="missing"
-                    type="missing_content"
-                    label={`누락 ${segment.issues.missing_content.length}`}
-                  />
-                )}
-                {segment.issues.added_content && segment.issues.added_content.length > 0 && (
-                  <IssueChip
-                    key="added"
-                    type="added_content"
-                    label={`추가 ${segment.issues.added_content.length}`}
-                  />
-                )}
-                {segment.issues.name_inconsistencies && segment.issues.name_inconsistencies.length > 0 && (
-                  <IssueChip
-                    key="names"
-                    type="name_inconsistencies"
-                    label={`이름 ${segment.issues.name_inconsistencies.length}`}
-                  />
+                {(segment as any).structured_cases && (segment as any).structured_cases.length > 0 && (
+                  <IssueChip key="cases" type="critical" label={`케이스 ${(segment as any).structured_cases.length}`} />
                 )}
               </Box>
             </Box>

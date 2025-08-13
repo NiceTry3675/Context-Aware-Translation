@@ -7,47 +7,34 @@ export interface ValidationReport {
     passed: number;
     failed: number;
     pass_rate: number;
-    total_critical_issues: number;
-    total_missing_content: number;
-    total_added_content: number;
-    total_name_inconsistencies: number;
-    segments_with_issues: number[];
+    case_counts_by_severity: { '1': number; '2': number; '3': number };
+    case_counts_by_dimension: Record<string, number>;
+    segments_with_cases: number[];
   };
   detailed_results: Array<{
     segment_index: number;
     status: 'PASS' | 'FAIL';
-    // Optional flat fields for legacy/current validators
-    critical_issues?: string[];
-    missing_content?: string[];
-    added_content?: string[];
-    name_inconsistencies?: string[];
-    minor_issues?: string[];
     structured_cases?: Array<{
       current_korean_sentence: string;
       problematic_source_sentence: string;
       reason: string;
       corrected_korean_sentence?: string;
-      issue_type?: string;
+      dimension?: string;
       severity?: number;
+      tags?: string[];
     }>;
     source_preview: string;
     translated_preview: string;
     // Some reports may nest results here; keep it permissive for parsing
     validation_result?: {
-      critical_issues?: string[];
-      missing_content?: string[];
-      added_content?: string[];
-      name_inconsistencies?: string[];
-      minor_issues?: string[];
-      source_preview?: string;
-      translated_preview?: string;
       structured_cases?: Array<{
         current_korean_sentence: string;
         problematic_source_sentence: string;
         reason: string;
         corrected_korean_sentence?: string;
-        issue_type?: string;
+        dimension?: string;
         severity?: number;
+        tags?: string[];
       }>;
     };
   }>;
@@ -58,12 +45,6 @@ export interface PostEditLog {
     segments_edited: number;
     total_segments: number;
     edit_percentage: number;
-    issues_addressed: {
-      critical: number;
-      missing_content: number;
-      added_content: number;
-      name_inconsistencies: number;
-    };
   };
   segments: Array<{
     segment_index: number;
@@ -72,18 +53,17 @@ export interface PostEditLog {
     original_translation: string;
     edited_translation: string;
     validation_status: string;
-    issues: {
-      critical: string[];
-      missing_content: string[];
-      added_content: string[];
-      name_inconsistencies: string[];
-    };
-    changes_made: {
-      text_changed: boolean;
-      critical_fixed: boolean;
-      missing_content_fixed: boolean;
-      added_content_fixed: boolean;
-      name_inconsistencies_fixed: boolean;
+    structured_cases?: Array<{
+      current_korean_sentence: string;
+      problematic_source_sentence: string;
+      reason: string;
+      corrected_korean_sentence?: string;
+      dimension?: string;
+      severity?: number;
+      tags?: string[];
+    }>;
+    changes_made?: {
+      text_changed?: boolean;
     };
   }>;
 }

@@ -109,11 +109,14 @@ export default function ErrorNavigationBar({
     if (!validationReport) return { critical: 0, missing: 0, added: 0, names: 0 };
     
     // Use summary from report for counts (kept for backward compatibility)
+    const sev = validationReport.summary.case_counts_by_severity || { '1': 0, '2': 0, '3': 0 };
+    // critical≈3, missing/added/names는 차원 분포에서 유도 가능하지만, 여기선 간단히 표시만 유지
+    const dim = validationReport.summary.case_counts_by_dimension || {};
     return {
-      critical: validationReport.summary.total_critical_issues || 0,
-      missing: validationReport.summary.total_missing_content || 0,
-      added: validationReport.summary.total_added_content || 0,
-      names: validationReport.summary.total_name_inconsistencies || 0,
+      critical: sev['3'] || 0,
+      missing: dim['completeness'] || 0,
+      added: dim['addition'] || 0,
+      names: dim['name_consistency'] || 0,
     };
   }, [validationReport]);
 

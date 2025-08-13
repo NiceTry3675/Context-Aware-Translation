@@ -173,26 +173,25 @@ class TranslationValidator:
                     return 2
             return 2
 
-        total_critical = 0
-        total_minor = 0
-        total_missing = 0
-        total_added = 0
-        total_name_issues = 0
+        severity_counts = {1: 0, 2: 0, 3: 0}
+        dimension_counts = {
+            'completeness': 0,
+            'accuracy': 0,
+            'addition': 0,
+            'name_consistency': 0,
+            'dialogue_style': 0,
+            'flow': 0,
+            'other': 0,
+        }
 
         for r in results:
             for c in (r.structured_cases or []):
                 sev = normalize_severity(c.get('severity'))
                 dim = (c.get('dimension') or c.get('issue_type') or 'other')
-                if sev == 3:
-                    total_critical += 1
-                if sev == 1:
-                    total_minor += 1
-                if dim == 'completeness':
-                    total_missing += 1
-                elif dim == 'addition':
-                    total_added += 1
-                elif dim == 'name_consistency':
-                    total_name_issues += 1
+                severity_counts[sev] = severity_counts.get(sev, 0) + 1
+                if dim not in dimension_counts:
+                    dimension_counts[dim] = 0
+                dimension_counts[dim] += 1
         return {
             'total_segments': total_segments,
             'validated_segments': validated_segments,
@@ -200,12 +199,13 @@ class TranslationValidator:
             'failed': failed,
             'errors': errors,
             'pass_rate': (passed / validated_segments * 100) if validated_segments > 0 else 0,
-            'total_critical_issues': total_critical,
-            'total_minor_issues': total_minor,
-            'total_missing_content': total_missing,
-            'total_added_content': total_added,
-            'total_name_inconsistencies': total_name_issues,
-            'segments_with_issues': [r.segment_index for r in results if r.has_issues()],
+            'case_counts_by_severity': {
+                '1': severity_counts.get(1, 0),
+                '2': severity_counts.get(2, 0),
+                '3': severity_counts.get(3, 0),
+            },
+            'case_counts_by_dimension': dimension_counts,
+            'segments_with_cases': [r.segment_index for r in results if r.has_issues()],
         }
 
     def _save_validation_report(self, results: List[ValidationResult], summary: Dict[str, Any], base_filename: str):
@@ -241,20 +241,19 @@ class TranslationValidator:
         print(f"  - Passed: {summary['passed']}")
         print(f"  - Failed: {summary['failed']}")
         print(f"  - Errors: {summary['errors']}")
-        if summary['total_critical_issues'] > 0:
-            print(f"\n🔴 Critical Issues: {summary['total_critical_issues']}")
-        if summary['total_missing_content'] > 0:
-            print(f"⚠️  Missing Content: {summary['total_missing_content']} items")
-        if summary['total_added_content'] > 0:
-            print(f"➕ Added Content: {summary['total_added_content']} items")
-        if summary['total_name_inconsistencies'] > 0:
-            print(f"👤 Name Inconsistencies: {summary['total_name_inconsistencies']}")
-        if summary['total_minor_issues'] > 0:
-            print(f"💡 Minor Issues: {summary['total_minor_issues']}")
-        if summary['segments_with_issues']:
-            print(f"\n📋 Segments with issues: {summary['segments_with_issues'][:10]}")
-            if len(summary['segments_with_issues']) > 10:
-                print(f"  ... and {len(summary['segments_with_issues']) - 10} more")
+        sev = summary.get('case_counts_by_severity', {})
+        dim = summary.get('case_counts_by_dimension', {})
+        print(f"\nSeverity counts: minor={sev.get('1', 0)}, major={sev.get('2', 0)}, critical={sev.get('3', 0)}")
+        if dim:
+            print("By dimension:")
+            for k in ['completeness','accuracy','addition','name_consistency','dialogue_style','flow','other']:
+                if k in dim:
+                    print(f"  - {k}: {dim[k]}")
+        segs = summary.get('segments_with_cases', [])
+        if segs:
+            print(f"\n📋 Segments with cases: {segs[:10]}")
+            if len(segs) > 10:
+                print(f"  ... and {len(segs) - 10} more")
         print(f"{'='*60}")
 
 

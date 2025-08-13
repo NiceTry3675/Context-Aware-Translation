@@ -279,38 +279,46 @@ export default function ResultsView({
                   <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
                     오류 필터:
                   </Typography>
-                  <Chip
-                    icon={<ErrorIcon />}
-                    label={`중요 (${validationReport.summary.total_critical_issues})`}
-                    size="small"
-                    color={errorFilters.critical ? 'error' : 'default'}
-                    onClick={() => onErrorFiltersChange({ ...errorFilters, critical: !errorFilters.critical })}
-                    variant={errorFilters.critical ? 'filled' : 'outlined'}
-                  />
-                  <Chip
-                    icon={<ContentCopyIcon />}
-                    label={`누락 (${validationReport.summary.total_missing_content})`}
-                    size="small"
-                    color={errorFilters.missingContent ? 'warning' : 'default'}
-                    onClick={() => onErrorFiltersChange({ ...errorFilters, missingContent: !errorFilters.missingContent })}
-                    variant={errorFilters.missingContent ? 'filled' : 'outlined'}
-                  />
-                  <Chip
-                    icon={<AddCircleIcon />}
-                    label={`추가 (${validationReport.summary.total_added_content})`}
-                    size="small"
-                    color={errorFilters.addedContent ? 'info' : 'default'}
-                    onClick={() => onErrorFiltersChange({ ...errorFilters, addedContent: !errorFilters.addedContent })}
-                    variant={errorFilters.addedContent ? 'filled' : 'outlined'}
-                  />
-                  <Chip
-                    icon={<PersonIcon />}
-                    label={`이름 (${validationReport.summary.total_name_inconsistencies})`}
-                    size="small"
-                    color={errorFilters.nameInconsistencies ? 'secondary' : 'default'}
-                    onClick={() => onErrorFiltersChange({ ...errorFilters, nameInconsistencies: !errorFilters.nameInconsistencies })}
-                    variant={errorFilters.nameInconsistencies ? 'filled' : 'outlined'}
-                  />
+                  {(() => {
+                    const sev = validationReport.summary.case_counts_by_severity || { '1': 0, '2': 0, '3': 0 };
+                    const dim = validationReport.summary.case_counts_by_dimension || {};
+                    return (
+                      <>
+                        <Chip
+                          icon={<ErrorIcon />}
+                          label={`중요 (${sev['3'] || 0})`}
+                          size="small"
+                          color={errorFilters.critical ? 'error' : 'default'}
+                          onClick={() => onErrorFiltersChange({ ...errorFilters, critical: !errorFilters.critical })}
+                          variant={errorFilters.critical ? 'filled' : 'outlined'}
+                        />
+                        <Chip
+                          icon={<ContentCopyIcon />}
+                          label={`누락 (${dim['completeness'] || 0})`}
+                          size="small"
+                          color={errorFilters.missingContent ? 'warning' : 'default'}
+                          onClick={() => onErrorFiltersChange({ ...errorFilters, missingContent: !errorFilters.missingContent })}
+                          variant={errorFilters.missingContent ? 'filled' : 'outlined'}
+                        />
+                        <Chip
+                          icon={<AddCircleIcon />}
+                          label={`추가 (${dim['addition'] || 0})`}
+                          size="small"
+                          color={errorFilters.addedContent ? 'info' : 'default'}
+                          onClick={() => onErrorFiltersChange({ ...errorFilters, addedContent: !errorFilters.addedContent })}
+                          variant={errorFilters.addedContent ? 'filled' : 'outlined'}
+                        />
+                        <Chip
+                          icon={<PersonIcon />}
+                          label={`이름 (${dim['name_consistency'] || 0})`}
+                          size="small"
+                          color={errorFilters.nameInconsistencies ? 'secondary' : 'default'}
+                          onClick={() => onErrorFiltersChange({ ...errorFilters, nameInconsistencies: !errorFilters.nameInconsistencies })}
+                          variant={errorFilters.nameInconsistencies ? 'filled' : 'outlined'}
+                        />
+                      </>
+                    );
+                  })()}
                 </Stack>
               </Box>
             )}
