@@ -117,16 +117,7 @@ export default function TranslationSidebar({
     }
   }, [validationReport, tabValue]);
 
-  // Auto-refresh when validation is in progress
-  useEffect(() => {
-    if (validationStatus === 'IN_PROGRESS' && onRefresh) {
-      const interval = setInterval(() => {
-        onRefresh();
-      }, 2000); // Poll every 2 seconds
-
-      return () => clearInterval(interval);
-    }
-  }, [validationStatus, onRefresh]);
+  // 자동 새로고침 제거: 필요 시 상단 새로고침 버튼 사용
 
   const canRunValidation = jobStatus === 'COMPLETED' && (!validationStatus || validationStatus === 'FAILED');
   const canRunPostEdit = validationStatus === 'COMPLETED' && (!postEditStatus || postEditStatus === 'FAILED');

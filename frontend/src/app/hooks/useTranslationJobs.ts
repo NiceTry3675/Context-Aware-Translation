@@ -5,10 +5,9 @@ import { Job } from '../types/job';
 
 interface UseTranslationJobsOptions {
   apiUrl: string;
-  pollInterval?: number;
 }
 
-export function useTranslationJobs({ apiUrl, pollInterval = 3000 }: UseTranslationJobsOptions) {
+export function useTranslationJobs({ apiUrl }: UseTranslationJobsOptions) {
   const { getToken, isSignedIn, isLoaded } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(false);
@@ -63,42 +62,7 @@ export function useTranslationJobs({ apiUrl, pollInterval = 3000 }: UseTranslati
     loadJobs();
   }, [apiUrl, getToken, isSignedIn, isLoaded]);
 
-  // Poll for job status updates
-  const pollJobStatus = useCallback(async () => {
-    if (!isSignedIn) return;
-    
-    const processingJobs = jobs.filter(job => 
-      ['PROCESSING', 'PENDING'].includes(job.status) ||
-      job.validation_status === 'IN_PROGRESS' ||
-      job.post_edit_status === 'IN_PROGRESS'
-    );
-    if (processingJobs.length === 0) return;
-
-    try {
-      const updatedJobs = await Promise.all(
-        processingJobs.map(async (job) => {
-          try {
-            const response = await fetch(`${apiUrl}/api/v1/jobs/${job.id}`);
-            return response.ok ? response.json() : job;
-          } catch {
-            return job;
-          }
-        })
-      );
-      
-      setJobs(currentJobs =>
-        currentJobs.map(job => updatedJobs.find(updated => updated.id === job.id) || job)
-      );
-    } catch (err) {
-      console.error("Failed to poll job status:", err);
-    }
-  }, [jobs, apiUrl, isSignedIn]);
-
-  // Set up polling interval
-  useEffect(() => {
-    const interval = setInterval(pollJobStatus, pollInterval);
-    return () => clearInterval(interval);
-  }, [pollJobStatus, pollInterval]);
+  // Note: 자동 폴링 제거. 수동 새로고침(Refresh)만 제공.
 
   // Add a new job
   const addJob = useCallback((newJob: Job) => {

@@ -180,21 +180,7 @@ export function useCanvasState() {
     }
   };
 
-  // Auto-refresh when translation, validation, or post-edit is in progress
-  useEffect(() => {
-    if (
-      selectedJob?.status === 'IN_PROGRESS' ||
-      selectedJob?.validation_status === 'IN_PROGRESS' || 
-      selectedJob?.post_edit_status === 'IN_PROGRESS'
-    ) {
-      const interval = setInterval(() => {
-        console.log('Refreshing job status...');
-        refreshJobs();
-        loadData();
-      }, 2000);
-      return () => clearInterval(interval);
-    }
-  }, [selectedJob?.status, selectedJob?.validation_status, selectedJob?.post_edit_status, refreshJobs, loadData]);
+  // 자동 새로고침 제거: 필요 시 사용자 수동 새로고침 사용
 
   // Handle job selection change
   const handleJobChange = (newJobId: string) => {
