@@ -219,13 +219,9 @@ class ValidationRequest(BaseModel):
     validation_sample_rate: float = 1.0  # 0.0 to 1.0
 
 class PostEditRequest(BaseModel):
-    selected_issue_types: Optional[dict] = {
-        "critical_issues": True,
-        "missing_content": True,
-        "added_content": True,
-        "name_inconsistencies": True
-    }
-    selected_issues: Optional[dict] = None
+    # Structured validation selection: per-segment boolean array
+    # { [segmentIndex]: boolean[] }
+    selected_cases: Optional[dict] = None
 
 # Update forward references
 Comment.model_rebuild()

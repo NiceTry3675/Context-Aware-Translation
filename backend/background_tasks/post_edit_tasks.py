@@ -11,8 +11,7 @@ def run_post_edit_in_background(
     job_id: int,
     file_path: str,
     validation_report_path: str,
-    selected_issue_types: dict = None,
-    selected_issues: dict = None
+    selected_cases: dict | None = None,
 ):
     """Background task to run post-editing on a validated translation."""
     db = None
@@ -27,18 +26,7 @@ def run_post_edit_in_background(
         PostEditService.update_job_post_edit_status(db, job, "IN_PROGRESS")
         print(f"--- [POST-EDIT] Starting post-editing for Job ID: {job_id} ---")
         
-        # Default to all issue types if not specified
-        if selected_issue_types is None:
-            selected_issue_types = {
-                "critical_issues": True,
-                "missing_content": True,
-                "added_content": True,
-                "name_inconsistencies": True
-            }
-        
-        print(f"--- [POST-EDIT] Selected issue types: {selected_issue_types} ---")
-        if selected_issues:
-            print(f"--- [POST-EDIT] Selected issues for {len(selected_issues)} segments ---")
+        print(f"--- [POST-EDIT] Selected structured cases for {len(selected_cases or {})} segments ---")
         
         # Get API key - for now using environment variable
         # In production, this should be retrieved from secure storage
@@ -63,9 +51,8 @@ def run_post_edit_in_background(
             translation_job=translation_job,
             translated_path=translated_path,
             validation_report_path=validation_report_path,
-            selected_issue_types=selected_issue_types,
-            selected_issues=selected_issues,
-            progress_callback=update_progress
+            selected_cases=selected_cases,
+            progress_callback=update_progress,
         )
         
         # Get the post-edit log path

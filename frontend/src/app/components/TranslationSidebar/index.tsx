@@ -18,7 +18,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import ValidationReportViewer from '../ValidationReportViewer';
+import StructuredValidationExplorer from '../validation/StructuredValidationExplorer';
 import PostEditLogViewer from '../PostEditLogViewer';
 import TranslationContentViewer from '../TranslationContentViewer';
 
@@ -91,8 +91,20 @@ export default function TranslationSidebar({
     loadData,
   } = useTranslationData({ open, jobId, jobStatus, validationStatus, postEditStatus });
 
+  // Structured case selection state (segment-indexed)
+  const [selectedCases, setSelectedCases] = useState<Record<number, boolean[]>>({});
+  const handleCaseSelectionChange = (segmentIndex: number, caseIndex: number, selected: boolean, totalCases: number) => {
+    setSelectedCases(prev => {
+      const next = { ...prev };
+      const arr = next[segmentIndex] ? next[segmentIndex].slice() : new Array(totalCases).fill(true);
+      arr[caseIndex] = selected;
+      next[segmentIndex] = arr;
+      return next;
+    });
+  };
+
   const validation = useValidation({ jobId, onRefresh });
-  const postEdit = usePostEdit({ jobId, onRefresh, selectedIssues });
+  const postEdit = usePostEdit({ jobId, onRefresh, selectedCases });
 
   // Combine loading states
   const loading = dataLoading || validation.loading || postEdit.loading;
@@ -119,42 +131,11 @@ export default function TranslationSidebar({
   const canRunValidation = jobStatus === 'COMPLETED' && (!validationStatus || validationStatus === 'FAILED');
   const canRunPostEdit = validationStatus === 'COMPLETED' && (!postEditStatus || postEditStatus === 'FAILED');
 
-  // Calculate selected issue counts
-  const calculateSelectedCounts = () => {
-    let critical = 0;
-    let missingContent = 0;
-    let addedContent = 0;
-    let nameInconsistencies = 0;
-
-    if (validationReport) {
-      validationReport.detailed_results.forEach((result) => {
-        const segmentSelection = selectedIssues?.[result.segment_index];
-        
-        if (segmentSelection) {
-          critical += segmentSelection.critical?.filter(selected => selected).length || 0;
-          missingContent += segmentSelection.missing_content?.filter(selected => selected).length || 0;
-          addedContent += segmentSelection.added_content?.filter(selected => selected).length || 0;
-          nameInconsistencies += segmentSelection.name_inconsistencies?.filter(selected => selected).length || 0;
-        } else {
-          // If no selection state exists, count all issues as selected (default behavior)
-          critical += result.critical_issues.length;
-          missingContent += result.missing_content.length;
-          addedContent += result.added_content.length;
-          nameInconsistencies += result.name_inconsistencies.length;
-        }
-      });
-    }
-
-    return {
-      critical,
-      missingContent,
-      addedContent,
-      nameInconsistencies,
-      total: critical + missingContent + addedContent + nameInconsistencies
-    };
+  // Calculate selected case counts (structured-only)
+  const selectedCounts = {
+    total: Object.values(selectedCases).reduce((acc, arr) => acc + (arr?.filter(Boolean).length || 0), 0)
   };
 
-  const selectedCounts = calculateSelectedCounts();
 
   return (
     <>
@@ -287,46 +268,11 @@ export default function TranslationSidebar({
                   <Typography sx={{ ml: 2 }}>검증 보고서 불러오는 중...</Typography>
                 </Box>
               ) : validationReport ? (
-                <ValidationReportViewer 
+                <StructuredValidationExplorer 
                   report={validationReport}
-                  selectedIssues={selectedIssues}
-                  onIssueSelectionChange={(segmentIndex, issueType, issueIndex, selected) => {
-                    setSelectedIssues(prev => {
-                      const newState = { ...prev };
-                      
-                      // Ensure the segment exists in the state
-                      if (!newState[segmentIndex]) {
-                        // Initialize the segment if it doesn't exist
-                        const segment = validationReport?.detailed_results.find(r => r.segment_index === segmentIndex);
-                        if (!segment) return prev;
-                        
-                        newState[segmentIndex] = {
-                          critical: new Array(segment.critical_issues.length).fill(true),
-                          missing_content: new Array(segment.missing_content.length).fill(true),
-                          added_content: new Array(segment.added_content.length).fill(true),
-                          name_inconsistencies: new Array(segment.name_inconsistencies.length).fill(true),
-                          minor: new Array(segment.minor_issues.length).fill(true),
-                        };
-                      }
-                      
-                      if (!newState[segmentIndex][issueType]) {
-                        return prev;
-                      }
-                      
-                      newState[segmentIndex] = {
-                        ...newState[segmentIndex],
-                        [issueType]: newState[segmentIndex][issueType].map((val, idx) => 
-                          idx === issueIndex ? selected : val
-                        )
-                      };
-                      
-                      return newState;
-                    });
-                  }}
-                  onSegmentClick={(index) => {
-                    // Handle segment click if needed
-                    console.log('Segment clicked:', index);
-                  }}
+                  onSegmentClick={(index) => console.log('Segment clicked:', index)}
+                  selectedCases={selectedCases}
+                  onCaseSelectionChange={handleCaseSelectionChange}
                 />
               ) : validationStatus === 'COMPLETED' ? (
                 <Stack spacing={2}>
@@ -381,13 +327,9 @@ export default function TranslationSidebar({
         open={postEdit.postEditDialogOpen}
         onClose={() => postEdit.setPostEditDialogOpen(false)}
         onConfirm={postEdit.handleTriggerPostEdit}
-        selectedIssueTypes={postEdit.selectedIssueTypes}
-        onIssueTypeChange={(issueType, checked) => 
-          postEdit.setSelectedIssueTypes({ ...postEdit.selectedIssueTypes, [issueType]: checked })
-        }
         validationReport={validationReport}
         loading={postEdit.loading}
-        selectedCounts={selectedCounts}
+        selectedCounts={{ total: Object.values(selectedCases).reduce((acc, arr)=> acc + (arr?.filter(Boolean).length || 0), 0) }}
       />
     </>
   );

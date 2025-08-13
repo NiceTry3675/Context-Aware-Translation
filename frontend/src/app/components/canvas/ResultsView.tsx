@@ -25,7 +25,7 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import ErrorIcon from '@mui/icons-material/Error';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import PersonIcon from '@mui/icons-material/Person';
-import ValidationReportViewer from '../ValidationReportViewer';
+import StructuredValidationExplorer from '../validation/StructuredValidationExplorer';
 import PostEditLogViewer from '../PostEditLogViewer';
 import TranslationContentViewer from '../TranslationContentViewer';
 import InfiniteScrollTranslationViewer from '../InfiniteScrollTranslationViewer';
@@ -119,6 +119,18 @@ export default function ResultsView({
   onIssueSelectionChange,
   onSegmentClick,
 }: ResultsViewProps) {
+  // Selection state for structured cases (segment-indexed)
+  const [selectedCases, setSelectedCases] = React.useState<Record<number, boolean[]>>({});
+  const handleCaseSelectionChange = React.useCallback((segmentIndex: number, caseIndex: number, selected: boolean, totalCases: number) => {
+    setSelectedCases(prev => {
+      const next = { ...prev };
+      const arr = next[segmentIndex] ? next[segmentIndex].slice() : new Array(totalCases).fill(true);
+      arr[caseIndex] = selected;
+      next[segmentIndex] = arr;
+      return next;
+    });
+  }, []);
+
   return (
     <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <Box sx={{ px: 2, pt: 1 }}>
@@ -400,21 +412,12 @@ export default function ResultsView({
           </TabPanel>
           
           <TabPanel value={tabValue} index={1}>
-            {viewMode === 'segment' && validationReport ? (
-              <SegmentViewer
-                mode="validation"
-                currentSegmentIndex={segmentNav.currentSegmentIndex}
-                validationReport={validationReport}
-                postEditLog={postEditLog}
-                translationSegments={translationSegments}
-                errorFilters={errorFilters}
-              />
-            ) : validationReport ? (
-              <ValidationReportViewer 
+            {validationReport ? (
+              <StructuredValidationExplorer 
                 report={validationReport}
-                selectedIssues={selectedIssues}
-                onIssueSelectionChange={onIssueSelectionChange}
                 onSegmentClick={onSegmentClick}
+                selectedCases={selectedCases}
+                onCaseSelectionChange={handleCaseSelectionChange}
               />
             ) : selectedJob?.validation_status === 'COMPLETED' ? (
               <Stack spacing={2}>
@@ -438,15 +441,7 @@ export default function ResultsView({
           </TabPanel>
           
           <TabPanel value={tabValue} index={2}>
-            {viewMode === 'segment' && postEditLog ? (
-              <SegmentViewer
-                mode="post-edit"
-                currentSegmentIndex={segmentNav.currentSegmentIndex}
-                validationReport={validationReport}
-                postEditLog={postEditLog}
-                translationSegments={translationSegments}
-              />
-            ) : postEditLog ? (
+            {postEditLog ? (
               <PostEditLogViewer 
                 log={postEditLog}
                 onSegmentClick={onSegmentClick}

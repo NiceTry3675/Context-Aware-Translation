@@ -46,9 +46,10 @@ async def trigger_post_edit(
     # Add background task to run post-editing
     background_tasks.add_task(
         run_post_edit_in_background,
-        job_id, db_job.filepath, db_job.validation_report_path,
-        request.selected_issue_types,
-        request.selected_issues
+        job_id,
+        db_job.filepath,
+        db_job.validation_report_path,
+        request.selected_cases,
     )
     
     return {"message": "Post-editing started", "job_id": job_id}

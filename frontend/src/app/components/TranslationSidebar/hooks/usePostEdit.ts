@@ -7,21 +7,12 @@ import { triggerPostEdit } from '../../../utils/api';
 interface UsePostEditProps {
   jobId: string;
   onRefresh?: () => void;
-  selectedIssues: {
-    [segmentIndex: number]: {
-      [issueType: string]: boolean[]
-    }
-  };
+  selectedCases?: Record<number, boolean[]>;
 }
 
-export function usePostEdit({ jobId, onRefresh, selectedIssues }: UsePostEditProps) {
+export function usePostEdit({ jobId, onRefresh, selectedCases }: UsePostEditProps) {
   const [postEditDialogOpen, setPostEditDialogOpen] = useState(false);
-  const [selectedIssueTypes, setSelectedIssueTypes] = useState({
-    critical_issues: true,
-    missing_content: true,
-    added_content: true,
-    name_inconsistencies: true,
-  });
+  // Structured-only: issue types removed
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -33,7 +24,7 @@ export function usePostEdit({ jobId, onRefresh, selectedIssues }: UsePostEditPro
     
     try {
       const token = await getToken();
-      await triggerPostEdit(jobId, token || undefined, selectedIssueTypes, selectedIssues);
+      await triggerPostEdit(jobId, token || undefined, selectedCases || {});
       setPostEditDialogOpen(false);
       onRefresh?.();
       setError(null);
@@ -47,8 +38,7 @@ export function usePostEdit({ jobId, onRefresh, selectedIssues }: UsePostEditPro
   return {
     postEditDialogOpen,
     setPostEditDialogOpen,
-    selectedIssueTypes,
-    setSelectedIssueTypes,
+    // no issue-types in structured flow
     loading,
     error,
     handleTriggerPostEdit,

@@ -87,17 +87,15 @@ class PostEditService:
         translation_job: TranslationJob,
         translated_path: str,
         validation_report_path: str,
-        selected_issue_types: dict = None,
-        selected_issues: dict = None,
-        progress_callback: Optional[Callable[[int], None]] = None
+        selected_cases: dict | None = None,
+        progress_callback: Optional[Callable[[int], None]] = None,
     ):
         """Run the post-editing process and overwrite the translated file."""
         edited_segments = post_editor.post_edit_job(
             translation_job,
             validation_report_path,
-            selected_issue_types,
-            selected_issues,
-            progress_callback=progress_callback
+            selected_cases,
+            progress_callback=progress_callback,
         )
 
         # Overwrite the translated file with the edited content

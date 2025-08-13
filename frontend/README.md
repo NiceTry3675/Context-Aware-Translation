@@ -64,7 +64,7 @@ A modern web application for AI-powered literary translation of novels from Engl
 
 #### Core Components
 - `TranslationSidebar`: Detailed job view with validation/post-edit tabs
-- `ValidationReportViewer`: Interactive validation results display
+ - `StructuredValidationExplorer`: Structured-output based validation explorer UI
 - `PostEditLogViewer`: Post-edit changes visualization
 - `JobsTable`: Translation job management interface
 - `ModelSelector`: AI model selection with provider switching

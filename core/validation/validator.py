@@ -106,16 +106,9 @@ class TranslationValidator:
                 result.raw_response = str(data)
             result.structured_cases = cases
 
-            mapped = map_cases_to_v1_fields(cases)
-            has_fail = any(len(mapped[k]) for k in (
-                'critical_issues', 'missing_content', 'added_content', 'name_inconsistencies'
-            ))
-            result.status = "FAIL" if has_fail else "PASS"
-            result.critical_issues = mapped['critical_issues']
-            result.minor_issues = mapped['minor_issues']
-            result.missing_content = mapped['missing_content']
-            result.added_content = mapped['added_content']
-            result.name_inconsistencies = mapped['name_inconsistencies']
+            # 새 단순화 스키마에 맞춰, 결과는 전체 리포트에서 요약만 사용
+            # per-segment 객체에는 structured_cases만 저장하고, legacy 필드는 비워둠
+            result.status = "FAIL" if (cases and len(cases) > 0) else "PASS"
 
         except Exception as e:
             print(f"Warning: Structured validation failed for segment {segment_index}: {e}")

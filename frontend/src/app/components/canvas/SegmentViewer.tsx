@@ -21,7 +21,6 @@ import {
 import CompareIcon from '@mui/icons-material/Compare';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import { TextSegmentDisplay } from '../shared/TextSegmentDisplay';
-import { ValidationTextSegmentDisplay } from '../shared/ValidationTextSegmentDisplay';
 import { DiffMode, ViewMode } from '../shared/DiffViewer';
 import { ValidationReport, PostEditLog, TranslationSegments } from '../../utils/api';
 
@@ -33,13 +32,13 @@ interface ErrorFilters {
 }
 
 interface SegmentViewerProps {
-  mode: 'translation' | 'validation' | 'post-edit';
+  mode: 'translation' | 'post-edit';
   currentSegmentIndex: number;
-  validationReport?: ValidationReport | null;
+  validationReport?: ValidationReport | null; // kept only for post-edit context join
   postEditLog?: PostEditLog | null;
   translationContent?: string | null;
   translationSegments?: TranslationSegments | null;
-  errorFilters?: ErrorFilters;
+  errorFilters?: ErrorFilters; // unused in structured-only flow
 }
 
 interface SegmentData {
@@ -140,24 +139,7 @@ export default function SegmentViewer({
       }
     }
 
-    // If segments are not available, use validation report (only has preview)
-    if (validationReport?.detailed_results) {
-      const result = validationReport.detailed_results.find((r) => r.segment_index === currentSegmentIndex);
-      if (result) {
-        // Note: validation report only has preview text, not full text
-        return {
-          sourceText: result.source_preview,
-          translatedText: result.translated_preview,
-          issues: {
-            critical: result.critical_issues,
-            missingContent: result.missing_content,
-            addedContent: result.added_content,
-            nameInconsistencies: result.name_inconsistencies,
-            minor: result.minor_issues,
-          },
-        };
-      }
-    }
+    // In structured-only flow, we do not render validation-only segment previews
 
     // Fallback: if we only have translation content (no segmentation available)
     if (mode === 'translation' && translationContent) {
@@ -217,7 +199,7 @@ export default function SegmentViewer({
   };
 
   // Check if we're showing preview text (from validation report) vs full text
-  const isShowingPreview = !postEditLog && !translationSegments && validationReport;
+  const isShowingPreview = false;
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -279,111 +261,8 @@ export default function SegmentViewer({
       )}
 
       <Paper sx={{ p: 3 }}>
-      {/* Segment Header - Only show in validation mode */}
-      {mode === 'validation' && (isShowingPreview || segmentData.issues) && (
-        <Stack direction="row" justifyContent="flex-end" alignItems="center" mb={2}>
-          <Stack direction="row" spacing={1}>
-            {isShowingPreview && (
-            <Chip 
-              label="미리보기" 
-              color="info" 
-              size="small" 
-              variant="outlined"
-              title="전체 텍스트를 보려면 포스트 에디팅을 실행하세요"
-            />
-          )}
-          {segmentData.issues && (
-            <Chip 
-              label={`${(segmentData.issues.critical.length + 
-                         (segmentData.issues.missingContent || segmentData.issues.missing_content || []).length + 
-                         (segmentData.issues.addedContent || segmentData.issues.added_content || []).length + 
-                         (segmentData.issues.nameInconsistencies || segmentData.issues.name_inconsistencies || []).length)} 이슈`}
-              color="warning" 
-              size="small" 
-            />
-          )}
-          </Stack>
-        </Stack>
-      )}
-
-      {/* Notice for preview mode - only in validation mode */}
-      {mode === 'validation' && isShowingPreview && (
-        <Alert severity="info" sx={{ mb: 2 }}>
-          현재 텍스트 미리보기만 표시됩니다. 전체 세그먼트 내용을 보려면 포스트 에디팅을 실행하세요.
-        </Alert>
-      )}
-
-      {/* Text Display - Use ValidationTextSegmentDisplay when issues exist for consistent tabs interface */}
-      {mode === 'validation' && segmentData.issues ? (
-        (() => {
-          // Filter issues based on errorFilters
-          const filteredIssues: typeof segmentData.issues = {
-            critical: errorFilters.critical ? segmentData.issues.critical : [],
-            missingContent: errorFilters.missingContent ? (segmentData.issues.missingContent || segmentData.issues.missing_content || []) : [],
-            addedContent: errorFilters.addedContent ? (segmentData.issues.addedContent || segmentData.issues.added_content || []) : [],
-            nameInconsistencies: errorFilters.nameInconsistencies ? (segmentData.issues.nameInconsistencies || segmentData.issues.name_inconsistencies || []) : [],
-            missing_content: errorFilters.missingContent ? (segmentData.issues.missing_content || segmentData.issues.missingContent || []) : [],
-            added_content: errorFilters.addedContent ? (segmentData.issues.added_content || segmentData.issues.addedContent || []) : [],
-            name_inconsistencies: errorFilters.nameInconsistencies ? (segmentData.issues.name_inconsistencies || segmentData.issues.nameInconsistencies || []) : [],
-            minor: segmentData.issues.minor || [],
-          };
-          
-          // Check if there are any filtered issues to show
-          const hasFilteredIssues = 
-            filteredIssues.critical.length > 0 ||
-            (filteredIssues.missingContent || filteredIssues.missing_content || []).length > 0 ||
-            (filteredIssues.addedContent || filteredIssues.added_content || []).length > 0 ||
-            (filteredIssues.nameInconsistencies || filteredIssues.name_inconsistencies || []).length > 0;
-          
-          if (!hasFilteredIssues) {
-            // Show that issues exist but are filtered out
-            return (
-              <Box>
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  이 세그먼트에는 문제가 있지만 현재 필터 설정으로 숨겨져 있습니다.
-                </Alert>
-                <TextSegmentDisplay
-                  sourceText={segmentData.sourceText}
-                  translatedText={segmentData.translatedText}
-                />
-              </Box>
-            );
-          }
-          
-          return (
-            <ValidationTextSegmentDisplay
-              sourceText={segmentData.sourceText}
-              translatedText={segmentData.translatedText}
-              issues={(() => {
-                // Convert filtered issues to the format expected by ValidationTextSegmentDisplay
-                const allIssues: { type: string; message: string; }[] = [];
-                
-                if (filteredIssues.critical) {
-                  filteredIssues.critical.forEach(msg => allIssues.push({ type: 'critical', message: msg }));
-                }
-                if (filteredIssues.missingContent || filteredIssues.missing_content) {
-                  const missingContent = filteredIssues.missingContent || filteredIssues.missing_content || [];
-                  missingContent.forEach(msg => allIssues.push({ type: 'missing_content', message: msg }));
-                }
-                if (filteredIssues.addedContent || filteredIssues.added_content) {
-                  const addedContent = filteredIssues.addedContent || filteredIssues.added_content || [];
-                  addedContent.forEach(msg => allIssues.push({ type: 'added_content', message: msg }));
-                }
-                if (filteredIssues.nameInconsistencies || filteredIssues.name_inconsistencies) {
-                  const nameInconsistencies = filteredIssues.nameInconsistencies || filteredIssues.name_inconsistencies || [];
-                  nameInconsistencies.forEach(msg => allIssues.push({ type: 'name_inconsistencies', message: msg }));
-                }
-                if (filteredIssues.minor) {
-                  filteredIssues.minor.forEach(msg => allIssues.push({ type: 'minor', message: msg }));
-                }
-                
-                return allIssues;
-              })()}
-              status={hasFilteredIssues ? 'FAIL' : 'PASS'}
-            />
-          );
-        })()
-      ) : mode === 'post-edit' && segmentData.issues && !segmentData.wasEdited ? (
+      {/* Validation mode removed in structured-only flow */}
+      {mode === 'post-edit' && segmentData.issues && !segmentData.wasEdited ? (
         // For post-edit mode showing unedited segments with issues - hide source text
         <TextSegmentDisplay
           sourceText={segmentData.sourceText}

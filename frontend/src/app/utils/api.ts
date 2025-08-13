@@ -16,11 +16,14 @@ export interface ValidationReport {
   detailed_results: Array<{
     segment_index: number;
     status: 'PASS' | 'FAIL';
-    critical_issues: string[];
-    minor_issues: string[];
-    missing_content: string[];
-    added_content: string[];
-    name_inconsistencies: string[];
+    structured_cases?: Array<{
+      current_korean_sentence: string;
+      problematic_source_sentence: string;
+      reason: string;
+      corrected_korean_sentence?: string;
+      issue_type?: string;
+      severity?: number;
+    }>;
     source_preview: string;
     translated_preview: string;
   }>;
@@ -230,17 +233,7 @@ export async function triggerValidation(
 export async function triggerPostEdit(
   jobId: string, 
   token?: string,
-  selectedIssueTypes?: {
-    critical_issues: boolean;
-    missing_content: boolean;
-    added_content: boolean;
-    name_inconsistencies: boolean;
-  },
-  selectedIssues?: {
-    [segmentIndex: number]: {
-      [issueType: string]: boolean[]
-    }
-  }
+  selectedCases?: Record<number, boolean[]>
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/post-edit`, {
     method: 'PUT',
@@ -249,13 +242,7 @@ export async function triggerPostEdit(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      selected_issue_types: selectedIssueTypes || {
-        critical_issues: true,
-        missing_content: true,
-        added_content: true,
-        name_inconsistencies: true,
-      },
-      selected_issues: selectedIssues
+      selected_cases: selectedCases || {},
     }),
   });
 

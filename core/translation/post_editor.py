@@ -44,10 +44,9 @@ class PostEditEngine:
         with open(report_path, 'r', encoding='utf-8') as f:
             return json.load(f)
     
-    def identify_segments_needing_edit(self, 
-                                      validation_report: Dict[str, Any], 
-                                      selected_issue_types: Dict[str, bool] = None,
-                                      selected_issues: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+    def identify_segments_needing_edit(self,
+                                      validation_report: Dict[str, Any],
+                                      selected_cases: Dict[str, Any] | None = None) -> List[Dict[str, Any]]:
         """
         Identify segments that need post-editing based on validation results and selected issue types.
         
@@ -59,67 +58,32 @@ class PostEditEngine:
         Returns:
             List of segments that need editing with their issues
         """
-        # Default to all issue types if not specified
-        if selected_issue_types is None:
-            selected_issue_types = {
-                'critical_issues': True,
-                'missing_content': True,
-                'added_content': True,
-                'name_inconsistencies': True
-            }
-        
         segments_to_edit = []
         
         for result in validation_report.get('detailed_results', []):
-            # Filter issues based on selected types
-            filtered_result = result.copy()
-            segment_idx = str(result['segment_index'])  # Convert to string for dict key
-            
-            # If we have selected_issues, use individual issue selection
-            if selected_issues and segment_idx in selected_issues:
-                segment_selections = selected_issues[segment_idx]
-                
-                # Filter each issue type based on individual selections
-                for issue_type in ['critical_issues', 'missing_content', 'added_content', 'name_inconsistencies']:
-                    if issue_type in filtered_result and issue_type in segment_selections:
-                        # Filter issues based on boolean array
-                        selected_indices = segment_selections[issue_type]
-                        if isinstance(selected_indices, list):
-                            filtered_issues = [
-                                issue for i, issue in enumerate(filtered_result[issue_type])
-                                if i < len(selected_indices) and selected_indices[i]
-                            ]
-                            filtered_result[issue_type] = filtered_issues
-                        else:
-                            # If not a list, treat as boolean for all issues of this type
-                            if not selected_indices:
-                                filtered_result[issue_type] = []
-                    else:
-                        # Clear if not in selections
-                        filtered_result[issue_type] = []
-            else:
-                # Fall back to issue type selection
-                if not selected_issue_types.get('critical_issues', True):
-                    filtered_result['critical_issues'] = []
-                if not selected_issue_types.get('missing_content', True):
-                    filtered_result['missing_content'] = []
-                if not selected_issue_types.get('added_content', True):
-                    filtered_result['added_content'] = []
-                if not selected_issue_types.get('name_inconsistencies', True):
-                    filtered_result['name_inconsistencies'] = []
-            
-            # Only process segments that have selected issues
-            if result['status'] == 'FAIL' and (
-                filtered_result.get('critical_issues', []) or
-                filtered_result.get('missing_content', []) or
-                filtered_result.get('added_content', []) or
-                filtered_result.get('name_inconsistencies', [])
-            ):
-                segments_to_edit.append(filtered_result)
+            segment_idx = result['segment_index']
+            cases = result.get('structured_cases') or []
+            if not cases:
+                continue
+            # Apply selection mask if provided
+            mask = None
+            if selected_cases and segment_idx in selected_cases:
+                mask = selected_cases.get(segment_idx)
+            chosen_cases = []
+            for i, case in enumerate(cases):
+                if mask is None or (isinstance(mask, list) and i < len(mask) and mask[i]):
+                    chosen_cases.append(case)
+            if not chosen_cases:
+                continue
+            # Build a normalized record for editing
+            segments_to_edit.append({
+                'segment_index': segment_idx,
+                'structured_cases': chosen_cases,
+            })
         
         return segments_to_edit
     
-    def generate_edit_prompt(self, 
+    def generate_edit_prompt(self,
                             segment_data: Dict[str, Any],
                             source_text: str,
                             translated_text: str,
@@ -139,32 +103,17 @@ class PostEditEngine:
         # Get the post-edit prompt template
         prompt_template = PromptManager.POST_EDIT_CORRECTION
         
-        # Format issues for the prompt
-        issues_text = ""
-        
-        if segment_data.get('critical_issues'):
-            issues_text += "**Critical Issues to Fix:**\n"
-            for issue in segment_data['critical_issues']:
-                issues_text += f"- {issue}\n"
-            issues_text += "\n"
-        
-        if segment_data.get('missing_content'):
-            issues_text += "**Missing Content (must be added to translation):**\n"
-            for content in segment_data['missing_content']:
-                issues_text += f"- {content}\n"
-            issues_text += "\n"
-        
-        if segment_data.get('added_content'):
-            issues_text += "**Added Content (should be removed if not in source):**\n"
-            for content in segment_data['added_content']:
-                issues_text += f"- {content}\n"
-            issues_text += "\n"
-        
-        if segment_data.get('name_inconsistencies'):
-            issues_text += "**Name Inconsistencies (must follow glossary):**\n"
-            for issue in segment_data['name_inconsistencies']:
-                issues_text += f"- {issue}\n"
-            issues_text += "\n"
+        # Format structured cases for the prompt
+        issues_text = "**Issues to Fix (structured):**\n"
+        for case in segment_data.get('structured_cases', []):
+            cur = case.get('current_korean_sentence')
+            src = case.get('problematic_source_sentence')
+            why = case.get('reason')
+            fix = case.get('corrected_korean_sentence')
+            issues_text += f"- 현재: {cur}\n  원문: {src}\n  이유: {why}\n"
+            if fix:
+                issues_text += f"  수정안: {fix}\n"
+        issues_text += "\n"
         
         # Format glossary for reference
         glossary_text = "\n".join([f"{k}: {v}" for k, v in glossary.items()]) if glossary else "N/A"
@@ -230,8 +179,7 @@ class PostEditEngine:
     def post_edit_job(self,
                      translation_job,
                      validation_report_path: str,
-                     selected_issue_types: Dict[str, bool] = None,
-                     selected_issues: Dict[str, Any] = None,
+                      selected_cases: Dict[str, Any] | None = None,
                      progress_callback=None) -> List[str]:
         """
         Post-edit an entire translation job based on validation report.
@@ -248,8 +196,8 @@ class PostEditEngine:
         # Load validation report
         validation_report = self.load_validation_report(validation_report_path)
         
-        # Identify segments needing edit based on selected issue types and individual issues
-        segments_to_edit = self.identify_segments_needing_edit(validation_report, selected_issue_types, selected_issues)
+        # Identify segments needing edit based on structured case selection
+        segments_to_edit = self.identify_segments_needing_edit(validation_report, selected_cases)
         segments_to_edit_idx = {s['segment_index'] for s in segments_to_edit}
         
         if not segments_to_edit:
@@ -260,7 +208,7 @@ class PostEditEngine:
                 translation_job.translated_segments, 
                 validation_report,
                 segments_to_edit_idx,
-                selected_issue_types
+                None
             )
             summary = {
                 'segments_edited': 0,
@@ -336,19 +284,9 @@ class PostEditEngine:
             'segments_edited': len(segments_to_edit),
             'total_segments': len(translation_job.translated_segments),
             'edit_percentage': (len(segments_to_edit) / len(translation_job.translated_segments) * 100),
-            'selected_issue_types': selected_issue_types or {
-                'critical_issues': True,
-                'missing_content': True,
-                'added_content': True,
-                'name_inconsistencies': True
-            },
-            'has_individual_selection': selected_issues is not None,
-            'issues_addressed': {
-                'critical': sum(len(s.get('critical_issues', [])) for s in segments_to_edit),
-                'missing_content': sum(len(s.get('missing_content', [])) for s in segments_to_edit),
-                'added_content': sum(len(s.get('added_content', [])) for s in segments_to_edit),
-                'name_inconsistencies': sum(len(s.get('name_inconsistencies', [])) for s in segments_to_edit)
-            }
+            'selected_issue_types': None,
+            'has_individual_selection': True,
+            'issues_addressed': {}
         }
         
         # Save post-edit log
