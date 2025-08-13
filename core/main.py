@@ -14,7 +14,7 @@ from core.translation.engine import TranslationEngine
 from core.errors.base import TranslationError
 from core.utils.file_parser import parse_document
 from core.translation.style_analyzer import extract_sample_text, analyze_narrative_style_with_api, parse_style_analysis
-from core.translation.validator import TranslationValidator
+from core.validation.validator import TranslationValidator
 from core.translation.post_editor import PostEditEngine
 
 

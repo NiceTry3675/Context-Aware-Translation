@@ -56,7 +56,7 @@ class TranslationService:
     @staticmethod
     def analyze_style(file_path: str, api_key: str, model_name: str, filename: str) -> Dict[str, Any]:
         """Analyze the narrative style of a document."""
-        initial_text = extract_sample_text(file_path, method="first_segment", count=15000)
+        initial_text = extract_sample_text(file_path, method="first_chars", count=15000)
         
         config = load_config()
         model_api = TranslationService.get_model_api(api_key, model_name, config)
@@ -80,7 +80,7 @@ class TranslationService:
     @staticmethod
     def analyze_glossary(file_path: str, api_key: str, model_name: str, filename: str) -> list:
         """Extract glossary terms from a document."""
-        initial_text = extract_sample_text(file_path, method="first_segment", count=15000)
+        initial_text = extract_sample_text(file_path, method="first_chars", count=15000)
         config = load_config()
         model_api = TranslationService.get_model_api(api_key, model_name, config)
         
@@ -137,7 +137,7 @@ class TranslationService:
                 print(f"--- WARNING: Could not decode style_data JSON for Job ID: {job_id}. Proceeding with auto-analysis. ---")
         else:
             try:
-                sample_text = extract_sample_text(file_path, method="first_segment", count=15000)
+                sample_text = extract_sample_text(file_path, method="first_chars", count=15000)
                 config = load_config()
                 model_api = TranslationService.get_model_api(api_key, model_name, config)
                 

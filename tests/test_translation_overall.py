@@ -135,6 +135,15 @@ class TestOverallTranslation(unittest.TestCase):
             # Verify that valid API key passes
             is_valid = GeminiModel.validate_api_key("valid_key")
             self.assertTrue(is_valid)
+
+    def test_prompts_presence(self):
+        """Ensure validation prompts (including structured variants) are loaded."""
+        from core.prompts.manager import PromptManager
+        self.assertTrue(len(PromptManager.MAIN_TRANSLATION) > 0)
+        self.assertTrue(len(PromptManager.SOFT_RETRY_TRANSLATION) > 0)
+        # Structured validation prompts should exist in prompts.yaml
+        self.assertIsNotNone(PromptManager.VALIDATION_STRUCTURED_COMPREHENSIVE)
+        self.assertIsNotNone(PromptManager.VALIDATION_STRUCTURED_QUICK)
     
     def test_segment_creation(self):
         """Test that text is properly segmented."""

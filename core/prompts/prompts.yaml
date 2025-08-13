@@ -212,95 +212,44 @@ translation:
     **Output in Korean:**
 
 validation:
-  comprehensive_check: |
-    You are an expert translation quality validator. Your task is to carefully analyze the source text and its Korean translation to identify any issues.
-    
-    **Source Text:**
-    ---
-    {source_text}
-    ---
-    
-    **Korean Translation:**
-    ---
-    {translated_text}
-    ---
-    
-    **Glossary (for reference):**
-    {glossary_terms}
-    
-    **Validation Checklist:**
-    1. **Completeness**: Are all sentences/paragraphs from the source translated? List any missing content.
-    2. **Accuracy**: Are there any mistranslations or significant meaning changes? Identify specific issues.
-    3. **Additions**: Is there any content in the translation that doesn't exist in the source? Flag any additions.
-    4. **Character Names**: Are all character names consistently translated according to the glossary?
-    5. **Dialogue Style**: Does the dialogue maintain appropriate Korean formality levels?
-    6. **Flow**: Does the translation read naturally in Korean, or are there awkward expressions?
-    
-    **Output Format:**
-    IMPORTANT: List EVERY issue you find. Do not summarize or omit any problems.
-    
-    Provide a structured report with the following sections:
-    
-    **Status**: PASS or FAIL (FAIL if ANY issues found)
-    
-    **Critical Issues**: 
-    - List EACH major problem separately as a bullet point
-    - Include specific examples with quotes
-    - If none found, write "None"
-    
-    **Minor Issues**:
-    - List EACH minor problem separately as a bullet point  
-    - Include specific examples
-    - If none found, write "None"
-    
-    **Missing Content**:
-    - Quote EACH piece of source text that wasn't translated
-    - One bullet point per missing element
-    - If none found, write "None"
-    
-    **Added Content**:
-    - Quote EACH piece added in translation not in source
-    - One bullet point per addition
-    - If none found, write "None"
-    
-    **Name Inconsistencies**:
-    - List EACH character name issue separately
-    - Show source name → translated name
-    - If none found, write "None"
-    
-    Remember: List ALL issues found, not just examples.
-    
-    **Validation Report:**
 
-  quick_check: |
-    You are a translation validator. Quickly check if this translation has any critical issues.
-    
-    **Source (English):**
+  structured_comprehensive: |
+    ROLE: Expert translation quality validator for EN → KO.
+    TASK: Identify every issue and return JSON that matches the response schema. No extra commentary.
+
+    Source Text:
+    ---
     {source_text}
-    
-    **Translation (Korean):**
+    ---
+
+    Korean Translation:
+    ---
     {translated_text}
-    
-    **Glossary Reference:**
+    ---
+
+    Glossary:
     {glossary_terms}
-    
-    Provide a quick validation report:
-    
-    **Status**: PASS or FAIL
-    
-    **Critical Issues**:
-    - List any critical mistranslations or omissions
-    - If none, write "None"
-    
-    **Missing Content**:
-    - List any missing content from source
-    - If none, write "None"
-    
-    **Name Inconsistencies**:
-    - List any character name issues
-    - If none, write "None"
-    
-    Note: Be specific and list ALL issues found.
+
+    Rules:
+    - Use the provided JSON schema; omit fields that are not applicable.
+    - Return JSON only.
+
+  structured_quick: |
+    ROLE: Translation validator (quick mode).
+    TASK: Return JSON per schema focusing on only the most important issues.
+
+    Source:
+    ---
+    {source_text}
+    ---
+    Translation:
+    ---
+    {translated_text}
+    ---
+    Glossary:
+    {glossary_terms}
+
+    Output JSON only.
 
 post_edit:
   correction: |

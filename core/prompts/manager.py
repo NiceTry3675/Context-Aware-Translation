@@ -28,9 +28,9 @@ class PromptManager:
     MAIN_TRANSLATION = _prompts["translation"]["main"]
     SOFT_RETRY_TRANSLATION = _prompts["translation"]["soft_retry"]
     
-    # --- Validation Prompts ---
-    VALIDATION_COMPREHENSIVE = _prompts["validation"]["comprehensive_check"]
-    VALIDATION_QUICK = _prompts["validation"]["quick_check"]
+    # --- Validation Prompts (Structured Only) ---
+    VALIDATION_STRUCTURED_COMPREHENSIVE = _prompts["validation"]["structured_comprehensive"]
+    VALIDATION_STRUCTURED_QUICK = _prompts["validation"]["structured_quick"]
     
     # --- Post-Edit Prompts ---
     POST_EDIT_CORRECTION = _prompts["post_edit"]["correction"]

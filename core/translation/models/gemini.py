@@ -24,6 +24,8 @@ class GeminiModel:
             raise ValueError("API key cannot be empty.")
         genai.configure(api_key=api_key)
         self.model_name = model_name
+        self.safety_settings = safety_settings
+        self.generation_config = generation_config
         self.model = genai.GenerativeModel(
             model_name,
             safety_settings=safety_settings,
@@ -124,3 +126,59 @@ class GeminiModel:
         The decorator will automatically retry with softer prompts.
         """
         return self._generate_text_base(prompt, max_retries)
+
+    # --------------------
+    # Structured Output
+    # --------------------
+    def generate_structured(self, prompt: str, response_schema: dict, max_retries: int = 3) -> dict:
+        """
+        Generates JSON using Gemini Structured Output. Returns a Python dict that
+        conforms to response_schema. Raises on failure after retries.
+        """
+        # We do not use soft retry here by default, because schema prompts are minimal.
+        # If desired, we could add a similar decorator later.
+        for attempt in range(max_retries):
+            try:
+                # Note: For structured output, passing schema either via generation_config
+                # or constructor works; we pass here to avoid global state on the model.
+                response = self.model.generate_content(
+                    contents=prompt,
+                    generation_config={
+                        **(self.generation_config or {}),
+                        "response_mime_type": "application/json",
+                        "response_schema": response_schema,
+                    },
+                    safety_settings=self.safety_settings,
+                )
+                # New SDKs return .text() for JSON strings; prefer .candidates[0].content.parts if available
+                if response and hasattr(response, 'text') and callable(response.text):
+                    import json as _json
+                    return _json.loads(response.text())
+                elif response and hasattr(response, 'text') and isinstance(response.text, str):
+                    import json as _json
+                    return _json.loads(response.text)
+                else:
+                    # Attempt to extract from candidates
+                    try:
+                        parts = response.candidates[0].content.parts
+                        text = ''.join(getattr(p, 'text', '') for p in parts)
+                        if text:
+                            import json as _json
+                            return _json.loads(text)
+                    except Exception:
+                        pass
+                    raise ValueError("Structured API returned an empty or unparseable response.")
+
+            except (google_exceptions.PermissionDenied, google_exceptions.InvalidArgument) as e:
+                # Bad key/arguments are not retriable
+                print(f"\nNon-retriable structured API error: {e}")
+                raise e
+            except Exception as e:
+                print(f"\nRetriable structured API call failed on attempt {attempt + 1}/{max_retries}. Error: {e}")
+                if attempt < max_retries - 1:
+                    print("Retrying in 5 seconds...")
+                    time.sleep(5)
+                else:
+                    raise Exception(f"All {max_retries} structured API call attempts failed. Last error: {e}") from e
+
+        return {}

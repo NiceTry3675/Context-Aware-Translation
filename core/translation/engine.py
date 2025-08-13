@@ -247,7 +247,8 @@ class TranslationEngine:
         """Analyzes the first segment to define the core narrative style for the novel."""
         print("\n--- Defining Core Narrative Style... ---")
         # Extract the sample text using the centralized function
-        sample_text = extract_sample_text(file_path, method="first_segment", count=15000)
+        # Use a simple first-chars approach to avoid title/dedication-only first segments
+        sample_text = extract_sample_text(file_path, method="first_chars", count=15000)
         try:
             style = analyze_narrative_style_with_api(sample_text, self.gemini_api, job_base_filename)
             print(f"Style defined as: {style}")

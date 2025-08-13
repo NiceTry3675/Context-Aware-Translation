@@ -3,7 +3,7 @@ import json
 from typing import Optional, Callable
 from sqlalchemy.orm import Session
 
-from core.translation.validator import TranslationValidator
+from core.validation.validator import TranslationValidator
 from core.translation.job import TranslationJob
 from .translation_service import TranslationService
 from .. import crud, models
@@ -38,6 +38,7 @@ class ValidationService:
         from core.config.loader import load_config
         config = load_config()
         model_api = TranslationService.get_model_api(api_key, model_name, config)
+        # Structured validator (single mode)
         validator = TranslationValidator(model_api)
         
         # Create validation job

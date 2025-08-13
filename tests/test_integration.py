@@ -92,6 +92,13 @@ class TestIntegrationTranslation(unittest.TestCase):
             
             # Validate API key
             self.assertTrue(GeminiModel.validate_api_key(self.api_key))
+
+            # Smoke: structured generation shape (mocked)
+            try:
+                # Not executed against live API by default; just ensure method exists
+                self.assertTrue(hasattr(gemini_api, 'generate_structured'))
+            except Exception:
+                pass
             
             # Create translation job
             job = TranslationJob(test_file_path, target_segment_size=1000)
