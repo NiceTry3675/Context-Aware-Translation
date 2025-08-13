@@ -117,7 +117,7 @@ export default function TranslationSidebar({
     }
   }, [validationReport, tabValue]);
 
-  // 자동 새로고침 제거: 필요 시 상단 새로고침 버튼 사용
+  // Keep UI light: do not auto-refresh validation sidebar; user clicks refresh when needed
 
   const canRunValidation = jobStatus === 'COMPLETED' && (!validationStatus || validationStatus === 'FAILED');
   const canRunPostEdit = validationStatus === 'COMPLETED' && (!postEditStatus || postEditStatus === 'FAILED');

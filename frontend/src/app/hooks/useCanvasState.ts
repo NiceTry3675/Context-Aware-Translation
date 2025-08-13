@@ -180,7 +180,22 @@ export function useCanvasState() {
     }
   };
 
-  // 자동 새로고침 제거: 필요 시 사용자 수동 새로고침 사용
+  // Lightweight auto-refresh using public endpoints only (no Clerk token)
+  useEffect(() => {
+    if (
+      selectedJob?.status === 'IN_PROGRESS' ||
+      selectedJob?.validation_status === 'IN_PROGRESS' || 
+      selectedJob?.post_edit_status === 'IN_PROGRESS'
+    ) {
+      const interval = setInterval(() => {
+        // Jobs list update: handled in useTranslationJobs poller (public GET /jobs/{id})
+        refreshJobs();
+        // Sidebar data loads call protected endpoints; avoid tokened calls here
+        // loadData is intentionally not called automatically
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [selectedJob?.status, selectedJob?.validation_status, selectedJob?.post_edit_status, refreshJobs]);
 
   // Handle job selection change
   const handleJobChange = (newJobId: string) => {

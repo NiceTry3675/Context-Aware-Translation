@@ -62,7 +62,41 @@ export function useTranslationJobs({ apiUrl }: UseTranslationJobsOptions) {
     loadJobs();
   }, [apiUrl, getToken, isSignedIn, isLoaded]);
 
-  // Note: 자동 폴링 제거. 수동 새로고침(Refresh)만 제공.
+  // Poll for job status updates without Clerk token (public endpoint per job)
+  const pollJobStatus = useCallback(async () => {
+    if (!isSignedIn) return;
+    const processingJobs = jobs.filter(job =>
+      ['PROCESSING', 'PENDING'].includes(job.status) ||
+      job.validation_status === 'IN_PROGRESS' ||
+      job.post_edit_status === 'IN_PROGRESS'
+    );
+    if (processingJobs.length === 0) return;
+
+    try {
+      const updatedJobs = await Promise.all(
+        processingJobs.map(async (job) => {
+          try {
+            const response = await fetch(`${apiUrl}/api/v1/jobs/${job.id}`);
+            return response.ok ? response.json() : job;
+          } catch {
+            return job;
+          }
+        })
+      );
+
+      setJobs(currentJobs =>
+        currentJobs.map(job => updatedJobs.find(updated => updated.id === job.id) || job)
+      );
+    } catch (err) {
+      console.error('Failed to poll job status:', err);
+    }
+  }, [jobs, apiUrl, isSignedIn]);
+
+  // Set up polling interval (lightweight, no token)
+  useEffect(() => {
+    const interval = setInterval(pollJobStatus, 3000);
+    return () => clearInterval(interval);
+  }, [pollJobStatus]);
 
   // Add a new job
   const addJob = useCallback((newJob: Job) => {
