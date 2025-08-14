@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   IconButton,
@@ -18,6 +18,9 @@ import ValidationDialog from '../TranslationSidebar/ValidationDialog';
 import PostEditDialog from '../TranslationSidebar/PostEditDialog';
 import { useValidation } from '../TranslationSidebar/hooks/useValidation';
 import { usePostEdit } from '../TranslationSidebar/hooks/usePostEdit';
+import { useAuth } from '@clerk/nextjs';
+import { fetchValidationReport, ValidationReport } from '../../utils/api';
+import { getCachedClerkToken } from '../../utils/authToken';
 
 interface JobRowActionsProps {
   job: Job;
@@ -27,11 +30,12 @@ interface JobRowActionsProps {
 
 export default function JobRowActions({ job, onRefresh, compact = false }: JobRowActionsProps) {
   const jobId = job.id.toString();
+  const { getToken } = useAuth();
   
-  // Don't load data for all jobs - only display status based on job object
-  // This prevents unnecessary API calls for all jobs in the sidebar
-  const validationReport = null;
-  const selectedCases: Record<number, boolean[]> = {};
+  // State for validation report - loaded on demand
+  const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
+  const [selectedCases, setSelectedCases] = useState<Record<number, boolean[]>>({});
+  const [loadingReport, setLoadingReport] = useState(false);
 
   const validation = useValidation({ jobId, onRefresh });
   const postEdit = usePostEdit({ jobId, onRefresh, selectedCases });
@@ -41,11 +45,34 @@ export default function JobRowActions({ job, onRefresh, compact = false }: JobRo
   const canRunPostEdit = job.validation_status === 'COMPLETED' && 
     (!job.post_edit_status || job.post_edit_status === 'FAILED');
 
-  // We don't load validation report for all jobs to prevent unnecessary API calls
-  // Issue counts are not displayed in the sidebar actions
+  // Load validation report when post-edit dialog opens
+  useEffect(() => {
+    if (postEdit.postEditDialogOpen && job.validation_status === 'COMPLETED' && !validationReport && !loadingReport) {
+      setLoadingReport(true);
+      getCachedClerkToken(getToken)
+        .then(token => fetchValidationReport(jobId, token || undefined))
+        .then(report => {
+          if (report) {
+            setValidationReport(report);
+            // Auto-select all cases for post-editing from job row
+            const newSelectedCases: Record<number, boolean[]> = {};
+            report.detailed_results?.forEach((result: any) => {
+              if (result.structured_cases && result.structured_cases.length > 0) {
+                newSelectedCases[result.segment_index] = new Array(result.structured_cases.length).fill(true);
+              }
+            });
+            setSelectedCases(newSelectedCases);
+          }
+        })
+        .catch(err => console.error('Failed to load validation report:', err))
+        .finally(() => setLoadingReport(false));
+    }
+  }, [postEdit.postEditDialogOpen, job.validation_status, validationReport, loadingReport, jobId, getToken]);
 
-  // Since we don't load validation report for all jobs, we can't calculate counts
-  const selectedCounts = { total: 0 };
+  // Calculate selected counts
+  const selectedCounts = {
+    total: Object.values(selectedCases).reduce((acc, arr) => acc + (arr?.filter(Boolean).length || 0), 0)
+  };
 
   // Get appropriate icon for validation status
   const getValidationIcon = () => {
@@ -147,7 +174,7 @@ export default function JobRowActions({ job, onRefresh, compact = false }: JobRo
           onClose={() => postEdit.setPostEditDialogOpen(false)}
           onConfirm={postEdit.handleTriggerPostEdit}
           validationReport={validationReport}
-          loading={postEdit.loading}
+          loading={postEdit.loading || loadingReport}
           selectedCounts={selectedCounts}
         />
       </>

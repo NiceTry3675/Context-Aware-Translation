@@ -8,6 +8,7 @@ frontend and post-edit modules (no legacy arrays, no raw_response).
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
@@ -30,15 +31,14 @@ class ValidationResult(BaseModel):
         return bool(self.structured_cases and len(self.structured_cases) > 0)
 
     def to_dict(self) -> Dict[str, Any]:
-        """For backward compatibility - converts model to dict with preview fields."""
+        """Convert model to dict for JSON serialization."""
         result: Dict[str, Any] = {
             'segment_index': self.segment_index,
             'status': self.status,
-            'source_preview': self.source_text[:100] + '...' if len(self.source_text) > 100 else self.source_text,
-            'translated_preview': self.translated_text[:100] + '...' if len(self.translated_text) > 100 else self.translated_text,
+            'source_text': self.source_text,
+            'translated_text': self.translated_text,
         }
         if self.structured_cases is not None:
-            # Convert Pydantic models to dicts
             result['structured_cases'] = [case.model_dump() for case in self.structured_cases]
         return result
 
@@ -68,7 +68,18 @@ class TranslationValidator:
             translated_text=translated_text
         )
 
-        glossary_text = "\n".join(f"{k}: {v}" for k, v in (glossary or {}).items()) if glossary else "N/A"
+        # Filter glossary to only include terms that appear in the source text
+        if glossary:
+            contextual_glossary = {
+                key: value for key, value in glossary.items()
+                if re.search(r'\b' + re.escape(key) + r'\b', source_text, re.IGNORECASE)
+            }
+            if self.verbose and len(glossary) > 0:
+                print(f"  Filtered glossary: {len(glossary)} → {len(contextual_glossary)} terms")
+        else:
+            contextual_glossary = {}
+        
+        glossary_text = "\n".join(f"{k}: {v}" for k, v in contextual_glossary.items()) if contextual_glossary else "N/A"
         # Build prompt via prompts.yaml to increase cohesion
         prompt_template = (
             PromptManager.VALIDATION_STRUCTURED_QUICK if quick_mode else PromptManager.VALIDATION_STRUCTURED_COMPREHENSIVE
@@ -165,20 +176,12 @@ class TranslationValidator:
         failed = sum(1 for r in results if r.status == "FAIL")
         errors = sum(1 for r in results if r.status == "ERROR")
 
-        def normalize_severity(s: Any) -> int:
-            if isinstance(s, int):
-                return max(1, min(3, s))
-            if isinstance(s, str):
-                t = s.lower()
-                if t in {"critical", "high", "severe"}: return 3
-                if t in {"major", "medium", "moderate", "important"}: return 2
-                if t in {"minor", "low", "trivial"}: return 1
-                try:
-                    n = int(s)
-                    return max(1, min(3, n))
-                except Exception:
-                    return 2
-            return 2
+        def normalize_severity(s: str) -> int:
+            """Convert severity string to integer (1, 2, or 3)."""
+            try:
+                return int(s)
+            except (ValueError, TypeError):
+                return 2  # Default to major if invalid
 
         severity_counts = {1: 0, 2: 0, 3: 0}
         dimension_counts = {
@@ -193,13 +196,8 @@ class TranslationValidator:
 
         for r in results:
             for c in (r.structured_cases or []):
-                # Handle both Pydantic models and dicts for backward compatibility
-                if isinstance(c, ValidationCase):
-                    sev = normalize_severity(c.severity)
-                    dim = c.dimension
-                else:
-                    sev = normalize_severity(c.get('severity'))
-                    dim = (c.get('dimension') or 'other')
+                sev = normalize_severity(c.severity)
+                dim = c.dimension
                 severity_counts[sev] = severity_counts.get(sev, 0) + 1
                 if dim not in dimension_counts:
                     dimension_counts[dim] = 0

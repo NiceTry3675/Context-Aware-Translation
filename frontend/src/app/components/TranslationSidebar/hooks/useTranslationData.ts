@@ -44,24 +44,39 @@ export function useTranslationData({
   const { getToken } = useAuth();
 
   const loadData = useCallback(async () => {
+    // Don't load data if jobId is missing or jobStatus is not properly set
+    if (!jobId || !jobStatus) {
+      console.log('[useTranslationData] Skipping loadData - missing jobId or jobStatus', { jobId, jobStatus });
+      return;
+    }
+    
     setLoading(true);
     setError(null);
+    
+    // Clear previous data when loading new job data to prevent stale data
+    setValidationReport(null);
+    setPostEditLog(null);
+    setTranslationContent(null);
+    setTranslationSegments(null);
     
     try {
       const token = await getCachedClerkToken(getToken);
       
       // Load translation content and segments if job is completed
       if (jobStatus === 'COMPLETED') {
+        console.log('[useTranslationData] Loading content and segments for completed job:', jobId);
         const [content, segments] = await Promise.all([
           fetchTranslationContent(jobId, token || undefined),
           fetchTranslationSegments(jobId, token || undefined, 0, 200) // Load up to 200 segments for segment view navigation
         ]);
         setTranslationContent(content);
         setTranslationSegments(segments);
+      } else {
+        console.log('[useTranslationData] Job not completed, skipping content/segments load:', { jobId, jobStatus });
       }
       
-      // Load validation report if available
-      if (validationStatus === 'COMPLETED') {
+      // Load validation report if available AND job is completed
+      if (jobStatus === 'COMPLETED' && validationStatus === 'COMPLETED') {
         console.log('Loading validation report for job:', jobId);
         const report = await fetchValidationReport(jobId, token || undefined);
         console.log('Validation report loaded:', report);
@@ -70,12 +85,16 @@ export function useTranslationData({
           // Store report; structured selection is managed elsewhere (selectedCases)
           setValidationReport(report);
         }
+      } else if (validationStatus === 'COMPLETED') {
+        console.log('[useTranslationData] Skipping validation load - job not completed:', { jobId, jobStatus });
       }
       
-      // Load post-edit log if available
-      if (postEditStatus === 'COMPLETED') {
+      // Load post-edit log if available AND job is completed
+      if (jobStatus === 'COMPLETED' && postEditStatus === 'COMPLETED') {
         const log = await fetchPostEditLog(jobId, token || undefined);
         setPostEditLog(log);
+      } else if (postEditStatus === 'COMPLETED') {
+        console.log('[useTranslationData] Skipping post-edit load - job not completed:', { jobId, jobStatus });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '데이터를 불러오는 중 오류가 발생했습니다.');

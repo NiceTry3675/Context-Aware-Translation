@@ -148,10 +148,8 @@ class PostEditEngine:
         
         if self.verbose:
             print(f"Post-editing segment {segment_data['segment_index']}...")
-            if segment_data.get('critical_issues'):
-                print(f"  - Fixing {len(segment_data['critical_issues'])} critical issues")
-            if segment_data.get('missing_content'):
-                print(f"  - Adding {len(segment_data['missing_content'])} missing content pieces")
+            if segment_data.get('structured_cases'):
+                print(f"  - Fixing {len(segment_data['structured_cases'])} validation issues")
         
         try:
             # Call AI model for post-editing
@@ -179,18 +177,19 @@ class PostEditEngine:
                      translation_job,
                      validation_report_path: str,
                      selected_cases: Dict[int, Any] | None = None,
-                     progress_callback=None) -> List[str]:
+                     progress_callback=None,
+                     job_id: Optional[int] = None) -> List[str]:
         """
         Post-edit an entire translation job based on validation report.
         
         Args:
             translation_job: The TranslationJob object
             validation_report_path: Path to the validation report JSON file
-            selected_issue_types: Dictionary of issue types to fix (default: all True)
-            selected_issues: Dictionary of selected issues by segment and type
+            selected_cases: Optional mask per segment index -> boolean[] indicating which structured cases to fix
+            progress_callback: Optional callback function for progress updates
             
         Returns:
-            Tuple of (post-edited translations, summary statistics)
+            List of post-edited translations
         """
         # Load validation report
         validation_report = self.load_validation_report(validation_report_path)
@@ -213,7 +212,7 @@ class PostEditEngine:
                 'total_segments': len(translation_job.translated_segments),
                 'edit_percentage': 0.0,
             }
-            self._save_postedit_log(complete_log, summary, translation_job.user_base_filename)
+            self._save_postedit_log(complete_log, summary, translation_job.user_base_filename, job_id)
             return translation_job.translated_segments
         
         print(f"\n{'='*60}")
@@ -271,7 +270,7 @@ class PostEditEngine:
         }
         
         # Save post-edit log
-        self._save_postedit_log(complete_log, summary, translation_job.user_base_filename)
+        self._save_postedit_log(complete_log, summary, translation_job.user_base_filename, job_id)
         
         # Print summary
         self._print_summary(summary)
@@ -294,7 +293,6 @@ class PostEditEngine:
             edited_segments: The edited translations
             validation_report: The validation report data
             edited_indices: Set of segment indices that were edited
-            selected_issue_types: Dictionary of issue types that were selected for fixing
             
         Returns:
             List of all segments with complete information
@@ -360,9 +358,15 @@ class PostEditEngine:
         
         return changes
     
-    def _save_postedit_log(self, complete_log: List[Dict], summary: Dict[str, Any], base_filename: str):
+    def _save_postedit_log(self, complete_log: List[Dict], summary: Dict[str, Any], base_filename: str, job_id: Optional[int] = None):
         """Save comprehensive post-edit log to file."""
-        log_path = self.postedit_log_dir / f"{base_filename}_postedit_log.json"
+        # Include job ID if provided to match the retrieval pattern
+        if job_id is not None:
+            log_filename = f"{job_id}_{base_filename}_postedit_log.json"
+        else:
+            log_filename = f"{base_filename}_postedit_log.json"
+        
+        log_path = self.postedit_log_dir / log_filename
         
         log_data = {
             'summary': summary,

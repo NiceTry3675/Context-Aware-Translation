@@ -70,6 +70,7 @@ export function useCanvasState() {
     selectedModel,
     onJobCreated: (job) => {
       addJob(job);
+      setSelectedJob(job); // Immediately set the new job as selected
       setFile(null);
       setStyleData(null);
       setGlossaryData([]);
@@ -86,7 +87,13 @@ export function useCanvasState() {
       const job = jobs.find(j => j.id.toString() === jobId);
       if (job) {
         setSelectedJob(job);
+      } else {
+        // Clear selectedJob if jobId doesn't match any job
+        setSelectedJob(null);
       }
+    } else if (!jobId) {
+      // Clear selectedJob if no jobId
+      setSelectedJob(null);
     }
   }, [jobId, jobs]);
   
