@@ -11,25 +11,26 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
+from pydantic import BaseModel, Field
 
-from core.validation.structured import make_response_schema
+from core.validation.structured import ValidationResponse, ValidationCase
 from core.prompts.manager import PromptManager
 
 
-class ValidationResult:
+class ValidationResult(BaseModel):
     """Represents the result of a translation validation (per segment)."""
-
-    def __init__(self, segment_index: int, source_text: str, translated_text: str):
-        self.segment_index = segment_index
-        self.source_text = source_text
-        self.translated_text = translated_text
-        self.status = "PENDING"
-        self.structured_cases: Optional[List[Dict[str, Any]]] = None
+    
+    segment_index: int = Field(..., description="Index of the segment in the translation")
+    source_text: str = Field(..., description="Original source text")
+    translated_text: str = Field(..., description="Translated text")
+    status: str = Field(default="PENDING", description="Validation status: PENDING, PASS, FAIL, or ERROR")
+    structured_cases: Optional[List[ValidationCase]] = Field(default=None, description="List of validation issues found")
 
     def has_issues(self) -> bool:
         return bool(self.structured_cases and len(self.structured_cases) > 0)
 
     def to_dict(self) -> Dict[str, Any]:
+        """For backward compatibility - converts model to dict with preview fields."""
         result: Dict[str, Any] = {
             'segment_index': self.segment_index,
             'status': self.status,
@@ -37,7 +38,8 @@ class ValidationResult:
             'translated_preview': self.translated_text[:100] + '...' if len(self.translated_text) > 100 else self.translated_text,
         }
         if self.structured_cases is not None:
-            result['structured_cases'] = self.structured_cases
+            # Convert Pydantic models to dicts
+            result['structured_cases'] = [case.model_dump() for case in self.structured_cases]
         return result
 
 
@@ -59,7 +61,12 @@ class TranslationValidator:
         segment_index: int,
         quick_mode: bool = False,
     ) -> ValidationResult:
-        result = ValidationResult(segment_index, source_text, translated_text)
+        # Create ValidationResult using Pydantic model
+        result = ValidationResult(
+            segment_index=segment_index,
+            source_text=source_text,
+            translated_text=translated_text
+        )
 
         glossary_text = "\n".join(f"{k}: {v}" for k, v in (glossary or {}).items()) if glossary else "N/A"
         # Build prompt via prompts.yaml to increase cohesion
@@ -71,19 +78,24 @@ class TranslationValidator:
             translated_text=translated_text,
             glossary_terms=glossary_text,
         )
-        schema = make_response_schema()
 
         if self.verbose:
             print(f"Validating segment {segment_index} (structured)...")
 
         try:
-            data = self.ai_model.generate_structured(prompt, schema)
-            cases = (data or {}).get('cases', [])
-            result.structured_cases = cases
-
-            # 새 단순화 스키마에 맞춰, 결과는 전체 리포트에서 요약만 사용
-            # per-segment 객체에는 structured_cases만 저장하고, legacy 필드는 비워둠
-            result.status = "FAIL" if (cases and len(cases) > 0) else "PASS"
+            # Use Pydantic model instead of JSON schema
+            response = self.ai_model.generate_structured(prompt, ValidationResponse)
+            
+            # Response is now a ValidationResponse Pydantic model
+            if isinstance(response, ValidationResponse):
+                result.structured_cases = response.cases
+                result.status = "FAIL" if response.cases else "PASS"
+            else:
+                # Fallback for backward compatibility (if dict is returned)
+                cases = (response or {}).get('cases', [])
+                # Convert dict cases to ValidationCase models
+                result.structured_cases = [ValidationCase(**case) for case in cases] if cases else None
+                result.status = "FAIL" if cases else "PASS"
 
         except Exception as e:
             print(f"Warning: Structured validation failed for segment {segment_index}: {e}")
@@ -186,8 +198,13 @@ class TranslationValidator:
 
         for r in results:
             for c in (r.structured_cases or []):
-                sev = normalize_severity(c.get('severity'))
-                dim = (c.get('dimension') or 'other')
+                # Handle both Pydantic models and dicts for backward compatibility
+                if isinstance(c, ValidationCase):
+                    sev = normalize_severity(c.severity)
+                    dim = c.dimension
+                else:
+                    sev = normalize_severity(c.get('severity'))
+                    dim = (c.get('dimension') or 'other')
                 severity_counts[sev] = severity_counts.get(sev, 0) + 1
                 if dim not in dimension_counts:
                     dimension_counts[dim] = 0

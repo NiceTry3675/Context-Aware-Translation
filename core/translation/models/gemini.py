@@ -130,11 +130,31 @@ class GeminiModel:
     # --------------------
     # Structured Output
     # --------------------
-    def generate_structured(self, prompt: str, response_schema: dict, max_retries: int = 3) -> dict:
+    def generate_structured(self, prompt: str, response_schema, max_retries: int = 3):
         """
-        Generates JSON using Gemini Structured Output. Returns a Python dict that
-        conforms to response_schema. Raises on failure after retries.
+        Generates structured output using Gemini. 
+        
+        Args:
+            prompt: The prompt text
+            response_schema: Either a dict (JSON schema) or a Pydantic model class
+            max_retries: Number of retries on failure
+            
+        Returns:
+            If response_schema is a dict: Returns a Python dict
+            If response_schema is a Pydantic model: Returns an instance of that model
         """
+        # Check if response_schema is a Pydantic model
+        from pydantic import BaseModel
+        is_pydantic = False
+        if not isinstance(response_schema, dict):
+            # Check if it's a Pydantic model class or a type annotation
+            try:
+                if issubclass(response_schema, BaseModel):
+                    is_pydantic = True
+            except TypeError:
+                # Could be a list[Model] or other type annotation
+                is_pydantic = True
+        
         # We do not use soft retry here by default, because schema prompts are minimal.
         # If desired, we could add a similar decorator later.
         for attempt in range(max_retries):
@@ -150,7 +170,12 @@ class GeminiModel:
                     },
                     safety_settings=self.safety_settings,
                 )
-                # New SDKs return .text() for JSON strings; prefer .candidates[0].content.parts if available
+                
+                # If using Pydantic models, use the parsed response
+                if is_pydantic and hasattr(response, 'parsed') and response.parsed is not None:
+                    return response.parsed
+                
+                # Otherwise, parse JSON as before (backward compatibility)
                 if response and hasattr(response, 'text') and callable(response.text):
                     import json as _json
                     return _json.loads(response.text())
@@ -181,4 +206,4 @@ class GeminiModel:
                 else:
                     raise Exception(f"All {max_retries} structured API call attempts failed. Last error: {e}") from e
 
-        return {}
+        return {} if not is_pydantic else None
