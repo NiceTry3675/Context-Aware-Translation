@@ -45,15 +45,14 @@ class PostEditEngine:
             return json.load(f)
     
     def identify_segments_needing_edit(self,
-                                      validation_report: Dict[str, Any],
-                                      selected_cases: Dict[str, Any] | None = None) -> List[Dict[str, Any]]:
+                                       validation_report: Dict[str, Any],
+                                       selected_cases: Dict[int, Any] | None = None) -> List[Dict[str, Any]]:
         """
-        Identify segments that need post-editing based on validation results and selected issue types.
+        Identify segments that need post-editing based on validation results and selected structured cases.
         
         Args:
             validation_report: The loaded validation report
-            selected_issue_types: Dictionary of issue types to fix (default: all True)
-            selected_issues: Dictionary of selected issues by segment and type
+            selected_cases: Optional mask per segment index -> boolean[] indicating which structured cases to fix
             
         Returns:
             List of segments that need editing with their issues
@@ -179,7 +178,7 @@ class PostEditEngine:
     def post_edit_job(self,
                      translation_job,
                      validation_report_path: str,
-                      selected_cases: Dict[str, Any] | None = None,
+                     selected_cases: Dict[int, Any] | None = None,
                      progress_callback=None) -> List[str]:
         """
         Post-edit an entire translation job based on validation report.
@@ -208,25 +207,11 @@ class PostEditEngine:
                 translation_job.translated_segments, 
                 validation_report,
                 segments_to_edit_idx,
-                None
             )
             summary = {
                 'segments_edited': 0,
                 'total_segments': len(translation_job.translated_segments),
                 'edit_percentage': 0.0,
-                'selected_issue_types': selected_issue_types or {
-                    'critical_issues': True,
-                    'missing_content': True,
-                    'added_content': True,
-                    'name_inconsistencies': True
-                },
-                'has_individual_selection': selected_issues is not None,
-                'issues_addressed': {
-                    'critical': 0,
-                    'missing_content': 0,
-                    'added_content': 0,
-                    'name_inconsistencies': 0
-                }
             }
             self._save_postedit_log(complete_log, summary, translation_job.user_base_filename)
             return translation_job.translated_segments
@@ -276,7 +261,6 @@ class PostEditEngine:
             edited_segments, 
             validation_report,
             segments_to_edit_idx,
-            selected_issue_types
         )
         
         # Calculate summary
@@ -284,9 +268,6 @@ class PostEditEngine:
             'segments_edited': len(segments_to_edit),
             'total_segments': len(translation_job.translated_segments),
             'edit_percentage': (len(segments_to_edit) / len(translation_job.translated_segments) * 100),
-            'selected_issue_types': None,
-            'has_individual_selection': True,
-            'issues_addressed': {}
         }
         
         # Save post-edit log
@@ -304,8 +285,7 @@ class PostEditEngine:
                             translation_job,
                             edited_segments: List[str],
                             validation_report: Dict[str, Any],
-                            edited_indices: set,
-                            selected_issue_types: Dict[str, bool] = None) -> List[Dict[str, Any]]:
+                            edited_indices: set) -> List[Dict[str, Any]]:
         """
         Create a comprehensive log containing all segments with their complete translations.
         
@@ -343,13 +323,7 @@ class PostEditEngine:
                 'original_translation': original_translation,
                 'edited_translation': edited_translation,
                 'validation_status': validation_data.get('status', 'N/A'),
-                'issues': {
-                    'critical': validation_data.get('critical_issues', []),
-                    'missing_content': validation_data.get('missing_content', []),
-                    'added_content': validation_data.get('added_content', []),
-                    'name_inconsistencies': validation_data.get('name_inconsistencies', []),
-                    'minor_issues': validation_data.get('minor_issues', [])
-                }
+                'structured_cases': validation_data.get('structured_cases', []),
             }
             
             # Add change summary if edited
@@ -406,10 +380,6 @@ class PostEditEngine:
         print(f"Post-Edit Summary")
         print(f"{'='*60}")
         print(f"Segments edited: {summary['segments_edited']}/{summary['total_segments']} ({summary['edit_percentage']:.1f}%)")
-        print(f"\nIssues addressed:")
-        print(f"  🔴 Critical issues: {summary['issues_addressed']['critical']}")
-        print(f"  ⚠️  Missing content: {summary['issues_addressed']['missing_content']}")
-        print(f"  ➕ Added content: {summary['issues_addressed']['added_content']}")
-        print(f"  👤 Name inconsistencies: {summary['issues_addressed']['name_inconsistencies']}")
+        # Detailed per-type counts are no longer tracked in simplified flow
         print(f"{'='*60}")
         print("✅ Post-editing completed successfully!")

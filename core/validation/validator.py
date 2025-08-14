@@ -187,7 +187,7 @@ class TranslationValidator:
         for r in results:
             for c in (r.structured_cases or []):
                 sev = normalize_severity(c.get('severity'))
-                dim = (c.get('dimension') or c.get('issue_type') or 'other')
+                dim = (c.get('dimension') or 'other')
                 severity_counts[sev] = severity_counts.get(sev, 0) + 1
                 if dim not in dimension_counts:
                     dimension_counts[dim] = 0

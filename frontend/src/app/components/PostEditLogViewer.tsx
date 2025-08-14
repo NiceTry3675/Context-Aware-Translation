@@ -197,24 +197,15 @@ export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogVi
                 diffViewMode={diffViewMode}
               />
               
-              {/* Changes Made */}
+              {/* Changes Made (structured-only) */}
               {segment.was_edited && segment.changes_made && (
                 <Box>
                   <Typography variant="subtitle2" gutterBottom>
                     적용된 수정 사항
                   </Typography>
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    {segment.changes_made.critical_fixed && (
-                      <Chip size="small" label="치명적 오류 수정" color="success" />
-                    )}
-                    {segment.changes_made.missing_content_fixed && (
-                      <Chip size="small" label="누락 내용 복원" color="success" />
-                    )}
-                    {segment.changes_made.added_content_fixed && (
-                      <Chip size="small" label="불필요 내용 제거" color="success" />
-                    )}
-                    {segment.changes_made.name_inconsistencies_fixed && (
-                      <Chip size="small" label="이름 일관성 수정" color="success" />
+                    {segment.changes_made.text_changed && (
+                      <Chip size="small" label="내용 수정됨" color="success" />
                     )}
                   </Stack>
                 </Box>

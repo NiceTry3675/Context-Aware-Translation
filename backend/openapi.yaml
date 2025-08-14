@@ -1364,30 +1364,57 @@ components:
           items:
             type: object
             properties:
-              segment_id:
+              segment_index:
                 type: integer
               status:
                 type: string
-              issues:
+                enum: [PASS, FAIL, ERROR]
+              source_preview:
+                type: string
+              translated_preview:
+                type: string
+              structured_cases:
                 type: array
                 items:
                   type: object
+                  properties:
+                    current_korean_sentence:
+                      type: string
+                    problematic_source_sentence:
+                      type: string
+                    reason:
+                      type: string
+                    corrected_korean_sentence:
+                      type: string
+                    dimension:
+                      type: string
+                    severity:
+                      type: integer
+                    tags:
+                      type: array
+                      items:
+                        type: string
 
     PostEditLog:
       type: object
       properties:
-        total_segments:
-          type: integer
-        edited_segments:
-          type: integer
+        summary:
+          type: object
+          properties:
+            segments_edited:
+              type: integer
+            total_segments:
+              type: integer
+            edit_percentage:
+              type: number
         segments:
           type: array
           items:
             type: object
             properties:
-              segment_id:
+              segment_index:
                 type: integer
-              source:
+              source_text:
                 type: string
               original_translation:
                 type: string
@@ -1395,10 +1422,17 @@ components:
                 type: string
               was_edited:
                 type: boolean
-              issues_fixed:
+              validation_status:
+                type: string
+              structured_cases:
                 type: array
                 items:
-                  type: string
+                  type: object
+              changes_made:
+                type: object
+                properties:
+                  text_changed:
+                    type: boolean
 
     AnnouncementCreate:
       type: object
@@ -1642,22 +1676,13 @@ components:
     PostEditRequest:
       type: object
       properties:
-        selected_issue_types:
+        selected_cases:
           type: object
           additionalProperties:
-            type: boolean
-          default:
-            critical_issues: true
-            missing_content: true
-            added_content: true
-            name_inconsistencies: true
-          description: Which issue types to fix during post-editing
-        selected_issues:
-          type: array
-          items:
-            type: object
-          nullable: true
-          description: Specific issues to fix
+            type: array
+            items:
+              type: boolean
+          description: Mapping of segment_index to a boolean array mask for structured cases
 
   responses:
     BadRequest:

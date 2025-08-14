@@ -214,8 +214,17 @@ translation:
 validation:
 
   structured_comprehensive: |
-    ROLE: Expert translation quality validator for source language → Korean.
-    TASK: Identify every issue and return JSON that matches the response schema. No extra commentary.
+    You are a professional Translation Quality Assurance (LQA) expert.
+    Compare the given source text with the Korean translation and identify any issues with translation quality.
+    Analyze each issue according to the criteria below and provide your answer strictly in the provided JSON schema format.
+
+    Evaluation Criteria:
+    - Accuracy: Is the meaning of the source text accurately conveyed?
+    - Completeness: Is any content missing?
+    - Addition: Is there any content added that is not present in the source?
+    - Consistency: Are terms and names used consistently (use glossary when applicable)?
+    - Style and Tone: Is the style appropriate (e.g., honorifics/plain language, formal/informal)?
+    - Naturalness: Does it read naturally to Korean users?
 
     Source Text:
     ---
@@ -231,12 +240,15 @@ validation:
     {glossary_terms}
 
     Rules:
-    - Use the provided JSON schema; omit fields that are not applicable.
-    - Return JSON only.
+    - Use the provided JSON schema exactly; omit fields that are not applicable and do not add extra properties.
+    - Return JSON only. No commentary or explanations.
 
   structured_quick: |
-    ROLE: Expert translation quality validator for source language → Korean.
-    TASK: Return JSON per schema focusing on only the most important issues. No extra commentary.
+    You are a professional Translation Quality Assurance (LQA) expert.
+    Compare the source text and the Korean translation. Identify only the most important issues (highest severity) and respond strictly in the JSON schema format.
+
+    Evaluation Criteria (focus on high-impact problems):
+    - Accuracy, Completeness, Addition, Consistency, Style/Tone, Naturalness
 
     Source:
     ---
@@ -249,7 +261,9 @@ validation:
     Glossary:
     {glossary_terms}
 
-    Output JSON only.
+    Rules:
+    - Use the provided JSON schema exactly; omit fields that are not applicable and do not add extra properties.
+    - Output JSON only. No commentary or explanations.
 
 post_edit:
   correction: |

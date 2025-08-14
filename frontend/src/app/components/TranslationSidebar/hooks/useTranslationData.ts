@@ -125,7 +125,6 @@ export function useTranslationData({
           translatedText: segment.original_translation,
           editedText: segment.edited_translation,
           wasEdited: segment.was_edited,
-          issues: segment.issues,
           changes: segment.changes_made,
         };
       }

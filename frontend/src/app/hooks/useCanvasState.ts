@@ -27,6 +27,7 @@ export function useCanvasState() {
   const [fullscreen, setFullscreen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [viewMode, setViewMode] = useState<'full' | 'segment'>('segment');
+  // Legacy error filter chips are not used in structured UI; keep no-op state
   const [errorFilters, setErrorFilters] = useState({
     critical: true,
     missingContent: true,
@@ -110,27 +111,8 @@ export function useCanvasState() {
   });
 
   const validation = useValidation({ jobId: jobId || '', onRefresh: refreshJobs });
-  // Build selectedCases from selectedIssues by concatenating per-type selections
-  const selectedCases = useMemo(() => {
-    const cases: Record<number, boolean[]> = {};
-    if (validationReport && selectedIssues) {
-      for (const result of validationReport.detailed_results) {
-        const idx = result.segment_index;
-        const selection = selectedIssues[idx as unknown as number];
-        if (selection) {
-          const concatenated: boolean[] = [
-            ...(selection.critical || []),
-            ...(selection.missing_content || []),
-            ...(selection.added_content || []),
-            ...(selection.name_inconsistencies || []),
-            ...(selection.minor || []),
-          ];
-          cases[idx] = concatenated;
-        }
-      }
-    }
-    return cases;
-  }, [validationReport, selectedIssues]);
+  // Structured-only: legacy selectedIssues not used to build selection array
+  const selectedCases = useMemo(() => ({}) as Record<number, boolean[]>, []);
   const postEdit = usePostEdit({ jobId: jobId || '', onRefresh: refreshJobs, selectedCases });
   
   // Segment navigation hook
@@ -278,42 +260,8 @@ export function useCanvasState() {
     if (fileInput) fileInput.value = '';
   };
 
-  // Calculate selected issue counts
-  const calculateSelectedCounts = () => {
-    let critical = 0;
-    let missingContent = 0;
-    let addedContent = 0;
-    let nameInconsistencies = 0;
-
-    if (validationReport) {
-      validationReport.detailed_results.forEach((result) => {
-        const segmentSelection = selectedIssues?.[result.segment_index];
-        
-        if (segmentSelection) {
-          critical += segmentSelection.critical?.filter(selected => selected).length || 0;
-          missingContent += segmentSelection.missing_content?.filter(selected => selected).length || 0;
-          addedContent += segmentSelection.added_content?.filter(selected => selected).length || 0;
-          nameInconsistencies += segmentSelection.name_inconsistencies?.filter(selected => selected).length || 0;
-        } else {
-          const nested: any = (result as any).validation_result || {};
-          critical += (result.critical_issues?.length ?? nested.critical_issues?.length ?? 0);
-          missingContent += (result.missing_content?.length ?? nested.missing_content?.length ?? 0);
-          addedContent += (result.added_content?.length ?? nested.added_content?.length ?? 0);
-          nameInconsistencies += (result.name_inconsistencies?.length ?? nested.name_inconsistencies?.length ?? 0);
-        }
-      });
-    }
-
-    return {
-      critical,
-      missingContent,
-      addedContent,
-      nameInconsistencies,
-      total: critical + missingContent + addedContent + nameInconsistencies
-    };
-  };
-
-  const selectedCounts = calculateSelectedCounts();
+  // Selected counts are derived from selection UI per-view; keep minimal summary only if needed
+  const selectedCounts = useMemo(() => ({ total: 0 }), []);
   
   // Combine loading states
   const loading = validation.loading || postEdit.loading;

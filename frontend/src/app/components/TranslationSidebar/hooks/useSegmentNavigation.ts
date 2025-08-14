@@ -70,30 +70,7 @@ export function useSegmentNavigation({
     if (!validationReport) return [];
     
     return validationReport.detailed_results
-      .filter((result) => {
-        // Support both flat fields and nested validation_result
-        const flat = {
-          critical: result.critical_issues?.length || 0,
-          missing: result.missing_content?.length || 0,
-          added: result.added_content?.length || 0,
-          names: result.name_inconsistencies?.length || 0,
-        };
-        const nested = result.validation_result || {} as any;
-        const counts = {
-          critical: flat.critical || (nested.critical_issues?.length || 0),
-          missing: flat.missing || (nested.missing_content?.length || 0),
-          added: flat.added || (nested.added_content?.length || 0),
-          names: flat.names || (nested.name_inconsistencies?.length || 0),
-        };
-
-        const hasRelevantErrors =
-          (errorFilters.critical && counts.critical > 0) ||
-          (errorFilters.missingContent && counts.missing > 0) ||
-          (errorFilters.addedContent && counts.added > 0) ||
-          (errorFilters.nameInconsistencies && counts.names > 0);
-
-        return result.status === 'FAIL' && hasRelevantErrors;
-      })
+      .filter((result) => result.status === 'FAIL' && Array.isArray((result as any).structured_cases) && (result as any).structured_cases.length > 0)
       .map((result) => result.segment_index)
       .sort((a: number, b: number) => a - b);
   }, [validationReport, errorFilters]);
@@ -109,15 +86,13 @@ export function useSegmentNavigation({
     }
   }, [searchParams, totalSegments]);
 
-  // Update URL when segment changes
+  // Update URL when segment changes (guard against missing jobId)
   const updateURL = useCallback((index: number) => {
     if (!jobId) return;
-    
     const params = new URLSearchParams(searchParams.toString());
+    params.set('jobId', jobId);
     params.set('segment', (index + 1).toString()); // Convert to 1-based for URL
-    
-    const newUrl = `/?${params.toString()}`;
-    router.replace(newUrl, { scroll: false });
+    router.replace(`/?${params.toString()}`, { scroll: false });
   }, [jobId, searchParams, router]);
 
   // Set current segment index with URL update
@@ -139,15 +114,11 @@ export function useSegmentNavigation({
   }, [setCurrentSegmentIndex]);
 
   const goToNextSegment = useCallback(() => {
-    if (currentSegmentIndex < totalSegments - 1) {
-      setCurrentSegmentIndex(currentSegmentIndex + 1);
-    }
+    setCurrentSegmentIndex(Math.min(totalSegments - 1, currentSegmentIndex + 1));
   }, [currentSegmentIndex, totalSegments, setCurrentSegmentIndex]);
 
   const goToPreviousSegment = useCallback(() => {
-    if (currentSegmentIndex > 0) {
-      setCurrentSegmentIndex(currentSegmentIndex - 1);
-    }
+    setCurrentSegmentIndex(Math.max(0, currentSegmentIndex - 1));
   }, [currentSegmentIndex, setCurrentSegmentIndex]);
 
   const goToFirstSegment = useCallback(() => {

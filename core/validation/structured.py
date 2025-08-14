@@ -2,10 +2,11 @@
 Structured validation utilities for Gemini Structured Output (EN → KO validation).
 
 This module centralizes:
-- The definition of validation dimensions (single source of truth)
-- JSON schema builder for response validation
-- A prompt builder that pairs with the schema
-- Mapping functions to convert structured cases to the existing report shape
+- JSON schema builder for the structured validation response (single source of truth)
+- Minimal helpers used by the validator
+
+Legacy/compatibility fields are removed. The schema is intentionally minimal and
+stable for direct frontend consumption and post-edit automation.
 """
 
 from __future__ import annotations
@@ -14,14 +15,9 @@ from typing import Dict, List, Any
 
 
 # --------------------
-# Allowed dimensions are enumerated directly in the schema enum for simplicity
-# --------------------
-
-
-# --------------------
 # Response schema (JSON Schema for Gemini)
 # --------------------
-def make_response_schema(dim_def: Dict[str, str] | None = None) -> Dict[str, Any]:
+def make_response_schema() -> Dict[str, Any]:
     # Gemini Structured Output uses a simplified schema subset. Avoid unsupported
     # keywords like minimum/maximum. Prefer enum or type-only constraints.
     return {
@@ -50,7 +46,7 @@ def make_response_schema(dim_def: Dict[str, str] | None = None) -> Dict[str, Any
                             "type": "string",
                             "description": "권장 수정 번역문",
                         },
-                        # 차원(enum) – DIMENSIONS_DEF 제거, enum으로 직접 관리
+                        # 차원(enum) – enum으로 직접 관리
                         "dimension": {
                             "type": "string",
                             "enum": [
@@ -64,17 +60,23 @@ def make_response_schema(dim_def: Dict[str, str] | None = None) -> Dict[str, Any
                             ],
                             "description": "이슈 차원(카테고리)",
                         },
-                        # 과거 호환을 위한 선택 필드
-                        "issue_type": {
-                            "type": "string",
-                            "description": "이슈 유형(구버전 호환)",
-                        },
                         "severity": {
                             "type": "integer",
-                            "description": "1=minor, 2=major, 3=critical",
+                            "description": "이슈의 심각도. 1(사소함), 2(중대함), 3(치명적) 중 하나의 숫자로 표기.",
+                        },
+                        "tags": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "보조 라벨(예: terminology, formality, punctuation)",
                         },
                     },
-                    "required": ["current_korean_sentence", "problematic_source_sentence", "reason"],
+                    "required": [
+                        "current_korean_sentence",
+                        "problematic_source_sentence",
+                        "reason",
+                        "dimension",
+                        "severity",
+                    ],
                 },
             }
         },
@@ -86,7 +88,7 @@ def make_response_schema(dim_def: Dict[str, str] | None = None) -> Dict[str, Any
 
 
 # --------------------
-# 4) Mapping: structured cases -> legacy report fields
+# Helper(s)
 # --------------------
 def _case_to_message(case: Dict[str, Any]) -> str:
     """Kept for potential logging; not used for legacy mapping anymore."""

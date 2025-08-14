@@ -76,15 +76,15 @@ export default function ErrorNavigationBar({
 
         const hasCritical = cases.some((c: any) => normalizeSeverity(c.severity) === 3);
         const hasMissing = cases.some((c: any) => {
-          const t = (c.issue_type || c.dimension || '').toLowerCase();
+          const t = (c.dimension || '').toLowerCase();
           return t.includes('missing') || /누락/.test(c.reason || '');
         });
         const hasAdded = cases.some((c: any) => {
-          const t = (c.issue_type || c.dimension || '').toLowerCase();
+          const t = (c.dimension || '').toLowerCase();
           return t.includes('added') || /추가/.test(c.reason || '');
         });
         const hasName = cases.some((c: any) => {
-          const t = (c.issue_type || c.dimension || '').toLowerCase();
+          const t = (c.dimension || '').toLowerCase();
           return t.includes('name') || /이름|고유명/.test(c.reason || '');
         });
 
@@ -197,7 +197,7 @@ export default function ErrorNavigationBar({
 
           const hasRelevant = cases.some((c: any) => {
             const sev = normalizeSeverity(c.severity);
-            const type = (c.issue_type || c.dimension || '').toLowerCase();
+            const type = (c.dimension || '').toLowerCase();
             const isCritical = sev === 3;
             const isMissing = type.includes('missing') || /누락/.test(c.reason || '');
             const isAdded = type.includes('added') || /추가/.test(c.reason || '');

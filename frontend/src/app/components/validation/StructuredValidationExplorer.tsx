@@ -14,6 +14,7 @@ import {
   Button,
   alpha,
   useTheme,
+  Collapse,
 } from '@mui/material';
 import Checkbox from '@mui/material/Checkbox';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -23,6 +24,7 @@ import InfoIcon from '@mui/icons-material/Info';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ValidationReport } from '../../utils/api';
 
 type StructuredCase = {
@@ -33,7 +35,6 @@ type StructuredCase = {
   current_korean_sentence?: string;
   reason: string;
   corrected_korean_sentence?: string;
-  issue_type?: string;
 };
 
 interface StructuredValidationExplorerProps {
@@ -41,6 +42,7 @@ interface StructuredValidationExplorerProps {
   onSegmentClick?: (index: number) => void;
   selectedCases?: Record<number, boolean[]>;
   onCaseSelectionChange?: (segmentIndex: number, caseIndex: number, selected: boolean, totalCases: number) => void;
+  currentSegmentIndex?: number;
 }
 
 function deriveCasesFromLegacy(segment: any): StructuredCase[] {
@@ -63,12 +65,13 @@ function severityColor(theme: any, s: number) {
   return { fg: theme.palette.info.main, bg: alpha(theme.palette.info.main, 0.08), icon: <InfoIcon fontSize="small" /> };
 }
 
-export default function StructuredValidationExplorer({ report, onSegmentClick, selectedCases, onCaseSelectionChange }: StructuredValidationExplorerProps) {
+export default function StructuredValidationExplorer({ report, onSegmentClick, selectedCases, onCaseSelectionChange, currentSegmentIndex }: StructuredValidationExplorerProps) {
   const theme = useTheme();
   const [query, setQuery] = useState('');
   const [selectedSegment, setSelectedSegment] = useState<number>(report?.detailed_results?.[0]?.segment_index ?? 0);
   const [severityFilter, setSeverityFilter] = useState<{ [k: number]: boolean }>({ 3: true, 2: true, 1: true });
   const [dimensionFilter, setDimensionFilter] = useState<Record<string, boolean>>({});
+  const [expandedSet, setExpandedSet] = useState<Set<number>>(new Set());
 
   const segments = report?.detailed_results || [];
 
@@ -88,7 +91,7 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
     const set = new Set<string>();
     Object.values(segmentIndexToCases).forEach((cases) => {
       cases.forEach((c: any) => {
-        const dim = (c.dimension || c.issue_type || 'other') as string;
+        const dim = (c.dimension || 'other') as string;
         if (dim) set.add(dim);
       });
     });
@@ -99,14 +102,23 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
     return Array.from(set);
   }, [segmentIndexToCases]);
 
-  // Auto-select the first segment that has any cases
+  // Sync with external current segment index when provided
   useEffect(() => {
     if (!segments || segments.length === 0) return;
+    if (typeof currentSegmentIndex === 'number' && segments.some((s: any) => s.segment_index === currentSegmentIndex)) {
+      if (currentSegmentIndex !== selectedSegment) {
+        setSelectedSegment(currentSegmentIndex);
+        setExpandedSet(new Set());
+      }
+      return;
+    }
+    // Fallback: auto-select the first segment that has any cases
     const first = segments.find((s: any) => (segmentIndexToCases[s.segment_index] || []).length > 0);
     if (first && first.segment_index !== selectedSegment) {
       setSelectedSegment(first.segment_index);
+      setExpandedSet(new Set());
     }
-  }, [segments, segmentIndexToCases, selectedSegment]);
+  }, [segments, segmentIndexToCases, currentSegmentIndex, selectedSegment]);
 
   function normalizeSeverity(raw: unknown): number {
     if (typeof raw === 'number') {
@@ -129,7 +141,7 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
     const list = segmentIndexToCases[idx] || [];
     return list.filter((c) => {
       const sev = normalizeSeverity((c as any).severity);
-      const dim = ((c as any).dimension || (c as any).issue_type || 'other') as string;
+      const dim = ((c as any).dimension || 'other') as string;
       return (
         (severityFilter[sev] !== false) &&
         (dimensionFilter[dim] !== false) &&
@@ -141,14 +153,32 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
   const allCases = segmentIndexToCases[selectedSegment] || [];
   const currentCases = filteredCasesFor(selectedSegment);
   const currentSelection = selectedCases?.[selectedSegment];
+  const isExpanded = (absIdx: number) => expandedSet.has(absIdx);
+  const toggleExpanded = (absIdx: number) => {
+    setExpandedSet(prev => {
+      const next = new Set(prev);
+      if (next.has(absIdx)) next.delete(absIdx); else next.add(absIdx);
+      return next;
+    });
+  };
 
   const goPrev = () => {
     const pos = segments.findIndex((s: any) => s.segment_index === selectedSegment);
-    if (pos > 0) setSelectedSegment(segments[pos - 1].segment_index);
+    if (pos > 0) {
+      const target = segments[pos - 1].segment_index;
+      setSelectedSegment(target);
+      setExpandedSet(new Set());
+      onSegmentClick?.(target);
+    }
   };
   const goNext = () => {
     const pos = segments.findIndex((s: any) => s.segment_index === selectedSegment);
-    if (pos >= 0 && pos < segments.length - 1) setSelectedSegment(segments[pos + 1].segment_index);
+    if (pos >= 0 && pos < segments.length - 1) {
+      const target = segments[pos + 1].segment_index;
+      setSelectedSegment(target);
+      setExpandedSet(new Set());
+      onSegmentClick?.(target);
+    }
   };
 
   return (
@@ -226,7 +256,7 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
 
       {/* Right: Detail */}
       <Paper sx={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Box sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1, borderBottom: 1, borderColor: 'divider' }}>
+        <Box sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1, borderBottom: 1, borderColor: 'divider', flexWrap: 'wrap' }}>
           <IconButton onClick={goPrev} size="small">
             <NavigateBeforeIcon />
           </IconButton>
@@ -234,18 +264,26 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
             <NavigateNextIcon />
           </IconButton>
           <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+          {/* Severity summary */}
+          {([3,2,1] as const).map(s => (
+            <Chip key={`sev-${s}`} size="small" variant="outlined" label={`S${s}: ${Object.values(segmentIndexToCases).flat().filter((c:any)=>normalizeSeverity(c.severity)===s).length}`}
+              color={s===3?'error':s===2?'warning':'info'}
+            />
+          ))}
+          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
           {/* Dimension filters */}
           {allDimensions.map((dim) => {
             const isOn = dimensionFilter[dim] !== false;
+            const count = Object.values(segmentIndexToCases).flat().filter((c:any)=> (c.dimension||'other')===dim).length;
             return (
-            <Chip
-              key={dim}
-              size="small"
-              label={dim}
-              color={isOn ? 'primary' : 'default'}
-              variant={isOn ? 'filled' : 'outlined'}
-              onClick={() => setDimensionFilter({ ...dimensionFilter, [dim]: !isOn })}
-            />
+              <Chip
+                key={dim}
+                size="small"
+                label={`${dim} (${count})`}
+                color={isOn ? 'primary' : 'default'}
+                variant={isOn ? 'filled' : 'outlined'}
+                onClick={() => setDimensionFilter({ ...dimensionFilter, [dim]: !isOn })}
+              />
             );
           })}
         </Box>
@@ -258,16 +296,22 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
               {currentCases.map((c, i) => {
                 const sevNum = normalizeSeverity((c as any).severity);
                 const sev = severityColor(theme, sevNum);
-                const dim = ((c as any).dimension || (c as any).issue_type || 'other') as string;
+                const dim = ((c as any).dimension || 'other') as string;
                 const absIndex = allCases.indexOf(c);
                 const absoluteIndex = absIndex >= 0 ? absIndex : i;
                 const checked = currentSelection ? (currentSelection[absoluteIndex] !== false) : true;
+                const src = c.problematic_source_sentence || '';
+                const cur = c.current_korean_sentence || '';
+                const fix = c.corrected_korean_sentence || '';
+                const reasonId = `reason-${selectedSegment}-${absoluteIndex}`;
                 return (
-                  <Box key={i} sx={{ p: 1.5, border: `1px solid ${sev.fg}`, bgcolor: sev.bg, borderRadius: 1 }}>
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                  <Box key={i} sx={{ p: 1.5, border: `1px solid ${sev.fg}`, bgcolor: sev.bg, borderRadius: 1 }} onClick={() => toggleExpanded(absoluteIndex)} role="button" aria-expanded={isExpanded(absoluteIndex)} aria-controls={reasonId} tabIndex={0}>
+                    {/* Header */}
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                       <Checkbox
                         size="small"
                         checked={checked}
+                        onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
                           const next = e.target.checked;
                           onCaseSelectionChange?.(selectedSegment, absoluteIndex, next, allCases.length);
@@ -278,29 +322,47 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
                       {c.tags && c.tags.length > 0 && (
                         <Chip size="small" label={c.tags.join(', ')} variant="outlined" />
                       )}
+                      <Box sx={{ flex: 1 }} />
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleExpanded(absoluteIndex); }}>
+                        <ExpandMoreIcon fontSize="small" sx={{ transform: isExpanded(absoluteIndex) ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+                      </IconButton>
                     </Stack>
-                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{c.reason}</Typography>
-                    {c.problematic_source_sentence && (
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                        원문: {c.problematic_source_sentence}
-                      </Typography>
-                    )}
-                    {c.current_korean_sentence && (
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                        현재 번역: {c.current_korean_sentence}
-                      </Typography>
-                    )}
-                    {c.corrected_korean_sentence && (
-                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>수정 제안:</Typography>
-                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', flex: 1 }}>{c.corrected_korean_sentence}</Typography>
-                        <Tooltip title="수정안 복사">
-                          <IconButton size="small" onClick={() => navigator.clipboard?.writeText(c.corrected_korean_sentence || '')}>
-                            <ContentCopyIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
-                    )}
+
+                    {/* Main content: Source -> Current -> Suggestion (vertical) */}
+                    <Stack direction="column" spacing={1.25} alignItems="stretch">
+                      <Box sx={{ p: 1, border: '1px dashed', borderColor: sev.fg, borderRadius: 1, bgcolor: 'background.paper' }}>
+                        <Typography variant="caption" color="text.secondary">원문</Typography>
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{src || '-'}</Typography>
+                      </Box>
+                      <Box sx={{ p: 1, border: '1px dashed', borderColor: sev.fg, borderRadius: 1, bgcolor: 'background.paper' }}>
+                        <Typography variant="caption" color="text.secondary">현재 번역</Typography>
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{cur || '-'}</Typography>
+                      </Box>
+                      <Box sx={{ p: 1, border: '1px dashed', borderColor: sev.fg, borderRadius: 1, bgcolor: 'background.paper', position: 'relative' }}>
+                        <Typography variant="caption" color="text.secondary">수정 제안</Typography>
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', pr: 4 }}>{fix || '-'}</Typography>
+                        {fix && (
+                          <Tooltip title="수정안 복사">
+                            <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigator.clipboard?.writeText(fix); }} sx={{ position: 'absolute', top: 2, right: 2 }}>
+                              <ContentCopyIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Box>
+                      {/* Easier reason toggle */}
+                      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <Button size="small" variant="text" startIcon={<ExpandMoreIcon sx={{ transform: isExpanded(absoluteIndex) ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />} onClick={(e) => { e.stopPropagation(); toggleExpanded(absoluteIndex); }}>
+                          {isExpanded(absoluteIndex) ? '이유 접기' : '이유 보기'}
+                        </Button>
+                      </Box>
+                    </Stack>
+
+                    {/* Reason (expand on click) */}
+                    <Collapse in={isExpanded(absoluteIndex)} timeout="auto" unmountOnExit id={reasonId}>
+                      <Divider sx={{ my: 1 }} />
+                      <Typography variant="subtitle2" gutterBottom>이유</Typography>
+                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{c.reason || '-'}</Typography>
+                    </Collapse>
                   </Box>
                 );
               })}
@@ -328,8 +390,8 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
                 onCaseSelectionChange?.(selectedSegment, absoluteIndex, false, allCases.length);
               });
             }}>전체 해제</Button>
-            <Button size="small" variant="outlined" onClick={goPrev} startIcon={<NavigateBeforeIcon />}>이전</Button>
-            <Button size="small" variant="contained" onClick={goNext} endIcon={<NavigateNextIcon />}>다음</Button>
+            <Button size="small" variant="outlined" onClick={goPrev} startIcon={<NavigateBeforeIcon />} disabled={segments.findIndex((s: any) => s.segment_index === selectedSegment) <= 0}>이전</Button>
+            <Button size="small" variant="contained" onClick={goNext} endIcon={<NavigateNextIcon />} disabled={segments.findIndex((s: any) => s.segment_index === selectedSegment) >= segments.length - 1}>다음</Button>
           </Stack>
         </Box>
       </Paper>

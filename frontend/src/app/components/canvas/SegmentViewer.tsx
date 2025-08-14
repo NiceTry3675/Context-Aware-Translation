@@ -45,23 +45,9 @@ interface SegmentData {
   sourceText: string;
   translatedText: string;
   editedText?: string;
-  issues?: {
-    critical: string[];
-    missingContent?: string[];
-    addedContent?: string[];
-    nameInconsistencies?: string[];
-    missing_content?: string[];
-    added_content?: string[];
-    name_inconsistencies?: string[];
-    minor?: string[];
-  };
   wasEdited?: boolean;
   changes?: {
     text_changed?: boolean;
-    critical_fixed?: boolean;
-    missing_content_fixed?: boolean;
-    added_content_fixed?: boolean;
-    name_inconsistencies_fixed?: boolean;
   };
 }
 
@@ -99,7 +85,6 @@ export default function SegmentViewer({
             translatedText: segment.original_translation,
             editedText: segment.edited_translation,
             wasEdited: segment.was_edited,
-            issues: segment.issues,
             changes: segment.changes_made,
           };
         }
@@ -107,7 +92,6 @@ export default function SegmentViewer({
         return {
           sourceText: segment.source_text,
           translatedText: segment.edited_translation || segment.original_translation,
-          issues: segment.issues,
         };
       }
     }
@@ -154,12 +138,6 @@ export default function SegmentViewer({
   const renderChanges = () => {
     if (!segmentData.changes || !segmentData.wasEdited) return null;
 
-    const fixedIssues = [];
-    if (segmentData.changes.critical_fixed) fixedIssues.push('치명적 오류');
-    if (segmentData.changes.missing_content_fixed) fixedIssues.push('누락된 내용');
-    if (segmentData.changes.added_content_fixed) fixedIssues.push('추가된 내용');
-    if (segmentData.changes.name_inconsistencies_fixed) fixedIssues.push('이름 불일치');
-
     return (
       <Box sx={{ mt: 3 }}>
         <Typography variant="h6" gutterBottom>
@@ -168,14 +146,6 @@ export default function SegmentViewer({
         <Stack spacing={1}>
           {segmentData.changes.text_changed && (
             <Chip label="내용 수정됨" color="success" size="small" />
-          )}
-          {fixedIssues.length > 0 && (
-            <Box>
-              <Chip label="해결된 문제" color="success" size="small" sx={{ mb: 1 }} />
-              <Typography variant="body2" color="text.secondary">
-                {fixedIssues.join(', ')}
-              </Typography>
-            </Box>
           )}
         </Stack>
       </Box>
@@ -246,23 +216,15 @@ export default function SegmentViewer({
 
       <Paper sx={{ p: 3 }}>
       {/* Validation mode removed in structured-only flow */}
-      {mode === 'post-edit' && segmentData.issues && !segmentData.wasEdited ? (
-        // For post-edit mode showing unedited segments with issues - hide source text
-        <TextSegmentDisplay
-          sourceText={segmentData.sourceText}
-          translatedText={segmentData.translatedText}
-          showComparison={false}
-          hideSource={true}
-        />
-      ) : mode === 'post-edit' ? (
+      {mode === 'post-edit' ? (
         // For post-edit mode, only show original vs edited translation (no source text)
         <TextSegmentDisplay
           sourceText={segmentData.sourceText}
           translatedText={segmentData.translatedText}
           editedText={segmentData.editedText || segmentData.translatedText}
-          showComparison={true}
+          showComparison={!!segmentData.wasEdited}
           hideSource={true}
-          showDiff={showDiff && segmentData.wasEdited}
+          showDiff={showDiff && !!segmentData.wasEdited}
           diffMode={diffMode}
           diffViewMode={diffViewMode}
         />
