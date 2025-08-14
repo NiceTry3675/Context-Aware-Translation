@@ -14,8 +14,6 @@ from __future__ import annotations
 
 from typing import Dict, List, Any, Optional, Literal
 from pydantic import BaseModel, Field
-
-
 # --------------------
 # Pydantic Models for Validation
 # --------------------
@@ -26,29 +24,21 @@ class ValidationCase(BaseModel):
     current_korean_sentence: str = Field(..., description="문제가 되는 현재 한국어 문장")
     problematic_source_sentence: str = Field(..., description="대응하는 원문 문장")
     reason: str = Field(..., description="왜 문제인지")
-    dimension: Literal[
-        "completeness",
-        "accuracy",
-        "addition",
-        "name_consistency",
-        "dialogue_style",
-        "flow",
-        "other"
-    ] = Field(..., description="이슈 차원(카테고리)")
-    severity: int = Field(..., ge=1, le=3, description="이슈의 심각도. 1(사소함), 2(중대함), 3(치명적) 중 하나의 숫자로 표기.")
+    dimension: Literal["completeness", "accuracy", "addition", "name_consistency", "dialogue_style", "flow", "other"] = Field(..., description="이슈 차원(카테고리)")
+    severity: Literal["1", "2", "3"] = Field(..., description="이슈의 심각도. 1(사소함), 2(중대함), 3(치명적) 중 하나의 숫자로 표기.")
     
     # Optional fields
     corrected_korean_sentence: Optional[str] = Field(None, description="권장 수정 번역문")
     tags: List[str] = Field(default_factory=list, description="보조 라벨(예: terminology, formality, punctuation)")
 
 
-class ValidationResponse(BaseModel):
-    """Complete validation response containing all found issues."""
-    
-    cases: List[ValidationCase] = Field(
-        default_factory=list,
-        description="발견된 이슈 목록. 없으면 빈 배열."
-    )
+# class ValidationResponse(BaseModel):
+#     """Complete validation response containing all found issues."""
+#
+#     cases: List[ValidationCase] = Field(
+#         default_factory=list,
+#         description="발견된 이슈 목록. 없으면 빈 배열."
+#     )
 
 
 # --------------------
@@ -98,7 +88,8 @@ def make_response_schema() -> Dict[str, Any]:
                             "description": "이슈 차원(카테고리)",
                         },
                         "severity": {
-                            "type": "integer",
+                            "type": "string",
+                            "enum": ["1", "2", "3"],
                             "description": "이슈의 심각도. 1(사소함), 2(중대함), 3(치명적) 중 하나의 숫자로 표기.",
                         },
                         "tags": {

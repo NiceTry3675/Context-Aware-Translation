@@ -33,6 +33,49 @@ class GeminiModel:
         )
         self.enable_soft_retry = enable_soft_retry
         print(f"GeminiModel initialized with model: {model_name}, soft_retry: {enable_soft_retry}")
+    
+    def _attempt_json_repair(self, truncated_json: str) -> str:
+        """Attempt to repair truncated JSON by closing open structures."""
+        # Count open brackets and braces
+        open_braces = truncated_json.count('{') - truncated_json.count('}')
+        open_brackets = truncated_json.count('[') - truncated_json.count(']')
+        
+        # Check if we're in the middle of a string
+        in_string = False
+        escape_next = False
+        for char in truncated_json:
+            if escape_next:
+                escape_next = False
+                continue
+            if char == '\\':
+                escape_next = True
+                continue
+            if char == '"':
+                in_string = not in_string
+        
+        # Build repair string
+        repair = truncated_json
+        if in_string:
+            repair += '"'  # Close the open string
+        
+        # Close any open objects/arrays in nested order
+        # We need to close arrays before their containing objects
+        while open_brackets > 0 or open_braces > 0:
+            # Find what needs to be closed next by looking at the end
+            last_open_brace = repair.rfind('{')
+            last_open_bracket = repair.rfind('[')
+            last_close_brace = repair.rfind('}')
+            last_close_bracket = repair.rfind(']')
+            
+            # Determine what to close next
+            if open_brackets > 0 and (last_open_bracket > last_open_brace or open_braces == 0):
+                repair += ']'
+                open_brackets -= 1
+            elif open_braces > 0:
+                repair += '}'
+                open_braces -= 1
+        
+        return repair
 
     @staticmethod
     def validate_api_key(api_key: str, model_name: str = "gemini-2.5-flash-lite") -> bool:
@@ -163,11 +206,12 @@ class GeminiModel:
                 # or constructor works; we pass here to avoid global state on the model.
                 response = self.model.generate_content(
                     contents=prompt,
-                    generation_config={
-                        **(self.generation_config or {}),
-                        "response_mime_type": "application/json",
-                        "response_schema": response_schema,
-                    },
+                    generation_config=genai.GenerationConfig(
+                        response_mime_type="application/json",
+                        response_schema=response_schema,
+                        temperature=self.generation_config.get('temperature', 0.7) if self.generation_config else 0.7,
+                        max_output_tokens=self.generation_config.get('max_output_tokens', 65536) if self.generation_config else 32768,  # Increased for structured output
+                    ),
                     safety_settings=self.safety_settings,
                 )
                 
@@ -176,23 +220,51 @@ class GeminiModel:
                     return response.parsed
                 
                 # Otherwise, parse JSON as before (backward compatibility)
-                if response and hasattr(response, 'text') and callable(response.text):
-                    import json as _json
-                    return _json.loads(response.text())
-                elif response and hasattr(response, 'text') and isinstance(response.text, str):
-                    import json as _json
-                    return _json.loads(response.text)
-                else:
-                    # Attempt to extract from candidates
+                import json as _json
+                response_text = None
+                
+                if response and hasattr(response, 'text'):
+                    if callable(response.text):
+                        response_text = response.text()
+                    else:
+                        response_text = response.text
+                
+                # If no text directly available, try to extract from candidates
+                if not response_text:
                     try:
                         parts = response.candidates[0].content.parts
-                        text = ''.join(getattr(p, 'text', '') for p in parts)
-                        if text:
-                            import json as _json
-                            return _json.loads(text)
+                        response_text = ''.join(getattr(p, 'text', '') for p in parts)
                     except Exception:
                         pass
-                    raise ValueError("Structured API returned an empty or unparseable response.")
+                
+                if response_text:
+                    try:
+                        return _json.loads(response_text)
+                    except _json.JSONDecodeError as e:
+                        # Log the problematic JSON for debugging
+                        print(f"JSON parsing error: {e}")
+                        print(f"Response text length: {len(response_text)}")
+                        
+                        # Check if this looks like a truncation issue
+                        if "Unterminated string" in str(e) and response_text.strip()[-1] not in ['}', ']']:
+                            print("Warning: Response appears to be truncated. Attempting to repair...")
+                            # Try to repair truncated JSON
+                            repaired = self._attempt_json_repair(response_text)
+                            if repaired:
+                                try:
+                                    return _json.loads(repaired)
+                                except _json.JSONDecodeError:
+                                    print("Failed to repair truncated JSON")
+                        
+                        # Log problematic section for other errors
+                        if hasattr(e, 'pos'):
+                            start = max(0, e.pos - 100)
+                            end = min(len(response_text), e.pos + 100)
+                            print(f"Problematic section around position {e.pos}:")
+                            print(repr(response_text[start:end]))
+                        raise ValueError(f"Failed to parse JSON response: {e}")
+                
+                raise ValueError("Structured API returned an empty or unparseable response.")
 
             except (google_exceptions.PermissionDenied, google_exceptions.InvalidArgument) as e:
                 # Bad key/arguments are not retriable

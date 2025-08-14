@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 from pydantic import BaseModel, Field
 
-from core.validation.structured import ValidationResponse, ValidationCase
+from core.validation.structured import ValidationCase, make_response_schema
 from core.prompts.manager import PromptManager
 
 
@@ -83,19 +83,14 @@ class TranslationValidator:
             print(f"Validating segment {segment_index} (structured)...")
 
         try:
-            # Use Pydantic model instead of JSON schema
-            response = self.ai_model.generate_structured(prompt, ValidationResponse)
-            
-            # Response is now a ValidationResponse Pydantic model
-            if isinstance(response, ValidationResponse):
-                result.structured_cases = response.cases
-                result.status = "FAIL" if response.cases else "PASS"
-            else:
-                # Fallback for backward compatibility (if dict is returned)
-                cases = (response or {}).get('cases', [])
-                # Convert dict cases to ValidationCase models
-                result.structured_cases = [ValidationCase(**case) for case in cases] if cases else None
-                result.status = "FAIL" if cases else "PASS"
+            # Use JSON schema for compatibility with Gemini API
+            response_schema = make_response_schema()
+            response = self.ai_model.generate_structured(prompt, response_schema)
+            # Response is a dict when using JSON schema
+            cases = (response or {}).get('cases', [])
+            # Convert dict cases to ValidationCase models
+            result.structured_cases = [ValidationCase(**case) for case in cases] if cases else None
+            result.status = "FAIL" if cases else "PASS"
 
         except Exception as e:
             print(f"Warning: Structured validation failed for segment {segment_index}: {e}")

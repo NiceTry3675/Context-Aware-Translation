@@ -111,7 +111,8 @@ class PostEditService:
     @staticmethod
     def get_post_edit_log_path(job: models.TranslationJob) -> str:
         """Get the post-edit log file path."""
-        log_filename = f"{os.path.splitext(job.filename)[0]}_postedit_log.json"
+        # Include job ID to prevent conflicts with duplicate filenames
+        log_filename = f"{job.id}_{os.path.splitext(job.filename)[0]}_postedit_log.json"
         log_path = os.path.join("postedit_logs", log_filename)
         return log_path
     
