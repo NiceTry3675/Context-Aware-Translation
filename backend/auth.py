@@ -14,9 +14,17 @@ from .database import SessionLocal
 # Initialize the Clerk client with proper API key.
 clerk = Clerk(bearer_auth=os.environ.get("CLERK_SECRET_KEY"))
 
+# Feature flag: minimize Clerk Management API calls.
+# If False (default), we avoid calling Clerk Management API on each request
+# and rely on JWT claims for user info/role.
+USE_CLERK_MANAGEMENT_API = os.environ.get("USE_CLERK_MANAGEMENT_API", "false").lower() == "true"
+
 async def get_clerk_user_info(clerk_user_id: str) -> dict:
     """Clerk Management API를 사용하여 완전한 사용자 정보 가져오기"""
     try:
+        if not USE_CLERK_MANAGEMENT_API:
+            # 관리 API 비활성화 시 None 반환하여 클레임 기반 경로로 유도
+            return None
         user = clerk.users.get(user_id=clerk_user_id)
         
         # Clerk User 객체에서 정보 추출
@@ -126,68 +134,50 @@ async def get_required_user(
 
     db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
 
-    if not db_user:
-        print(f"--- [INFO] User with Clerk ID {clerk_user_id} not found in DB. Creating new user record from API request. ---")
-        try:
-            # Clerk Management API를 사용하여 완전한 사용자 정보 가져오기
-            clerk_user_info = await get_clerk_user_info(clerk_user_id)
-            
-            if clerk_user_info:
-                email_address = clerk_user_info.get('email')
-                name = (clerk_user_info.get('username') or 
-                       clerk_user_info.get('full_name') or
-                       (email_address.split('@')[0] if email_address else None))
-            else:
-                # Fallback to JWT claims if API fails
-                email_address = claims.get('primary_email_address') or claims.get('email')
-                name = (claims.get('name') or claims.get('full_name') or 
-                       f"{claims.get('first_name', '')} {claims.get('last_name', '')}".strip() or
-                       (email_address.split('@')[0] if email_address else None))
+    # Helper: extract preferred name/email from JWT claims
+    def _name_email_from_claims(claims_dict: dict) -> tuple[str | None, str | None]:
+        email_address = claims_dict.get('primary_email_address') or claims_dict.get('email')
+        name = (
+            claims_dict.get('name') or claims_dict.get('full_name') or
+            f"{claims_dict.get('first_name', '')} {claims_dict.get('last_name', '')}".strip() or
+            (email_address.split('@')[0] if email_address else None)
+        )
+        return name, email_address
 
+    if not db_user:
+        print(f"--- [INFO] User with Clerk ID {clerk_user_id} not found in DB. Creating from JWT claims. ---")
+        try:
+            name, email_address = _name_email_from_claims(claims)
             new_user_data = schemas.UserCreate(
                 clerk_user_id=clerk_user_id,
                 email=email_address,
                 name=name
             )
             db_user = crud.create_user(db, user=new_user_data)
-            print(f"--- [INFO] Successfully created user {db_user.id} for Clerk ID {clerk_user_id} with name: {name}. ---")
+            print(f"--- [INFO] Created user {db_user.id} for Clerk ID {clerk_user_id} (claims-based). ---")
         except IntegrityError:
             db.rollback()
             print(f"--- [WARN] Race condition detected for Clerk ID {clerk_user_id}. User likely created by webhook. Refetching... ---")
             db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
             if not db_user:
-                # This case is highly unlikely but good to handle.
                 raise HTTPException(status_code=500, detail="Failed to create or find user after race condition.")
     else:
-        # 기존 사용자의 이름이 없는 경우 업데이트
-        if not db_user.name:
-            print(f"--- [INFO] Updating existing user {db_user.id} name from None ---")
-            
-            # Clerk Management API를 사용하여 완전한 사용자 정보 가져오기
-            clerk_user_info = await get_clerk_user_info(clerk_user_id)
-            
-            if clerk_user_info:
-                # 사용자명 우선 순위로 변경
-                name = (clerk_user_info.get('username') or 
-                       clerk_user_info.get('full_name') or
-                       (clerk_user_info.get('email').split('@')[0] if clerk_user_info.get('email') else None))
-                email_address = clerk_user_info.get('email')
-                
-                # 이메일도 없는 경우 같이 업데이트
-                update_data = {}
-                if name:
-                    update_data['name'] = name
-                if email_address and not db_user.email:
-                    update_data['email'] = email_address
-                    
-                if update_data:
-                    user_update = schemas.UserUpdate(**update_data)
-                    db_user = crud.update_user(db, clerk_user_id, user_update)
-                    print(f"--- [INFO] Updated user {db_user.id} with: {update_data}. ---")
+        # 기존 사용자의 이름/이메일 보강: JWT 클레임 기반으로만 업데이트
+        update_data = {}
+        if not db_user.name or not db_user.email:
+            name, email_address = _name_email_from_claims(claims)
+            if not db_user.name and name:
+                update_data['name'] = name
+            if not db_user.email and email_address:
+                update_data['email'] = email_address
+        if update_data:
+            user_update = schemas.UserUpdate(**update_data)
+            db_user = crud.update_user(db, clerk_user_id, user_update)
+            print(f"--- [INFO] Updated user {db_user.id} with: {update_data} (claims-based). ---")
 
-    # Sync user role from Clerk every time they are fetched
+    # Sync user role from JWT claims (no external API call)
     if db_user:
-        db_user = await sync_user_role_from_clerk(db, db_user)
+        db_user = await sync_user_role_from_claims(db, db_user, claims)
 
     return db_user
 
@@ -208,33 +198,24 @@ async def get_optional_user(
         return None
 
     db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
-    
-    # If user doesn't exist in DB but is authenticated, create them
-    if not db_user:
-        print(f"--- [INFO] Optional auth: User with Clerk ID {clerk_user_id} not found in DB. Creating new user. ---")
-        try:
-            # Clerk Management API를 사용하여 완전한 사용자 정보 가져오기
-            clerk_user_info = await get_clerk_user_info(clerk_user_id)
-            
-            if clerk_user_info:
-                email_address = clerk_user_info.get('email')
-                name = (clerk_user_info.get('username') or 
-                       clerk_user_info.get('full_name') or
-                       (email_address.split('@')[0] if email_address else None))
-            else:
-                # Fallback to JWT claims
-                email_address = claims.get('primary_email_address') or claims.get('email')
-                name = (claims.get('name') or claims.get('full_name') or 
-                       f"{claims.get('first_name', '')} {claims.get('last_name', '')}".strip() or
-                       (email_address.split('@')[0] if email_address else None))
 
+    # If user doesn't exist in DB but is authenticated, create them (claims-based)
+    if not db_user:
+        print(f"--- [INFO] Optional auth: Creating user for Clerk ID {clerk_user_id} from JWT claims. ---")
+        try:
+            email_address = claims.get('primary_email_address') or claims.get('email')
+            name = (
+                claims.get('name') or claims.get('full_name') or 
+                f"{claims.get('first_name', '')} {claims.get('last_name', '')}".strip() or
+                (email_address.split('@')[0] if email_address else None)
+            )
             new_user_data = schemas.UserCreate(
                 clerk_user_id=clerk_user_id,
                 email=email_address,
                 name=name
             )
             db_user = crud.create_user(db, user=new_user_data)
-            print(f"--- [INFO] Successfully created user {db_user.id} for Clerk ID {clerk_user_id} in optional auth. ---")
+            print(f"--- [INFO] Created user {db_user.id} for Clerk ID {clerk_user_id} (optional, claims-based). ---")
         except IntegrityError:
             db.rollback()
             print(f"--- [WARN] Race condition detected for Clerk ID {clerk_user_id} during optional auth. Refetching... ---")
@@ -244,32 +225,27 @@ async def get_optional_user(
             return None
 
     if db_user:
-        db_user = await sync_user_role_from_clerk(db, db_user)
+        db_user = await sync_user_role_from_claims(db, db_user, claims)
 
     return db_user
 
-async def sync_user_role_from_clerk(db: Session, db_user: models.User) -> models.User:
+async def sync_user_role_from_claims(db: Session, db_user: models.User, claims: dict | None) -> models.User:
     """
-    Fetches user role from Clerk's publicMetadata and updates the local DB if they differ.
+    Prefer JWT claims public_metadata for role; avoid remote Clerk API calls.
     """
     try:
-        clerk_user_info = await get_clerk_user_info(db_user.clerk_user_id)
-        # Return early if no metadata is available
-        if not (clerk_user_info and clerk_user_info.get('public_metadata')):
+        if not claims:
             return db_user
-
-        clerk_role = clerk_user_info['public_metadata'].get('role', 'user')
-        
-        if db_user.role != clerk_role:
-            print(f"--- [INFO] Role mismatch for user {db_user.id}. DB: '{db_user.role}', Clerk: '{clerk_role}'. Syncing... ---")
+        public_metadata = claims.get('public_metadata') or {}
+        clerk_role = (public_metadata or {}).get('role')
+        if clerk_role and db_user.role != clerk_role:
+            print(f"--- [INFO] Role mismatch for user {db_user.id}. DB: '{db_user.role}', JWT: '{clerk_role}'. Syncing... ---")
             db_user.role = clerk_role
             db.commit()
             db.refresh(db_user)
-            print(f"--- [INFO] Synced role for user {db_user.id} to '{clerk_role}'. ---")
-            
+            print(f"--- [INFO] Synced role for user {db_user.id} to '{clerk_role}' (claims). ---")
     except Exception as e:
-        print(f"--- [WARN] Could not sync user role for {db_user.clerk_user_id}: {e}")
-    
+        print(f"--- [WARN] Could not sync user role from claims for {db_user.clerk_user_id}: {e}")
     return db_user
 
 async def is_admin(user: models.User) -> bool:
