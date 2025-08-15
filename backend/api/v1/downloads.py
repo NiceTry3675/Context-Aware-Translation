@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from ...dependencies import get_db, get_required_user
 from ...services.translation_service import TranslationService
-from ... import crud, models, auth
+from ... import crud, models, auth, schemas
 
 router = APIRouter(tags=["downloads"])
 
@@ -86,13 +86,22 @@ async def download_job_log(
     return FileResponse(path=log_path, filename=log_filename, media_type="text/plain")
 
 
-@router.get("/jobs/{job_id}/glossary")
+@router.get("/jobs/{job_id}/glossary", response_model=None)
 async def get_job_glossary(
     job_id: int,
+    structured: bool = False,  # Optional parameter to return structured response
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_required_user)
 ):
-    """Get the final glossary for a completed translation job."""
+    """Get the final glossary for a completed translation job.
+    
+    Args:
+        job_id: The job ID
+        structured: If True, returns a GlossaryAnalysisResponse with structured data
+    
+    Returns:
+        Either raw glossary dict or GlossaryAnalysisResponse depending on 'structured' param
+    """
     db_job = crud.get_job(db, job_id=job_id)
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -106,8 +115,36 @@ async def get_job_glossary(
         raise HTTPException(status_code=400, detail=f"Glossary is available only for completed jobs. Current status: {db_job.status}")
     
     if not db_job.final_glossary:
+        if structured:
+            return schemas.GlossaryAnalysisResponse(glossary=[], translated_terms=schemas.TranslatedTerms(translations=[]))
         return {}
     
+    # If structured response requested, parse and return GlossaryAnalysisResponse
+    if structured:
+        from core.schemas import TranslatedTerms, TranslatedTerm
+        
+        # Parse glossary based on format
+        if isinstance(db_job.final_glossary, dict):
+            if 'translations' in db_job.final_glossary:
+                # Already in TranslatedTerms format
+                translated_terms = TranslatedTerms(**db_job.final_glossary)
+            else:
+                # Convert from dict format
+                translations = [
+                    TranslatedTerm(source=k, korean=v)
+                    for k, v in db_job.final_glossary.items()
+                ]
+                translated_terms = TranslatedTerms(translations=translations)
+        else:
+            # Return empty if format is unexpected
+            translated_terms = TranslatedTerms(translations=[])
+        
+        return schemas.GlossaryAnalysisResponse(
+            glossary=translated_terms.translations,
+            translated_terms=translated_terms
+        )
+    
+    # Default: return raw glossary
     return db_job.final_glossary
 
 

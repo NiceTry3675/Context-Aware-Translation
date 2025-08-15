@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ...dependencies import get_db, get_required_user
 from ...background_tasks.validation_tasks import run_validation_in_background
 from ... import crud, models, auth
-from ...schemas import ValidationRequest
+from ...schemas import ValidationRequest, StructuredValidationReport, ValidationResponse
 
 router = APIRouter(tags=["validation"])
 
@@ -58,13 +58,22 @@ async def trigger_validation(
     return {"message": "Validation started", "job_id": job_id}
 
 
-@router.get("/jobs/{job_id}/validation-report")
+@router.get("/jobs/{job_id}/validation-report", response_model=None)
 async def get_validation_report(
     job_id: int,
+    structured: bool = False,  # Optional parameter to return structured response
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_required_user)
 ):
-    """Get the validation report for a job."""
+    """Get the validation report for a job.
+    
+    Args:
+        job_id: The job ID
+        structured: If True, returns a StructuredValidationReport with core ValidationResponse
+    
+    Returns:
+        Either raw JSON report or StructuredValidationReport depending on 'structured' param
+    """
     print(f"--- [API] Getting validation report for job {job_id} ---")
     db_job = crud.get_job(db, job_id=job_id)
     if db_job is None:
@@ -89,4 +98,27 @@ async def get_validation_report(
         report = json.load(f)
     
     print(f"--- [API] Successfully loaded validation report with {len(report.get('detailed_results', []))} results ---")
+    
+    # If structured response requested, parse and return StructuredValidationReport
+    if structured:
+        # Extract all validation cases from detailed results
+        all_cases = []
+        for result in report.get('detailed_results', []):
+            cases = result.get('structured_cases', [])
+            if not cases and result.get('validation_result'):
+                cases = result['validation_result'].get('structured_cases', [])
+            if cases:
+                all_cases.extend(cases)
+        
+        # Create ValidationResponse from cases
+        validation_response = ValidationResponse(cases=all_cases)
+        
+        # Return structured report
+        return StructuredValidationReport.from_validation_response(
+            response=validation_response,
+            summary=report.get('summary', {}),
+            results=report.get('detailed_results', [])
+        )
+    
+    # Default: return raw report
     return report

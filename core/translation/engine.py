@@ -13,12 +13,6 @@ from ..utils.retry import retry_on_prohibited_segment
 from ..prompts.sanitizer import PromptSanitizer
 from .style_analyzer import extract_sample_text, analyze_narrative_style_with_api
 from sqlalchemy.orm import Session
-# Import crud and schemas only if backend is available
-try:
-    from backend import crud, schemas
-except ImportError:
-    crud = None
-    schemas = None
 
 def get_segment_ending(segment_text: str, max_chars: int) -> str:
     """
@@ -65,9 +59,11 @@ class TranslationEngine:
             # Re-raise the exception to be handled by the main runner
             raise e
         finally:
-            if crud and self.db and self.job_id:
+            if self.db and self.job_id:
                 end_time = time.time()
                 duration = int(end_time - start_time)
+                # Import locally to avoid circular import
+                from backend import crud, schemas
                 
                 log_data = schemas.TranslationUsageLogCreate(
                     job_id=self.job_id,
@@ -120,7 +116,8 @@ class TranslationEngine:
             segment_index = i + 1
             
             progress = int((i / total_segments) * 100)
-            if crud and self.db and self.job_id:
+            if self.db and self.job_id:
+                from backend import crud
                 crud.update_job_progress(self.db, self.job_id, progress)
 
             updated_glossary, updated_styles, style_deviation = self.dyn_config_builder.build_dynamic_guides(
@@ -175,7 +172,8 @@ class TranslationEngine:
 
         job.save_final_output()
 
-        if crud and self.db and self.job_id:
+        if self.db and self.job_id:
+            from backend import crud
             crud.update_job_final_glossary(self.db, self.job_id, job.glossary)
             
             # Save translation segments for segment view
@@ -186,6 +184,7 @@ class TranslationEngine:
                     "source_text": source_segment.text,
                     "translated_text": translated_segment
                 })
+            from backend import crud
             crud.update_job_translation_segments(self.db, self.job_id, segments_data)
 
         print(f"\n--- Translation Complete! ---")

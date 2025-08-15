@@ -9,7 +9,7 @@ from ...dependencies import get_db, get_required_user
 from ...services.post_edit_service import PostEditService
 from ...background_tasks.post_edit_tasks import run_post_edit_in_background
 from ... import crud, models, auth
-from ...schemas import PostEditRequest
+from ...schemas import PostEditRequest, StructuredPostEditLog
 
 router = APIRouter(tags=["post-edit"])
 
@@ -55,13 +55,22 @@ async def trigger_post_edit(
     return {"message": "Post-editing started", "job_id": job_id}
 
 
-@router.get("/jobs/{job_id}/post-edit-log")
+@router.get("/jobs/{job_id}/post-edit-log", response_model=None)
 async def get_post_edit_log(
     job_id: int,
+    structured: bool = False,  # Optional parameter to return structured response
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_required_user)
 ):
-    """Get the post-edit log for a job."""
+    """Get the post-edit log for a job.
+    
+    Args:
+        job_id: The job ID
+        structured: If True, returns a StructuredPostEditLog with ValidationCase objects
+    
+    Returns:
+        Either raw JSON log or StructuredPostEditLog depending on 'structured' param
+    """
     db_job = crud.get_job(db, job_id=job_id)
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -81,4 +90,9 @@ async def get_post_edit_log(
     with open(db_job.post_edit_log_path, 'r', encoding='utf-8') as f:
         log = json.load(f)
     
+    # If structured response requested, parse and return StructuredPostEditLog
+    if structured:
+        return StructuredPostEditLog.from_json_log(log)
+    
+    # Default: return raw log
     return log

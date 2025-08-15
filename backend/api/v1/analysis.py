@@ -54,7 +54,13 @@ async def analyze_glossary(
             parsed_glossary = TranslationService.analyze_glossary(
                 temp_file_path, api_key, model_name, file.filename
             )
-            return GlossaryAnalysisResponse(glossary=parsed_glossary)
+            # Map the parsed glossary from source/korean to term/translation for frontend compatibility
+            frontend_glossary = [
+                {"term": item.get("source", item.get("term", "")), 
+                 "translation": item.get("korean", item.get("translation", ""))}
+                for item in parsed_glossary
+            ]
+            return GlossaryAnalysisResponse(glossary=frontend_glossary)
         finally:
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)

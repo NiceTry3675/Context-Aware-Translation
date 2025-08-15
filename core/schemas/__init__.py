@@ -10,6 +10,7 @@ This module contains:
 from .glossary import (
     ExtractedTerms,
     TranslatedTerms,
+    TranslatedTerm,
     make_extracted_terms_schema,
     make_translated_terms_schema,
 )
@@ -37,6 +38,7 @@ __all__ = [
     # Glossary
     "ExtractedTerms",
     "TranslatedTerms",
+    "TranslatedTerm",
     "make_extracted_terms_schema",
     "make_translated_terms_schema",
     # Character Style

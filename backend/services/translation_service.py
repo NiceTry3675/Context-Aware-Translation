@@ -178,10 +178,14 @@ class TranslationService:
         db: Session
     ):
         """Execute the translation process."""
+        # Check environment variable for structured output
+        use_structured = os.getenv("USE_STRUCTURED_OUTPUT", "true").lower() == "true"
+        
         dyn_config_builder = DynamicConfigBuilder(
             gemini_api,
             protagonist_name,
-            initial_glossary=initial_glossary
+            initial_glossary=initial_glossary,
+            use_structured=use_structured
         )
         
         engine = TranslationEngine(

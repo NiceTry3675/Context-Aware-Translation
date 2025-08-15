@@ -208,6 +208,7 @@ python init_categories.py
     -   **CLI 사용 시**: 아래와 같이 Gemini API 키를 추가합니다.
         ```.env
         GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+        USE_STRUCTURED_OUTPUT="true"  # Gemini Structured Output 사용 (기본값: true)
         ```
     -   **데이터베이스 설정**: 로컬 개발 시 PostgreSQL 대신 SQLite(`database.db`)를 사용하려면, `.env` 파일에 `DATABASE_URL`을 추가하지 않거나 주석 처리하세요.
 

@@ -107,7 +107,16 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
         if verbose:
             print(f"\nInitializing dynamic config builder for protagonist: {protagonist_name}")
         
-        dyn_config_builder = DynamicConfigBuilder(gemini_model, protagonist_name)
+        # Check environment variable for structured output
+        use_structured = os.getenv("USE_STRUCTURED_OUTPUT", "true").lower() == "true"
+        if verbose and use_structured:
+            print("Using structured output for configuration extraction")
+        
+        dyn_config_builder = DynamicConfigBuilder(
+            gemini_model, 
+            protagonist_name,
+            use_structured=use_structured
+        )
         
         # Create translation engine (no database for CLI mode)
         engine = TranslationEngine(gemini_model, dyn_config_builder, db=None, job_id=None)

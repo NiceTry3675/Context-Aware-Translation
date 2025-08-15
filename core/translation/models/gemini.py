@@ -238,18 +238,28 @@ class GeminiModel:
                         pass
                 
                 if response_text:
+                    # Strip markdown code block formatting if present
+                    cleaned_text = response_text.strip()
+                    if cleaned_text.startswith('```json'):
+                        cleaned_text = cleaned_text[7:]  # Remove ```json prefix
+                    elif cleaned_text.startswith('```'):
+                        cleaned_text = cleaned_text[3:]  # Remove ``` prefix
+                    if cleaned_text.endswith('```'):
+                        cleaned_text = cleaned_text[:-3]  # Remove ``` suffix
+                    cleaned_text = cleaned_text.strip()
+                    
                     try:
-                        return _json.loads(response_text)
+                        return _json.loads(cleaned_text)
                     except _json.JSONDecodeError as e:
                         # Log the problematic JSON for debugging
                         print(f"JSON parsing error: {e}")
-                        print(f"Response text length: {len(response_text)}")
+                        print(f"Response text length: {len(cleaned_text)}")
                         
                         # Check if this looks like a truncation issue
-                        if "Unterminated string" in str(e) and response_text.strip()[-1] not in ['}', ']']:
+                        if "Unterminated string" in str(e) and cleaned_text.strip()[-1] not in ['}', ']']:
                             print("Warning: Response appears to be truncated. Attempting to repair...")
                             # Try to repair truncated JSON
-                            repaired = self._attempt_json_repair(response_text)
+                            repaired = self._attempt_json_repair(cleaned_text)
                             if repaired:
                                 try:
                                     return _json.loads(repaired)
@@ -259,9 +269,9 @@ class GeminiModel:
                         # Log problematic section for other errors
                         if hasattr(e, 'pos'):
                             start = max(0, e.pos - 100)
-                            end = min(len(response_text), e.pos + 100)
+                            end = min(len(cleaned_text), e.pos + 100)
                             print(f"Problematic section around position {e.pos}:")
-                            print(repr(response_text[start:end]))
+                            print(repr(cleaned_text[start:end]))
                         raise ValueError(f"Failed to parse JSON response: {e}")
                 
                 raise ValueError("Structured API returned an empty or unparseable response.")
