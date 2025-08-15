@@ -26,7 +26,8 @@ export function useCanvasState() {
   const [isClient, setIsClient] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [viewMode, setViewMode] = useState<'full' | 'segment'>('segment');
+  // Default to full view so users see entire source/translation side-by-side
+  const [viewMode, setViewMode] = useState<'full' | 'segment'>('full');
   // Legacy error filter chips are not used in structured UI; keep no-op state
   const [errorFilters, setErrorFilters] = useState({
     critical: true,
