@@ -115,7 +115,7 @@ class PostEditService:
         """Get the post-edit log file path."""
         # Include job ID to prevent conflicts with duplicate filenames
         log_filename = f"{job.id}_{os.path.splitext(job.filename)[0]}_postedit_log.json"
-        log_path = os.path.join("postedit_logs", log_filename)
+        log_path = os.path.join("logs/postedit_logs", log_filename)
         return log_path
     
     @staticmethod

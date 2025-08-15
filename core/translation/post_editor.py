@@ -28,8 +28,8 @@ class PostEditEngine:
         self.verbose = verbose
         
         # Create post-edit log directory
-        self.postedit_log_dir = Path('postedit_logs')
-        self.postedit_log_dir.mkdir(exist_ok=True)
+        self.postedit_log_dir = Path('logs/postedit_logs')
+        self.postedit_log_dir.mkdir(parents=True, exist_ok=True)
     
     def load_validation_report(self, report_path: str) -> Dict[str, Any]:
         """

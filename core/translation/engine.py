@@ -81,8 +81,8 @@ class TranslationEngine:
         """
         Internal method to handle the main translation logic.
         """
-        prompt_log_dir = "debug_prompts"
-        context_log_dir = "context_log"
+        prompt_log_dir = "logs/debug_prompts"
+        context_log_dir = "logs/context_log"
         os.makedirs(prompt_log_dir, exist_ok=True)
         os.makedirs(context_log_dir, exist_ok=True)
         

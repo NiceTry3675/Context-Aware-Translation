@@ -76,7 +76,7 @@ async def download_job_log(
         raise HTTPException(status_code=400, detail="Invalid log type. Must be 'prompts' or 'context'.")
     
     base, _ = os.path.splitext(db_job.filename)
-    log_dir = "debug_prompts" if log_type == "prompts" else "context_log"
+    log_dir = "logs/debug_prompts" if log_type == "prompts" else "logs/context_log"
     log_filename = f"{log_type}_job_{job_id}_{base}.txt"
     log_path = os.path.join(log_dir, log_filename)
     

@@ -13,7 +13,7 @@ class ProhibitedContentLogger:
     Handles logging of prohibited content errors in a standardized format.
     """
     
-    def __init__(self, base_dir: str = "prohibited_content_logs"):
+    def __init__(self, base_dir: str = "logs/prohibited_content_logs"):
         """
         Initialize the logger with a base directory for log files.
         

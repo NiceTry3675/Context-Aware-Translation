@@ -232,7 +232,7 @@ class TranslationService:
         # 3. Log files
         base, _ = os.path.splitext(job.filename)
         for log_type in ["prompts", "context"]:
-            log_dir = "debug_prompts" if log_type == "prompts" else "context_log"
+            log_dir = "logs/debug_prompts" if log_type == "prompts" else "logs/context_log"
             log_filename = f"{log_type}_job_{job.id}_{base}.txt"
             log_path = os.path.join(log_dir, log_filename)
             if os.path.exists(log_path):

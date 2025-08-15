@@ -119,11 +119,12 @@ Context-Aware-Translation/
 ├── uploads/                     # 📤 업로드된 원본 파일
 ├── translated_novel/            # 📚 번역된 결과물
 ├── source_novel/                # 📖 원본 소설 파일
-├── context_log/                 # 📝 문맥 분석 로그
-├── debug_prompts/               # 🔍 디버그 프롬프트
-├── prohibited_content_logs/     # ⚠️ 부적절한 콘텐츠 로그
-├── validation_logs/             # ✅ 번역 품질 검증 보고서
-├── postedit_logs/               # 🔧 자동 수정 내역 로그
+├── logs/                        # 📁 모든 로그 파일
+│   ├── context_log/            # 📝 문맥 분석 로그
+│   ├── debug_prompts/          # 🔍 디버그 프롬프트
+│   ├── prohibited_content_logs/ # ⚠️ 부적절한 콘텐츠 로그
+│   ├── validation_logs/        # ✅ 번역 품질 검증 보고서
+│   └── postedit_logs/          # 🔧 자동 수정 내역 로그
 ├── requirements.txt             # 🐍 Python 의존성
 ├── package.json                 # 📦 Node.js 의존성
 └── Dockerfile                   # 🐳 Docker 설정
@@ -267,8 +268,8 @@ python init_categories.py
 
 3.  **결과 확인**:
     -   번역이 완료되면 `translated_novel` 디렉토리에 결과 파일이 생성됩니다.
-    -   검증 사용 시 `validation_logs` 디렉토리에 품질 검증 보고서가 생성됩니다.
-    -   Post-Edit 사용 시 `postedit_logs` 디렉토리에 전체 수정 내역이 포함된 로그가 생성됩니다.
+    -   검증 사용 시 `logs/validation_logs` 디렉토리에 품질 검증 보고서가 생성됩니다.
+    -   Post-Edit 사용 시 `logs/postedit_logs` 디렉토리에 전체 수정 내역이 포함된 로그가 생성됩니다.
 
 ## 💻 기술 스택
 

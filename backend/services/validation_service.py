@@ -99,10 +99,10 @@ class ValidationService:
     @staticmethod
     def save_validation_report(job: models.TranslationJob, report: dict) -> str:
         """Save the validation report to a file."""
-        os.makedirs("validation_logs", exist_ok=True)
+        os.makedirs("logs/validation_logs", exist_ok=True)
         # Include job ID to prevent conflicts with duplicate filenames
         report_filename = f"{job.id}_{os.path.splitext(job.filename)[0]}_validation_report.json"
-        report_path = os.path.join("validation_logs", report_filename)
+        report_path = os.path.join("logs/validation_logs", report_filename)
         
         with open(report_path, 'w', encoding='utf-8') as f:
             json.dump(report, f, ensure_ascii=False, indent=2)
