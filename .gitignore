@@ -67,3 +67,4 @@ prohibited_content_logs/
 frontend/.next/
 .env.*
 frontend/node_modules/
+/TODO.md

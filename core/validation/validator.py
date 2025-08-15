@@ -8,36 +8,38 @@ frontend and post-edit modules (no legacy arrays, no raw_response).
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
+from pydantic import BaseModel, Field
 
-from core.validation.structured import make_response_schema
+from core.validation.structured import ValidationCase, make_response_schema
 from core.prompts.manager import PromptManager
 
 
-class ValidationResult:
+class ValidationResult(BaseModel):
     """Represents the result of a translation validation (per segment)."""
-
-    def __init__(self, segment_index: int, source_text: str, translated_text: str):
-        self.segment_index = segment_index
-        self.source_text = source_text
-        self.translated_text = translated_text
-        self.status = "PENDING"
-        self.structured_cases: Optional[List[Dict[str, Any]]] = None
+    
+    segment_index: int = Field(..., description="Index of the segment in the translation")
+    source_text: str = Field(..., description="Original source text")
+    translated_text: str = Field(..., description="Translated text")
+    status: str = Field(default="PENDING", description="Validation status: PENDING, PASS, FAIL, or ERROR")
+    structured_cases: Optional[List[ValidationCase]] = Field(default=None, description="List of validation issues found")
 
     def has_issues(self) -> bool:
         return bool(self.structured_cases and len(self.structured_cases) > 0)
 
     def to_dict(self) -> Dict[str, Any]:
+        """Convert model to dict for JSON serialization."""
         result: Dict[str, Any] = {
             'segment_index': self.segment_index,
             'status': self.status,
-            'source_preview': self.source_text[:100] + '...' if len(self.source_text) > 100 else self.source_text,
-            'translated_preview': self.translated_text[:100] + '...' if len(self.translated_text) > 100 else self.translated_text,
+            'source_text': self.source_text,
+            'translated_text': self.translated_text,
         }
         if self.structured_cases is not None:
-            result['structured_cases'] = self.structured_cases
+            result['structured_cases'] = [case.model_dump() for case in self.structured_cases]
         return result
 
 
@@ -59,9 +61,25 @@ class TranslationValidator:
         segment_index: int,
         quick_mode: bool = False,
     ) -> ValidationResult:
-        result = ValidationResult(segment_index, source_text, translated_text)
+        # Create ValidationResult using Pydantic model
+        result = ValidationResult(
+            segment_index=segment_index,
+            source_text=source_text,
+            translated_text=translated_text
+        )
 
-        glossary_text = "\n".join(f"{k}: {v}" for k, v in (glossary or {}).items()) if glossary else "N/A"
+        # Filter glossary to only include terms that appear in the source text
+        if glossary:
+            contextual_glossary = {
+                key: value for key, value in glossary.items()
+                if re.search(r'\b' + re.escape(key) + r'\b', source_text, re.IGNORECASE)
+            }
+            if self.verbose and len(glossary) > 0:
+                print(f"  Filtered glossary: {len(glossary)} → {len(contextual_glossary)} terms")
+        else:
+            contextual_glossary = {}
+        
+        glossary_text = "\n".join(f"{k}: {v}" for k, v in contextual_glossary.items()) if contextual_glossary else "N/A"
         # Build prompt via prompts.yaml to increase cohesion
         prompt_template = (
             PromptManager.VALIDATION_STRUCTURED_QUICK if quick_mode else PromptManager.VALIDATION_STRUCTURED_COMPREHENSIVE
@@ -71,19 +89,19 @@ class TranslationValidator:
             translated_text=translated_text,
             glossary_terms=glossary_text,
         )
-        schema = make_response_schema()
 
         if self.verbose:
             print(f"Validating segment {segment_index} (structured)...")
 
         try:
-            data = self.ai_model.generate_structured(prompt, schema)
-            cases = (data or {}).get('cases', [])
-            result.structured_cases = cases
-
-            # 새 단순화 스키마에 맞춰, 결과는 전체 리포트에서 요약만 사용
-            # per-segment 객체에는 structured_cases만 저장하고, legacy 필드는 비워둠
-            result.status = "FAIL" if (cases and len(cases) > 0) else "PASS"
+            # Use JSON schema for compatibility with Gemini API
+            response_schema = make_response_schema()
+            response = self.ai_model.generate_structured(prompt, response_schema)
+            # Response is a dict when using JSON schema
+            cases = (response or {}).get('cases', [])
+            # Convert dict cases to ValidationCase models
+            result.structured_cases = [ValidationCase(**case) for case in cases] if cases else None
+            result.status = "FAIL" if cases else "PASS"
 
         except Exception as e:
             print(f"Warning: Structured validation failed for segment {segment_index}: {e}")
@@ -158,20 +176,12 @@ class TranslationValidator:
         failed = sum(1 for r in results if r.status == "FAIL")
         errors = sum(1 for r in results if r.status == "ERROR")
 
-        def normalize_severity(s: Any) -> int:
-            if isinstance(s, int):
-                return max(1, min(3, s))
-            if isinstance(s, str):
-                t = s.lower()
-                if t in {"critical", "high", "severe"}: return 3
-                if t in {"major", "medium", "moderate", "important"}: return 2
-                if t in {"minor", "low", "trivial"}: return 1
-                try:
-                    n = int(s)
-                    return max(1, min(3, n))
-                except Exception:
-                    return 2
-            return 2
+        def normalize_severity(s: str) -> int:
+            """Convert severity string to integer (1, 2, or 3)."""
+            try:
+                return int(s)
+            except (ValueError, TypeError):
+                return 2  # Default to major if invalid
 
         severity_counts = {1: 0, 2: 0, 3: 0}
         dimension_counts = {
@@ -186,8 +196,8 @@ class TranslationValidator:
 
         for r in results:
             for c in (r.structured_cases or []):
-                sev = normalize_severity(c.get('severity'))
-                dim = (c.get('dimension') or 'other')
+                sev = normalize_severity(c.severity)
+                dim = c.dimension
                 severity_counts[sev] = severity_counts.get(sev, 0) + 1
                 if dim not in dimension_counts:
                     dimension_counts[dim] = 0

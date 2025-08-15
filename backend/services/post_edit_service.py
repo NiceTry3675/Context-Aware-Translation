@@ -89,6 +89,7 @@ class PostEditService:
         validation_report_path: str,
         selected_cases: dict | None = None,
         progress_callback: Optional[Callable[[int], None]] = None,
+        job_id: Optional[int] = None,
     ):
         """Run the post-editing process and overwrite the translated file."""
         edited_segments = post_editor.post_edit_job(
@@ -96,6 +97,7 @@ class PostEditService:
             validation_report_path,
             selected_cases,
             progress_callback=progress_callback,
+            job_id=job_id,
         )
 
         # Overwrite the translated file with the edited content
@@ -111,7 +113,8 @@ class PostEditService:
     @staticmethod
     def get_post_edit_log_path(job: models.TranslationJob) -> str:
         """Get the post-edit log file path."""
-        log_filename = f"{os.path.splitext(job.filename)[0]}_postedit_log.json"
+        # Include job ID to prevent conflicts with duplicate filenames
+        log_filename = f"{job.id}_{os.path.splitext(job.filename)[0]}_postedit_log.json"
         log_path = os.path.join("postedit_logs", log_filename)
         return log_path
     

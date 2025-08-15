@@ -53,6 +53,7 @@ def run_post_edit_in_background(
             validation_report_path=validation_report_path,
             selected_cases=selected_cases,
             progress_callback=update_progress,
+            job_id=job_id,
         )
         
         # Get the post-edit log path

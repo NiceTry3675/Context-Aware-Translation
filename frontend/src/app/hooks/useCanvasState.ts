@@ -26,7 +26,8 @@ export function useCanvasState() {
   const [isClient, setIsClient] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [viewMode, setViewMode] = useState<'full' | 'segment'>('segment');
+  // Default to full view so users see entire source/translation side-by-side
+  const [viewMode, setViewMode] = useState<'full' | 'segment'>('full');
   // Legacy error filter chips are not used in structured UI; keep no-op state
   const [errorFilters, setErrorFilters] = useState({
     critical: true,
@@ -70,6 +71,7 @@ export function useCanvasState() {
     selectedModel,
     onJobCreated: (job) => {
       addJob(job);
+      setSelectedJob(job); // Immediately set the new job as selected
       setFile(null);
       setStyleData(null);
       setGlossaryData([]);
@@ -86,7 +88,13 @@ export function useCanvasState() {
       const job = jobs.find(j => j.id.toString() === jobId);
       if (job) {
         setSelectedJob(job);
+      } else {
+        // Clear selectedJob if jobId doesn't match any job
+        setSelectedJob(null);
       }
+    } else if (!jobId) {
+      // Clear selectedJob if no jobId
+      setSelectedJob(null);
     }
   }, [jobId, jobs]);
   
