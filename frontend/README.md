@@ -29,6 +29,7 @@ A modern web application for AI-powered literary translation of novels from Engl
 - **Style Analysis**: AI-powered extraction of narrative style and character dialogue patterns
 - **Glossary Management**: Automatic term extraction and translation consistency
 - **Multiple AI Models**: Support for Google Gemini and OpenRouter models
+  - Per-task model selection (Translate, Style, Glossary)
 - **Advanced Settings**:
   - Segment size configuration (up to 15,000 characters)
   - Validation toggle with sample rate control
@@ -177,8 +178,15 @@ const { jobs, addJob, deleteJob, refreshJobs, error } = useTranslationJobs({
 Handles API key and provider management with localStorage.
 
 ```typescript
-const { apiKey, setApiKey, apiProvider, setApiProvider, selectedModel, setSelectedModel } = useApiKey();
+const {
+  apiKey, setApiKey,
+  apiProvider, setApiProvider,
+  selectedModel, setSelectedModel, // main (Translate) model
+  taskModels, setTaskModel         // per-task: { translate, style, glossary }
+} = useApiKey();
 ```
+
+By default, all tasks use the main model. You can override per task in the UI under “고급 설정: 작업별 모델 선택” to, for example, run main translation on `gemini-2.5-pro` while using `gemini-2.5-flash-lite` for glossary extraction.
 
 ## API Integration
 

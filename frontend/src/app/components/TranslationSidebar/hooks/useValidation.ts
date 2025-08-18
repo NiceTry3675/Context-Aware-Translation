@@ -8,9 +8,10 @@ import { triggerValidation } from '../../../utils/api';
 interface UseValidationProps {
   jobId: string;
   onRefresh?: () => void;
+  modelName?: string;
 }
 
-export function useValidation({ jobId, onRefresh }: UseValidationProps) {
+export function useValidation({ jobId, onRefresh, modelName }: UseValidationProps) {
   const [validationDialogOpen, setValidationDialogOpen] = useState(false);
   const [quickValidation, setQuickValidation] = useState(false);
   const [validationSampleRate, setValidationSampleRate] = useState(100);
@@ -31,7 +32,7 @@ export function useValidation({ jobId, onRefresh }: UseValidationProps) {
       const token = await getCachedClerkToken(getToken);
       console.log('Got token:', !!token);
       
-      await triggerValidation(jobId, token || undefined, quickValidation, validationSampleRate / 100);
+      await triggerValidation(jobId, token || undefined, quickValidation, validationSampleRate / 100, modelName);
       console.log('Validation triggered successfully');
       
       setValidationDialogOpen(false);

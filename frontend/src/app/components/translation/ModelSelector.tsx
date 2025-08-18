@@ -5,9 +5,10 @@ interface ModelSelectorProps {
   apiProvider: 'gemini' | 'openrouter';
   selectedModel: string;
   onModelChange: (model: string) => void;
+  title?: string;
 }
 
-export default function ModelSelector({ apiProvider, selectedModel, onModelChange }: ModelSelectorProps) {
+export default function ModelSelector({ apiProvider, selectedModel, onModelChange, title }: ModelSelectorProps) {
   const models = apiProvider === 'gemini' ? geminiModelOptions : openRouterModelOptions;
 
   const handleModelChange = (_: React.MouseEvent<HTMLElement>, newValue: string) => {
@@ -33,7 +34,7 @@ export default function ModelSelector({ apiProvider, selectedModel, onModelChang
 
   return (
     <>
-      <Typography variant="h5" component="h3" gutterBottom>2. 번역 모델 선택</Typography>
+      <Typography variant="h5" component="h3" gutterBottom>{title || '2. 번역 모델 선택'}</Typography>
       <ToggleButtonGroup
         value={selectedModel}
         exclusive

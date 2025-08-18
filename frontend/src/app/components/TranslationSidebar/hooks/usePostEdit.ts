@@ -9,9 +9,10 @@ interface UsePostEditProps {
   jobId: string;
   onRefresh?: () => void;
   selectedCases?: Record<number, boolean[]>;
+  modelName?: string;
 }
 
-export function usePostEdit({ jobId, onRefresh, selectedCases }: UsePostEditProps) {
+export function usePostEdit({ jobId, onRefresh, selectedCases, modelName }: UsePostEditProps) {
   const [postEditDialogOpen, setPostEditDialogOpen] = useState(false);
   // Structured-only: issue types removed
   const [loading, setLoading] = useState(false);
@@ -25,7 +26,7 @@ export function usePostEdit({ jobId, onRefresh, selectedCases }: UsePostEditProp
     
     try {
       const token = await getCachedClerkToken(getToken);
-      await triggerPostEdit(jobId, token || undefined, selectedCases || {});
+      await triggerPostEdit(jobId, token || undefined, selectedCases || {}, modelName);
       setPostEditDialogOpen(false);
       onRefresh?.();
       setError(null);

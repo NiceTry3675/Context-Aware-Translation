@@ -22,7 +22,7 @@ def load_config():
     
     # Generation settings to reduce repetition and enhance stability
     generation_config = {
-        "temperature": 0.7,
+        "temperature": 0.5,
         "top_p": 0.9,
         "top_k": 40,
     }

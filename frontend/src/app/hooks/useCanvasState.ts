@@ -40,12 +40,15 @@ export function useCanvasState() {
   const { jobs, addJob, refreshJobs } = useTranslationJobs({ apiUrl: API_URL });
   
   // Translation setup states
-  const { apiKey, setApiKey, apiProvider, setApiProvider, selectedModel, setSelectedModel } = useApiKey();
+  const { apiKey, setApiKey, apiProvider, setApiProvider, selectedModel, setSelectedModel, taskModels, setTaskModel, useAdvancedTaskModels, setUseAdvancedTaskModels } = useApiKey();
   const [file, setFile] = useState<File | null>(null);
   const [styleData, setStyleData] = useState<StyleData | null>(null);
   const [showStyleForm, setShowStyleForm] = useState<boolean>(false);
   const [glossaryData, setGlossaryData] = useState<GlossaryTerm[]>([]);
   const [glossaryAnalysisError, setGlossaryAnalysisError] = useState<string>('');
+  // Per-run overrides for dialog-time model selection
+  const [validationRunModel, setValidationRunModel] = useState<string | undefined>(undefined);
+  const [postEditRunModel, setPostEditRunModel] = useState<string | undefined>(undefined);
   
   // Translation settings
   const [translationSettings, setTranslationSettings] = useState<TranslationSettings>({
@@ -69,6 +72,7 @@ export function useCanvasState() {
     apiUrl: API_URL,
     apiKey,
     selectedModel,
+    taskModels,
     onJobCreated: (job) => {
       addJob(job);
       setSelectedJob(job); // Immediately set the new job as selected
@@ -118,10 +122,10 @@ export function useCanvasState() {
     postEditStatus: selectedJob?.post_edit_status || undefined
   });
 
-  const validation = useValidation({ jobId: jobId || '', onRefresh: refreshJobs });
+  const validation = useValidation({ jobId: jobId || '', onRefresh: refreshJobs, modelName: validationRunModel || taskModels.validation || selectedModel });
   // Structured-only: legacy selectedIssues not used to build selection array
   const selectedCases = useMemo(() => ({}) as Record<number, boolean[]>, []);
-  const postEdit = usePostEdit({ jobId: jobId || '', onRefresh: refreshJobs, selectedCases });
+  const postEdit = usePostEdit({ jobId: jobId || '', onRefresh: refreshJobs, selectedCases, modelName: postEditRunModel || taskModels.postedit || selectedModel });
   
   // Segment navigation hook
   const segmentNav = useSegmentNavigation({
@@ -309,6 +313,10 @@ export function useCanvasState() {
     setApiProvider,
     selectedModel,
     setSelectedModel,
+    taskModels,
+    setTaskModel,
+    useAdvancedTaskModels,
+    setUseAdvancedTaskModels,
     file,
     setFile,
     styleData,
@@ -353,6 +361,11 @@ export function useCanvasState() {
     refreshJobs,
     loadData,
     loadMoreSegments,
+    // Per-run model overrides
+    validationRunModel,
+    setValidationRunModel,
+    postEditRunModel,
+    setPostEditRunModel,
     
     // Hooks
     validation,

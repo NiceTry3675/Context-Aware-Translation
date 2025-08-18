@@ -50,6 +50,7 @@ async def trigger_post_edit(
         db_job.filepath,
         db_job.validation_report_path,
         request.selected_cases,
+        request.model_name or "gemini-2.5-flash-lite",
     )
     
     return {"message": "Post-editing started", "job_id": job_id}

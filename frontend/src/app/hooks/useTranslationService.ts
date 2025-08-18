@@ -8,6 +8,7 @@ interface UseTranslationServiceOptions {
   apiUrl: string;
   apiKey: string;
   selectedModel: string;
+  taskModels?: { translate: string; style: string; glossary: string };
   onJobCreated?: (job: Job) => void;
 }
 
@@ -15,6 +16,7 @@ export function useTranslationService({
   apiUrl,
   apiKey,
   selectedModel,
+  taskModels,
   onJobCreated
 }: UseTranslationServiceOptions) {
   const { getToken, isSignedIn, isLoaded } = useAuth();
@@ -56,7 +58,7 @@ export function useTranslationService({
       const styleFormData = new FormData();
       styleFormData.append('file', file);
       styleFormData.append('api_key', apiKey);
-      styleFormData.append('model_name', selectedModel);
+      styleFormData.append('model_name', taskModels?.style || selectedModel);
 
       const styleResponse = await fetch(`${apiUrl}/api/v1/analyze-style`, {
         method: 'POST',
@@ -76,7 +78,7 @@ export function useTranslationService({
         const glossaryFormData = new FormData();
         glossaryFormData.append('file', file);
         glossaryFormData.append('api_key', apiKey);
-        glossaryFormData.append('model_name', selectedModel);
+        glossaryFormData.append('model_name', taskModels?.glossary || selectedModel);
 
         try {
           const glossaryResponse = await fetch(`${apiUrl}/api/v1/analyze-glossary`, {
@@ -105,7 +107,7 @@ export function useTranslationService({
     } finally {
       setIsAnalyzing(false);
     }
-  }, [apiUrl, apiKey, selectedModel, isLoaded, isSignedIn, openSignIn]);
+  }, [apiUrl, apiKey, selectedModel, taskModels, isLoaded, isSignedIn, openSignIn]);
 
   const startTranslation = useCallback(async (
     file: File,
@@ -128,7 +130,7 @@ export function useTranslationService({
     const formData = new FormData();
     formData.append("file", file);
     formData.append("api_key", apiKey);
-    formData.append("model_name", selectedModel);
+    formData.append("model_name", taskModels?.translate || selectedModel);
     formData.append("style_data", JSON.stringify(styleData));
     
     if (glossaryData.length > 0) {
@@ -178,7 +180,7 @@ export function useTranslationService({
     } finally {
       setUploading(false);
     }
-  }, [apiUrl, apiKey, selectedModel, isLoaded, isSignedIn, getToken, openSignIn, onJobCreated]);
+  }, [apiUrl, apiKey, selectedModel, taskModels, isLoaded, isSignedIn, getToken, openSignIn, onJobCreated]);
 
   return {
     analyzeFile,

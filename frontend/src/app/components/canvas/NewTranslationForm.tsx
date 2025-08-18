@@ -23,6 +23,8 @@ interface NewTranslationFormProps {
   apiProvider: ApiProvider;
   apiKey: string;
   selectedModel: string;
+  taskModels: { translate: string; style: string; glossary: string; validation?: string; postedit?: string };
+  useAdvancedTaskModels: boolean;
   translationSettings: TSettings;
   showStyleForm: boolean;
   styleData: StyleData | null;
@@ -35,6 +37,8 @@ interface NewTranslationFormProps {
   onProviderChange: (provider: ApiProvider) => void;
   onApiKeyChange: (key: string) => void;
   onModelChange: (model: string) => void;
+  onTaskModelChange: (task: 'translate' | 'style' | 'glossary' | 'validation' | 'postedit', model: string) => void;
+  onAdvancedToggle: (enabled: boolean) => void;
   onFileSelect: (file: File, analyzeGlossary: boolean) => Promise<any>;
   onTranslationSettingsChange: (settings: TSettings) => void;
   onStyleChange: (style: StyleData) => void;
@@ -49,6 +53,8 @@ export default function NewTranslationForm({
   apiProvider,
   apiKey,
   selectedModel,
+  taskModels,
+  useAdvancedTaskModels,
   translationSettings,
   showStyleForm,
   styleData,
@@ -61,6 +67,8 @@ export default function NewTranslationForm({
   onProviderChange,
   onApiKeyChange,
   onModelChange,
+  onTaskModelChange,
+  onAdvancedToggle,
   onFileSelect,
   onTranslationSettingsChange,
   onStyleChange,
@@ -85,9 +93,13 @@ export default function NewTranslationForm({
             apiProvider={apiProvider}
             apiKey={apiKey}
             selectedModel={selectedModel}
+            taskModels={taskModels}
+            useAdvancedTaskModels={useAdvancedTaskModels}
             onProviderChange={onProviderChange}
             onApiKeyChange={onApiKeyChange}
             onModelChange={onModelChange}
+            onTaskModelChange={onTaskModelChange}
+            onAdvancedToggle={onAdvancedToggle}
           />
 
           <FileUploadSection

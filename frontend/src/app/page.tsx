@@ -82,6 +82,8 @@ function CanvasContent() {
                 apiProvider={state.apiProvider}
                 apiKey={state.apiKey}
                 selectedModel={state.selectedModel}
+                taskModels={state.taskModels}
+                useAdvancedTaskModels={state.useAdvancedTaskModels}
                 translationSettings={state.translationSettings}
                 showStyleForm={state.showStyleForm}
                 styleData={state.styleData}
@@ -94,6 +96,8 @@ function CanvasContent() {
                 onProviderChange={state.setApiProvider}
                 onApiKeyChange={state.setApiKey}
                 onModelChange={state.setSelectedModel}
+                onTaskModelChange={state.setTaskModel}
+                onAdvancedToggle={state.setUseAdvancedTaskModels}
                 onFileSelect={state.handleFileSelect}
                 onTranslationSettingsChange={state.setTranslationSettings}
                 onStyleChange={state.setStyleData}
@@ -146,6 +150,9 @@ function CanvasContent() {
         validationSampleRate={state.validation.validationSampleRate}
         onValidationSampleRateChange={state.validation.setValidationSampleRate}
         loading={state.validation.loading}
+        apiProvider={state.apiProvider}
+        modelName={(state as any).validationRunModel || state.taskModels?.validation || state.selectedModel}
+        onModelChange={(m) => (state as any).setValidationRunModel?.(m)}
       />
 
       <PostEditDialog
@@ -155,6 +162,9 @@ function CanvasContent() {
         validationReport={state.validationReport}
         loading={state.postEdit.loading}
         selectedCounts={{ total: state.selectedCounts?.total ?? 0 }}
+        apiProvider={state.apiProvider}
+        modelName={(state as any).postEditRunModel || state.taskModels?.postedit || state.selectedModel}
+        onModelChange={(m) => (state as any).setPostEditRunModel?.(m)}
       />
     </>
   );

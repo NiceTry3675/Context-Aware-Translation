@@ -12,6 +12,7 @@ def run_post_edit_in_background(
     file_path: str,
     validation_report_path: str,
     selected_cases: dict | None = None,
+    model_name: str = "gemini-2.5-flash-lite",
 ):
     """Background task to run post-editing on a validated translation."""
     db = None
@@ -31,7 +32,6 @@ def run_post_edit_in_background(
         # Get API key - for now using environment variable
         # In production, this should be retrieved from secure storage
         api_key = os.environ.get("GEMINI_API_KEY", "")
-        model_name = "gemini-2.5-flash-lite"
         
         # Prepare post-edit components
         post_editor, translation_job, translated_path = PostEditService.prepare_post_edit(
@@ -39,6 +39,7 @@ def run_post_edit_in_background(
             api_key=api_key,
             model_name=model_name
         )
+        print(f"--- [POST-EDIT] Using model: {model_name} ---")
         
         # Define progress callback
         def update_progress(progress: int):
