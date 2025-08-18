@@ -26,33 +26,35 @@ export interface CharacterInteraction {
   unique_patterns: string[];
 }
 
-export interface DialogueAnalysisResult {
+export interface CharacterInteraction {
   character_name: string;
-  sample_dialogues: string[];
-  speech_patterns: string[];
-  personality_traits: string[];
-  formality_level: string;
-  key_phrases: string[];
+  speech_style: '반말' | '해요체' | '하십시오체';
+}
+
+export interface DialogueAnalysisResult {
+  protagonist_name: string;
+  interactions: CharacterInteraction[];
+  has_dialogue: boolean;
 }
 
 // ============= Narrative Style Schemas =============
 
+export interface NarrationStyle {
+  description: string;
+  ending_style: string;
+}
+
 export interface NarrativeStyleDefinition {
   protagonist_name: string;
-  narration_style_endings: string[];
-  tone_keywords: string[];
-  stylistic_rule: string;
-  writing_style: string;
-  perspective: string;
+  narration_style: NarrationStyle;
+  core_tone_keywords: string[];
+  golden_rule: string;
 }
 
 export interface StyleDeviation {
-  segment_text: string;
-  deviation_type: string;
-  expected_style: string;
-  actual_style: string;
-  severity: 'low' | 'medium' | 'high';
-  suggestion: string;
+  has_deviation: boolean;
+  starts_with?: string | null;
+  instruction?: string | null;
 }
 
 // ============= Validation Schemas =============
