@@ -1,14 +1,45 @@
 import { useState, useCallback } from 'react';
 import { useAuth, useClerk } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
-import { StyleData, GlossaryTerm, TranslationSettings, FileAnalysisResult } from '../types/translation';
-import { Job } from '../types/job';
+import type { components } from '@/types/api';
+
+// Type aliases for convenience
+type TranslationJob = components['schemas']['TranslationJob'];
+type StyleAnalysisResponse = components['schemas']['StyleAnalysisResponse'];
+type GlossaryAnalysisResponse = components['schemas']['GlossaryAnalysisResponse'];
+type TranslatedTerm = components['schemas']['TranslatedTerm'];
+
+interface StyleData {
+  protagonist_name: string;
+  narration_style_endings: string;
+  tone_keywords: string;
+  stylistic_rule: string;
+}
+
+interface GlossaryTerm {
+  term: string;
+  translation: string;
+}
+
+interface TranslationSettings {
+  segmentSize: number;
+  enableValidation: boolean;
+  quickValidation: boolean;
+  validationSampleRate: number;
+  enablePostEdit: boolean;
+}
+
+interface FileAnalysisResult {
+  styleData: StyleData | null;
+  glossaryData: GlossaryTerm[];
+  error: string | null;
+}
 
 interface UseTranslationServiceOptions {
   apiUrl: string;
   apiKey: string;
   selectedModel: string;
-  onJobCreated?: (job: Job) => void;
+  onJobCreated?: (job: TranslationJob) => void;
 }
 
 export function useTranslationService({
@@ -169,7 +200,7 @@ export function useTranslationService({
         throw new Error(errorData.detail || `File upload failed: ${response.statusText}`);
       }
       
-      const newJob: Job = await response.json();
+      const newJob: TranslationJob = await response.json();
       onJobCreated?.(newJob);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";

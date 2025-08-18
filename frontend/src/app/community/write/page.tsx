@@ -16,14 +16,11 @@ import {
   Delete as DeleteIcon,
   Image as ImageIcon
 } from '@mui/icons-material';
+import type { components } from '@/types/api';
 
-interface PostCategory {
-  id: number;
-  name: string;
-  display_name: string;
-  description: string;
-  is_admin_only: boolean;
-}
+// Type aliases for convenience
+type PostCategory = components['schemas']['PostCategory'];
+type PostCreate = components['schemas']['PostCreate'];
 
 interface PostFormData {
   title: string;

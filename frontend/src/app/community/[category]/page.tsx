@@ -22,35 +22,12 @@ import {
   ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import theme from '../../../theme';
+import type { components } from '@/types/api';
 
-interface PostCategory {
-  id: number;
-  name: string;
-  display_name: string;
-  description: string;
-  is_admin_only: boolean;
-}
-
-interface Author {
-  id: number;
-  clerk_user_id: string;
-  name: string;
-  role: string;
-  email: string;
-}
-
-interface PostList {
-  id: number;
-  title: string;
-  author: Author;
-  category: PostCategory;
-  is_pinned: boolean;
-  is_private: boolean;
-  view_count: number;
-  comment_count: number;
-  created_at: string;
-  updated_at: string | null;
-}
+// Type aliases for convenience
+type PostCategory = components['schemas']['PostCategory'];
+type Post = components['schemas']['Post'];
+type User = components['schemas']['User'];
 
 function CategoryPostsPageContent() {
   const router = useRouter();
@@ -59,7 +36,7 @@ function CategoryPostsPageContent() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   
-  const [posts, setPosts] = useState<PostList[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [category, setCategory] = useState<PostCategory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -20,48 +20,13 @@ import {
   Comment as CommentIcon,
   Send as SendIcon
 } from '@mui/icons-material';
+import type { components } from '@/types/api';
 
-interface Author {
-  id: number;
-  clerk_user_id: string;
-  name: string;
-  role: string;
-  email: string;
-}
-
-interface PostCategory {
-  id: number;
-  name: string;
-  display_name: string;
-  description: string;
-  is_admin_only: boolean;
-}
-
-interface Post {
-  id: number;
-  title: string;
-  content: string;
-  author: Author;
-  category: PostCategory;
-  is_pinned: boolean;
-  is_private: boolean;
-  view_count: number;
-  images: string[];
-  created_at: string;
-  updated_at: string | null;
-}
-
-interface Comment {
-  id: number;
-  content: string;
-  author: Author;
-  post_id: number;
-  parent_id: number | null;
-  is_private: boolean;
-  created_at: string;
-  updated_at: string | null;
-  replies: Comment[];
-}
+// Type aliases for convenience
+type PostCategory = components['schemas']['PostCategory'];
+type Post = components['schemas']['Post'];
+type Comment = components['schemas']['Comment'];
+type User = components['schemas']['User'];
 
 function PostDetailPageContent() {
   const router = useRouter();

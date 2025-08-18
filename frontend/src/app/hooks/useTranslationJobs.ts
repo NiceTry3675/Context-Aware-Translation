@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
-import { Job } from '../types/job';
+import type { components } from '@/types/api';
+
+// Type alias for convenience
+type TranslationJob = components['schemas']['TranslationJob'];
 
 interface UseTranslationJobsOptions {
   apiUrl: string;
@@ -9,7 +12,7 @@ interface UseTranslationJobsOptions {
 
 export function useTranslationJobs({ apiUrl }: UseTranslationJobsOptions) {
   const { getToken, isSignedIn, isLoaded } = useAuth();
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobs, setJobs] = useState<TranslationJob[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +45,7 @@ export function useTranslationJobs({ apiUrl }: UseTranslationJobsOptions) {
           throw new Error(`Failed to fetch jobs: ${response.status}`);
         }
         
-        const fetchedJobs: Job[] = await response.json();
+        const fetchedJobs: TranslationJob[] = await response.json();
         setJobs(fetchedJobs);
         
         // Migrate from localStorage if needed
@@ -99,7 +102,7 @@ export function useTranslationJobs({ apiUrl }: UseTranslationJobsOptions) {
   }, [pollJobStatus]);
 
   // Add a new job
-  const addJob = useCallback((newJob: Job) => {
+  const addJob = useCallback((newJob: TranslationJob) => {
     setJobs(prevJobs => [newJob, ...prevJobs]);
   }, []);
 
