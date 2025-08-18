@@ -109,9 +109,11 @@ export function useTranslationService({
           if (glossaryResponse.ok) {
             const glossaryResult = await glossaryResponse.json() as GlossaryAnalysisResponse;
             // Convert API glossary format to UI GlossaryTerm format
-            result.glossaryData = (glossaryResult.glossary || []).map(item => {
-              const [source, korean] = Object.entries(item)[0] || ['', ''];
-              return { source, korean };
+            result.glossaryData = (glossaryResult.glossary || []).map((item: any) => {
+              return { 
+                source: item.term || '', 
+                korean: item.translation || '' 
+              };
             });
           } else {
             const errorData = await glossaryResponse.json();
