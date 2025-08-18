@@ -46,8 +46,16 @@ Context-Aware-Translation/
 │   ├── crud.py                  # 데이터베이스 CRUD 연산
 │   ├── database.py              # 데이터베이스 연결 설정
 │   ├── main.py                  # FastAPI 앱 진입점
-│   ├── migrations.py            # 데이터베이스 마이그레이션
-│   ├── models.py                # 데이터베이스 모델 정의
+│   ├── alembic.ini              # Alembic 설정 파일
+│   ├── migrations/              # Alembic 마이그레이션 디렉토리
+│   │   ├── env.py               # Alembic 환경 설정
+│   │   └── versions/            # 마이그레이션 버전 파일들
+│   ├── models/                  # 데이터베이스 모델 패키지
+│   │   ├── _base.py             # SQLAlchemy Base 클래스
+│   │   ├── user.py              # User 모델
+│   │   ├── translation.py       # TranslationJob 관련 모델
+│   │   ├── community.py         # 커뮤니티 관련 모델
+│   │   └── __init__.py          # 모델 export
 │   └── schemas.py               # Pydantic 스키마 정의
 ├── frontend/                    # 💻 Next.js 프론트엔드
 │   ├── src/
@@ -203,7 +211,57 @@ python init_categories.py
     npm install
     ```
 
-3.  **환경 변수 설정**:
+3.  **데이터베이스 마이그레이션**:
+    
+    이 프로젝트는 Alembic을 사용하여 데이터베이스 스키마를 관리합니다.
+    
+    ```bash
+    # 백엔드 디렉토리로 이동
+    cd backend
+    
+    # 데이터베이스 마이그레이션 적용 (테이블 생성)
+    alembic upgrade head
+    
+    # 새 마이그레이션 생성 (스키마 변경 시)
+    alembic revision --autogenerate -m "마이그레이션 설명"
+    
+    # 마이그레이션 히스토리 확인
+    alembic history
+    
+    # 이전 버전으로 롤백
+    alembic downgrade -1
+    
+    # 프로젝트 루트로 돌아가기
+    cd ..
+    ```
+
+4.  **코드 생성 (TypeScript 타입 동기화)**:
+    
+    이 프로젝트는 단일 진실의 원천(Single Source of Truth) 원칙을 따라 Pydantic 모델에서 TypeScript 타입을 자동 생성합니다.
+    
+    ```bash
+    # 전체 코드 생성 파이프라인 실행 (권장)
+    make codegen
+    
+    # 개별 단계 실행
+    make openapi       # FastAPI에서 OpenAPI 스키마 추출
+    make schemas       # Pydantic 모델에서 JSON 스키마 추출
+    make fe-types      # OpenAPI에서 TypeScript API 타입 생성
+    make fe-schemas    # JSON 스키마에서 TypeScript 도메인 타입 생성
+    
+    # 생성된 파일이 최신인지 확인
+    make verify
+    
+    # 생성된 파일 모두 삭제
+    make clean
+    
+    # 도움말 보기
+    make help
+    ```
+    
+    **참고**: 백엔드 모델을 수정한 경우 반드시 `make codegen`을 실행하여 프론트엔드 타입을 동기화해야 합니다.
+
+5.  **환경 변수 설정**:
     -   프로젝트 루트 디렉토리에 `.env` 파일을 생성합니다.
     -   **웹 UI 사용 시**: Gemini API 키는 웹 화면에서 직접 입력하므로 `.env` 파일에 추가할 필요가 없습니다.
     -   **CLI 사용 시**: 아래와 같이 Gemini API 키를 추가합니다.

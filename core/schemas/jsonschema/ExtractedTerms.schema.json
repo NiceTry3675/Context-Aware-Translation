@@ -1,0 +1,15 @@
+{
+  "description": "Response model for proper noun extraction.",
+  "properties": {
+    "terms": {
+      "description": "List of unique proper nouns found in the text. Empty list if none found.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Terms",
+      "type": "array"
+    }
+  },
+  "title": "ExtractedTerms",
+  "type": "object"
+}

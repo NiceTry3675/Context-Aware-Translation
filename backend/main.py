@@ -17,13 +17,8 @@ load_dotenv()
 # Import routers
 from .api.v1 import translation, community, admin, webhooks, announcements, schemas
 
-# Database initialization
-try:
-    from . import migrations
-    migrations.run_migrations()
-except Exception as e:
-    print(f"❌ Migration error: {e}")
-    # Continue running even if migrations fail
+# Note: Database migrations are now handled by Alembic
+# Run `cd backend && alembic upgrade head` to apply migrations
 
 # Auto initialization (categories, etc.)
 try:
