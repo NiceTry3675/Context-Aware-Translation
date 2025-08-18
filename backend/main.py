@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 load_dotenv()
 
 # Import routers
-from .api.v1 import translation, community, admin, webhooks, announcements
+from .api.v1 import translation, community, admin, webhooks, announcements, schemas
 
 # Database initialization
 try:
@@ -71,6 +71,7 @@ app.include_router(community.router)
 app.include_router(admin.router)
 app.include_router(webhooks.router)
 app.include_router(announcements.router)
+app.include_router(schemas.router)
 
 # Root endpoint
 @app.get("/")

@@ -6,7 +6,11 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "codegen:api": "openapi-typescript ../openapi.json -o src/types/api.d.ts",
+    "prebuild": "npm run codegen:api",
+    "tsc": "tsc",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@clerk/localizations": "^3.20.1",
@@ -32,6 +36,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.3.5",
+    "openapi-fetch": "^0.14.0",
+    "openapi-typescript": "^7.9.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
