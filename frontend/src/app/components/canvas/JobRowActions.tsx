@@ -21,6 +21,7 @@ import { usePostEdit } from '../TranslationSidebar/hooks/usePostEdit';
 import { useAuth } from '@clerk/nextjs';
 import { fetchValidationReport, ValidationReport } from '../../utils/api';
 import { getCachedClerkToken } from '../../utils/authToken';
+import { useApiKey } from '../../hooks/useApiKey';
 
 interface JobRowActionsProps {
   job: Job;
@@ -31,14 +32,28 @@ interface JobRowActionsProps {
 export default function JobRowActions({ job, onRefresh, compact = false }: JobRowActionsProps) {
   const jobId = job.id.toString();
   const { getToken } = useAuth();
+  const { apiProvider, selectedModel, taskModels } = useApiKey();
   
   // State for validation report - loaded on demand
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
   const [selectedCases, setSelectedCases] = useState<Record<number, boolean[]>>({});
   const [loadingReport, setLoadingReport] = useState(false);
+  // Per-run override for validation model
+  const [validationRunModel, setValidationRunModel] = useState<string | undefined>(undefined);
 
-  const validation = useValidation({ jobId, onRefresh });
-  const postEdit = usePostEdit({ jobId, onRefresh, selectedCases });
+  const validation = useValidation({ 
+    jobId, 
+    onRefresh,
+    modelName: validationRunModel || taskModels.validation || selectedModel
+  });
+  // Per-run override for post-edit model
+  const [postEditRunModel, setPostEditRunModel] = useState<string | undefined>(undefined);
+  const postEdit = usePostEdit({ 
+    jobId, 
+    onRefresh, 
+    selectedCases,
+    modelName: postEditRunModel || taskModels.postedit || selectedModel
+  });
 
   const canRunValidation = job.status === 'COMPLETED' && 
     (!job.validation_status || job.validation_status === 'FAILED');
@@ -166,6 +181,9 @@ export default function JobRowActions({ job, onRefresh, compact = false }: JobRo
           validationSampleRate={validation.validationSampleRate}
           onValidationSampleRateChange={validation.setValidationSampleRate}
           loading={validation.loading}
+          apiProvider={apiProvider}
+          modelName={validationRunModel || taskModels.validation || selectedModel}
+          onModelChange={(m) => setValidationRunModel(m)}
         />
 
         {/* Post-Edit Dialog */}
@@ -176,6 +194,9 @@ export default function JobRowActions({ job, onRefresh, compact = false }: JobRo
           validationReport={validationReport}
           loading={postEdit.loading || loadingReport}
           selectedCounts={selectedCounts}
+          apiProvider={apiProvider}
+          modelName={postEditRunModel || taskModels.postedit || selectedModel}
+          onModelChange={(m) => setPostEditRunModel(m)}
         />
       </>
     );
@@ -225,6 +246,9 @@ export default function JobRowActions({ job, onRefresh, compact = false }: JobRo
         validationSampleRate={validation.validationSampleRate}
         onValidationSampleRateChange={validation.setValidationSampleRate}
         loading={validation.loading}
+        apiProvider={apiProvider}
+        modelName={validationRunModel || taskModels.validation || selectedModel}
+        onModelChange={(m) => setValidationRunModel(m)}
       />
 
       {/* Post-Edit Dialog */}
@@ -235,6 +259,9 @@ export default function JobRowActions({ job, onRefresh, compact = false }: JobRo
         validationReport={validationReport}
         loading={postEdit.loading}
         selectedCounts={selectedCounts}
+        apiProvider={apiProvider}
+        modelName={postEditRunModel || taskModels.postedit || selectedModel}
+        onModelChange={(m) => setPostEditRunModel(m)}
       />
     </>
   );

@@ -32,6 +32,8 @@ import ActionButtons from './ActionButtons';
 import { useTranslationData } from './hooks/useTranslationData';
 import { useValidation } from './hooks/useValidation';
 import { usePostEdit } from './hooks/usePostEdit';
+import { useApiKey } from '../../hooks/useApiKey';
+import { useState as useReactState } from 'react';
 
 interface TranslationSidebarProps {
   open: boolean;
@@ -77,6 +79,10 @@ export default function TranslationSidebar({
   onRefresh,
 }: TranslationSidebarProps) {
   const [tabValue, setTabValue] = useState(0);
+  // Access provider and model settings
+  const { apiProvider, selectedModel, taskModels } = useApiKey();
+  // Per-run override for validation model in this dialog scope
+  const [validationRunModel, setValidationRunModel] = useReactState<string | undefined>(undefined);
   
   // Use custom hooks
   const {
@@ -103,8 +109,19 @@ export default function TranslationSidebar({
     });
   };
 
-  const validation = useValidation({ jobId, onRefresh });
-  const postEdit = usePostEdit({ jobId, onRefresh, selectedCases });
+  const validation = useValidation({ 
+    jobId, 
+    onRefresh,
+    modelName: validationRunModel || taskModels.validation || selectedModel
+  });
+  // Per-run override for post-edit model in this dialog scope
+  const [postEditRunModel, setPostEditRunModel] = useReactState<string | undefined>(undefined);
+  const postEdit = usePostEdit({ 
+    jobId, 
+    onRefresh, 
+    selectedCases,
+    modelName: postEditRunModel || taskModels.postedit || selectedModel
+  });
 
   // Combine loading states
   const loading = dataLoading || validation.loading || postEdit.loading;
@@ -311,6 +328,9 @@ export default function TranslationSidebar({
         validationSampleRate={validation.validationSampleRate}
         onValidationSampleRateChange={validation.setValidationSampleRate}
         loading={validation.loading}
+        apiProvider={apiProvider}
+        modelName={validationRunModel || taskModels.validation || selectedModel}
+        onModelChange={(m) => setValidationRunModel(m)}
       />
 
       {/* Post-Edit Confirmation Dialog */}
@@ -321,6 +341,9 @@ export default function TranslationSidebar({
         validationReport={validationReport}
         loading={postEdit.loading}
         selectedCounts={{ total: Object.values(selectedCases).reduce((acc, arr)=> acc + (arr?.filter(Boolean).length || 0), 0) }}
+        apiProvider={apiProvider}
+        modelName={postEditRunModel || taskModels.postedit || selectedModel}
+        onModelChange={(m) => setPostEditRunModel(m)}
       />
     </>
   );
