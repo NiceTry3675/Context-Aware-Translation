@@ -174,22 +174,8 @@ export function useCanvasState() {
     }
   };
 
-  // Lightweight auto-refresh using public endpoints only (no Clerk token)
-  useEffect(() => {
-    if (
-      selectedJob?.status === 'IN_PROGRESS' ||
-      selectedJob?.validation_status === 'IN_PROGRESS' || 
-      selectedJob?.post_edit_status === 'IN_PROGRESS'
-    ) {
-      const interval = setInterval(() => {
-        // Jobs list update: handled in useTranslationJobs poller (public GET /jobs/{id})
-        refreshJobs();
-        // Sidebar data loads call protected endpoints; avoid tokened calls here
-        // loadData is intentionally not called automatically
-      }, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [selectedJob?.status, selectedJob?.validation_status, selectedJob?.post_edit_status, refreshJobs]);
+  // Lightweight auto-refresh is handled by useTranslationJobs poller (public GET /jobs/{id}).
+  // We intentionally avoid tokened refreshes here to prevent unnecessary JWT issuance.
 
   // Handle job selection change
   const handleJobChange = (newJobId: string) => {
