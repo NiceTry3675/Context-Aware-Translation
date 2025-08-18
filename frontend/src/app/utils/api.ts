@@ -1,6 +1,12 @@
 import { ValidationCase } from '@/core-schemas';
+import type { components } from '@/types/api';
 
-// Local type definitions for structured reports (not yet in core schemas)
+// Type aliases for generated API types - exported for use in components
+export type GlossaryAnalysisResponse = components['schemas']['GlossaryAnalysisResponse'];
+export type TranslatedTerm = components['schemas']['TranslatedTerm'];
+
+// Local type definitions for structured reports (not yet in OpenAPI schema)
+// TODO: These should be generated from backend/schemas.py once they're exported
 export interface StructuredValidationReport {
   job_id: number;
   summary: {
@@ -35,12 +41,6 @@ export interface StructuredPostEditLog {
   total_segments: number;
   edited_segments: number;
   timestamp: string;
-}
-
-export interface GlossaryAnalysisResponse {
-  terms?: Array<{ source: string; korean: string }>;
-  character_styles?: Record<string, any>;
-  narrative_style?: any;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
