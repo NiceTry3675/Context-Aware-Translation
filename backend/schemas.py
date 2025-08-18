@@ -1,6 +1,19 @@
 from pydantic import BaseModel, field_serializer
 import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
+
+# Import core schemas directly
+from core.schemas import (
+    ValidationCase,
+    ValidationResponse,
+    ExtractedTerms,
+    TranslatedTerms,
+    TranslatedTerm,
+    CharacterInteraction,
+    DialogueAnalysisResult,
+    NarrativeStyleDefinition,
+    StyleDeviation,
+)
 try:
     from zoneinfo import ZoneInfo
     # Windows 환경 호환을 위한 UTC 처리
@@ -84,9 +97,30 @@ class TranslationJob(TranslationJobBase):
     post_edit_status: Optional[str] = None
     post_edit_progress: Optional[int] = None
     post_edit_completed_at: Optional[datetime.datetime] = None
+    
+    # Structured glossary data (stored as JSON in DB, parsed as Pydantic model)
+    final_glossary: Optional[Dict[str, Any]] = None
+    structured_glossary: Optional[TranslatedTerms] = None
 
     class Config:
         from_attributes = True
+        
+    def model_post_init(self, __context):
+        """Parse JSON glossary into structured format if available"""
+        if self.final_glossary and not self.structured_glossary:
+            try:
+                # Try to parse as TranslatedTerms format
+                if 'translations' in self.final_glossary:
+                    self.structured_glossary = TranslatedTerms(**self.final_glossary)
+                # Or convert from dict format
+                elif isinstance(self.final_glossary, dict):
+                    translations = [
+                        TranslatedTerm(source=k, korean=v) 
+                        for k, v in self.final_glossary.items()
+                    ]
+                    self.structured_glossary = TranslatedTerms(translations=translations)
+            except Exception:
+                pass  # Keep original format if parsing fails
 
 # --- TranslationUsageLog Schemas ---
 class TranslationUsageLogBase(BaseModel):
@@ -201,18 +235,41 @@ class Comment(CommentBase, KSTTimezoneBase):
     replies: List['Comment'] = []
 
 # --- Translation-related Schemas ---
+# Use core GlossaryTerm (TranslatedTerm) directly
+GlossaryTerm = TranslatedTerm  # Alias for backward compatibility
+
 class StyleAnalysisResponse(BaseModel):
+    """Response for style analysis - extends core NarrativeStyleDefinition"""
     protagonist_name: str
     narration_style_endings: str
     tone_keywords: str
     stylistic_rule: str
-
-class GlossaryTerm(BaseModel):
-    term: str
-    translation: str
+    
+    # Optional structured data from core
+    narrative_style: Optional[NarrativeStyleDefinition] = None
+    character_styles: Optional[List[DialogueAnalysisResult]] = None
 
 class GlossaryAnalysisResponse(BaseModel):
-    glossary: List[GlossaryTerm]
+    """Response for glossary analysis using core schemas"""
+    glossary: List[Dict[str, str]]  # Changed to List[Dict] for flexibility
+    
+    # Optional structured data
+    extracted_terms: Optional[ExtractedTerms] = None
+    translated_terms: Optional[TranslatedTerms] = None
+    
+    @classmethod
+    def from_core_schemas(cls, extracted: ExtractedTerms, translated: TranslatedTerms):
+        """Create response from core schemas"""
+        # Map TranslatedTerm to frontend-compatible format
+        glossary_list = [
+            {"term": t.source, "translation": t.korean}
+            for t in translated.translations
+        ]
+        return cls(
+            glossary=glossary_list,
+            extracted_terms=extracted,
+            translated_terms=translated
+        )
 
 class ValidationRequest(BaseModel):
     quick_validation: bool = False
@@ -222,6 +279,57 @@ class PostEditRequest(BaseModel):
     # Structured validation selection: per-segment boolean array
     # { [segmentIndex]: boolean[] }
     selected_cases: Optional[dict] = None
+
+# Structured Post-Edit Response using core schemas  
+class PostEditSegment(BaseModel):
+    """Individual segment in post-edit log"""
+    segment_index: int
+    was_edited: bool
+    source_text: str
+    original_translation: str
+    edited_translation: str
+    validation_status: str
+    structured_cases: Optional[List[ValidationCase]] = None
+    changes_made: Optional[Dict[str, Any]] = None
+    
+class StructuredPostEditLog(BaseModel):
+    """Post-edit log with structured data from core"""
+    summary: Dict[str, Any]
+    segments: List[PostEditSegment]
+    validation_cases_fixed: Optional[List[ValidationCase]] = None  # Cases that were fixed
+    
+    @classmethod
+    def from_json_log(cls, log_data: Dict[str, Any]):
+        """Create structured log from JSON file"""
+        segments = [PostEditSegment(**seg) for seg in log_data.get('segments', [])]
+        
+        # Extract fixed validation cases
+        fixed_cases = []
+        for seg in segments:
+            if seg.was_edited and seg.structured_cases:
+                fixed_cases.extend(seg.structured_cases)
+        
+        return cls(
+            summary=log_data.get('summary', {}),
+            segments=segments,
+            validation_cases_fixed=fixed_cases if fixed_cases else None
+        )
+
+# Structured Validation Response using core schemas
+class StructuredValidationReport(BaseModel):
+    """Validation report with structured data from core"""
+    summary: Dict[str, Any]
+    detailed_results: List[Dict[str, Any]]
+    validation_response: Optional[ValidationResponse] = None  # Core schema
+    
+    @classmethod
+    def from_validation_response(cls, response: ValidationResponse, summary: Dict, results: List):
+        """Create report from core ValidationResponse"""
+        return cls(
+            summary=summary,
+            detailed_results=results,
+            validation_response=response
+        )
 
 # Update forward references
 Comment.model_rebuild()

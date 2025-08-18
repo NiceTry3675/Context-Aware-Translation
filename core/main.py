@@ -107,7 +107,16 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
         if verbose:
             print(f"\nInitializing dynamic config builder for protagonist: {protagonist_name}")
         
-        dyn_config_builder = DynamicConfigBuilder(gemini_model, protagonist_name)
+        # Check environment variable for structured output
+        use_structured = os.getenv("USE_STRUCTURED_OUTPUT", "true").lower() == "true"
+        if verbose and use_structured:
+            print("Using structured output for configuration extraction")
+        
+        dyn_config_builder = DynamicConfigBuilder(
+            gemini_model, 
+            protagonist_name,
+            use_structured=use_structured
+        )
         
         # Create translation engine (no database for CLI mode)
         engine = TranslationEngine(gemini_model, dyn_config_builder, db=None, job_id=None)
@@ -168,7 +177,7 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
                     print(f"  👤 {validation_summary['total_name_inconsistencies']} name inconsistencies")
                 
                 print(f"\nPlease review the validation report for full details.")
-                print(f"Report location: validation_logs/{job.user_base_filename}_validation_report.json")
+                print(f"Report location: logs/validation_logs/{job.user_base_filename}_validation_report.json")
             elif validation_summary['pass_rate'] >= 95:
                 print("\n✅ Excellent! Translation passed validation with high quality.")
             elif validation_summary['pass_rate'] >= 85:
@@ -181,7 +190,7 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
                 print("="*60)
                 
                 # Check if validation report exists
-                validation_report_path = f"validation_logs/{job.user_base_filename}_validation_report.json"
+                validation_report_path = f"logs/validation_logs/{job.user_base_filename}_validation_report.json"
                 if not os.path.exists(validation_report_path):
                     print("Error: Validation report not found. Post-edit requires validation to be run first.")
                     print("Please run with --with-validation flag.")

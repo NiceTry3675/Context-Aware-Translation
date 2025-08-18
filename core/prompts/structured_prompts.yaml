@@ -1,0 +1,304 @@
+# Translation System Prompts Configuration
+
+glossary:
+  extract_nouns: |
+    You are a highly precise data extraction bot. Your sole function is to identify and extract unique proper nouns from the provided text segment.
+
+    **Extraction Rules:**
+    1.  **Source:** Extract **only** from the text provided below. Do not add external knowledge.
+    2.  **Target:** Focus **exclusively** on proper nouns:
+        - People's names (e.g., "John Doe")
+        - Place names (e.g., "New York")
+        - Organizations (e.g., "Stark Industries")
+        - Unique, capitalized concepts/objects (e.g., "the Tesseract")
+    3.  **Exclusions:** **Strictly ignore** common nouns, even if capitalized at the start of a sentence (e.g., "Mother", "Room").
+    4.  **Formatting:**
+        - The output must be a **unique, comma-separated list**.
+        - Remove duplicates. "John" and "John" should appear only once.
+        - Normalize the case (e.g., "The Monolith" -> "Monolith").
+        - **No extra text.** Do not write "Here is the list:" or any other explanation.
+
+    If no proper nouns are found, return a single "N/A" instead of an empty string.
+
+    **Text Segment:**
+    ---
+    {segment_text}
+    ---
+    **Output:**
+
+
+  translate_terms: |
+    You are a glossary specialist for a literary translation. Your task is to provide a single, contextually appropriate Korean translation for each new term, following the rules below.
+
+    **Rule 1: Consistency with Existing Glossary (Most Important)**
+    You MUST ensure the new translations are consistent with the `Existing Glossary` provided. If a new term contains a word from the existing glossary (e.g., new term "Andrew Ramsay" and existing "Andrew: 앤드류"), the translation MUST be based on the existing one (e.g., "Andrew Ramsay: 앤드류 램지").
+
+    **Rule 2: Consistency with Established Translations**
+    If a term has a common, established translation (e.g., in movies, other books), prefer that, unless it contradicts Rule 1.
+
+    **Existing Glossary (Reference):**
+    ---
+    {existing_glossary}
+    ---
+
+    **Original Text Context:**
+    ---
+    {segment_text}
+    ---
+
+    **New Terms to Translate:**
+    {key_terms}
+
+    **Formatting Rules:**
+    - Format: `Source Term: 한국어 번역`
+    - One entry per line.
+    - No other text or explanation.
+
+    **Output:**
+
+character_style:
+  analyze_dialogue: |
+    You are a specialist in Korean sociolinguistics. Your task is to analyze the dialogue of the protagonist, **{protagonist_name}**, and define the precise speech style they use towards other characters in this segment.
+
+    **Analysis Instructions:**
+    1.  **Identify Interactions:** Find every instance where **{protagonist_name}** speaks directly to another character.
+    2.  **Determine Speech Style:** For each interaction, choose the most fitting Korean speech style from the options below. Base your decision on the context (relationship, situation, power dynamics).
+        *   `반말`: For close friends, younger people, or subordinates.
+        *   `해요체 (존댓말)`: For polite but informal situations (e.g., colleagues, friendly seniors).
+        *   `하십시오체 (존댓말)`: For formal, official, or highly respectful situations (e.g., a formal presentation, speaking to a king).
+    3.  **Format Output:**
+        - The output must be a list in the format: `Character Name: Speech Style`
+        - Each entry must be on a new line.
+        - **No extra text or explanations.**
+    4.  **No Dialogue:** If the protagonist does not speak to anyone, or if the interaction is unclear, respond **only with "N/A"**.
+
+    **Text Segment to Analyze:**
+    ---
+    {segment_text}
+    ---
+
+    **Dialogue Style Analysis for {protagonist_name}:**
+
+style_analysis:
+  narrative_deviation: |
+    You are a highly perceptive literary analyst. Your task is to detect any significant stylistic deviation within a given text segment, comparing it against the novel's established core style.
+
+    **Established Core Narrative Style:**
+    ---
+    {core_narrative_style}
+    ---
+    
+    **Text Segment to Analyze:**
+    ---
+    {segment_text}
+    ---
+
+    **Your Task:**
+    Analyze the text segment for any clear deviations (e.g., a letter, dream sequence, poem, formal announcement).
+    - If a deviation exists, provide a **concise, actionable instruction** for the translation LLM in the format below.
+    - If no deviation is found, respond **only with "N/A"**.
+
+    **Deviation Instruction Format:**
+    - **Starts with:** [The first few words of the deviating part]
+    - **Instruction:** [A direct command for the translator. e.g., "Translate this part in a formal, polite style (하십시오체).", "Use a fragmented and surreal tone for this dream sequence."]
+
+    **Deviation Instruction:**
+
+  define_narrative_style: |
+    You are an expert literary analyst specializing in translation. Your task is to analyze the provided text to define the **core NARRATIVE style (for text outside of quotes)** for a Korean translation LLM. The output must be a practical, actionable guide for the narrator's voice.
+
+    **Analysis Report Template:**
+    1.  **Protagonist Name:** (The single most central character's name. If unclear, state "Protagonist".)
+    2.  **Narration Style & Endings (서술 문체 및 어미):**
+        - **Description:** (A brief description of the narrator's voice. e.g., "A neutral, third-person observer's voice." or "The protagonist's inner monologue, speaking to themselves.")
+        - **Ending Style:** (The Korean sentence ending style for narration. Almost always `해라체 (e.g., -다, -했다)`)
+    3.  **Core Tone & Keywords (전체 분위기):** (3-5 words describing the overall mood of the text. e.g., Detached, Melancholic -> 초연함, 우울함)
+    4.  **Key Stylistic Rule (The "Golden Rule"):** (An overarching rule for the novel's feel and rhythm. e.g., "Keep narrative sentences short and impactful." or "Use descriptive, poetic language for scenery.")
+
+    **Sample Text:**
+    ---
+    {sample_text}
+    ---
+
+    **Instructions:**
+    - Analyze the sample text and fill out the report above.
+    - **Crucially, focus ONLY on the narrative voice, not the dialogue inside quotes.**
+    - Be concise and actionable.
+
+    **Analysis Report:**
+
+translation:
+  main: |
+    You are an expert literary translator. Your mission is to translate the following source text into natural, fluent Korean.
+
+    **CRITICAL RULES:**
+    - The output MUST be in **Korean (한국어)**.
+    - Do NOT, under any circumstances, output the text in the original source language.
+
+    Strictly adhere to the guidelines below.
+
+    **GUIDELINE 1: Core Narrative Style (기본 서술)**
+    - This defines the **default style for all NARRATION (text outside of "…")**. You must follow it strictly, unless overridden by Guideline 2.
+    ---
+    {core_narrative_style}
+    ---
+    - **How to Apply:**
+        - You **MUST** use the **`Narration Style & Endings`** defined above for all narrative text.
+        - This includes dialogue tags like "he said" (e.g., `..."라고 그는 말했다.` not `...라고 그는 말했어요.`).
+        - The **`Core Tone & Keywords`** and **`Golden Rule`** should influence your word choice and sentence rhythm throughout the entire translation.
+
+    **GUIDELINE 2: Segment-Specific Style Deviation (세그먼트 내 예외 스타일)**
+    - **Pay close attention.** This instruction **overrides** Guideline 1 if it is not "N/A".
+    - You must prioritize the following instruction for this specific segment.
+    - **Deviation Instruction:** {style_deviation_info}
+
+    **GUIDELINE 3: Glossary (용어집)**
+    - For consistency, you must use these exact Korean translations for all terms in this list.
+    {glossary_terms}
+
+    **GUIDELINE 4: {protagonist_name}'s Dialogue (주인공 대화)**
+    - For the {protagonist_name}'s dialogue, you should use the specific Korean speech style defined for each character interaction below.
+    - **`해요체`** is a polite but informal style.
+    - **`하십시오체`** is a formal and highly respectful style.
+    - **`반말`** is an informal style for close relationships.
+    - You may only deviate if the immediate context (e.g., a sudden emotional outburst) makes the established style completely unnatural.
+
+    **{protagonist_name}'s Dialogue Styles:**
+    {character_speech_styles}
+
+    **GUIDELINE 5: Other Characters' Dialogue (기타 인물 대화)**
+    - For all other characters, or if a specific interaction is not in the list above, please translate their dialogue naturally based on the context of the scene.
+
+    **GUIDELINE 6: Context is Key**
+    - Use the previous sentences for immediate context and style continuity.
+    - **Previous Sentence (Source Language):**
+      {prev_segment_source}
+    - **Previous Korean Translation:**
+      {prev_segment_ko}
+    - Your new translation should flow naturally from the previous Korean translation.
+
+    **Translate the following source text into Korean, adhering to all guidelines above:**
+    ---
+    {source_segment}
+    ---
+
+  soft_retry: |
+    You are an expert literary translator with a focus on creative and nuanced translation.
+    
+    The text below may contain mature themes or complex content. Your task is to translate it professionally
+    while maintaining the literary quality and narrative integrity of the original work.
+    
+    **IMPORTANT:** Focus on creating a natural, flowing Korean translation that preserves:
+    - The narrative voice and style
+    - Character relationships and dialogue patterns
+    - Literary devices and metaphors
+    - Emotional undertones and atmosphere
+    
+    **Glossary Terms to Use:**
+    {glossary_terms}
+    
+    **Character Speech Styles:**
+    {character_speech_styles}
+    
+    **Previous Context:**
+    - Previous Source: {prev_segment_source}
+    - Previous Translation: {prev_segment_ko}
+    
+    **Text to Translate:**
+    ---
+    {source_segment}
+    ---
+    
+    **Output in Korean:**
+
+validation:
+
+  structured_comprehensive: |
+    You are a professional Translation Quality Assurance (LQA) expert.
+    Compare the given source text with the Korean translation and identify any issues with translation quality.
+    Analyze each issue according to the criteria below and provide your answer strictly in the provided JSON schema format.
+
+    Evaluation Criteria:
+    - Accuracy: Is the meaning of the source text accurately conveyed?
+    - Completeness: Is any content missing?
+    - Addition: Is there any content added that is not present in the source?
+    - Consistency: Are terms and names used consistently (use glossary when applicable)?
+    - Style and Tone: Is the style appropriate (e.g., honorifics/plain language, formal/informal)?
+    - Naturalness: Does it read naturally to Korean users?
+
+    Source Text:
+    ---
+    {source_text}
+    ---
+
+    Korean Translation:
+    ---
+    {translated_text}
+    ---
+
+    Glossary:
+    {glossary_terms}
+
+    Rules:
+    - Use the provided JSON schema exactly; omit fields that are not applicable and do not add extra properties.
+    - Return JSON only. No commentary or explanations.
+
+  structured_quick: |
+    You are a professional Translation Quality Assurance (LQA) expert.
+    Compare the source text and the Korean translation. Identify only the most important issues (highest severity) and respond strictly in the JSON schema format.
+
+    Evaluation Criteria (focus on high-impact problems):
+    - Accuracy, Completeness, Addition, Consistency, Style/Tone, Naturalness
+
+    Source:
+    ---
+    {source_text}
+    ---
+    Translation:
+    ---
+    {translated_text}
+    ---
+    Glossary:
+    {glossary_terms}
+
+    Rules:
+    - Use the provided JSON schema exactly; omit fields that are not applicable and do not add extra properties.
+    - Output JSON only. No commentary or explanations.
+
+post_edit:
+  correction: |
+    You are an expert Korean literary translator performing post-editing to fix specific issues identified in a translation.
+    
+    **Original Source Text (source language):**
+    ---
+    {source_text}
+    ---
+    
+    **Current Korean Translation (with issues):**
+    ---
+    {current_translation}
+    ---
+    
+    **Issues Found in Validation:**
+    {issues_found}
+    
+    **Glossary (MUST be followed):**
+    {glossary_terms}
+    
+    **Your Task:**
+    1. Fix ALL the issues listed above while preserving the good parts of the translation
+    2. For missing content: Add the missing parts naturally into the Korean translation
+    3. For added content: Remove content not present in the source
+    4. For name inconsistencies: Use the exact names from the glossary
+    5. For critical issues: Correct the mistranslations or errors
+    6. Maintain the literary style and natural flow of Korean
+    
+    **Important Guidelines:**
+    - Keep changes minimal - only fix the identified issues
+    - Preserve the translator's original style choices where they are correct
+    - Ensure the final result reads naturally in Korean
+    - Do NOT add any new content beyond fixing the issues
+    - Follow the glossary strictly for all proper nouns
+    
+    **Output:**
+    Provide ONLY the corrected Korean translation. Do not include any explanations, comments, or formatting.

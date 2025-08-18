@@ -49,8 +49,8 @@ class TranslationValidator:
     def __init__(self, ai_model, verbose: bool = False):
         self.ai_model = ai_model
         self.verbose = verbose
-        self.validation_log_dir = Path('validation_logs')
-        self.validation_log_dir.mkdir(exist_ok=True)
+        self.validation_log_dir = Path('logs/validation_logs')
+        self.validation_log_dir.mkdir(parents=True, exist_ok=True)
 
     def validate_segment(
         self,

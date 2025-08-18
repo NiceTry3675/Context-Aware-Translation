@@ -1,3 +1,5 @@
+import { ValidationCase, StructuredValidationReport, StructuredPostEditLog, PostEditSegment } from '../types/core-schemas';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export interface ValidationReport {
@@ -255,3 +257,72 @@ export async function triggerPostEdit(
   }
 }
 
+
+
+// ============= Structured API Functions =============
+
+export async function fetchStructuredValidationReport(jobId: string, token?: string): Promise<StructuredValidationReport | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/validation-report?structured=true`, {
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404 || response.status === 400) {
+        return null;
+      }
+      throw new Error(`Failed to fetch structured validation report: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching structured validation report:', error);
+    throw error;
+  }
+}
+
+export async function fetchStructuredPostEditLog(jobId: string, token?: string): Promise<StructuredPostEditLog | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/post-edit-log?structured=true`, {
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404 || response.status === 400) {
+        return null;
+      }
+      throw new Error(`Failed to fetch structured post-edit log: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching structured post-edit log:', error);
+    throw error;
+  }
+}
+
+export async function fetchStructuredGlossary(jobId: string, token?: string): Promise<import('../types/core-schemas').GlossaryAnalysisResponse | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/glossary?structured=true`, {
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404 || response.status === 400) {
+        return null;
+      }
+      throw new Error(`Failed to fetch structured glossary: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching structured glossary:', error);
+    throw error;
+  }
+}

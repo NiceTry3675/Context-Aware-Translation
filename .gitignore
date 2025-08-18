@@ -35,14 +35,14 @@ commit_message.txt
 vector_db/
 
 # Ignore all files in data directories by default
-context_log/*
-debug_prompts/*
+logs/context_log/*
+logs/debug_prompts/*
 source_novel/*
 translated_novel/*
 
 # But exclude specific example files from being ignored
-!context_log/context_Metamorphosis.txt
-!debug_prompts/prompts_Metamorphosis.txt
+!logs/context_log/context_Metamorphosis.txt
+!logs/debug_prompts/prompts_Metamorphosis.txt
 !source_novel/Metamorphosis.txt
 !translated_novel/Metamorphosis_translated.txt
 
@@ -61,9 +61,9 @@ uploads/
 
 # Database files
 database.db
-/validation_logs/
-/postedit_logs/
-prohibited_content_logs/
+/logs/validation_logs/
+/logs/postedit_logs/
+logs/prohibited_content_logs/
 frontend/.next/
 .env.*
 frontend/node_modules/

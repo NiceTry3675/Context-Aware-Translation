@@ -293,7 +293,7 @@ def parse_glossary_analysis(glossary_text: str) -> List[Dict[str, str]]:
         glossary_text: The raw text from the AI (e.g., "Term1: 번역1\nTerm2: 번역2").
         
     Returns:
-        A list of dictionaries, e.g., [{"term": "Term1", "translation": "번역1"}].
+        A list of dictionaries, e.g., [{"source": "Term1", "korean": "번역1"}].
     """
     parsed_glossary = []
     if not glossary_text.strip():
@@ -306,6 +306,7 @@ def parse_glossary_analysis(glossary_text: str) -> List[Dict[str, str]]:
             term = parts[0].strip()
             translation = parts[1].strip()
             if term and translation:
-                parsed_glossary.append({"term": term, "translation": translation})
+                # Changed from "term"/"translation" to "source"/"korean" to match TranslatedTerm schema
+                parsed_glossary.append({"source": term, "korean": translation})
     
     return parsed_glossary
