@@ -131,7 +131,7 @@ export function useTranslationJobs({ apiUrl }: UseTranslationJobsOptions) {
         throw new Error(`Failed to fetch jobs: ${response.status}`);
       }
       
-      const fetchedJobs: Job[] = await response.json();
+      const fetchedJobs: TranslationJob[] = await response.json();
       setJobs(fetchedJobs);
     } catch (err) {
       console.error("Failed to refresh jobs:", err);

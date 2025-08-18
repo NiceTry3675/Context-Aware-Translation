@@ -310,7 +310,7 @@ export default function JobSidebar({
                                 <Tooltip title={`검증 진행: ${job.validation_progress}%`}>
                                   <LinearProgress
                                     variant="determinate"
-                                    value={job.validation_progress}
+                                    value={job.validation_progress ?? undefined}
                                     color="secondary"
                                     sx={{ height: 3 }}
                                   />
@@ -320,7 +320,7 @@ export default function JobSidebar({
                                 <Tooltip title={`수정 진행: ${job.post_edit_progress}%`}>
                                   <LinearProgress
                                     variant="determinate"
-                                    value={job.post_edit_progress}
+                                    value={job.post_edit_progress ?? undefined}
                                     color="info"
                                     sx={{ height: 3 }}
                                   />

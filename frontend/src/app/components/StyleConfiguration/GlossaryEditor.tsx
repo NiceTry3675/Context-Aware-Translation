@@ -43,7 +43,7 @@ export default function GlossaryEditor({
   };
 
   const handleAddGlossaryTerm = () => {
-    const updated = [...glossaryData, { term: '', translation: '' }];
+    const updated = [...glossaryData, { source: '', korean: '' }];
     onGlossaryChange(updated);
   };
 
@@ -85,16 +85,16 @@ export default function GlossaryEditor({
                 <TableRow key={index}>
                   <TableCell>
                     <TextField
-                      value={term.term}
-                      onChange={(e) => handleGlossaryChange(index, 'term', e.target.value)}
+                      value={term.source}
+                      onChange={(e) => handleGlossaryChange(index, 'source', e.target.value)}
                       variant="standard"
                       fullWidth
                     />
                   </TableCell>
                   <TableCell>
                     <TextField
-                      value={term.translation}
-                      onChange={(e) => handleGlossaryChange(index, 'translation', e.target.value)}
+                      value={term.korean}
+                      onChange={(e) => handleGlossaryChange(index, 'korean', e.target.value)}
                       variant="standard"
                       fullWidth
                     />

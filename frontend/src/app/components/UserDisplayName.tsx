@@ -5,8 +5,8 @@ import { useUser } from '@clerk/nextjs';
 interface Author {
   id: number;
   clerk_user_id: string;
-  name: string | null;
-  email: string | null;
+  name?: string | null;
+  email?: string | null;
   role: string;
 }
 

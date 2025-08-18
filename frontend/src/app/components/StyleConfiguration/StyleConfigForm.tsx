@@ -39,7 +39,7 @@ export default function StyleConfigForm({
     setLocalGlossaryData(glossaryData);
   }, [glossaryData]);
 
-  const handleStyleFieldChange = (field: keyof StyleData, value: string) => {
+  const handleStyleFieldChange = (field: keyof StyleData, value: any) => {
     const updated = { ...localStyleData, [field]: value };
     setLocalStyleData(updated);
     onStyleChange(updated);

@@ -2,32 +2,13 @@ import { useState, useCallback } from 'react';
 import { useAuth, useClerk } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
 import type { components } from '@/types/api';
+import { StyleData, GlossaryTerm, TranslationSettings } from '../types/ui';
 
 // Type aliases for convenience
 type TranslationJob = components['schemas']['TranslationJob'];
 type StyleAnalysisResponse = components['schemas']['StyleAnalysisResponse'];
 type GlossaryAnalysisResponse = components['schemas']['GlossaryAnalysisResponse'];
 type TranslatedTerm = components['schemas']['TranslatedTerm'];
-
-interface StyleData {
-  protagonist_name: string;
-  narration_style_endings: string;
-  tone_keywords: string;
-  stylistic_rule: string;
-}
-
-interface GlossaryTerm {
-  term: string;
-  translation: string;
-}
-
-interface TranslationSettings {
-  segmentSize: number;
-  enableValidation: boolean;
-  quickValidation: boolean;
-  validationSampleRate: number;
-  enablePostEdit: boolean;
-}
 
 interface FileAnalysisResult {
   styleData: StyleData | null;
@@ -99,7 +80,17 @@ export function useTranslationService({
         throw new Error(errorData.detail || '스타일 분석에 실패했습니다.');
       }
 
-      result.styleData = await styleResponse.json();
+      const apiStyleData = await styleResponse.json() as StyleAnalysisResponse;
+      
+      // Convert API response to UI StyleData format
+      result.styleData = {
+        protagonist_name: apiStyleData.protagonist_name,
+        narration_style: {
+          ending_style: apiStyleData.narration_style_endings
+        },
+        core_tone_keywords: apiStyleData.tone_keywords?.split(',').map(s => s.trim()).filter(s => s) || [],
+        golden_rule: apiStyleData.stylistic_rule
+      };
 
       // Analyze Glossary if enabled
       if (analyzeGlossary) {
@@ -116,8 +107,12 @@ export function useTranslationService({
           });
 
           if (glossaryResponse.ok) {
-            const glossaryResult = await glossaryResponse.json();
-            result.glossaryData = glossaryResult.glossary || [];
+            const glossaryResult = await glossaryResponse.json() as GlossaryAnalysisResponse;
+            // Convert API glossary format to UI GlossaryTerm format
+            result.glossaryData = (glossaryResult.glossary || []).map(item => {
+              const [source, korean] = Object.entries(item)[0] || ['', ''];
+              return { source, korean };
+            });
           } else {
             const errorData = await glossaryResponse.json();
             console.warn('Glossary analysis failed:', errorData.detail);
@@ -160,10 +155,21 @@ export function useTranslationService({
     formData.append("file", file);
     formData.append("api_key", apiKey);
     formData.append("model_name", selectedModel);
-    formData.append("style_data", JSON.stringify(styleData));
+    // Convert UI StyleData format to API format
+    const apiStyleData = {
+      protagonist_name: styleData.protagonist_name || '',
+      narration_style_endings: styleData.narration_style?.ending_style || '',
+      tone_keywords: styleData.core_tone_keywords?.join(', ') || '',
+      stylistic_rule: styleData.golden_rule || ''
+    };
+    formData.append("style_data", JSON.stringify(apiStyleData));
     
     if (glossaryData.length > 0) {
-      formData.append("glossary_data", JSON.stringify(glossaryData));
+      // Convert UI GlossaryTerm format to API format
+      const apiGlossaryData = glossaryData.map(term => ({
+        [term.source]: term.korean
+      }));
+      formData.append("glossary_data", JSON.stringify(apiGlossaryData));
     }
     
     formData.append("segment_size", settings.segmentSize.toString());
