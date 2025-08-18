@@ -7,7 +7,7 @@ import {
 } from '@mui/material';
 import { AutoStories as AutoStoriesIcon, MenuBook as MenuBookIcon } from '@mui/icons-material';
 import JobRow from './JobRow';
-import { Job } from '../../types/job';
+import { Job } from '../../types/ui';
 
 interface JobsTableProps {
   jobs: Job[];

@@ -21,7 +21,7 @@ import {
   Add as AddIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
-import { GlossaryTerm } from '../../types/translation';
+import { GlossaryTerm } from '../../types/ui';
 
 interface GlossaryEditorProps {
   glossaryData: GlossaryTerm[];

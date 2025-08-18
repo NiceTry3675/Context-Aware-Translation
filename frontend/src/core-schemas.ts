@@ -47,13 +47,6 @@ export const TranslatedTermsSchema = z.object({
 });
 export type TranslatedTerms = z.infer<typeof TranslatedTermsSchema>;
 
-// CharacterInteraction Schema
-export const CharacterInteractionSchema = z.object({
-  character_name: z.string().describe("Name of the character the protagonist is speaking to"),
-  speech_style: z.enum(["반말", "해요체", "하십시오체"]).describe("Korean speech style used (반말 for informal, 해요체 for polite informal, 하십시오체 for formal)")
-});
-export type CharacterInteraction = z.infer<typeof CharacterInteractionSchema>;
-
 // DialogueAnalysisResult Schema
 export const DialogueAnalysisResultSchema = z.object({
   protagonist_name: z.string().describe("Name of the protagonist"),
@@ -84,18 +77,6 @@ export const ValidationResponseSchema = z.object({
   cases: z.array(ValidationCaseSchema).optional().describe("List of validation issues found. Empty list if no issues.")
 });
 export type ValidationResponse = z.infer<typeof ValidationResponseSchema>;
-
-// ValidationCase Schema
-export const ValidationCaseSchema = z.object({
-  current_korean_sentence: z.string().describe("문제가 되는 현재 한국어 문장 (최대 3~4문장)"),
-  problematic_source_sentence: z.string().describe("대응하는 원문 문장 (최대 3~4문장)"),
-  reason: z.string().describe("왜 문제인지"),
-  dimension: z.enum(["completeness", "accuracy", "addition", "name_consistency", "dialogue_style", "flow", "other"]).describe("이슈 차원(카테고리)"),
-  severity: z.enum(["1", "2", "3"]).describe("이슈의 심각도. 1(사소함), 2(중대함), 3(치명적) 중 하나의 숫자로 표기."),
-  corrected_korean_sentence: z.string().nullable().optional().describe("권장 수정 번역문"),
-  tags: z.array(z.string()).optional().describe("보조 라벨(예: terminology, formality, punctuation)")
-});
-export type ValidationCase = z.infer<typeof ValidationCaseSchema>;
 
 // Helper functions for validation
 export function validateValidationResponse(data: unknown) {

@@ -102,6 +102,7 @@ function jsonSchemaToZod(schema, schemaName) {
 
 function generateZodValidators(schemas) {
   const validators = [];
+  const generatedSchemas = new Set(); // Track already generated schemas
   
   // Generate header
   validators.push(`// Auto-generated Zod validators from core schemas
@@ -118,15 +119,18 @@ import { z } from 'zod';
     if (schemaDefinition.$defs) {
       // Process embedded definitions first
       for (const [defName, defSchema] of Object.entries(schemaDefinition.$defs)) {
-        try {
-          const zodSchema = jsonSchemaToZod(defSchema, defName);
-          validators.push(`// ${defName} Schema
+        if (!generatedSchemas.has(defName)) { // Only generate if not already done
+          try {
+            const zodSchema = jsonSchemaToZod(defSchema, defName);
+            validators.push(`// ${defName} Schema
 export const ${defName}Schema = ${zodSchema};
 export type ${defName} = z.infer<typeof ${defName}Schema>;
 
 `);
-        } catch (error) {
-          console.warn(`Warning: Could not generate validator for ${defName}:`, error.message);
+            generatedSchemas.add(defName); // Mark as generated
+          } catch (error) {
+            console.warn(`Warning: Could not generate validator for ${defName}:`, error.message);
+          }
         }
       }
     }
@@ -134,15 +138,18 @@ export type ${defName} = z.infer<typeof ${defName}Schema>;
   
   // Then generate main schemas
   for (const [schemaName, schemaDefinition] of mainSchemas) {
-    try {
-      const zodSchema = jsonSchemaToZod(schemaDefinition, schemaName);
-      validators.push(`// ${schemaName} Schema
+    if (!generatedSchemas.has(schemaName)) { // Only generate if not already done
+      try {
+        const zodSchema = jsonSchemaToZod(schemaDefinition, schemaName);
+        validators.push(`// ${schemaName} Schema
 export const ${schemaName}Schema = ${zodSchema};
 export type ${schemaName} = z.infer<typeof ${schemaName}Schema>;
 
 `);
-    } catch (error) {
-      console.warn(`Warning: Could not generate validator for ${schemaName}:`, error.message);
+        generatedSchemas.add(schemaName); // Mark as generated
+      } catch (error) {
+        console.warn(`Warning: Could not generate validator for ${schemaName}:`, error.message);
+      }
     }
   }
   

@@ -321,7 +321,7 @@ function CategoryPostsPageContent() {
                   <TableCell align="center">
                     <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
                       <CommentIcon fontSize="small" color="action" />
-                      {post.comment_count}
+                      {post.comments?.length || 0}
                     </Box>
                   </TableCell>
                   <TableCell align="center">

@@ -13,7 +13,7 @@ import {
   Palette as PaletteIcon,
   Gavel as GavelIcon,
 } from '@mui/icons-material';
-import { StyleData } from '../../types/translation';
+import { StyleData } from '../../types/ui';
 
 interface StyleFieldEditorProps {
   styleData: StyleData;

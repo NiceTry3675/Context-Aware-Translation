@@ -14,7 +14,7 @@ import ApiSetup from '../ApiConfiguration/ApiSetup';
 import FileUploadSection from '../FileUpload/FileUploadSection';
 import TranslationSettings from '../AdvancedSettings/TranslationSettings';
 import StyleConfigForm from '../StyleConfiguration/StyleConfigForm';
-import { StyleData, GlossaryTerm, TranslationSettings as TSettings } from '../../types/translation';
+import { StyleData, GlossaryTerm, TranslationSettings as TSettings } from '../../types/ui';
 
 type ApiProvider = 'gemini' | 'openrouter';
 

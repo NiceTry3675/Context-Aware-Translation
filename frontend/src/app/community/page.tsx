@@ -295,7 +295,7 @@ export default function CommunityPage() {
                                     조회 {post.view_count}
                                   </Typography>
                                   <Typography variant="caption" color="text.secondary">
-                                    댓글 {post.comment_count}
+                                    댓글 {post.comments?.length || 0}
                                   </Typography>
                                   <Typography variant="caption" color="text.secondary">
                                     {formatDate(post.created_at)}

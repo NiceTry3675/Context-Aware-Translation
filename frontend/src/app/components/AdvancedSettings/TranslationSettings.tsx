@@ -1,7 +1,7 @@
 import {
   Box, Typography, Chip, Slider, FormControlLabel, Switch
 } from '@mui/material';
-import { TranslationSettings as Settings } from '../../types/translation';
+import { TranslationSettings as Settings } from '../../types/ui';
 
 interface TranslationSettingsProps {
   settings: Settings;

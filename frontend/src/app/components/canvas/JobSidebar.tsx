@@ -33,7 +33,7 @@ import {
   Download as DownloadIcon,
   AutoStories as AutoStoriesIcon,
 } from '@mui/icons-material';
-import { Job } from '../../types/job';
+import { Job } from '../../types/ui';
 import JobRowActions from './JobRowActions';
 
 interface JobSidebarProps {

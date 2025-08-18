@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, CircularProgress, CardActions } from '@mui/material';
-import { StyleData, GlossaryTerm } from '../../types/translation';
+import { StyleData, GlossaryTerm } from '../../types/ui';
 import theme from '../../../theme';
 import StyleFieldEditor from './StyleFieldEditor';
 import GlossaryEditor from './GlossaryEditor';
