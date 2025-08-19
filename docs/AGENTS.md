@@ -37,6 +37,13 @@ Translate English novels into Korean, focusing on contextual consistency of **na
 6.  **Post-Editing (Optional)**: If validation finds issues and the user enabled post-editing, the `post_editor.py` module attempts to automatically fix the identified errors.
 5. **Completion**: Job status updated to `COMPLETED`. The user can then download the final translated file, as well as any validation or post-editing logs.
 
+## Development Workflow
+
+This project uses a `Makefile` to automate common development tasks and a code generation pipeline to ensure type safety between the backend and frontend.
+
+- **`Makefile`**: Provides simple commands like `make codegen`, `make clean`, and `make verify` to streamline development. Use `make help` to see all available commands.
+- **Codegen Pipeline**: Automatically generates TypeScript types for the frontend from the backend's Pydantic models. This eliminates manual updates and prevents data inconsistencies. When you change a backend model that affects the frontend, run `make codegen` and commit the updated files.
+
 ## Git Branching Strategy
 
 - **`main`**: Production branch, deployed to the cloud
