@@ -8,17 +8,11 @@ from sqlalchemy.orm import Session
 from core.config.loader import load_config
 from core.translation.models.gemini import GeminiModel
 from core.translation.models.openrouter import OpenRouterModel
-from core.translation.job import TranslationJob
-from core.translation.engine import TranslationEngine
+from core.translation.translation_document import TranslationDocument
+from core.translation.translation_pipeline import TranslationPipeline
 from core.config.builder import DynamicConfigBuilder
-from core.translation.style_analyzer import (
-    extract_sample_text,
-    analyze_narrative_style_with_api,
-    parse_style_analysis,
-    format_style_for_engine,
-    analyze_glossary_with_api,
-    parse_glossary_analysis
-)
+from .style_analysis_service import StyleAnalysisService
+from .glossary_analysis_service import GlossaryAnalysisService
 from .. import crud, models
 
 
@@ -54,44 +48,6 @@ class TranslationService:
             return GeminiModel.validate_api_key(api_key, model_name)
     
     @staticmethod
-    def analyze_style(file_path: str, api_key: str, model_name: str, filename: str) -> Dict[str, Any]:
-        """Analyze the narrative style of a document."""
-        initial_text = extract_sample_text(file_path, method="first_chars", count=15000)
-        
-        config = load_config()
-        model_api = TranslationService.get_model_api(api_key, model_name, config)
-        
-        print("\n--- Defining Core Narrative Style via API... ---")
-        style_report_text = analyze_narrative_style_with_api(initial_text, model_api, filename)
-        print(f"Style defined as: {style_report_text}")
-        
-        parsed_style = parse_style_analysis(style_report_text)
-        
-        if len(parsed_style) < 3:
-            found_keys = list(parsed_style.keys())
-            raise ValueError(
-                f"Failed to parse all style attributes from the report. "
-                f"Successfully parsed: {found_keys}. "
-                f"Received from AI: '{style_report_text}'"
-            )
-        
-        return parsed_style
-    
-    @staticmethod
-    def analyze_glossary(file_path: str, api_key: str, model_name: str, filename: str) -> list:
-        """Extract glossary terms from a document."""
-        initial_text = extract_sample_text(file_path, method="first_chars", count=15000)
-        config = load_config()
-        model_api = TranslationService.get_model_api(api_key, model_name, config)
-        
-        print("\n--- Extracting Glossary via API... ---")
-        glossary_report_text = analyze_glossary_with_api(initial_text, model_api, filename)
-        print(f"Glossary extracted as: {glossary_report_text}")
-        
-        parsed_glossary = parse_glossary_analysis(glossary_report_text)
-        return parsed_glossary if parsed_glossary else []
-    
-    @staticmethod
     def save_uploaded_file(file, filename: str) -> tuple[str, str]:
         """Save an uploaded file and return the path and unique filename."""
         temp_dir = "uploads"
@@ -117,50 +73,63 @@ class TranslationService:
         config = load_config()
         gemini_api = TranslationService.get_model_api(api_key, model_name, config)
         
-        translation_job = TranslationJob(
+        translation_document = TranslationDocument(
             job.filepath,
             original_filename=job.filename,
             target_segment_size=job.segment_size
         )
         
-        # Process style data
+        # Process style data using StyleAnalysisService
         initial_core_style_text = None
         protagonist_name = "protagonist"
         
-        if style_data:
-            try:
-                style_dict = json.loads(style_data)
-                print(f"--- Using user-defined core style for Job ID: {job_id}: {style_dict} ---")
-                protagonist_name = style_dict.get('protagonist_name', 'protagonist')
-                initial_core_style_text = format_style_for_engine(style_dict, protagonist_name)
-            except json.JSONDecodeError:
-                print(f"--- WARNING: Could not decode style_data JSON for Job ID: {job_id}. Proceeding with auto-analysis. ---")
-        else:
-            try:
-                sample_text = extract_sample_text(file_path, method="first_chars", count=15000)
-                config = load_config()
-                model_api = TranslationService.get_model_api(api_key, model_name, config)
-                
-                print(f"--- Performing automatic style analysis for Job ID: {job_id} ---")
-                style_report_text = analyze_narrative_style_with_api(sample_text, model_api, filename)
-                parsed_style = parse_style_analysis(style_report_text)
-                protagonist_name = parsed_style.get('protagonist_name', 'protagonist')
-                initial_core_style_text = format_style_for_engine(parsed_style, protagonist_name)
+        try:
+            print(f"--- Analyzing style for Job ID: {job_id} ---")
+            style_result = StyleAnalysisService.analyze_style(
+                filepath=job.filepath,
+                api_key=api_key,
+                model_name=model_name,
+                user_style_data=style_data
+            )
+            
+            protagonist_name = style_result['protagonist_name']
+            initial_core_style_text = style_result['style_text']
+            
+            if style_result['source'] == 'user_provided':
+                print(f"--- Using user-defined style for Job ID: {job_id} ---")
+            else:
                 print(f"--- Automatic style analysis complete for Job ID: {job_id} ---")
-            except Exception as e:
-                print(f"--- WARNING: Could not perform automatic style analysis for Job ID: {job_id}. Error: {e} ---")
+                
+        except Exception as e:
+            print(f"--- WARNING: Style analysis failed for Job ID: {job_id}. Error: {e} ---")
+            # Use fallback values
+            protagonist_name = "protagonist"
+            initial_core_style_text = None
         
-        # Process glossary data
+        # Process glossary data using GlossaryAnalysisService
         initial_glossary = None
-        if glossary_data:
-            try:
-                initial_glossary = json.loads(glossary_data)
-                print(f"--- Using user-defined glossary for Job ID: {job_id} ---")
-            except json.JSONDecodeError:
-                print(f"--- WARNING: Could not decode glossary_data JSON for Job ID: {job_id}. ---")
+        try:
+            if glossary_data:
+                print(f"--- Processing user-defined glossary for Job ID: {job_id} ---")
+            else:
+                print(f"--- Extracting automatic glossary for Job ID: {job_id} ---")
+            
+            initial_glossary = GlossaryAnalysisService.analyze_glossary(
+                filepath=job.filepath,
+                api_key=api_key,
+                model_name=model_name,
+                user_glossary_data=glossary_data
+            )
+            
+            if initial_glossary:
+                print(f"--- Glossary prepared with {len(initial_glossary)} terms for Job ID: {job_id} ---")
+                
+        except Exception as e:
+            print(f"--- WARNING: Glossary analysis failed for Job ID: {job_id}. Error: {e} ---")
+            initial_glossary = None
         
         return {
-            'translation_job': translation_job,
+            'translation_document': translation_document,
             'gemini_api': gemini_api,
             'protagonist_name': protagonist_name,
             'initial_glossary': initial_glossary,
@@ -170,7 +139,7 @@ class TranslationService:
     @staticmethod
     def run_translation(
         job_id: int,
-        translation_job: TranslationJob,
+        translation_document: TranslationDocument,
         gemini_api,
         protagonist_name: str,
         initial_glossary: Optional[dict],
@@ -188,7 +157,7 @@ class TranslationService:
             use_structured=use_structured
         )
         
-        engine = TranslationEngine(
+        pipeline = TranslationPipeline(
             gemini_api,
             dyn_config_builder,
             db=db,
@@ -196,7 +165,7 @@ class TranslationService:
             initial_core_style=initial_core_style_text
         )
         
-        engine.translate_job(translation_job)
+        pipeline.translate_document(translation_document)
     
     @staticmethod
     def get_translated_file_path(job: models.TranslationJob) -> tuple[str, str]:

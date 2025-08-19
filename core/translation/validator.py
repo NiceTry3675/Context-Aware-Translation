@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 from pydantic import BaseModel, Field
 
-from core.validation.structured import ValidationCase, make_response_schema
+from core.schemas.validation import ValidationCase, make_validation_response_schema as make_response_schema
 from core.prompts.manager import PromptManager
 
 

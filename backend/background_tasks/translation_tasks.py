@@ -39,7 +39,7 @@ def run_translation_in_background(
         # Run the translation
         TranslationService.run_translation(
             job_id=job_id,
-            translation_job=components['translation_job'],
+            translation_document=components['translation_document'],
             gemini_api=components['gemini_api'],
             protagonist_name=components['protagonist_name'],
             initial_glossary=components['initial_glossary'],

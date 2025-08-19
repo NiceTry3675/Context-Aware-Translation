@@ -3,8 +3,8 @@ import json
 from typing import Optional, Callable
 from sqlalchemy.orm import Session
 
-from core.validation.validator import TranslationValidator
-from core.translation.job import TranslationJob
+from core.translation.validator import TranslationValidator
+from core.translation.translation_document import TranslationDocument
 from .translation_service import TranslationService
 from .. import crud, models
 
@@ -17,7 +17,7 @@ class ValidationService:
         job: models.TranslationJob,
         api_key: str,
         model_name: str = "gemini-2.5-flash-lite"
-    ) -> tuple[TranslationValidator, TranslationJob, str]:
+    ) -> tuple[TranslationValidator, TranslationDocument, str]:
         """Prepare the validator and translation job for validation."""
         # Get the translated file path
         unique_base = os.path.splitext(os.path.basename(job.filepath))[0]
@@ -75,14 +75,14 @@ class ValidationService:
     @staticmethod
     def run_validation(
         validator: TranslationValidator,
-        validation_job: TranslationJob,
+        validation_document: TranslationDocument,
         sample_rate: float,
         quick_mode: bool,
         progress_callback: Optional[Callable[[int], None]] = None
     ) -> dict:
         """Run the validation process and return the report."""
         results, summary = validator.validate_job(
-            validation_job,
+            validation_document,
             sample_rate=sample_rate,
             quick_mode=quick_mode,
             progress_callback=progress_callback

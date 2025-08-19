@@ -3,7 +3,7 @@ from typing import Optional, Callable
 from sqlalchemy.orm import Session
 
 from core.translation.post_editor import PostEditEngine
-from core.translation.job import TranslationJob
+from core.translation.translation_document import TranslationDocument
 from .translation_service import TranslationService
 from .. import crud, models
 
@@ -16,7 +16,7 @@ class PostEditService:
         job: models.TranslationJob,
         api_key: str,
         model_name: str = "gemini-2.5-flash-lite"
-    ) -> tuple[PostEditEngine, TranslationJob, str]:
+    ) -> tuple[PostEditEngine, TranslationDocument, str]:
         """Prepare the post-editor and translation job for post-editing."""
         # Get the translated file path
         unique_base = os.path.splitext(os.path.basename(job.filepath))[0]
@@ -84,7 +84,7 @@ class PostEditService:
     @staticmethod
     def run_post_edit(
         post_editor: PostEditEngine,
-        translation_job: TranslationJob,
+        translation_document: TranslationDocument,
         translated_path: str,
         validation_report_path: str,
         selected_cases: dict | None = None,
@@ -92,8 +92,8 @@ class PostEditService:
         job_id: Optional[int] = None,
     ):
         """Run the post-editing process and overwrite the translated file."""
-        edited_segments = post_editor.post_edit_job(
-            translation_job,
+        edited_segments = post_editor.post_edit_document(
+            translation_document,
             validation_report_path,
             selected_cases,
             progress_callback=progress_callback,
