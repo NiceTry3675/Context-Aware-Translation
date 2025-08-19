@@ -122,6 +122,10 @@ class TranslationDocument:
     def translated_segments(self) -> List[str]:
         return self._data.translated_segments
     
+    @translated_segments.setter
+    def translated_segments(self, value: List[str]):
+        self._data.translated_segments = value
+    
     @property
     def glossary(self) -> dict:
         return self._data.glossary

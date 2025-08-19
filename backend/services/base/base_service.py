@@ -92,10 +92,28 @@ class BaseService:
         """
         try:
             if method == "first_chars":
+                # Get the desired character count
                 count = kwargs.get("count", 15000)
-                return create_segments_for_text(filepath, method="first_chars", count=count)
+                # Create segments with target size
+                segments = create_segments_for_text(filepath, target_size=count)
+                # Return just the text content from the first segment(s) up to count chars
+                result = []
+                total_chars = 0
+                for segment in segments:
+                    if total_chars + len(segment.text) <= count:
+                        result.append(segment.text)
+                        total_chars += len(segment.text)
+                    else:
+                        # Add partial segment to reach count
+                        remaining = count - total_chars
+                        if remaining > 0:
+                            result.append(segment.text[:remaining])
+                        break
+                return result
             else:
-                return create_segments_for_text(filepath, method="sentence")
+                # For sentence method, return all segment contents
+                segments = create_segments_for_text(filepath)
+                return [segment.text for segment in segments]
         except Exception as e:
             raise Exception(f"Failed to prepare document segments: {str(e)}")
     

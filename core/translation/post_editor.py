@@ -67,7 +67,8 @@ class PostEditEngine:
         segments_to_edit = []
         
         if self.logger:
-            self.logger.log_progress_log_path = self.logger.progress_log_path.replace('progress_', 'postedit_analysis_')
+            # Create postedit analysis log path in postedit_logs directory
+            self.logger.log_progress_log_path = self.logger.progress_log_path.replace('progress_', 'postedit_')
             with open(self.logger.log_progress_log_path, 'a', encoding='utf-8') as f:
                 f.write(f"\n--- Analyzing Validation Report ---\n")
                 f.write(f"Total validation results: {len(validation_report.get('detailed_results', []))}\n")
