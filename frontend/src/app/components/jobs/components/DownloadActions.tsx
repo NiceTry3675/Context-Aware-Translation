@@ -13,7 +13,7 @@ import {
   Description as DescriptionIcon,
   Chat as ChatIcon,
 } from '@mui/icons-material';
-import { Job } from '../../../types/job';
+import { Job } from '../../../types/ui';
 
 interface DownloadActionsProps {
   job: Job;

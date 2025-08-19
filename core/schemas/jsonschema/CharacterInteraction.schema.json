@@ -1,0 +1,26 @@
+{
+  "description": "Single interaction between protagonist and another character.",
+  "properties": {
+    "character_name": {
+      "description": "Name of the character the protagonist is speaking to",
+      "title": "Character Name",
+      "type": "string"
+    },
+    "speech_style": {
+      "description": "Korean speech style used (반말 for informal, 해요체 for polite informal, 하십시오체 for formal)",
+      "enum": [
+        "반말",
+        "해요체",
+        "하십시오체"
+      ],
+      "title": "Speech Style",
+      "type": "string"
+    }
+  },
+  "required": [
+    "character_name",
+    "speech_style"
+  ],
+  "title": "CharacterInteraction",
+  "type": "object"
+}

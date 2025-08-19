@@ -1,0 +1,41 @@
+{
+  "description": "Style deviation detected in a segment.",
+  "properties": {
+    "has_deviation": {
+      "description": "Whether a style deviation was detected",
+      "title": "Has Deviation",
+      "type": "boolean"
+    },
+    "starts_with": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The first few words of the deviating part",
+      "title": "Starts With"
+    },
+    "instruction": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Direct command for the translator regarding this deviation",
+      "title": "Instruction"
+    }
+  },
+  "required": [
+    "has_deviation"
+  ],
+  "title": "StyleDeviation",
+  "type": "object"
+}

@@ -27,7 +27,8 @@ def run_translation_in_background(
         print(f"--- [BACKGROUND] Starting translation for Job ID: {job_id}, File: {job.filename}, Model: {model_name} ---")
         
         # Prepare translation components
-        components = TranslationService.prepare_translation_job(
+        translation_service = TranslationService()
+        components = translation_service.prepare_translation_job(
             job_id=job_id,
             job=job, # Pass the full job object
             api_key=api_key,
@@ -39,8 +40,8 @@ def run_translation_in_background(
         # Run the translation
         TranslationService.run_translation(
             job_id=job_id,
-            translation_job=components['translation_job'],
-            gemini_api=components['gemini_api'],
+            translation_document=components['translation_document'],
+            model_api=components['model_api'],
             protagonist_name=components['protagonist_name'],
             initial_glossary=components['initial_glossary'],
             initial_core_style_text=components['initial_core_style_text'],

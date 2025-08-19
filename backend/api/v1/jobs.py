@@ -9,7 +9,8 @@ from fastapi import APIRouter, File, UploadFile, BackgroundTasks, Depends, HTTPE
 from sqlalchemy.orm import Session
 
 from ...dependencies import get_db, get_required_user
-from ...services.translation_service import TranslationService
+from ...services.base.model_factory import ModelAPIFactory
+from ...services.utils.file_manager import FileManager
 from ...background_tasks.translation_tasks import run_translation_in_background
 from ... import crud, models, schemas, auth
 
@@ -41,7 +42,7 @@ async def create_job(
     current_user: models.User = Depends(get_required_user)
 ):
     """Create a new translation job."""
-    if not TranslationService.validate_api_key(api_key, model_name):
+    if not ModelAPIFactory.validate_api_key(api_key, model_name):
         raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
     
     # Create job in database
@@ -104,7 +105,7 @@ async def delete_job(
 
     # Delete associated files
     try:
-        TranslationService.delete_job_files(db_job)
+        FileManager.delete_job_files(db_job)
     except Exception as e:
         # Log the error but proceed with deleting the DB record
         print(f"Error deleting files for job {job_id}: {e}")

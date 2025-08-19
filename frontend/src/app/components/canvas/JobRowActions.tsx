@@ -13,7 +13,7 @@ import {
   Edit as EditIcon,
   Error as ErrorIcon,
 } from '@mui/icons-material';
-import { Job } from '../../types/job';
+import { Job } from '../../types/ui';
 import ValidationDialog from '../TranslationSidebar/ValidationDialog';
 import PostEditDialog from '../TranslationSidebar/PostEditDialog';
 import { useValidation } from '../TranslationSidebar/hooks/useValidation';

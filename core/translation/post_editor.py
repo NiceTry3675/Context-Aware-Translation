@@ -3,6 +3,9 @@ Post-Edit Module
 
 This module provides functionality to post-edit translations based on validation reports,
 automatically fixing identified issues using AI-powered correction.
+
+The PostEditEngine works as a separate post-processing step after translation is complete,
+analyzing validation reports and applying targeted corrections.
 """
 
 import json
@@ -11,21 +14,25 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 from tqdm import tqdm
 from core.prompts.manager import PromptManager
+from ..utils.logging import TranslationLogger, StructuredLogger
 
 
 class PostEditEngine:
     """Handles post-editing of translations based on validation reports."""
     
-    def __init__(self, ai_model, verbose: bool = False):
+    def __init__(self, ai_model, verbose: bool = False, job_id: Optional[int] = None):
         """
         Initialize the post-edit engine.
         
         Args:
             ai_model: The AI model to use for post-editing
             verbose: Whether to print verbose output
+            job_id: Optional job ID for logging
         """
         self.ai_model = ai_model
         self.verbose = verbose
+        self.job_id = job_id
+        self.logger = None  # Will be initialized per document
         
         # Create post-edit log directory
         self.postedit_log_dir = Path('logs/postedit_logs')
@@ -59,6 +66,13 @@ class PostEditEngine:
         """
         segments_to_edit = []
         
+        if self.logger:
+            # Create postedit analysis log path in postedit_logs directory
+            self.logger.log_progress_log_path = self.logger.progress_log_path.replace('progress_', 'postedit_')
+            with open(self.logger.log_progress_log_path, 'a', encoding='utf-8') as f:
+                f.write(f"\n--- Analyzing Validation Report ---\n")
+                f.write(f"Total validation results: {len(validation_report.get('detailed_results', []))}\n")
+        
         for result in validation_report.get('detailed_results', []):
             segment_idx = result['segment_index']
             cases = result.get('structured_cases') or []
@@ -79,6 +93,14 @@ class PostEditEngine:
                 'segment_index': segment_idx,
                 'structured_cases': chosen_cases,
             })
+            
+            if self.logger:
+                with open(self.logger.log_progress_log_path, 'a', encoding='utf-8') as f:
+                    f.write(f"Segment {segment_idx} needs editing: {len(chosen_cases)} issues\n")
+        
+        if self.logger:
+            with open(self.logger.log_progress_log_path, 'a', encoding='utf-8') as f:
+                f.write(f"Total segments needing edit: {len(segments_to_edit)}\n\n")
         
         return segments_to_edit
     
@@ -144,10 +166,15 @@ class PostEditEngine:
         Returns:
             Post-edited translation text
         """
+        segment_idx = segment_data['segment_index']
         prompt = self.generate_edit_prompt(segment_data, source_text, translated_text, glossary)
         
+        # Log the post-edit prompt
+        if self.logger:
+            self.logger.log_translation_prompt(segment_idx, f"[POST-EDIT PROMPT]\n{prompt}")
+        
         if self.verbose:
-            print(f"Post-editing segment {segment_data['segment_index']}...")
+            print(f"Post-editing segment {segment_idx}...")
             if segment_data.get('structured_cases'):
                 print(f"  - Fixing {len(segment_data['structured_cases'])} validation issues")
         
@@ -166,33 +193,60 @@ class PostEditEngine:
                     lines = lines[:-1]
                 edited_text = '\n'.join(lines)
             
+            # Log successful edit
+            if self.logger:
+                self.logger.log_translation_progress(segment_idx, len(segment_data.get('structured_cases', [])))
+                with open(self.logger.context_log_path, 'a', encoding='utf-8') as f:
+                    f.write(f"--- POST-EDIT SEGMENT {segment_idx} ---\n")
+                    f.write(f"Issues fixed: {len(segment_data.get('structured_cases', []))}\n")
+                    f.write(f"Original: {translated_text[:100]}...\n")
+                    f.write(f"Edited: {edited_text[:100]}...\n\n")
+            
             return edited_text
             
         except Exception as e:
-            print(f"Warning: Post-edit failed for segment {segment_data['segment_index']}: {e}")
+            error_msg = f"Post-edit failed for segment {segment_idx}: {e}"
+            print(f"Warning: {error_msg}")
+            
+            # Log the error
+            if self.logger:
+                self.logger.log_error(e, segment_idx, "post-edit_segment")
+            
             # Return original translation if post-edit fails
             return translated_text
     
-    def post_edit_job(self,
-                     translation_job,
-                     validation_report_path: str,
-                     selected_cases: Dict[int, Any] | None = None,
-                     progress_callback=None,
-                     job_id: Optional[int] = None) -> List[str]:
+    def post_edit_document(self,
+                          translation_document,
+                          validation_report_path: str,
+                          selected_cases: Dict[int, Any] | None = None,
+                          progress_callback=None,
+                          job_id: Optional[int] = None) -> List[str]:
         """
-        Post-edit an entire translation job based on validation report.
+        Post-edit an entire translation document based on validation report.
         
         Args:
-            translation_job: The TranslationJob object
+            translation_document: The TranslationDocument object
             validation_report_path: Path to the validation report JSON file
             selected_cases: Optional mask per segment index -> boolean[] indicating which structured cases to fix
             progress_callback: Optional callback function for progress updates
+            job_id: Optional job ID for logging purposes
             
         Returns:
             List of post-edited translations
         """
+        # Initialize logger for this document
+        self.job_id = job_id or self.job_id
+        self.logger = TranslationLogger(self.job_id, translation_document.user_base_filename)
+        self.logger.initialize_session()
+        
         # Load validation report
         validation_report = self.load_validation_report(validation_report_path)
+        
+        if self.logger:
+            with open(self.logger.context_log_path, 'a', encoding='utf-8') as f:
+                f.write(f"--- POST-EDIT SESSION STARTED ---\n")
+                f.write(f"Validation report: {validation_report_path}\n")
+                f.write(f"Document: {translation_document.user_base_filename}\n\n")
         
         # Identify segments needing edit based on structured case selection
         segments_to_edit = self.identify_segments_needing_edit(validation_report, selected_cases)
@@ -202,28 +256,28 @@ class PostEditEngine:
             print("No segments require post-editing. Translation quality is good!")
             # Still create a comprehensive log even if no edits were needed
             complete_log = self._create_complete_log(
-                translation_job, 
-                translation_job.translated_segments, 
+                translation_document, 
+                translation_document.translated_segments, 
                 validation_report,
                 segments_to_edit_idx,
             )
             summary = {
                 'segments_edited': 0,
-                'total_segments': len(translation_job.translated_segments),
+                'total_segments': len(translation_document.translated_segments),
                 'edit_percentage': 0.0,
             }
-            self._save_postedit_log(complete_log, summary, translation_job.user_base_filename, job_id)
-            return translation_job.translated_segments
+            self._save_postedit_log(complete_log, summary, translation_document.user_base_filename, job_id)
+            return translation_document.translated_segments
         
         print(f"\n{'='*60}")
         print(f"Starting Post-Edit Process")
         print(f"{'='*60}")
-        print(f"Total segments: {len(translation_job.translated_segments)}")
+        print(f"Total segments: {len(translation_document.translated_segments)}")
         print(f"Segments to edit: {len(segments_to_edit)}")
         print(f"{'='*60}\n")
         
         # Create a copy of translated segments for editing
-        edited_segments = translation_job.translated_segments.copy()
+        edited_segments = translation_document.translated_segments.copy()
         
         # Post-edit each problematic segment
         with tqdm(total=len(segments_to_edit), desc="Post-editing segments", unit="segment") as pbar:
@@ -231,7 +285,7 @@ class PostEditEngine:
                 segment_idx = segment_data['segment_index']
                 
                 # Get source and current translation
-                source_text = translation_job.segments[segment_idx].text
+                source_text = translation_document.segments[segment_idx].text
                 current_translation = edited_segments[segment_idx]
                 
                 # Update progress bar
@@ -242,7 +296,7 @@ class PostEditEngine:
                     segment_data=segment_data,
                     source_text=source_text,
                     translated_text=current_translation,
-                    glossary=translation_job.glossary
+                    glossary=translation_document.glossary
                 )
                 
                 # Update the segment
@@ -256,7 +310,7 @@ class PostEditEngine:
         
         # Create comprehensive log with all segments
         complete_log = self._create_complete_log(
-            translation_job, 
+            translation_document, 
             edited_segments, 
             validation_report,
             segments_to_edit_idx,
@@ -265,23 +319,38 @@ class PostEditEngine:
         # Calculate summary
         summary = {
             'segments_edited': len(segments_to_edit),
-            'total_segments': len(translation_job.translated_segments),
-            'edit_percentage': (len(segments_to_edit) / len(translation_job.translated_segments) * 100),
+            'total_segments': len(translation_document.translated_segments),
+            'edit_percentage': (len(segments_to_edit) / len(translation_document.translated_segments) * 100),
         }
         
-        # Save post-edit log
-        self._save_postedit_log(complete_log, summary, translation_job.user_base_filename, job_id)
+        # Save post-edit log using StructuredLogger
+        log_data = {
+            'summary': summary,
+            'segments': complete_log
+        }
+        StructuredLogger.log_post_edit_report(
+            job_id or self.job_id or 0,
+            translation_document.user_base_filename,
+            log_data
+        )
+        
+        # Also save using the existing method for compatibility
+        self._save_postedit_log(complete_log, summary, translation_document.user_base_filename, job_id)
         
         # Print summary
         self._print_summary(summary)
         
-        # Update the translation job with edited segments
-        translation_job.translated_segments = edited_segments
+        # Log completion
+        if self.logger:
+            self.logger.log_completion(len(translation_document.segments))
+        
+        # Update the translation document with edited segments
+        translation_document.translated_segments = edited_segments
         
         return edited_segments
     
     def _create_complete_log(self, 
-                            translation_job,
+                            translation_document,
                             edited_segments: List[str],
                             validation_report: Dict[str, Any],
                             edited_indices: set) -> List[Dict[str, Any]]:
@@ -289,7 +358,7 @@ class PostEditEngine:
         Create a comprehensive log containing all segments with their complete translations.
         
         Args:
-            translation_job: The TranslationJob object
+            translation_document: The TranslationDocument object
             edited_segments: The edited translations
             validation_report: The validation report data
             edited_indices: Set of segment indices that were edited
@@ -305,9 +374,9 @@ class PostEditEngine:
             validation_by_idx[result['segment_index']] = result
         
         # Process all segments
-        for idx in range(len(translation_job.segments)):
-            source_text = translation_job.segments[idx].text
-            original_translation = translation_job.translated_segments[idx]
+        for idx in range(len(translation_document.segments)):
+            source_text = translation_document.segments[idx].text
+            original_translation = translation_document.translated_segments[idx]
             edited_translation = edited_segments[idx]
             was_edited = idx in edited_indices
             

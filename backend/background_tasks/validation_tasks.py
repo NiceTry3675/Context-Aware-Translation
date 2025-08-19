@@ -22,8 +22,11 @@ def run_validation_in_background(
             print(f"--- [VALIDATION] Job ID {job_id} not found ---")
             return
         
+        # Create validation service instance
+        validation_service = ValidationService()
+        
         # Update status to IN_PROGRESS
-        ValidationService.update_job_validation_status(db, job, "IN_PROGRESS", progress=0)
+        validation_service.update_job_validation_status(db, job, "IN_PROGRESS", progress=0)
         print(f"--- [VALIDATION] Starting validation for Job ID: {job_id} ---")
         
         # Get API key - for now using environment variable
@@ -32,7 +35,7 @@ def run_validation_in_background(
         model_name = "gemini-2.5-flash-lite"
         
         # Prepare validation components
-        validator, validation_job, translated_path = ValidationService.prepare_validation(
+        validator, validation_job, translated_path = validation_service.prepare_validation(
             job=job,
             api_key=api_key,
             model_name=model_name
@@ -45,19 +48,19 @@ def run_validation_in_background(
         
         # Run validation
         sample_rate = validation_sample_rate / 100.0  # Convert percentage to decimal
-        report = ValidationService.run_validation(
+        report = validation_service.run_validation(
             validator=validator,
-            validation_job=validation_job,
+            validation_document=validation_job,
             sample_rate=sample_rate,
             quick_mode=quick_validation,
             progress_callback=update_progress
         )
         
         # Save validation report
-        report_path = ValidationService.save_validation_report(job, report)
+        report_path = validation_service.save_validation_report(job, report)
         
         # Update job with results
-        ValidationService.update_job_validation_status(
+        validation_service.update_job_validation_status(
             db, job, "COMPLETED", progress=100, report_path=report_path
         )
         
@@ -67,7 +70,8 @@ def run_validation_in_background(
         if db:
             job = crud.get_job(db, job_id=job_id)
             if job:
-                ValidationService.update_job_validation_status(db, job, "FAILED")
+                validation_service = ValidationService()
+                validation_service.update_job_validation_status(db, job, "FAILED")
         print(f"--- [VALIDATION] Error validating Job ID {job_id}: {e} ---")
         traceback.print_exc()
         

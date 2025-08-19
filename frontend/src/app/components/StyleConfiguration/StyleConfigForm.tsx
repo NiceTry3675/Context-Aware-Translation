@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, CircularProgress, CardActions } from '@mui/material';
-import { StyleData, GlossaryTerm } from '../../types/translation';
+import { StyleData, GlossaryTerm } from '../../types/ui';
 import theme from '../../../theme';
 import StyleFieldEditor from './StyleFieldEditor';
 import GlossaryEditor from './GlossaryEditor';
@@ -39,7 +39,7 @@ export default function StyleConfigForm({
     setLocalGlossaryData(glossaryData);
   }, [glossaryData]);
 
-  const handleStyleFieldChange = (field: keyof StyleData, value: string) => {
+  const handleStyleFieldChange = (field: keyof StyleData, value: any) => {
     const updated = { ...localStyleData, [field]: value };
     setLocalStyleData(updated);
     onStyleChange(updated);

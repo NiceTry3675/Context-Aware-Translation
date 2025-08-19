@@ -1,4 +1,47 @@
-import { ValidationCase, StructuredValidationReport, StructuredPostEditLog, PostEditSegment } from '../types/core-schemas';
+import { ValidationCase } from '@/core-schemas';
+import type { components } from '@/types/api';
+
+// Type aliases for generated API types - exported for use in components
+export type GlossaryAnalysisResponse = components['schemas']['GlossaryAnalysisResponse'];
+export type TranslatedTerm = components['schemas']['TranslatedTerm'];
+
+// Local type definitions for structured reports (not yet in OpenAPI schema)
+// TODO: These should be generated from backend/schemas.py once they're exported
+export interface StructuredValidationReport {
+  job_id: number;
+  summary: {
+    total_segments: number;
+    validated_segments: number;
+    passed: number;
+    failed: number;
+    pass_rate: number;
+    case_counts_by_severity: { '1': number; '2': number; '3': number };
+    case_counts_by_dimension: Record<string, number>;
+    segments_with_cases: number[];
+  };
+  detailed_results: Array<{
+    segment_index: number;
+    status: 'PASS' | 'FAIL';
+    structured_cases?: ValidationCase[];
+  }>;
+}
+
+export interface PostEditSegment {
+  segment_index: number;
+  source_text: string;
+  original_translation: string;
+  edited_translation?: string;
+  was_edited: boolean;
+  validation_issues?: ValidationCase[];
+}
+
+export interface StructuredPostEditLog {
+  job_id: number;
+  segments: PostEditSegment[];
+  total_segments: number;
+  edited_segments: number;
+  timestamp: string;
+}
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -305,7 +348,7 @@ export async function fetchStructuredPostEditLog(jobId: string, token?: string):
   }
 }
 
-export async function fetchStructuredGlossary(jobId: string, token?: string): Promise<import('../types/core-schemas').GlossaryAnalysisResponse | null> {
+export async function fetchStructuredGlossary(jobId: string, token?: string): Promise<GlossaryAnalysisResponse | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/glossary?structured=true`, {
       headers: {

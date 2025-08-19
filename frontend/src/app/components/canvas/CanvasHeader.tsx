@@ -16,7 +16,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
-import { Job } from '../../types/job';
+import { Job } from '../../types/ui';
 
 interface CanvasHeaderProps {
   selectedJob: Job | null;

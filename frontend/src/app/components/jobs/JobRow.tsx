@@ -1,7 +1,7 @@
 'use client';
 
 import { TableRow, TableCell, Typography } from '@mui/material';
-import { Job } from '../../types/job';
+import { Job } from '../../types/ui';
 import JobStatusIndicator from './components/JobStatusIndicator';
 import DownloadActions from './components/DownloadActions';
 
@@ -77,16 +77,16 @@ export default function JobRow({
           status={job.status}
           errorMessage={job.error_message}
           progress={job.progress}
-          validationEnabled={job.validation_enabled}
+          validationEnabled={job.validation_enabled ?? undefined}
           validationStatus={job.validation_status || undefined}
-          validationProgress={job.validation_progress}
-          postEditEnabled={job.post_edit_enabled}
+          validationProgress={job.validation_progress ?? undefined}
+          postEditEnabled={job.post_edit_enabled ?? undefined}
           postEditStatus={job.post_edit_status || undefined}
-          postEditProgress={job.post_edit_progress}
+          postEditProgress={job.post_edit_progress ?? undefined}
         />
       </TableCell>
       <TableCell>
-        {job.status === 'COMPLETED' ? formatDuration(job.created_at, job.completed_at) : '-'}
+        {job.status === 'COMPLETED' ? formatDuration(job.created_at, job.completed_at ?? null) : '-'}
       </TableCell>
       <TableCell align="right">
         <DownloadActions

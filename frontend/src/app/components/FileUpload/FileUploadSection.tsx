@@ -4,7 +4,7 @@ import {
   FormControlLabel, Switch
 } from '@mui/material';
 import { UploadFile as UploadFileIcon } from '@mui/icons-material';
-import { StyleData, GlossaryTerm } from '../../types/translation';
+import { StyleData, GlossaryTerm } from '../../types/ui';
 
 interface FileUploadSectionProps {
   isAnalyzing: boolean;

@@ -1,14 +1,26 @@
 import { useState, useCallback } from 'react';
 import { useAuth, useClerk } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
-import { StyleData, GlossaryTerm, TranslationSettings, FileAnalysisResult } from '../types/translation';
-import { Job } from '../types/job';
+import type { components } from '@/types/api';
+import { StyleData, GlossaryTerm, TranslationSettings } from '../types/ui';
+
+// Type aliases for convenience
+type TranslationJob = components['schemas']['TranslationJob'];
+type StyleAnalysisResponse = components['schemas']['StyleAnalysisResponse'];
+type GlossaryAnalysisResponse = components['schemas']['GlossaryAnalysisResponse'];
+type TranslatedTerm = components['schemas']['TranslatedTerm'];
+
+interface FileAnalysisResult {
+  styleData: StyleData | null;
+  glossaryData: GlossaryTerm[];
+  error: string | null;
+}
 
 interface UseTranslationServiceOptions {
   apiUrl: string;
   apiKey: string;
   selectedModel: string;
-  onJobCreated?: (job: Job) => void;
+  onJobCreated?: (job: TranslationJob) => void;
 }
 
 export function useTranslationService({
@@ -68,7 +80,17 @@ export function useTranslationService({
         throw new Error(errorData.detail || '스타일 분석에 실패했습니다.');
       }
 
-      result.styleData = await styleResponse.json();
+      const apiStyleData = await styleResponse.json() as StyleAnalysisResponse;
+      
+      // Convert API response to UI StyleData format
+      result.styleData = {
+        protagonist_name: apiStyleData.protagonist_name,
+        narration_style: {
+          ending_style: apiStyleData.narration_style_endings
+        },
+        core_tone_keywords: apiStyleData.tone_keywords?.split(',').map(s => s.trim()).filter(s => s) || [],
+        golden_rule: apiStyleData.stylistic_rule
+      };
 
       // Analyze Glossary if enabled
       if (analyzeGlossary) {
@@ -85,8 +107,14 @@ export function useTranslationService({
           });
 
           if (glossaryResponse.ok) {
-            const glossaryResult = await glossaryResponse.json();
-            result.glossaryData = glossaryResult.glossary || [];
+            const glossaryResult = await glossaryResponse.json() as GlossaryAnalysisResponse;
+            // Convert API glossary format to UI GlossaryTerm format
+            result.glossaryData = (glossaryResult.glossary || []).map((item: any) => {
+              return { 
+                source: item.term || '', 
+                korean: item.translation || '' 
+              };
+            });
           } else {
             const errorData = await glossaryResponse.json();
             console.warn('Glossary analysis failed:', errorData.detail);
@@ -129,10 +157,21 @@ export function useTranslationService({
     formData.append("file", file);
     formData.append("api_key", apiKey);
     formData.append("model_name", selectedModel);
-    formData.append("style_data", JSON.stringify(styleData));
+    // Convert UI StyleData format to API format
+    const apiStyleData = {
+      protagonist_name: styleData.protagonist_name || '',
+      narration_style_endings: styleData.narration_style?.ending_style || '',
+      tone_keywords: styleData.core_tone_keywords?.join(', ') || '',
+      stylistic_rule: styleData.golden_rule || ''
+    };
+    formData.append("style_data", JSON.stringify(apiStyleData));
     
     if (glossaryData.length > 0) {
-      formData.append("glossary_data", JSON.stringify(glossaryData));
+      // Convert UI GlossaryTerm format to API format
+      const apiGlossaryData = glossaryData.map(term => ({
+        [term.source]: term.korean
+      }));
+      formData.append("glossary_data", JSON.stringify(apiGlossaryData));
     }
     
     formData.append("segment_size", settings.segmentSize.toString());
@@ -169,7 +208,7 @@ export function useTranslationService({
         throw new Error(errorData.detail || `File upload failed: ${response.statusText}`);
       }
       
-      const newJob: Job = await response.json();
+      const newJob: TranslationJob = await response.json();
       onJobCreated?.(newJob);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";

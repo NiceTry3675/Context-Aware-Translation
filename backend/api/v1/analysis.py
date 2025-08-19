@@ -3,7 +3,10 @@
 import os
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
 
-from ...services.translation_service import TranslationService
+from ...services.base.model_factory import ModelAPIFactory
+from ...services.utils.file_manager import FileManager
+from ...services.style_analysis_service import StyleAnalysisService
+from ...services.glossary_analysis_service import GlossaryAnalysisService
 from ...schemas import StyleAnalysisResponse, GlossaryAnalysisResponse
 
 router = APIRouter(tags=["analysis"])
@@ -16,17 +19,22 @@ async def analyze_style(
     model_name: str = Form("gemini-2.5-flash-lite"),
 ):
     """Analyze the narrative style of a document."""
-    if not TranslationService.validate_api_key(api_key, model_name):
+    if not ModelAPIFactory.validate_api_key(api_key, model_name):
         raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
     
     try:
-        temp_file_path, _ = TranslationService.save_uploaded_file(file.file, file.filename)
+        temp_file_path, _ = FileManager.save_uploaded_file(file, file.filename)
         
         try:
-            parsed_style = TranslationService.analyze_style(
-                temp_file_path, api_key, model_name, file.filename
+            style_service = StyleAnalysisService()
+            style_result = style_service.analyze_style(
+                filepath=temp_file_path,
+                api_key=api_key,
+                model_name=model_name,
+                user_style_data=None
             )
-            return StyleAnalysisResponse(**parsed_style)
+            # Extract style_data for the response
+            return StyleAnalysisResponse(**style_result['style_data'])
         finally:
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)
@@ -44,21 +52,24 @@ async def analyze_glossary(
     model_name: str = Form("gemini-2.5-flash-lite"),
 ):
     """Extract glossary terms from a document."""
-    if not TranslationService.validate_api_key(api_key, model_name):
+    if not ModelAPIFactory.validate_api_key(api_key, model_name):
         raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
     
     try:
-        temp_file_path, _ = TranslationService.save_uploaded_file(file.file, file.filename)
+        temp_file_path, _ = FileManager.save_uploaded_file(file, file.filename)
         
         try:
-            parsed_glossary = TranslationService.analyze_glossary(
-                temp_file_path, api_key, model_name, file.filename
+            glossary_service = GlossaryAnalysisService()
+            glossary_dict = glossary_service.analyze_glossary(
+                filepath=temp_file_path,
+                api_key=api_key,
+                model_name=model_name,
+                user_glossary_data=None
             )
-            # Map the parsed glossary from source/korean to term/translation for frontend compatibility
+            # Convert dictionary to frontend format
             frontend_glossary = [
-                {"term": item.get("source", item.get("term", "")), 
-                 "translation": item.get("korean", item.get("translation", ""))}
-                for item in parsed_glossary
+                {"term": term, "translation": translation}
+                for term, translation in glossary_dict.items()
             ]
             return GlossaryAnalysisResponse(glossary=frontend_glossary)
         finally:

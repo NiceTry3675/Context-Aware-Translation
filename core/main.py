@@ -9,12 +9,12 @@ from dotenv import load_dotenv
 from core.config.loader import load_config
 from core.translation.models.gemini import GeminiModel
 from core.config.builder import DynamicConfigBuilder
-from core.translation.job import TranslationJob
-from core.translation.engine import TranslationEngine
+from core.translation.document import TranslationDocument
+from core.translation.translation_pipeline import TranslationPipeline
 from core.errors.base import TranslationError
 from core.utils.file_parser import parse_document
-from core.translation.style_analyzer import extract_sample_text, analyze_narrative_style_with_api, parse_style_analysis
-from core.validation.validator import TranslationValidator
+from core.translation.style_analyzer import StyleAnalyzer
+from core.translation.validator import TranslationValidator
 from core.translation.post_editor import PostEditEngine
 
 
@@ -75,21 +75,23 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
             print(f"Creating translation job for: {source_file}")
             print(f"Segment size: {segment_size}")
         
-        job = TranslationJob(source_file, target_segment_size=segment_size)
+        document = TranslationDocument(source_file, target_segment_size=segment_size)
         
         if verbose:
-            print(f"Created {len(job.segments)} segments from source file")
+            print(f"Created {len(document.segments)} segments from source file")
         
         # Analyze protagonist name from the text
         if verbose:
             print("\n--- Analyzing Protagonist Name... ---")
         
         try:
-            sample_text = extract_sample_text(source_file)
+            # Create style analyzer
+            style_analyzer = StyleAnalyzer(gemini_model)
+            sample_text = style_analyzer.extract_sample_text(source_file)
             # Use the filename for logging purposes in the analyzer
             job_filename = Path(source_file).stem
-            style_analysis_text = analyze_narrative_style_with_api(sample_text, gemini_model, job_filename=job_filename)
-            parsed_style = parse_style_analysis(style_analysis_text)
+            style_analysis_text = style_analyzer.analyze_narrative_style(sample_text, job_filename=job_filename)
+            parsed_style = style_analyzer.parse_style_analysis(style_analysis_text)
             protagonist_name = parsed_style.get('protagonist_name')
 
             if not protagonist_name:
@@ -107,47 +109,45 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
         if verbose:
             print(f"\nInitializing dynamic config builder for protagonist: {protagonist_name}")
         
-        # Check environment variable for structured output
-        use_structured = os.getenv("USE_STRUCTURED_OUTPUT", "true").lower() == "true"
-        if verbose and use_structured:
+        # Always use structured output for configuration extraction
+        if verbose:
             print("Using structured output for configuration extraction")
         
         dyn_config_builder = DynamicConfigBuilder(
             gemini_model, 
-            protagonist_name,
-            use_structured=use_structured
+            protagonist_name
         )
         
-        # Create translation engine (no database for CLI mode)
-        engine = TranslationEngine(gemini_model, dyn_config_builder, db=None, job_id=None)
+        # Create translation pipeline (no database for CLI mode)
+        pipeline = TranslationPipeline(gemini_model, dyn_config_builder, db=None, job_id=None)
         
         # Run translation
         if verbose:
             print("Starting translation...")
             print("-" * 50)
         
-        # Verbose mode is already handled by the engine's progress display
+        # Verbose mode is already handled by the pipeline's progress display
         
         # Execute translation
-        engine.translate_job(job)
+        pipeline.translate_document(document)
         
         # Handle output file
         if target_file:
             # Move the output file to the target location
-            os.rename(job.output_filename, target_file)
+            os.rename(document.output_filename, target_file)
             output_path = target_file
         else:
-            output_path = job.output_filename
+            output_path = document.output_filename
         
         # Print summary
         print(f"\nTranslation completed successfully!")
         print(f"Output file: {output_path}")
-        print(f"Glossary entries: {len(job.glossary)}")
-        print(f"Character styles: {len(job.character_styles)}")
+        print(f"Glossary entries: {len(document.glossary)}")
+        print(f"Character styles: {len(document.character_styles)}")
         
-        if verbose and job.glossary:
+        if verbose and document.glossary:
             print("\nGlossary sample:")
-            for term, translation in list(job.glossary.items())[:5]:
+            for term, translation in list(document.glossary.items())[:5]:
                 print(f"  {term} → {translation}")
         
         # Run validation if requested
@@ -157,8 +157,8 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
             print("="*60)
             
             validator = TranslationValidator(gemini_model, verbose=verbose)
-            validation_results, validation_summary = validator.validate_job(
-                translation_job=job,
+            validation_results, validation_summary = validator.validate_document(
+                document=document,
                 sample_rate=validation_sample_rate,
                 quick_mode=quick_validation
             )
@@ -177,7 +177,7 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
                     print(f"  👤 {validation_summary['total_name_inconsistencies']} name inconsistencies")
                 
                 print(f"\nPlease review the validation report for full details.")
-                print(f"Report location: logs/validation_logs/{job.user_base_filename}_validation_report.json")
+                print(f"Report location: logs/validation_logs/{document.user_base_filename}_validation_report.json")
             elif validation_summary['pass_rate'] >= 95:
                 print("\n✅ Excellent! Translation passed validation with high quality.")
             elif validation_summary['pass_rate'] >= 85:
@@ -190,22 +190,22 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
                 print("="*60)
                 
                 # Check if validation report exists
-                validation_report_path = f"logs/validation_logs/{job.user_base_filename}_validation_report.json"
+                validation_report_path = f"logs/validation_logs/{document.user_base_filename}_validation_report.json"
                 if not os.path.exists(validation_report_path):
                     print("Error: Validation report not found. Post-edit requires validation to be run first.")
                     print("Please run with --with-validation flag.")
                 else:
                     post_editor = PostEditEngine(gemini_model, verbose=verbose)
-                    edited_segments, edit_summary = post_editor.post_edit_job(job, validation_report_path)
+                    edited_segments = post_editor.post_edit_document(document, validation_report_path)
                     
                     # Save the post-edited translation
-                    if edit_summary['segments_edited'] > 0:
+                    if edited_segments and len(edited_segments) > 0:
                         # Generate post-edited output filename
                         base_name = os.path.splitext(output_path)[0]
                         post_edit_output = f"{base_name}_postedited.txt"
                         
                         # Write post-edited translation
-                        job.save_translation(post_edit_output)
+                        document.save_translation(post_edit_output)
                         print(f"\nPost-edited translation saved to: {post_edit_output}")
                         
                         # Optionally run validation again on post-edited version

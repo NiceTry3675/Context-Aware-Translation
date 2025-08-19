@@ -1,0 +1,404 @@
+{
+  "ExtractedTerms": {
+    "description": "Response model for proper noun extraction.",
+    "properties": {
+      "terms": {
+        "description": "List of unique proper nouns found in the text. Empty list if none found.",
+        "items": {
+          "type": "string"
+        },
+        "title": "Terms",
+        "type": "array"
+      }
+    },
+    "title": "ExtractedTerms",
+    "type": "object"
+  },
+  "TranslatedTerms": {
+    "$defs": {
+      "TranslatedTerm": {
+        "description": "Single term translation pair.",
+        "properties": {
+          "source": {
+            "description": "Source term in English",
+            "title": "Source",
+            "type": "string"
+          },
+          "korean": {
+            "description": "Korean translation",
+            "title": "Korean",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "korean"
+        ],
+        "title": "TranslatedTerm",
+        "type": "object"
+      }
+    },
+    "description": "Response model for term translation.",
+    "properties": {
+      "translations": {
+        "description": "List of term translations",
+        "items": {
+          "$ref": "#/$defs/TranslatedTerm"
+        },
+        "title": "Translations",
+        "type": "array"
+      }
+    },
+    "title": "TranslatedTerms",
+    "type": "object"
+  },
+  "CharacterInteraction": {
+    "description": "Single interaction between protagonist and another character.",
+    "properties": {
+      "character_name": {
+        "description": "Name of the character the protagonist is speaking to",
+        "title": "Character Name",
+        "type": "string"
+      },
+      "speech_style": {
+        "description": "Korean speech style used (반말 for informal, 해요체 for polite informal, 하십시오체 for formal)",
+        "enum": [
+          "반말",
+          "해요체",
+          "하십시오체"
+        ],
+        "title": "Speech Style",
+        "type": "string"
+      }
+    },
+    "required": [
+      "character_name",
+      "speech_style"
+    ],
+    "title": "CharacterInteraction",
+    "type": "object"
+  },
+  "DialogueAnalysisResult": {
+    "$defs": {
+      "CharacterInteraction": {
+        "description": "Single interaction between protagonist and another character.",
+        "properties": {
+          "character_name": {
+            "description": "Name of the character the protagonist is speaking to",
+            "title": "Character Name",
+            "type": "string"
+          },
+          "speech_style": {
+            "description": "Korean speech style used (반말 for informal, 해요체 for polite informal, 하십시오체 for formal)",
+            "enum": [
+              "반말",
+              "해요체",
+              "하십시오체"
+            ],
+            "title": "Speech Style",
+            "type": "string"
+          }
+        },
+        "required": [
+          "character_name",
+          "speech_style"
+        ],
+        "title": "CharacterInteraction",
+        "type": "object"
+      }
+    },
+    "description": "Result of dialogue style analysis for a text segment.",
+    "properties": {
+      "protagonist_name": {
+        "description": "Name of the protagonist",
+        "title": "Protagonist Name",
+        "type": "string"
+      },
+      "interactions": {
+        "description": "List of character interactions found in this segment",
+        "items": {
+          "$ref": "#/$defs/CharacterInteraction"
+        },
+        "title": "Interactions",
+        "type": "array"
+      },
+      "has_dialogue": {
+        "default": false,
+        "description": "Whether the protagonist has any dialogue in this segment",
+        "title": "Has Dialogue",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "protagonist_name"
+    ],
+    "title": "DialogueAnalysisResult",
+    "type": "object"
+  },
+  "NarrativeStyleDefinition": {
+    "$defs": {
+      "NarrationStyle": {
+        "description": "Narration style details.",
+        "properties": {
+          "description": {
+            "description": "Brief description of the narrator's voice (e.g., 'A neutral, third-person observer's voice')",
+            "title": "Description",
+            "type": "string"
+          },
+          "ending_style": {
+            "default": "해라체",
+            "description": "Korean sentence ending style for narration (almost always 해라체)",
+            "title": "Ending Style",
+            "type": "string"
+          }
+        },
+        "required": [
+          "description"
+        ],
+        "title": "NarrationStyle",
+        "type": "object"
+      }
+    },
+    "description": "Core narrative style definition for the entire work.",
+    "properties": {
+      "protagonist_name": {
+        "description": "The single most central character's name. If unclear, 'Protagonist'",
+        "title": "Protagonist Name",
+        "type": "string"
+      },
+      "narration_style": {
+        "$ref": "#/$defs/NarrationStyle",
+        "description": "Style and endings for narrative text"
+      },
+      "core_tone_keywords": {
+        "description": "3-5 keywords describing the overall mood (Korean)",
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 5,
+        "minItems": 1,
+        "title": "Core Tone Keywords",
+        "type": "array"
+      },
+      "golden_rule": {
+        "description": "Overarching rule for the novel's feel and rhythm",
+        "title": "Golden Rule",
+        "type": "string"
+      }
+    },
+    "required": [
+      "protagonist_name",
+      "narration_style",
+      "core_tone_keywords",
+      "golden_rule"
+    ],
+    "title": "NarrativeStyleDefinition",
+    "type": "object"
+  },
+  "StyleDeviation": {
+    "description": "Style deviation detected in a segment.",
+    "properties": {
+      "has_deviation": {
+        "description": "Whether a style deviation was detected",
+        "title": "Has Deviation",
+        "type": "boolean"
+      },
+      "starts_with": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "The first few words of the deviating part",
+        "title": "Starts With"
+      },
+      "instruction": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "Direct command for the translator regarding this deviation",
+        "title": "Instruction"
+      }
+    },
+    "required": [
+      "has_deviation"
+    ],
+    "title": "StyleDeviation",
+    "type": "object"
+  },
+  "ValidationResponse": {
+    "$defs": {
+      "ValidationCase": {
+        "description": "Individual validation issue found in translation.",
+        "properties": {
+          "current_korean_sentence": {
+            "description": "문제가 되는 현재 한국어 문장 (최대 3~4문장)",
+            "title": "Current Korean Sentence",
+            "type": "string"
+          },
+          "problematic_source_sentence": {
+            "description": "대응하는 원문 문장 (최대 3~4문장)",
+            "title": "Problematic Source Sentence",
+            "type": "string"
+          },
+          "reason": {
+            "description": "왜 문제인지",
+            "title": "Reason",
+            "type": "string"
+          },
+          "dimension": {
+            "description": "이슈 차원(카테고리)",
+            "enum": [
+              "completeness",
+              "accuracy",
+              "addition",
+              "name_consistency",
+              "dialogue_style",
+              "flow",
+              "other"
+            ],
+            "title": "Dimension",
+            "type": "string"
+          },
+          "severity": {
+            "description": "이슈의 심각도. 1(사소함), 2(중대함), 3(치명적) 중 하나의 숫자로 표기.",
+            "enum": [
+              "1",
+              "2",
+              "3"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "corrected_korean_sentence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "권장 수정 번역문",
+            "title": "Corrected Korean Sentence"
+          },
+          "tags": {
+            "description": "보조 라벨(예: terminology, formality, punctuation)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          }
+        },
+        "required": [
+          "current_korean_sentence",
+          "problematic_source_sentence",
+          "reason",
+          "dimension",
+          "severity"
+        ],
+        "title": "ValidationCase",
+        "type": "object"
+      }
+    },
+    "description": "Response model for validation results.",
+    "properties": {
+      "cases": {
+        "description": "List of validation issues found. Empty list if no issues.",
+        "items": {
+          "$ref": "#/$defs/ValidationCase"
+        },
+        "title": "Cases",
+        "type": "array"
+      }
+    },
+    "title": "ValidationResponse",
+    "type": "object"
+  },
+  "ValidationCase": {
+    "description": "Individual validation issue found in translation.",
+    "properties": {
+      "current_korean_sentence": {
+        "description": "문제가 되는 현재 한국어 문장 (최대 3~4문장)",
+        "title": "Current Korean Sentence",
+        "type": "string"
+      },
+      "problematic_source_sentence": {
+        "description": "대응하는 원문 문장 (최대 3~4문장)",
+        "title": "Problematic Source Sentence",
+        "type": "string"
+      },
+      "reason": {
+        "description": "왜 문제인지",
+        "title": "Reason",
+        "type": "string"
+      },
+      "dimension": {
+        "description": "이슈 차원(카테고리)",
+        "enum": [
+          "completeness",
+          "accuracy",
+          "addition",
+          "name_consistency",
+          "dialogue_style",
+          "flow",
+          "other"
+        ],
+        "title": "Dimension",
+        "type": "string"
+      },
+      "severity": {
+        "description": "이슈의 심각도. 1(사소함), 2(중대함), 3(치명적) 중 하나의 숫자로 표기.",
+        "enum": [
+          "1",
+          "2",
+          "3"
+        ],
+        "title": "Severity",
+        "type": "string"
+      },
+      "corrected_korean_sentence": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "description": "권장 수정 번역문",
+        "title": "Corrected Korean Sentence"
+      },
+      "tags": {
+        "description": "보조 라벨(예: terminology, formality, punctuation)",
+        "items": {
+          "type": "string"
+        },
+        "title": "Tags",
+        "type": "array"
+      }
+    },
+    "required": [
+      "current_korean_sentence",
+      "problematic_source_sentence",
+      "reason",
+      "dimension",
+      "severity"
+    ],
+    "title": "ValidationCase",
+    "type": "object"
+  }
+}

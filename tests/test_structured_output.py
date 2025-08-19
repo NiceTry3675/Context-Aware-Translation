@@ -6,6 +6,10 @@ Test the structured output implementation for glossary, character style, and nar
 import os
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -48,8 +52,8 @@ def test_glossary_extraction():
         "max_output_tokens": 8192,
     }
     
-    model = GeminiModel(api_key, "gemini-2.0-flash-exp", safety_settings, generation_config)
-    manager = GlossaryManager(model, "test_job", use_structured=True)
+    model = GeminiModel(api_key, "gemini-2.5-flash-lite", safety_settings, generation_config)
+    manager = GlossaryManager(model, "test_job")
     
     # Extract terms
     terms = manager._extract_proper_nouns(sample_text)
@@ -90,11 +94,11 @@ def test_glossary_translation():
         "max_output_tokens": 8192,
     }
     
-    model = GeminiModel(api_key, "gemini-2.0-flash-exp", safety_settings, generation_config)
+    model = GeminiModel(api_key, "gemini-2.5-flash-lite", safety_settings, generation_config)
     
     # Create manager with existing glossary
     existing_glossary = {"John": "존", "New York": "뉴욕"}
-    manager = GlossaryManager(model, "test_job", initial_glossary=existing_glossary, use_structured=True)
+    manager = GlossaryManager(model, "test_job", initial_glossary=existing_glossary)
     
     # Terms to translate
     terms = ["John Smith", "Sarah Johnson", "Google"]
@@ -143,8 +147,8 @@ def test_character_style_analysis():
         "max_output_tokens": 8192,
     }
     
-    model = GeminiModel(api_key, "gemini-2.0-flash-exp", safety_settings, generation_config)
-    manager = CharacterStyleManager(model, "John", use_structured=True)
+    model = GeminiModel(api_key, "gemini-2.5-flash-lite", safety_settings, generation_config)
+    manager = CharacterStyleManager(model, "John")
     
     # Analyze styles
     current_styles = {}
@@ -207,8 +211,8 @@ def test_style_deviation():
         "max_output_tokens": 8192,
     }
     
-    model = GeminiModel(api_key, "gemini-2.0-flash-exp", safety_settings, generation_config)
-    builder = DynamicConfigBuilder(model, "John", use_structured=True)
+    model = GeminiModel(api_key, "gemini-2.5-flash-lite", safety_settings, generation_config)
+    builder = DynamicConfigBuilder(model, "John")
     
     # Analyze deviation
     deviation = builder._analyze_style_deviation(sample_text, core_style, "test_job", 0)

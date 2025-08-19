@@ -11,8 +11,7 @@ import { useTranslationJobs } from './useTranslationJobs';
 import { useSegmentNavigation } from '../components/TranslationSidebar/hooks/useSegmentNavigation';
 import { useApiKey } from './useApiKey';
 import { useTranslationService } from './useTranslationService';
-import { Job } from '../types/job';
-import { StyleData, GlossaryTerm, TranslationSettings } from '../types/translation';
+import { Job, StyleData, GlossaryTerm, TranslationSettings } from '../types/ui';
 
 export function useCanvasState() {
   const searchParams = useSearchParams();
@@ -49,6 +48,7 @@ export function useCanvasState() {
   
   // Translation settings
   const [translationSettings, setTranslationSettings] = useState<TranslationSettings>({
+    model_name: 'gemini-2.5-flash',
     segmentSize: 15000,
     enableValidation: false,
     quickValidation: false,

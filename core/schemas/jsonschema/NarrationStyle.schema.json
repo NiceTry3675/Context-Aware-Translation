@@ -1,0 +1,21 @@
+{
+  "description": "Narration style details.",
+  "properties": {
+    "description": {
+      "description": "Brief description of the narrator's voice (e.g., 'A neutral, third-person observer's voice')",
+      "title": "Description",
+      "type": "string"
+    },
+    "ending_style": {
+      "default": "해라체",
+      "description": "Korean sentence ending style for narration (almost always 해라체)",
+      "title": "Ending Style",
+      "type": "string"
+    }
+  },
+  "required": [
+    "description"
+  ],
+  "title": "NarrationStyle",
+  "type": "object"
+}

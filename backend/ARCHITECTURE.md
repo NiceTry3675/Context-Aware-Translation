@@ -36,13 +36,24 @@ backend/
 │   ├── config/               # Configuration management
 │   └── prompts/              # AI prompt templates
 │
+├── models/                    # SQLAlchemy models package
+│   ├── _base.py              # Base declarative class
+│   ├── user.py               # User model
+│   ├── translation.py        # Translation job models
+│   ├── community.py          # Community models
+│   └── __init__.py           # Model exports
+│
+├── migrations/                # Alembic migrations
+│   ├── env.py                # Alembic environment
+│   ├── script.py.mako        # Migration template
+│   └── versions/             # Migration versions
+│
+├── alembic.ini               # Alembic configuration
 ├── dependencies.py            # Shared FastAPI dependencies
-├── models.py                 # SQLAlchemy models
 ├── schemas.py                # Pydantic schemas
 ├── crud.py                   # Database operations
 ├── auth.py                   # Authentication logic
 ├── database.py               # Database connection
-├── migrations.py             # Database migrations
 ├── auto_init.py              # Auto-initialization
 └── main.py                   # Slim entry point (~80 lines)
 ```
@@ -158,12 +169,39 @@ The translation endpoints are organized into logical modules for better maintain
 - Server-Sent Events streaming
 - Real-time announcement updates
 
+## Database Management
+
+### Models Organization
+The SQLAlchemy models are organized into a package structure:
+- `models/_base.py`: Contains the declarative Base class
+- `models/user.py`: User authentication and profile models
+- `models/translation.py`: Translation job and usage log models
+- `models/community.py`: Community features (posts, comments, categories)
+
+### Migration System (Alembic)
+Database schema changes are managed using Alembic:
+```bash
+# Apply all migrations
+cd backend && alembic upgrade head
+
+# Create a new migration
+alembic revision --autogenerate -m "description"
+
+# View migration history
+alembic history
+
+# Rollback to previous version
+alembic downgrade -1
+```
+
+The migration system supports both SQLite (development) and PostgreSQL (production) transparently.
+
 ## Migration from Old Structure
 
 The refactoring maintains 100% backward compatibility:
 - All API endpoints remain at the same URLs
 - Request/response formats unchanged
-- Database schema unchanged
+- Database schema managed via Alembic migrations
 - Frontend requires no modifications
 
 ## Development Guidelines

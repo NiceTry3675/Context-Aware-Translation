@@ -13,11 +13,11 @@ import {
   Palette as PaletteIcon,
   Gavel as GavelIcon,
 } from '@mui/icons-material';
-import { StyleData } from '../../types/translation';
+import { StyleData } from '../../types/ui';
 
 interface StyleFieldEditorProps {
   styleData: StyleData;
-  onStyleChange: (field: keyof StyleData, value: string) => void;
+  onStyleChange: (field: keyof StyleData, value: any) => void;
 }
 
 export default function StyleFieldEditor({ styleData, onStyleChange }: StyleFieldEditorProps) {
@@ -48,8 +48,8 @@ export default function StyleFieldEditor({ styleData, onStyleChange }: StyleFiel
         
         <TextField 
           label="2. 서술 문체 및 어미" 
-          value={styleData.narration_style_endings} 
-          onChange={(e) => onStyleChange('narration_style_endings', e.target.value)} 
+          value={styleData.narration_style?.ending_style || ''} 
+          onChange={(e) => onStyleChange('narration_style', { ...styleData.narration_style, ending_style: e.target.value })} 
           fullWidth
           multiline
           rows={4}
@@ -65,8 +65,8 @@ export default function StyleFieldEditor({ styleData, onStyleChange }: StyleFiel
         
         <TextField 
           label="3. 핵심 톤과 키워드 (전체 분위기)" 
-          value={styleData.tone_keywords} 
-          onChange={(e) => onStyleChange('tone_keywords', e.target.value)} 
+          value={styleData.core_tone_keywords?.join(', ') || ''} 
+          onChange={(e) => onStyleChange('core_tone_keywords', e.target.value.split(',').map(s => s.trim()).filter(s => s))} 
           fullWidth
           multiline
           rows={3}
@@ -82,8 +82,8 @@ export default function StyleFieldEditor({ styleData, onStyleChange }: StyleFiel
         
         <TextField 
           label="4. 가장 중요한 스타일 규칙 (Golden Rule)" 
-          value={styleData.stylistic_rule} 
-          onChange={(e) => onStyleChange('stylistic_rule', e.target.value)} 
+          value={styleData.golden_rule || ''} 
+          onChange={(e) => onStyleChange('golden_rule', e.target.value)} 
           fullWidth
           multiline
           rows={3}

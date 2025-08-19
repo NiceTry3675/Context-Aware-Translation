@@ -19,46 +19,16 @@ import {
   Home as HomeIcon
 } from '@mui/icons-material';
 import theme from '../../theme';
+import type { components } from '@/types/api';
 
-interface Author {
-  id: number;
-  clerk_user_id: string;
-  name: string;
-  role: string;
-  email: string;
-}
+// Type aliases for convenience
+type PostCategory = components['schemas']['PostCategory'];
+type Post = components['schemas']['Post'];
+type User = components['schemas']['User'];
 
-interface PostCategory {
-  id: number;
-  name: string;
-  display_name: string;
-  description: string;
-  is_admin_only: boolean;
-  order: number;
-  created_at: string;
-}
-
-interface PostPreview {
-  id: number;
-  title: string;
-  author: Author;
-  category: PostCategory;
-  is_pinned: boolean;
-  is_private: boolean;
-  view_count: number;
-  comment_count: number;
-  created_at: string;
-}
-
-interface CategoryOverview {
-  id: number;
-  name: string;
-  display_name: string;
-  description: string;
-  is_admin_only: boolean;
-  order: number;
-  created_at: string;
-  recent_posts: PostPreview[];
+// Custom interface for category overview (not in generated types)
+interface CategoryOverview extends PostCategory {
+  recent_posts: Post[];
   total_posts: number;
 }
 
@@ -325,7 +295,7 @@ export default function CommunityPage() {
                                     조회 {post.view_count}
                                   </Typography>
                                   <Typography variant="caption" color="text.secondary">
-                                    댓글 {post.comment_count}
+                                    댓글 {post.comments?.length || 0}
                                   </Typography>
                                   <Typography variant="caption" color="text.secondary">
                                     {formatDate(post.created_at)}

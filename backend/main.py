@@ -15,15 +15,10 @@ from fastapi.staticfiles import StaticFiles
 load_dotenv()
 
 # Import routers
-from .api.v1 import translation, community, admin, webhooks, announcements
+from .api.v1 import translation, community, admin, webhooks, announcements, schemas
 
-# Database initialization
-try:
-    from . import migrations
-    migrations.run_migrations()
-except Exception as e:
-    print(f"❌ Migration error: {e}")
-    # Continue running even if migrations fail
+# Note: Database migrations are now handled by Alembic
+# Run `cd backend && alembic upgrade head` to apply migrations
 
 # Auto initialization (categories, etc.)
 try:
@@ -71,6 +66,7 @@ app.include_router(community.router)
 app.include_router(admin.router)
 app.include_router(webhooks.router)
 app.include_router(announcements.router)
+app.include_router(schemas.router)
 
 # Root endpoint
 @app.get("/")

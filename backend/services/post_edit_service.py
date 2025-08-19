@@ -3,45 +3,38 @@ from typing import Optional, Callable
 from sqlalchemy.orm import Session
 
 from core.translation.post_editor import PostEditEngine
-from core.translation.job import TranslationJob
-from .translation_service import TranslationService
+from core.translation.document import TranslationDocument
+from .base.base_service import BaseService
 from .. import crud, models
 
 
-class PostEditService:
+class PostEditService(BaseService):
     """Service layer for post-editing operations."""
     
-    @staticmethod
+    def __init__(self):
+        """Initialize post-edit service."""
+        super().__init__()
+    
     def prepare_post_edit(
+        self,
         job: models.TranslationJob,
         api_key: str,
         model_name: str = "gemini-2.5-flash-lite"
-    ) -> tuple[PostEditEngine, TranslationJob, str]:
+    ) -> tuple[PostEditEngine, TranslationDocument, str]:
         """Prepare the post-editor and translation job for post-editing."""
-        # Get the translated file path
-        unique_base = os.path.splitext(os.path.basename(job.filepath))[0]
-        original_ext = os.path.splitext(job.filename)[1].lower()
+        # Get the translated file path using FileManager
+        translated_path, _, _ = self.file_manager.get_translated_file_path(job)
         
-        if original_ext == '.epub':
-            output_ext = '.epub'
-        else:
-            output_ext = '.txt'
-        
-        translated_filename = f"{unique_base}_translated{output_ext}"
-        translated_path = os.path.join("translated_novel", translated_filename)
-        
-        if not os.path.exists(translated_path):
+        if not self.file_manager.file_exists(translated_path):
             raise FileNotFoundError(f"Translated file not found: {translated_path}")
         
         # Initialize post-editor
-        from core.config.loader import load_config
-        config = load_config()
-        model_api = TranslationService.get_model_api(api_key, model_name, config)
+        model_api = self.create_model_api(api_key, model_name)
         
         post_editor = PostEditEngine(model_api)
         
-        # Create translation job for post-editing
-        translation_job = TranslationJob(
+        # Create translation document for post-editing
+        translation_document = TranslationDocument(
             job.filepath, 
             original_filename=job.filename,
             target_segment_size=job.segment_size
@@ -70,21 +63,21 @@ class PostEditService:
                 "Invalid translation segments schema. Expected 'translated_text' per segment."
             )
 
-        translation_job.translated_segments = translated_list[:]
+        translation_document.translated_segments = translated_list[:]
 
         # Strict count match with source segments
-        if len(translation_job.translated_segments) != len(translation_job.segments):
+        if len(translation_document.translated_segments) != len(translation_document.segments):
             raise ValueError(
-                f"Translation segments count mismatch (source={len(translation_job.segments)}, "
-                f"translated={len(translation_job.translated_segments)})."
+                f"Translation segments count mismatch (source={len(translation_document.segments)}, "
+                f"translated={len(translation_document.translated_segments)})."
             )
         
-        return post_editor, translation_job, translated_path
+        return post_editor, translation_document, translated_path
     
-    @staticmethod
     def run_post_edit(
+        self,
         post_editor: PostEditEngine,
-        translation_job: TranslationJob,
+        translation_document: TranslationDocument,
         translated_path: str,
         validation_report_path: str,
         selected_cases: dict | None = None,
@@ -92,8 +85,8 @@ class PostEditService:
         job_id: Optional[int] = None,
     ):
         """Run the post-editing process and overwrite the translated file."""
-        edited_segments = post_editor.post_edit_job(
-            translation_job,
+        edited_segments = post_editor.post_edit_document(
+            translation_document,
             validation_report_path,
             selected_cases,
             progress_callback=progress_callback,
@@ -110,16 +103,13 @@ class PostEditService:
             # Optionally, re-raise or handle the error appropriately
             raise e
     
-    @staticmethod
-    def get_post_edit_log_path(job: models.TranslationJob) -> str:
+    def get_post_edit_log_path(self, job: models.TranslationJob) -> str:
         """Get the post-edit log file path."""
-        # Include job ID to prevent conflicts with duplicate filenames
-        log_filename = f"{job.id}_{os.path.splitext(job.filename)[0]}_postedit_log.json"
-        log_path = os.path.join("logs/postedit_logs", log_filename)
-        return log_path
+        # Use FileManager to get the post-edit log path
+        return self.file_manager.get_post_edit_log_path(job)
     
-    @staticmethod
     def update_job_post_edit_status(
+        self,
         db: Session,
         job: models.TranslationJob,
         status: str,
@@ -137,8 +127,7 @@ class PostEditService:
         
         db.commit()
     
-    @staticmethod
-    def validate_post_edit_prerequisites(job: models.TranslationJob):
+    def validate_post_edit_prerequisites(self, job: models.TranslationJob):
         """Validate that a job is ready for post-editing."""
         if job.validation_status != "COMPLETED":
             raise ValueError("Validation must be completed before post-editing")
@@ -146,5 +135,5 @@ class PostEditService:
         if not job.validation_report_path:
             raise ValueError("Validation report not found")
         
-        if not os.path.exists(job.validation_report_path):
+        if not self.file_manager.file_exists(job.validation_report_path):
             raise FileNotFoundError(f"Validation report file not found: {job.validation_report_path}")

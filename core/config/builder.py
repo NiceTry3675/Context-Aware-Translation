@@ -21,8 +21,7 @@ class DynamicConfigBuilder:
         self, 
         model: GeminiModel, 
         protagonist_name: str, 
-        initial_glossary: Optional[List[Dict[str, str]]] = None,
-        use_structured: bool = True
+        initial_glossary: Optional[List[Dict[str, str]]] = None
     ):
         """
         Initializes the builder with the shared Gemini model and managers.
@@ -31,11 +30,9 @@ class DynamicConfigBuilder:
             model: The shared GeminiModel instance.
             protagonist_name: The name of the protagonist.
             initial_glossary: An optional list of dictionaries to pre-populate the glossary.
-            use_structured: Whether to use structured output for all managers.
         """
         self.model = model
-        self.use_structured = use_structured
-        self.character_style_manager = CharacterStyleManager(model, protagonist_name, use_structured=use_structured)
+        self.character_style_manager = CharacterStyleManager(model, protagonist_name)
         
         self.initial_glossary_dict = {}
         if initial_glossary:
@@ -46,8 +43,7 @@ class DynamicConfigBuilder:
         print(f"DynamicConfigBuilder initialized with protagonist '{protagonist_name}'.")
         if self.initial_glossary_dict:
             print(f"Pre-populating glossary with {len(self.initial_glossary_dict)} user-defined terms.")
-        if use_structured:
-            print(f"DynamicConfigBuilder using structured output mode.")
+        print(f"DynamicConfigBuilder using structured output mode.")
 
     
 
@@ -76,8 +72,7 @@ class DynamicConfigBuilder:
         glossary_manager = GlossaryManager(
             self.model, 
             job_base_filename, 
-            initial_glossary=combined_glossary,
-            use_structured=self.use_structured
+            initial_glossary=combined_glossary
         )
         
         # Update glossary based on the current segment
@@ -102,11 +97,8 @@ class DynamicConfigBuilder:
         return updated_glossary, updated_character_styles, style_deviation_info
 
     def _analyze_style_deviation(self, segment_text: str, core_narrative_style: str, job_base_filename: str = "unknown", segment_index: Optional[int] = None) -> str:
-        """Analyzes the segment for deviations from the core narrative style."""
-        if self.use_structured:
-            return self._analyze_style_deviation_structured(segment_text, core_narrative_style, job_base_filename, segment_index)
-        else:
-            return self._analyze_style_deviation_text(segment_text, core_narrative_style, job_base_filename, segment_index)
+        """Analyzes the segment for deviations from the core narrative style using structured output."""
+        return self._analyze_style_deviation_structured(segment_text, core_narrative_style, job_base_filename, segment_index)
     
     def _analyze_style_deviation_structured(self, segment_text: str, core_narrative_style: str, job_base_filename: str = "unknown", segment_index: Optional[int] = None) -> str:
         """Analyzes style deviation using structured output."""
@@ -133,32 +125,4 @@ class DynamicConfigBuilder:
             return "N/A"
         except Exception as e:
             print(f"Warning: Could not analyze style deviation (structured). {e}")
-            return "N/A"
-    
-    def _analyze_style_deviation_text(self, segment_text: str, core_narrative_style: str, job_base_filename: str = "unknown", segment_index: Optional[int] = None) -> str:
-        """Analyzes style deviation using text generation (legacy)."""
-        prompt = PromptManager.ANALYZE_NARRATIVE_DEVIATION.format(
-            core_narrative_style=core_narrative_style,
-            segment_text=segment_text
-        )
-        try:
-            response = self.model.generate_text(prompt)
-            if "N/A" in response:
-                return "N/A"
-            else:
-                return response
-        except ProhibitedException as e:
-            log_path = prohibited_content_logger.log_simple_prohibited_content(
-                api_call_type="style_deviation_analysis",
-                prompt=prompt,
-                source_text=segment_text,
-                error_message=str(e),
-                job_filename=job_base_filename,
-                segment_index=segment_index,
-                context={"core_narrative_style": core_narrative_style}
-            )
-            print(f"Warning: Style deviation analysis blocked by safety settings. Log saved to: {log_path}")
-            return "N/A"
-        except Exception as e:
-            print(f"Warning: Could not analyze style deviation. {e}")
             return "N/A"

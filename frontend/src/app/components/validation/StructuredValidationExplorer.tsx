@@ -26,16 +26,10 @@ import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ValidationReport } from '../../utils/api';
+import { ValidationCase } from '@/core-schemas';
 
-type StructuredCase = {
-  dimension: string;
-  severity: number;
-  tags?: string[];
-  problematic_source_sentence?: string;
-  current_korean_sentence?: string;
-  reason: string;
-  corrected_korean_sentence?: string;
-};
+// Use ValidationCase from core schemas instead of local type
+type StructuredCase = ValidationCase;
 
 interface StructuredValidationExplorerProps {
   report: ValidationReport;
@@ -47,15 +41,21 @@ interface StructuredValidationExplorerProps {
 
 function deriveCasesFromLegacy(segment: any): StructuredCase[] {
   const cases: StructuredCase[] = [];
-  const pushAll = (arr: string[] | undefined, dimension: string, severity: number) => {
-    (arr || []).forEach((reason) => cases.push({ dimension, severity, reason }));
+  const pushAll = (arr: string[] | undefined, dimension: ValidationCase['dimension'], severity: "1" | "2" | "3") => {
+    (arr || []).forEach((reason) => cases.push({ 
+      dimension, 
+      severity, 
+      reason,
+      current_korean_sentence: '',
+      problematic_source_sentence: ''
+    } as StructuredCase));
   };
   // Heuristics to convert legacy arrays into structured cases for display
-  pushAll(segment.critical_issues, 'accuracy', 3);
-  pushAll(segment.missing_content, 'completeness', 2);
-  pushAll(segment.added_content, 'addition', 2);
-  pushAll(segment.name_inconsistencies, 'name_consistency', 2);
-  pushAll(segment.minor_issues, 'other', 1);
+  pushAll(segment.critical_issues, 'accuracy', '3');
+  pushAll(segment.missing_content, 'completeness', '2');
+  pushAll(segment.added_content, 'addition', '2');
+  pushAll(segment.name_inconsistencies, 'name_consistency', '2');
+  pushAll(segment.minor_issues, 'other', '1');
   return cases;
 }
 
