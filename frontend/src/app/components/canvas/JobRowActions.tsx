@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@clerk/nextjs';
+import { getCachedClerkToken } from '../../utils/authToken';
 import {
   Box,
   IconButton,
@@ -16,11 +18,8 @@ import {
 import { Job } from '../../types/ui';
 import ValidationDialog from '../TranslationSidebar/ValidationDialog';
 import PostEditDialog from '../TranslationSidebar/PostEditDialog';
-import { useValidation } from '../TranslationSidebar/hooks/useValidation';
-import { usePostEdit } from '../TranslationSidebar/hooks/usePostEdit';
-import { useAuth } from '@clerk/nextjs';
+import { useJobActions } from '../../hooks/useJobActions';
 import { fetchValidationReport, ValidationReport } from '../../utils/api';
-import { getCachedClerkToken } from '../../utils/authToken';
 
 interface JobRowActionsProps {
   job: Job;
@@ -31,17 +30,47 @@ interface JobRowActionsProps {
 }
 
 export default function JobRowActions({ job, onRefresh, compact = false, apiProvider, defaultModelName }: JobRowActionsProps) {
-  const jobId = job.id.toString();
-  const { getToken } = useAuth();
   const onRowRefresh = () => onRefresh(job.id);
+  const jobId = job.id.toString();
   
-  // State for validation report - loaded on demand
+  // State for dialogs and their options, managed locally
+  const [validationDialogOpen, setValidationDialogOpen] = useState(false);
+  const [quickValidation, setQuickValidation] = useState(false);
+  const [validationSampleRate, setValidationSampleRate] = useState(100);
+  const [validationModelName, setValidationModelName] = useState<string>('');
+
+  const [postEditDialogOpen, setPostEditDialogOpen] = useState(false);
+  const [postEditModelName, setPostEditModelName] = useState<string>('');
+
+  // State for validation report - loaded on demand for post-edit
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
   const [selectedCases, setSelectedCases] = useState<Record<number, boolean[]>>({});
   const [loadingReport, setLoadingReport] = useState(false);
 
-  const validation = useValidation({ jobId, onRefresh: onRowRefresh, apiProvider, defaultModelName });
-  const postEdit = usePostEdit({ jobId, onRefresh: onRowRefresh, selectedCases, apiProvider, defaultModelName });
+  const { handleTriggerValidation, handleTriggerPostEdit } = useJobActions({
+    apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+    onSuccess: onRowRefresh,
+    onError: (error) => console.error(error),
+  });
+
+  const onConfirmValidation = () => {
+    handleTriggerValidation(job.id, {
+      quick_validation: quickValidation,
+      validation_sample_rate: validationSampleRate / 100,
+      model_name: validationModelName || defaultModelName,
+    });
+    setValidationDialogOpen(false);
+  };
+
+  const onConfirmPostEdit = () => {
+    handleTriggerPostEdit(job.id, {
+      selected_cases: selectedCases || {},
+      model_name: postEditModelName || defaultModelName,
+    });
+    setPostEditDialogOpen(false);
+  };
+
+  const { getToken } = useAuth();
 
   const canRunValidation = job.status === 'COMPLETED' && 
     (!job.validation_status || job.validation_status === 'FAILED');
@@ -50,7 +79,7 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
 
   // Load validation report when post-edit dialog opens
   useEffect(() => {
-    if (postEdit.postEditDialogOpen && job.validation_status === 'COMPLETED' && !validationReport && !loadingReport) {
+    if (postEditDialogOpen && job.validation_status === 'COMPLETED' && !validationReport && !loadingReport) {
       setLoadingReport(true);
       getCachedClerkToken(getToken)
         .then(token => fetchValidationReport(jobId, token || undefined))
@@ -70,7 +99,7 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
         .catch(err => console.error('Failed to load validation report:', err))
         .finally(() => setLoadingReport(false));
     }
-  }, [postEdit.postEditDialogOpen, job.validation_status, validationReport, loadingReport, jobId, getToken]);
+  }, [postEditDialogOpen, job.validation_status, validationReport, loadingReport, jobId, getToken]);
 
   // Calculate selected counts
   const selectedCounts = {
@@ -124,7 +153,7 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
               <span>
                 <IconButton
                   size="small"
-                  onClick={() => validation.setValidationDialogOpen(true)}
+                  onClick={() => setValidationDialogOpen(true)}
                   disabled={!canRunValidation || job.validation_status === 'IN_PROGRESS'}
                   sx={{ p: 0.5 }}
                 >
@@ -148,7 +177,7 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
               <span>
                 <IconButton
                   size="small"
-                  onClick={() => postEdit.setPostEditDialogOpen(true)}
+                  onClick={() => setPostEditDialogOpen(true)}
                   disabled={!canRunPostEdit || job.post_edit_status === 'IN_PROGRESS'}
                   sx={{ p: 0.5 }}
                 >
@@ -161,30 +190,30 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
 
         {/* Validation Dialog */}
         <ValidationDialog
-          open={validation.validationDialogOpen}
-          onClose={() => validation.setValidationDialogOpen(false)}
-          onConfirm={validation.handleTriggerValidation}
-          quickValidation={validation.quickValidation}
-          onQuickValidationChange={validation.setQuickValidation}
-          validationSampleRate={validation.validationSampleRate}
-          onValidationSampleRateChange={validation.setValidationSampleRate}
-          loading={validation.loading}
-          apiProvider={validation.apiProvider}
-          modelName={validation.modelName || defaultModelName}
-          onModelNameChange={validation.setModelName}
+          open={validationDialogOpen}
+          onClose={() => setValidationDialogOpen(false)}
+          onConfirm={onConfirmValidation}
+          quickValidation={quickValidation}
+          onQuickValidationChange={setQuickValidation}
+          validationSampleRate={validationSampleRate}
+          onValidationSampleRateChange={setValidationSampleRate}
+          loading={loadingReport} // Or a dedicated loading state if available
+          apiProvider={apiProvider}
+          modelName={validationModelName || defaultModelName}
+          onModelNameChange={setValidationModelName}
         />
 
         {/* Post-Edit Dialog */}
         <PostEditDialog
-          open={postEdit.postEditDialogOpen}
-          onClose={() => postEdit.setPostEditDialogOpen(false)}
-          onConfirm={postEdit.handleTriggerPostEdit}
+          open={postEditDialogOpen}
+          onClose={() => setPostEditDialogOpen(false)}
+          onConfirm={onConfirmPostEdit}
           validationReport={validationReport}
-          loading={postEdit.loading || loadingReport}
+          loading={loadingReport}
           selectedCounts={selectedCounts}
-          apiProvider={postEdit.apiProvider}
-          modelName={postEdit.modelName || defaultModelName}
-          onModelNameChange={postEdit.setModelName}
+          apiProvider={apiProvider}
+          modelName={postEditModelName || defaultModelName}
+          onModelNameChange={setPostEditModelName}
         />
       </>
     );
@@ -198,7 +227,7 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
           <Tooltip title="검증 실행">
             <span>
               <IconButton
-                onClick={() => validation.setValidationDialogOpen(true)}
+                onClick={() => setValidationDialogOpen(true)}
                 disabled={!canRunValidation || job.validation_status === 'IN_PROGRESS'}
                 color={job.validation_status === 'COMPLETED' ? 'success' : 'default'}
               >
@@ -213,7 +242,7 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
           <Tooltip title="포스트에디팅 실행">
             <span>
               <IconButton
-                onClick={() => postEdit.setPostEditDialogOpen(true)}
+                onClick={() => setPostEditDialogOpen(true)}
                 disabled={!canRunPostEdit || job.post_edit_status === 'IN_PROGRESS'}
                 color={job.post_edit_status === 'COMPLETED' ? 'info' : 'default'}
               >
@@ -226,30 +255,30 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
 
       {/* Validation Dialog */}
       <ValidationDialog
-        open={validation.validationDialogOpen}
-        onClose={() => validation.setValidationDialogOpen(false)}
-        onConfirm={validation.handleTriggerValidation}
-        quickValidation={validation.quickValidation}
-        onQuickValidationChange={validation.setQuickValidation}
-        validationSampleRate={validation.validationSampleRate}
-        onValidationSampleRateChange={validation.setValidationSampleRate}
-        loading={validation.loading}
-        apiProvider={validation.apiProvider}
-        modelName={validation.modelName || defaultModelName}
-        onModelNameChange={validation.setModelName}
+        open={validationDialogOpen}
+        onClose={() => setValidationDialogOpen(false)}
+        onConfirm={onConfirmValidation}
+        quickValidation={quickValidation}
+        onQuickValidationChange={setQuickValidation}
+        validationSampleRate={validationSampleRate}
+        onValidationSampleRateChange={setValidationSampleRate}
+        loading={loadingReport} // Or a dedicated loading state if available
+        apiProvider={apiProvider}
+        modelName={validationModelName || defaultModelName}
+        onModelNameChange={setValidationModelName}
       />
 
       {/* Post-Edit Dialog */}
       <PostEditDialog
-        open={postEdit.postEditDialogOpen}
-        onClose={() => postEdit.setPostEditDialogOpen(false)}
-        onConfirm={postEdit.handleTriggerPostEdit}
+        open={postEditDialogOpen}
+        onClose={() => setPostEditDialogOpen(false)}
+        onConfirm={onConfirmPostEdit}
         validationReport={validationReport}
-        loading={postEdit.loading}
+        loading={loadingReport}
         selectedCounts={selectedCounts}
-        apiProvider={postEdit.apiProvider}
-        modelName={postEdit.modelName || defaultModelName}
-        onModelNameChange={postEdit.setModelName}
+        apiProvider={apiProvider}
+        modelName={postEditModelName || defaultModelName}
+        onModelNameChange={setPostEditModelName}
       />
     </>
   );

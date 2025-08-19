@@ -137,6 +137,18 @@ function CanvasContent() {
                   state.setViewMode('segment');
                   state.segmentNav.goToSegment(index);
                 }}
+                selectedCases={state.selectedCases}
+                onCaseSelectionChange={(segmentIndex, caseIndex, selected, totalCases) => {
+                  state.setSelectedCases(prev => {
+                    const next = { ...prev } as Record<number, boolean[]>;
+                    const arr = next[segmentIndex] ? next[segmentIndex].slice() : new Array(totalCases).fill(true);
+                    arr[caseIndex] = selected;
+                    next[segmentIndex] = arr;
+                    return next;
+                  });
+                }}
+                onOpenValidationDialog={() => state.setValidationDialogOpen(true)}
+                onOpenPostEditDialog={() => state.setPostEditDialogOpen(true)}
               />
             )}
           </Container>
@@ -144,29 +156,29 @@ function CanvasContent() {
       </Box>
 
       <ValidationDialog
-        open={state.validation.validationDialogOpen}
-        onClose={() => state.validation.setValidationDialogOpen(false)}
-        onConfirm={state.validation.handleTriggerValidation}
-        quickValidation={state.validation.quickValidation}
-        onQuickValidationChange={state.validation.setQuickValidation}
-        validationSampleRate={state.validation.validationSampleRate}
-        onValidationSampleRateChange={state.validation.setValidationSampleRate}
-        loading={state.validation.loading}
-        apiProvider={state.validation.apiProvider}
-        modelName={state.validation.modelName || state.selectedModel}
-        onModelNameChange={state.validation.setModelName}
+        open={state.validationDialogOpen}
+        onClose={() => state.setValidationDialogOpen(false)}
+        onConfirm={state.onConfirmValidation}
+        quickValidation={state.quickValidation}
+        onQuickValidationChange={state.setQuickValidation}
+        validationSampleRate={state.validationSampleRate}
+        onValidationSampleRateChange={state.setValidationSampleRate}
+        loading={state.loading}
+        apiProvider={state.apiProvider}
+        modelName={state.validationModelName || state.selectedModel}
+        onModelNameChange={state.setValidationModelName}
       />
 
       <PostEditDialog
-        open={state.postEdit.postEditDialogOpen}
-        onClose={() => state.postEdit.setPostEditDialogOpen(false)}
-        onConfirm={state.postEdit.handleTriggerPostEdit}
+        open={state.postEditDialogOpen}
+        onClose={() => state.setPostEditDialogOpen(false)}
+        onConfirm={state.onConfirmPostEdit}
         validationReport={state.validationReport}
-        loading={state.postEdit.loading}
-        selectedCounts={{ total: state.selectedCounts?.total ?? 0 }}
-        apiProvider={state.postEdit.apiProvider}
-        modelName={state.postEdit.modelName || state.selectedModel}
-        onModelNameChange={state.postEdit.setModelName}
+        loading={state.loading}
+        selectedCounts={{ total: Object.values(state.selectedCases).reduce((acc, arr) => acc + (arr?.filter(Boolean).length || 0), 0) }}
+        apiProvider={state.apiProvider}
+        modelName={state.postEditModelName || state.selectedModel}
+        onModelNameChange={state.setPostEditModelName}
       />
     </>
   );

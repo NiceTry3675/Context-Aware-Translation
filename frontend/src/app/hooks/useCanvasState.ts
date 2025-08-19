@@ -5,12 +5,11 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
 import { useTranslationData } from '../components/TranslationSidebar/hooks/useTranslationData';
-import { useValidation } from '../components/TranslationSidebar/hooks/useValidation';
-import { usePostEdit } from '../components/TranslationSidebar/hooks/usePostEdit';
 import { useTranslationJobs } from './useTranslationJobs';
 import { useSegmentNavigation } from '../components/TranslationSidebar/hooks/useSegmentNavigation';
 import { useApiKey } from './useApiKey';
 import { useTranslationService } from './useTranslationService';
+import { useJobActions } from './useJobActions';
 import { Job, StyleData, GlossaryTerm, TranslationSettings } from '../types/ui';
 
 export function useCanvasState() {
@@ -124,10 +123,50 @@ export function useCanvasState() {
     postEditStatus: selectedJob?.post_edit_status || undefined
   });
 
-  const validation = useValidation({ jobId: jobId || '', onRefresh: () => { if (jobId) { refreshJobPublic(jobId); } }, apiProvider, defaultModelName: selectedModel });
-  // Structured-only: legacy selectedIssues not used to build selection array
-  const selectedCases = useMemo(() => ({}) as Record<number, boolean[]>, []);
-  const postEdit = usePostEdit({ jobId: jobId || '', onRefresh: () => { if (jobId) { refreshJobPublic(jobId); } }, selectedCases, apiProvider, defaultModelName: selectedModel });
+  // State for dialogs, managed centrally
+  const [validationDialogOpen, setValidationDialogOpen] = useState(false);
+  const [quickValidation, setQuickValidation] = useState(false);
+  const [validationSampleRate, setValidationSampleRate] = useState(100);
+  const [validationModelName, setValidationModelName] = useState<string>('');
+
+  const [postEditDialogOpen, setPostEditDialogOpen] = useState(false);
+  const [postEditModelName, setPostEditModelName] = useState<string>('');
+  const [selectedCases, setSelectedCases] = useState<Record<number, boolean[]>>({});
+
+  const { 
+    handleTriggerValidation, 
+    handleTriggerPostEdit,
+    loading: jobActionLoading,
+    error: jobActionError,
+  } = useJobActions({
+    apiUrl: API_URL,
+    onSuccess: () => {
+      if (jobId) refreshJobPublic(parseInt(jobId, 10));
+    },
+    onError: (error) => {
+      // TODO: Show error in a snackbar
+      console.error(error);
+    }
+  });
+
+  const onConfirmValidation = () => {
+    if (!jobId) return;
+    handleTriggerValidation(parseInt(jobId, 10), {
+      quick_validation: quickValidation,
+      validation_sample_rate: validationSampleRate / 100,
+      model_name: validationModelName || selectedModel,
+    });
+    setValidationDialogOpen(false);
+  };
+
+  const onConfirmPostEdit = () => {
+    if (!jobId) return;
+    handleTriggerPostEdit(parseInt(jobId, 10), {
+      selected_cases: selectedCases || {},
+      model_name: postEditModelName || selectedModel,
+    });
+    setPostEditDialogOpen(false);
+  };
   
   // Segment navigation hook
   const segmentNav = useSegmentNavigation({
@@ -280,11 +319,11 @@ export function useCanvasState() {
   const selectedCounts = useMemo(() => ({ total: 0 }), []);
   
   // Combine loading states
-  const loading = validation.loading || postEdit.loading;
+  const loading = dataLoading || jobActionLoading;
   const isPolling = selectedJob?.status === 'IN_PROGRESS' || 
     selectedJob?.validation_status === 'IN_PROGRESS' || 
     selectedJob?.post_edit_status === 'IN_PROGRESS';
-  const error = dataError || validation.error || postEdit.error || translationError;
+  const error = dataError || jobActionError || translationError;
 
   return {
     // Auth state
@@ -367,9 +406,25 @@ export function useCanvasState() {
     loadData,
     loadMoreSegments,
     
-    // Hooks
-    validation,
-    postEdit,
+    // Validation Dialog State and Handlers
+    validationDialogOpen,
+    setValidationDialogOpen,
+    quickValidation,
+    setQuickValidation,
+    validationSampleRate,
+    setValidationSampleRate,
+    validationModelName,
+    setValidationModelName,
+    onConfirmValidation,
+
+    // Post-Edit Dialog State and Handlers
+    postEditDialogOpen,
+    setPostEditDialogOpen,
+    postEditModelName,
+    setPostEditModelName,
+    selectedCases,
+    setSelectedCases,
+    onConfirmPostEdit,
     segmentNav,
     
     // Navigation

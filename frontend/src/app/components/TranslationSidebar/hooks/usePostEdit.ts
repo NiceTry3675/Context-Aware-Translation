@@ -28,7 +28,11 @@ export function usePostEdit({ jobId, onRefresh, selectedCases, apiProvider, defa
     
     try {
       const token = await getCachedClerkToken(getToken);
-      await triggerPostEdit(jobId, token || undefined, selectedCases || {}, modelName || defaultModelName);
+      const body = {
+        selected_cases: selectedCases || {},
+        model_name: modelName || defaultModelName,
+      };
+      await triggerPostEdit(jobId, token || undefined, body);
       setPostEditDialogOpen(false);
       // Lightweight UI kick: public single-job refresh (no JWT)
       onRefresh?.();

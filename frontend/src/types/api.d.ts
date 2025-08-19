@@ -765,6 +765,12 @@ export interface components {
              * @default gemini-2.5-flash-lite
              */
             model_name: string;
+            /** Translation Model Name */
+            translation_model_name?: string | null;
+            /** Style Model Name */
+            style_model_name?: string | null;
+            /** Glossary Model Name */
+            glossary_model_name?: string | null;
             /** Style Data */
             style_data?: string;
             /** Glossary Data */
@@ -1036,6 +1042,8 @@ export interface components {
             selected_cases?: {
                 [key: string]: unknown;
             } | null;
+            /** Model Name */
+            model_name?: string | null;
         };
         /** PostList */
         PostList: {
@@ -1217,6 +1225,8 @@ export interface components {
              * @default 1
              */
             validation_sample_rate: number;
+            /** Model Name */
+            model_name?: string | null;
         };
     };
     responses: never;

@@ -18,6 +18,8 @@ import {
 } from '@mui/material';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import EditIcon from '@mui/icons-material/Edit';
 import FirstPageIcon from '@mui/icons-material/FirstPage';
 import LastPageIcon from '@mui/icons-material/LastPage';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
@@ -91,6 +93,15 @@ interface ResultsViewProps {
     selected: boolean
   ) => void;
   onSegmentClick: (index: number) => void;
+  selectedCases: Record<number, boolean[]>;
+  onCaseSelectionChange: (
+    segmentIndex: number,
+    caseIndex: number,
+    selected: boolean,
+    totalCases: number
+  ) => void;
+  onOpenValidationDialog: () => void;
+  onOpenPostEditDialog: () => void;
 }
 
 export default function ResultsView({
@@ -118,31 +129,62 @@ export default function ResultsView({
   onLoadMoreSegments,
   onIssueSelectionChange,
   onSegmentClick,
+  selectedCases,
+  onCaseSelectionChange,
+  onOpenValidationDialog,
+  onOpenPostEditDialog,
 }: ResultsViewProps) {
-  // Selection state for structured cases (segment-indexed)
-  const [selectedCases, setSelectedCases] = React.useState<Record<number, boolean[]>>({});
   const handleCaseSelectionChange = React.useCallback((segmentIndex: number, caseIndex: number, selected: boolean, totalCases: number) => {
-    setSelectedCases(prev => {
-      const next = { ...prev };
-      const arr = next[segmentIndex] ? next[segmentIndex].slice() : new Array(totalCases).fill(true);
-      arr[caseIndex] = selected;
-      next[segmentIndex] = arr;
-      return next;
-    });
-  }, []);
+    onCaseSelectionChange(segmentIndex, caseIndex, selected, totalCases);
+  }, [onCaseSelectionChange]);
+
+  const canRunValidation = selectedJob?.status === 'COMPLETED' && (!selectedJob?.validation_status || selectedJob?.validation_status === 'FAILED');
+  const canRunPostEdit = selectedJob?.validation_status === 'COMPLETED' && (!selectedJob?.post_edit_status || selectedJob?.post_edit_status === 'FAILED');
 
   return (
     <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <Box sx={{ px: 2, pt: 1 }}>
-        <Button
-          variant="outlined"
-          startIcon={<AddCircleIcon />}
-          onClick={onShowNewTranslation}
-          size="small"
-          sx={{ mb: 1 }}
-        >
-          새 번역 시작
-        </Button>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Button
+            variant="outlined"
+            startIcon={<AddCircleIcon />}
+            onClick={onShowNewTranslation}
+            size="small"
+            sx={{ mb: 1 }}
+          >
+            새 번역 시작
+          </Button>
+          <Tooltip title={canRunValidation ? '검증 실행' : '번역 완료 후 실행 가능'}>
+            <span>
+              <Button
+                variant="contained"
+                color="success"
+                size="small"
+                startIcon={<CheckCircleIcon />}
+                onClick={onOpenValidationDialog}
+                disabled={!canRunValidation || selectedJob?.validation_status === 'IN_PROGRESS'}
+                sx={{ mb: 1 }}
+              >
+                검증 실행
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title={canRunPostEdit ? '포스트에디팅 실행' : '검증 완료 후 실행 가능'}>
+            <span>
+              <Button
+                variant="contained"
+                color="info"
+                size="small"
+                startIcon={<EditIcon />}
+                onClick={onOpenPostEditDialog}
+                disabled={!canRunPostEdit || selectedJob?.post_edit_status === 'IN_PROGRESS'}
+                sx={{ mb: 1 }}
+              >
+                포스트 에디팅 실행
+              </Button>
+            </span>
+          </Tooltip>
+        </Stack>
       </Box>
       
       <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>

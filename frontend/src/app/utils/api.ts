@@ -245,24 +245,17 @@ export async function fetchTranslationSegments(
 
 export async function triggerValidation(
   jobId: string,
-  token?: string,
-  quickValidation: boolean = false,
-  validationSampleRate: number = 1.0,
-  modelName?: string,
+  token: string | undefined,
+  body: components['schemas']['ValidationRequest'],
 ): Promise<void> {
   const url = `${API_BASE_URL}/api/v1/jobs/${jobId}/validation`;
-  const body = {
-    quick_validation: quickValidation,
-    validation_sample_rate: validationSampleRate,
-    model_name: modelName,
-  };
   
   const headers = {
     'Authorization': token ? `Bearer ${token}` : '',
     'Content-Type': 'application/json',
   };
   
-  console.log('Triggering validation:', { url, body, hasToken: !!token, authHeader: headers.Authorization?.substring(0, 30) });
+  console.log('Triggering validation:', { url, body, hasToken: !!token });
   
   const response = await fetch(url, {
     method: 'PUT',
@@ -283,9 +276,8 @@ export async function triggerValidation(
 
 export async function triggerPostEdit(
   jobId: string, 
-  token?: string,
-  selectedCases?: Record<number, boolean[]>,
-  modelName?: string,
+  token: string | undefined,
+  body: components['schemas']['PostEditRequest'],
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/post-edit`, {
     method: 'PUT',
@@ -293,10 +285,7 @@ export async function triggerPostEdit(
       'Authorization': token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      selected_cases: selectedCases || {},
-      model_name: modelName,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

@@ -1798,6 +1798,39 @@
             "title": "Model Name",
             "default": "gemini-2.5-flash-lite"
           },
+          "translation_model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Translation Model Name"
+          },
+          "style_model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style Model Name"
+          },
+          "glossary_model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glossary Model Name"
+          },
           "style_data": {
             "type": "string",
             "title": "Style Data"
@@ -2319,6 +2352,17 @@
               }
             ],
             "title": "Selected Cases"
+          },
+          "model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
           }
         },
         "type": "object",
@@ -2852,6 +2896,17 @@
             "type": "number",
             "title": "Validation Sample Rate",
             "default": 1.0
+          },
+          "model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
           }
         },
         "type": "object",

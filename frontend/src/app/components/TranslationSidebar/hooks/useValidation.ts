@@ -34,7 +34,12 @@ export function useValidation({ jobId, onRefresh, apiProvider, defaultModelName 
       const token = await getCachedClerkToken(getToken);
       console.log('Got token:', !!token);
       
-      await triggerValidation(jobId, token || undefined, quickValidation, validationSampleRate / 100, modelName || defaultModelName);
+      const body = {
+        quick_validation: quickValidation,
+        validation_sample_rate: validationSampleRate / 100,
+        model_name: modelName || defaultModelName,
+      };
+      await triggerValidation(jobId, token || undefined, body);
       console.log('Validation triggered successfully');
       
       setValidationDialogOpen(false);

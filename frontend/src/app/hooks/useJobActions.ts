@@ -1,4 +1,5 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
+import { components } from '../../types/api';
 import { useAuth, useClerk } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
 
@@ -11,6 +12,8 @@ interface UseJobActionsOptions {
 export function useJobActions({ apiUrl, onError, onSuccess }: UseJobActionsOptions) {
   const { getToken, isSignedIn } = useAuth();
   const { openSignIn } = useClerk();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleDownload = useCallback(async (url: string, filename: string) => {
     if (!isSignedIn) {
@@ -52,56 +55,75 @@ export function useJobActions({ apiUrl, onError, onSuccess }: UseJobActionsOptio
     }
   }, [isSignedIn, getToken, openSignIn, onError, onSuccess]);
 
+  
+
   const handleTriggerValidation = useCallback(async (
     jobId: number,
-    quickValidation: boolean = false,
-    validationSampleRate: number = 100
+    body: components['schemas']['ValidationRequest']
   ) => {
+    setLoading(true);
+    setError(null);
     try {
       const token = await getCachedClerkToken(getToken);
-      const formData = new FormData();
-      formData.append('quick_validation', quickValidation.toString());
-      formData.append('validation_sample_rate', (validationSampleRate / 100).toString());
-      
       const response = await fetch(`${apiUrl}/api/v1/jobs/${jobId}/validation`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
-        body: formData,
+        body: JSON.stringify(body),
       });
       
       if (response.ok) {
         onSuccess?.();
       } else {
         const errorData = await response.json();
-        onError?.(errorData.detail || 'Failed to start validation');
+        const errorMessage = errorData.detail || 'Failed to start validation';
+        setError(errorMessage);
+        onError?.(errorMessage);
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       console.error('Error triggering validation:', error);
-      onError?.('Failed to start validation');
+      setError(errorMessage);
+      onError?.(errorMessage);
+    } finally {
+      setLoading(false);
     }
   }, [apiUrl, getToken, onError, onSuccess]);
 
-  const handleTriggerPostEdit = useCallback(async (jobId: number) => {
+  const handleTriggerPostEdit = useCallback(async (
+    jobId: number,
+    body: components['schemas']['PostEditRequest']
+  ) => {
+    setLoading(true);
+    setError(null);
     try {
       const token = await getCachedClerkToken(getToken);
       const response = await fetch(`${apiUrl}/api/v1/jobs/${jobId}/post-edit`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify(body),
       });
       
       if (response.ok) {
         onSuccess?.();
       } else {
         const errorData = await response.json();
-        onError?.(errorData.detail || 'Failed to start post-editing');
+        const errorMessage = errorData.detail || 'Failed to start post-editing';
+        setError(errorMessage);
+        onError?.(errorMessage);
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       console.error('Error triggering post-edit:', error);
-      onError?.('Failed to start post-editing');
+      setError(errorMessage);
+      onError?.(errorMessage);
+    } finally {
+      setLoading(false);
     }
   }, [apiUrl, getToken, onError, onSuccess]);
 
@@ -125,5 +147,7 @@ export function useJobActions({ apiUrl, onError, onSuccess }: UseJobActionsOptio
     handleTriggerPostEdit,
     handleDownloadValidationReport,
     handleDownloadPostEditLog,
+    loading,
+    error,
   };
 }
