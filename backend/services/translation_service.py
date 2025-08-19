@@ -28,10 +28,21 @@ class TranslationService(BaseService):
         api_key: str,
         model_name: str,
         style_data: Optional[str] = None,
-        glossary_data: Optional[str] = None
+        glossary_data: Optional[str] = None,
+        translation_model_name: Optional[str] = None,
+        style_model_name: Optional[str] = None,
+        glossary_model_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Prepare all the necessary components for a translation job."""
-        model_api = self.create_model_api(api_key, model_name)
+        # Fallbacks: if specific per-task models are not provided, use the top-level model_name
+        translation_model_name = translation_model_name or model_name
+        style_model_name = style_model_name or model_name
+        glossary_model_name = glossary_model_name or model_name
+
+        # Create per-task model APIs
+        model_api = self.create_model_api(api_key, translation_model_name)
+        style_model_api = self.create_model_api(api_key, style_model_name) if style_model_name else model_api
+        glossary_model_api = self.create_model_api(api_key, glossary_model_name) if glossary_model_name else model_api
         
         translation_document = TranslationDocument(
             job.filepath,
@@ -49,7 +60,7 @@ class TranslationService(BaseService):
             style_result = style_service.analyze_style(
                 filepath=job.filepath,
                 api_key=api_key,
-                model_name=model_name,
+                model_name=style_model_name,
                 user_style_data=style_data
             )
             
@@ -79,7 +90,7 @@ class TranslationService(BaseService):
             initial_glossary = glossary_service.analyze_glossary(
                 filepath=job.filepath,
                 api_key=api_key,
-                model_name=model_name,
+                model_name=glossary_model_name,
                 user_glossary_data=glossary_data
             )
             
@@ -93,6 +104,8 @@ class TranslationService(BaseService):
         return {
             'translation_document': translation_document,
             'model_api': model_api,
+            'style_model_api': style_model_api,
+            'glossary_model_api': glossary_model_api,
             'protagonist_name': protagonist_name,
             'initial_glossary': initial_glossary,
             'initial_core_style_text': initial_core_style_text
@@ -103,6 +116,8 @@ class TranslationService(BaseService):
         job_id: int,
         translation_document: TranslationDocument,
         model_api,
+        style_model_api,
+        glossary_model_api,
         protagonist_name: str,
         initial_glossary: Optional[dict],
         initial_core_style_text: Optional[str],
@@ -110,9 +125,13 @@ class TranslationService(BaseService):
     ):
         """Execute the translation process."""
         # Always use structured output for configuration extraction
-        
+        # Prefer the glossary/analysis model for dynamic guides if it supports structured output
+        dyn_model_for_guides = glossary_model_api if hasattr(glossary_model_api, 'generate_structured') else model_api
+        if dyn_model_for_guides is model_api and glossary_model_api is not None and glossary_model_api is not model_api:
+            print("Warning: Selected glossary/analysis model does not support structured output. Falling back to main model for dynamic guides.")
+
         dyn_config_builder = DynamicConfigBuilder(
-            model_api,
+            dyn_model_for_guides,
             protagonist_name,
             initial_glossary=initial_glossary
         )
@@ -122,9 +141,9 @@ class TranslationService(BaseService):
             dyn_config_builder,
             db=db,
             job_id=job_id,
-            initial_core_style=initial_core_style_text
+            initial_core_style=initial_core_style_text,
+            style_model_api=style_model_api,
         )
         
         pipeline.translate_document(translation_document)
     
-

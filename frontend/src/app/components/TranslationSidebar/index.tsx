@@ -32,6 +32,7 @@ import ActionButtons from './ActionButtons';
 import { useTranslationData } from './hooks/useTranslationData';
 import { useValidation } from './hooks/useValidation';
 import { usePostEdit } from './hooks/usePostEdit';
+import { useApiKey } from '../../hooks/useApiKey';
 
 interface TranslationSidebarProps {
   open: boolean;
@@ -77,6 +78,7 @@ export default function TranslationSidebar({
   onRefresh,
 }: TranslationSidebarProps) {
   const [tabValue, setTabValue] = useState(0);
+  const { apiProvider, selectedModel } = useApiKey();
   
   // Use custom hooks
   const {
@@ -103,8 +105,8 @@ export default function TranslationSidebar({
     });
   };
 
-  const validation = useValidation({ jobId, onRefresh });
-  const postEdit = usePostEdit({ jobId, onRefresh, selectedCases });
+  const validation = useValidation({ jobId, onRefresh, apiProvider, defaultModelName: selectedModel });
+  const postEdit = usePostEdit({ jobId, onRefresh, selectedCases, apiProvider, defaultModelName: selectedModel });
 
   // Combine loading states
   const loading = dataLoading || validation.loading || postEdit.loading;
@@ -311,6 +313,9 @@ export default function TranslationSidebar({
         validationSampleRate={validation.validationSampleRate}
         onValidationSampleRateChange={validation.setValidationSampleRate}
         loading={validation.loading}
+        apiProvider={validation.apiProvider}
+        modelName={validation.modelName}
+        onModelNameChange={validation.setModelName}
       />
 
       {/* Post-Edit Confirmation Dialog */}
@@ -321,6 +326,9 @@ export default function TranslationSidebar({
         validationReport={validationReport}
         loading={postEdit.loading}
         selectedCounts={{ total: Object.values(selectedCases).reduce((acc, arr)=> acc + (arr?.filter(Boolean).length || 0), 0) }}
+        apiProvider={postEdit.apiProvider}
+        modelName={postEdit.modelName}
+        onModelNameChange={postEdit.setModelName}
       />
     </>
   );

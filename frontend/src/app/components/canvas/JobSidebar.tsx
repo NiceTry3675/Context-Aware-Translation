@@ -42,8 +42,10 @@ interface JobSidebarProps {
   onJobSelect: (jobId: string) => void;
   onJobDelete: (jobId: number) => void;
   onNewTranslation: () => void;
-  onRefreshJobs: () => void;
+  onRefreshJobs: (jobId: number) => void | Promise<void>;
   loading?: boolean;
+  apiProvider?: 'gemini' | 'openrouter';
+  defaultModelName?: string;
 }
 
 const getStatusIcon = (status: string) => {
@@ -87,6 +89,8 @@ export default function JobSidebar({
   onNewTranslation,
   onRefreshJobs,
   loading = false,
+  apiProvider,
+  defaultModelName,
 }: JobSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const { getToken } = useAuth();
@@ -200,6 +204,8 @@ export default function JobSidebar({
                             job={job} 
                             onRefresh={onRefreshJobs} 
                             compact={true}
+                            apiProvider={apiProvider}
+                            defaultModelName={defaultModelName}
                           />
                           <Tooltip title="다운로드">
                             <IconButton

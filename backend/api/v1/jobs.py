@@ -35,6 +35,10 @@ async def create_job(
     file: UploadFile = File(...),
     api_key: str = Form(...),
     model_name: str = Form("gemini-2.5-flash-lite"),
+    # Optional per-task model overrides
+    translation_model_name: str | None = Form(None),
+    style_model_name: str | None = Form(None),
+    glossary_model_name: str | None = Form(None),
     style_data: str = Form(None),
     glossary_data: str = Form(None),
     segment_size: int = Form(15000),
@@ -72,7 +76,8 @@ async def create_job(
     background_tasks.add_task(
         run_translation_in_background,
         db_job.id, api_key, model_name,
-        style_data, glossary_data
+        style_data, glossary_data,
+        translation_model_name, style_model_name, glossary_model_name
     )
     
     return db_job

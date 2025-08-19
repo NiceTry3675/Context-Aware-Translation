@@ -39,6 +39,7 @@ logs/context_log/*
 logs/debug_prompts/*
 source_novel/*
 translated_novel/*
+logs/progress_logs/*
 
 # But exclude specific example files from being ignored
 !logs/context_log/context_Metamorphosis.txt

@@ -12,6 +12,7 @@ from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 
 from .models.gemini import GeminiModel
+from .models.openrouter import OpenRouterModel
 from .document import TranslationDocument
 from .style_analyzer import StyleAnalyzer
 from .progress_tracker import ProgressTracker
@@ -58,11 +59,12 @@ class TranslationPipeline:
     """
     
     def __init__(self, 
-                 gemini_api: GeminiModel, 
+                 gemini_api: GeminiModel | OpenRouterModel, 
                  dyn_config_builder: DynamicConfigBuilder, 
                  db: Optional[Session] = None,
                  job_id: Optional[int] = None,
-                 initial_core_style: Optional[str] = None):
+                 initial_core_style: Optional[str] = None,
+                 style_model_api: Optional[GeminiModel | OpenRouterModel] = None):
         """
         Initialize the translation pipeline.
         
@@ -76,7 +78,8 @@ class TranslationPipeline:
         self.gemini_api = gemini_api
         self.dyn_config_builder = dyn_config_builder
         self.prompt_builder = PromptBuilder(PromptManager.MAIN_TRANSLATION)
-        self.style_analyzer = StyleAnalyzer(gemini_api, job_id)
+        # Allow a different model for style analysis if provided
+        self.style_analyzer = StyleAnalyzer(style_model_api or gemini_api, job_id)
         self.progress_tracker = ProgressTracker(db, job_id)
         self.initial_core_style = initial_core_style
         

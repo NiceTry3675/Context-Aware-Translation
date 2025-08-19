@@ -24,21 +24,24 @@ import { getCachedClerkToken } from '../../utils/authToken';
 
 interface JobRowActionsProps {
   job: Job;
-  onRefresh: () => void;
+  onRefresh: (jobId: number) => void | Promise<void>;
   compact?: boolean;
+  apiProvider?: 'gemini' | 'openrouter';
+  defaultModelName?: string;
 }
 
-export default function JobRowActions({ job, onRefresh, compact = false }: JobRowActionsProps) {
+export default function JobRowActions({ job, onRefresh, compact = false, apiProvider, defaultModelName }: JobRowActionsProps) {
   const jobId = job.id.toString();
   const { getToken } = useAuth();
+  const onRowRefresh = () => onRefresh(job.id);
   
   // State for validation report - loaded on demand
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
   const [selectedCases, setSelectedCases] = useState<Record<number, boolean[]>>({});
   const [loadingReport, setLoadingReport] = useState(false);
 
-  const validation = useValidation({ jobId, onRefresh });
-  const postEdit = usePostEdit({ jobId, onRefresh, selectedCases });
+  const validation = useValidation({ jobId, onRefresh: onRowRefresh, apiProvider, defaultModelName });
+  const postEdit = usePostEdit({ jobId, onRefresh: onRowRefresh, selectedCases, apiProvider, defaultModelName });
 
   const canRunValidation = job.status === 'COMPLETED' && 
     (!job.validation_status || job.validation_status === 'FAILED');
@@ -166,6 +169,9 @@ export default function JobRowActions({ job, onRefresh, compact = false }: JobRo
           validationSampleRate={validation.validationSampleRate}
           onValidationSampleRateChange={validation.setValidationSampleRate}
           loading={validation.loading}
+          apiProvider={validation.apiProvider}
+          modelName={validation.modelName || defaultModelName}
+          onModelNameChange={validation.setModelName}
         />
 
         {/* Post-Edit Dialog */}
@@ -176,6 +182,9 @@ export default function JobRowActions({ job, onRefresh, compact = false }: JobRo
           validationReport={validationReport}
           loading={postEdit.loading || loadingReport}
           selectedCounts={selectedCounts}
+          apiProvider={postEdit.apiProvider}
+          modelName={postEdit.modelName || defaultModelName}
+          onModelNameChange={postEdit.setModelName}
         />
       </>
     );
@@ -225,6 +234,9 @@ export default function JobRowActions({ job, onRefresh, compact = false }: JobRo
         validationSampleRate={validation.validationSampleRate}
         onValidationSampleRateChange={validation.setValidationSampleRate}
         loading={validation.loading}
+        apiProvider={validation.apiProvider}
+        modelName={validation.modelName || defaultModelName}
+        onModelNameChange={validation.setModelName}
       />
 
       {/* Post-Edit Dialog */}
@@ -235,6 +247,9 @@ export default function JobRowActions({ job, onRefresh, compact = false }: JobRo
         validationReport={validationReport}
         loading={postEdit.loading}
         selectedCounts={selectedCounts}
+        apiProvider={postEdit.apiProvider}
+        modelName={postEdit.modelName || defaultModelName}
+        onModelNameChange={postEdit.setModelName}
       />
     </>
   );

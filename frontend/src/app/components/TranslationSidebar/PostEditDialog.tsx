@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { ValidationReport } from '../../utils/api';
+import ModelSelector from '../translation/ModelSelector';
 
 interface PostEditDialogProps {
   open: boolean;
@@ -29,6 +30,9 @@ interface PostEditDialogProps {
   selectedCounts?: {
     total: number;
   };
+  apiProvider?: 'gemini' | 'openrouter';
+  modelName?: string;
+  onModelNameChange?: (model: string) => void;
 }
 
 export default function PostEditDialog({
@@ -38,6 +42,9 @@ export default function PostEditDialog({
   validationReport,
   loading,
   selectedCounts,
+  apiProvider,
+  modelName,
+  onModelNameChange,
 }: PostEditDialogProps) {
   const isAnyCaseSelected = (selectedCounts?.total ?? 0) > 0;
 
@@ -50,6 +57,17 @@ export default function PostEditDialog({
         </Alert>
         {validationReport && (
           <Stack spacing={2}>
+            {apiProvider && onModelNameChange && (
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>포스트 에디팅 모델 선택</Typography>
+                <ModelSelector
+                  apiProvider={apiProvider}
+                  selectedModel={modelName || ''}
+                  onModelChange={onModelNameChange}
+                  hideTitle
+                />
+              </Box>
+            )}
             <Typography variant="body2">
               발견된 문제(요약):
             </Typography>

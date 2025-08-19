@@ -20,6 +20,8 @@ interface UseTranslationServiceOptions {
   apiUrl: string;
   apiKey: string;
   selectedModel: string;
+  selectedStyleModel?: string;
+  selectedGlossaryModel?: string;
   onJobCreated?: (job: TranslationJob) => void;
 }
 
@@ -27,6 +29,8 @@ export function useTranslationService({
   apiUrl,
   apiKey,
   selectedModel,
+  selectedStyleModel,
+  selectedGlossaryModel,
   onJobCreated
 }: UseTranslationServiceOptions) {
   const { getToken, isSignedIn, isLoaded } = useAuth();
@@ -68,7 +72,7 @@ export function useTranslationService({
       const styleFormData = new FormData();
       styleFormData.append('file', file);
       styleFormData.append('api_key', apiKey);
-      styleFormData.append('model_name', selectedModel);
+      styleFormData.append('model_name', selectedStyleModel || selectedModel);
 
       const styleResponse = await fetch(`${apiUrl}/api/v1/analyze-style`, {
         method: 'POST',
@@ -98,7 +102,7 @@ export function useTranslationService({
         const glossaryFormData = new FormData();
         glossaryFormData.append('file', file);
         glossaryFormData.append('api_key', apiKey);
-        glossaryFormData.append('model_name', selectedModel);
+        glossaryFormData.append('model_name', selectedGlossaryModel || selectedModel);
 
         try {
           const glossaryResponse = await fetch(`${apiUrl}/api/v1/analyze-glossary`, {
@@ -157,6 +161,12 @@ export function useTranslationService({
     formData.append("file", file);
     formData.append("api_key", apiKey);
     formData.append("model_name", selectedModel);
+    if (selectedStyleModel && selectedStyleModel !== selectedModel) {
+      formData.append("style_model_name", selectedStyleModel);
+    }
+    if (selectedGlossaryModel && selectedGlossaryModel !== selectedModel) {
+      formData.append("glossary_model_name", selectedGlossaryModel);
+    }
     // Convert UI StyleData format to API format
     const apiStyleData = {
       protagonist_name: styleData.protagonist_name || '',

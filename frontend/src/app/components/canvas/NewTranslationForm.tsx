@@ -11,6 +11,7 @@ import {
 } from '@mui/material';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import ApiSetup from '../ApiConfiguration/ApiSetup';
+import TaskModelOverrides, { TaskModelOverrides as TaskModelOverridesType } from '../ApiConfiguration/TaskModelOverrides';
 import FileUploadSection from '../FileUpload/FileUploadSection';
 import TranslationSettings from '../AdvancedSettings/TranslationSettings';
 import StyleConfigForm from '../StyleConfiguration/StyleConfigForm';
@@ -23,6 +24,8 @@ interface NewTranslationFormProps {
   apiProvider: ApiProvider;
   apiKey: string;
   selectedModel: string;
+  taskModelOverrides?: TaskModelOverridesType;
+  taskOverridesEnabled?: boolean;
   translationSettings: TSettings;
   showStyleForm: boolean;
   styleData: StyleData | null;
@@ -35,6 +38,8 @@ interface NewTranslationFormProps {
   onProviderChange: (provider: ApiProvider) => void;
   onApiKeyChange: (key: string) => void;
   onModelChange: (model: string) => void;
+  onTaskModelOverridesChange?: (overrides: TaskModelOverridesType) => void;
+  onTaskOverridesEnabledChange?: (enabled: boolean) => void;
   onFileSelect: (file: File, analyzeGlossary: boolean) => Promise<any>;
   onTranslationSettingsChange: (settings: TSettings) => void;
   onStyleChange: (style: StyleData) => void;
@@ -49,6 +54,8 @@ export default function NewTranslationForm({
   apiProvider,
   apiKey,
   selectedModel,
+  taskModelOverrides,
+  taskOverridesEnabled,
   translationSettings,
   showStyleForm,
   styleData,
@@ -61,6 +68,8 @@ export default function NewTranslationForm({
   onProviderChange,
   onApiKeyChange,
   onModelChange,
+  onTaskModelOverridesChange,
+  onTaskOverridesEnabledChange,
   onFileSelect,
   onTranslationSettingsChange,
   onStyleChange,
@@ -89,6 +98,16 @@ export default function NewTranslationForm({
             onApiKeyChange={onApiKeyChange}
             onModelChange={onModelChange}
           />
+
+          {onTaskModelOverridesChange && (
+            <TaskModelOverrides
+              apiProvider={apiProvider}
+              values={taskModelOverrides || { styleModel: selectedModel, glossaryModel: selectedModel }}
+              onChange={onTaskModelOverridesChange}
+              enabled={!!taskOverridesEnabled}
+              onEnabledChange={(en) => onTaskOverridesEnabledChange?.(en)}
+            />
+          )}
 
           <FileUploadSection
             isAnalyzing={isAnalyzing}

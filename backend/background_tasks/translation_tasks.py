@@ -12,7 +12,10 @@ def run_translation_in_background(
     api_key: str,
     model_name: str,
     style_data: Optional[str] = None,
-    glossary_data: Optional[str] = None
+    glossary_data: Optional[str] = None,
+    translation_model_name: Optional[str] = None,
+    style_model_name: Optional[str] = None,
+    glossary_model_name: Optional[str] = None,
 ):
     """Background task to run a translation job."""
     db = None
@@ -25,6 +28,11 @@ def run_translation_in_background(
 
         crud.update_job_status(db, job_id, "PROCESSING")
         print(f"--- [BACKGROUND] Starting translation for Job ID: {job_id}, File: {job.filename}, Model: {model_name} ---")
+        if translation_model_name or style_model_name or glossary_model_name:
+            print("--- [BACKGROUND] Per-task models: "
+                  f"main={translation_model_name or model_name}, "
+                  f"style={style_model_name or model_name}, "
+                  f"glossary={glossary_model_name or model_name} ---")
         
         # Prepare translation components
         translation_service = TranslationService()
@@ -34,7 +42,10 @@ def run_translation_in_background(
             api_key=api_key,
             model_name=model_name,
             style_data=style_data,
-            glossary_data=glossary_data
+            glossary_data=glossary_data,
+            translation_model_name=translation_model_name,
+            style_model_name=style_model_name,
+            glossary_model_name=glossary_model_name,
         )
         
         # Run the translation
@@ -42,6 +53,9 @@ def run_translation_in_background(
             job_id=job_id,
             translation_document=components['translation_document'],
             model_api=components['model_api'],
+            # Provide style/glossary models to pipeline/runtime where applicable
+            style_model_api=components.get('style_model_api'),
+            glossary_model_api=components.get('glossary_model_api'),
             protagonist_name=components['protagonist_name'],
             initial_glossary=components['initial_glossary'],
             initial_core_style_text=components['initial_core_style_text'],

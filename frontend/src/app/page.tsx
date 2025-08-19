@@ -64,8 +64,10 @@ function CanvasContent() {
           onJobSelect={state.handleJobChange}
           onJobDelete={state.handleJobDelete}
           onNewTranslation={state.handleNewTranslation}
-          onRefreshJobs={state.refreshJobs}
+          onRefreshJobs={state.refreshJobPublic}
           loading={state.dataLoading}
+          apiProvider={state.apiProvider}
+          defaultModelName={state.selectedModel}
         />
         
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -82,6 +84,8 @@ function CanvasContent() {
                 apiProvider={state.apiProvider}
                 apiKey={state.apiKey}
                 selectedModel={state.selectedModel}
+                taskModelOverrides={state.taskModelOverrides}
+                taskOverridesEnabled={state.taskOverridesEnabled}
                 translationSettings={state.translationSettings}
                 showStyleForm={state.showStyleForm}
                 styleData={state.styleData}
@@ -94,6 +98,8 @@ function CanvasContent() {
                 onProviderChange={state.setApiProvider}
                 onApiKeyChange={state.setApiKey}
                 onModelChange={state.setSelectedModel}
+                onTaskModelOverridesChange={state.setTaskModelOverrides}
+                onTaskOverridesEnabledChange={state.setTaskOverridesEnabled}
                 onFileSelect={state.handleFileSelect}
                 onTranslationSettingsChange={state.setTranslationSettings}
                 onStyleChange={state.setStyleData}
@@ -146,6 +152,9 @@ function CanvasContent() {
         validationSampleRate={state.validation.validationSampleRate}
         onValidationSampleRateChange={state.validation.setValidationSampleRate}
         loading={state.validation.loading}
+        apiProvider={state.validation.apiProvider}
+        modelName={state.validation.modelName || state.selectedModel}
+        onModelNameChange={state.validation.setModelName}
       />
 
       <PostEditDialog
@@ -155,6 +164,9 @@ function CanvasContent() {
         validationReport={state.validationReport}
         loading={state.postEdit.loading}
         selectedCounts={{ total: state.selectedCounts?.total ?? 0 }}
+        apiProvider={state.postEdit.apiProvider}
+        modelName={state.postEdit.modelName || state.selectedModel}
+        onModelNameChange={state.postEdit.setModelName}
       />
     </>
   );

@@ -247,12 +247,14 @@ export async function triggerValidation(
   jobId: string,
   token?: string,
   quickValidation: boolean = false,
-  validationSampleRate: number = 1.0
+  validationSampleRate: number = 1.0,
+  modelName?: string,
 ): Promise<void> {
   const url = `${API_BASE_URL}/api/v1/jobs/${jobId}/validation`;
   const body = {
     quick_validation: quickValidation,
     validation_sample_rate: validationSampleRate,
+    model_name: modelName,
   };
   
   const headers = {
@@ -282,7 +284,8 @@ export async function triggerValidation(
 export async function triggerPostEdit(
   jobId: string, 
   token?: string,
-  selectedCases?: Record<number, boolean[]>
+  selectedCases?: Record<number, boolean[]>,
+  modelName?: string,
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/post-edit`, {
     method: 'PUT',
@@ -292,6 +295,7 @@ export async function triggerPostEdit(
     },
     body: JSON.stringify({
       selected_cases: selectedCases || {},
+      model_name: modelName,
     }),
   });
 

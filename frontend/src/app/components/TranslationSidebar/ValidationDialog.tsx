@@ -16,6 +16,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import ModelSelector from '../translation/ModelSelector';
 
 interface ValidationDialogProps {
   open: boolean;
@@ -26,6 +27,9 @@ interface ValidationDialogProps {
   validationSampleRate: number;
   onValidationSampleRateChange: (rate: number) => void;
   loading: boolean;
+  apiProvider?: 'gemini' | 'openrouter';
+  modelName?: string;
+  onModelNameChange?: (model: string) => void;
 }
 
 export default function ValidationDialog({
@@ -37,12 +41,26 @@ export default function ValidationDialog({
   validationSampleRate,
   onValidationSampleRateChange,
   loading,
+  apiProvider,
+  modelName,
+  onModelNameChange,
 }: ValidationDialogProps) {
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>검증 옵션</DialogTitle>
       <DialogContent>
         <Stack spacing={3} sx={{ mt: 1, minWidth: 400 }}>
+          {apiProvider && onModelNameChange && (
+            <Box>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>검증 모델 선택</Typography>
+              <ModelSelector
+                apiProvider={apiProvider}
+                selectedModel={modelName || ''}
+                onModelChange={onModelNameChange}
+                hideTitle
+              />
+            </Box>
+          )}
           <FormControlLabel
             control={
               <Checkbox

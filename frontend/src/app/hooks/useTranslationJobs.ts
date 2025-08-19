@@ -139,6 +139,29 @@ export function useTranslationJobs({ apiUrl }: UseTranslationJobsOptions) {
     }
   }, [apiUrl, getToken, isSignedIn]);
 
+  // Public single-job refresh (no token) for lightweight state kick-off
+  const refreshJobPublic = useCallback(async (jobId: number | string) => {
+    try {
+      const response = await fetch(`${apiUrl}/api/v1/jobs/${jobId}`);
+      if (!response.ok) {
+        // Do not set global error for public refresh; keep it silent
+        return;
+      }
+      const updated: TranslationJob = await response.json();
+      setJobs(current => {
+        const exists = current.some(j => j.id === updated.id);
+        if (exists) {
+          return current.map(j => (j.id === updated.id ? updated : j));
+        }
+        // If job not present locally, add it to the top
+        return [updated, ...current];
+      });
+    } catch (err) {
+      // Silent fail to avoid noisy UX; console for debugging
+      console.debug('refreshJobPublic failed', err);
+    }
+  }, [apiUrl]);
+
   return {
     jobs,
     loading,
@@ -146,6 +169,7 @@ export function useTranslationJobs({ apiUrl }: UseTranslationJobsOptions) {
     addJob,
     deleteJob,
     refreshJobs,
+    refreshJobPublic,
     setError
   };
 }

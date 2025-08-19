@@ -274,11 +274,13 @@ class GlossaryAnalysisResponse(BaseModel):
 class ValidationRequest(BaseModel):
     quick_validation: bool = False
     validation_sample_rate: float = 1.0  # 0.0 to 1.0
+    model_name: Optional[str] = None
 
 class PostEditRequest(BaseModel):
     # Structured validation selection: per-segment boolean array
     # { [segmentIndex]: boolean[] }
     selected_cases: Optional[dict] = None
+    model_name: Optional[str] = None
 
 # Structured Post-Edit Response using core schemas  
 class PostEditSegment(BaseModel):

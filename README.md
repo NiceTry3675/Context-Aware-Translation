@@ -27,6 +27,7 @@
 - **🎨 사용자 제어 및 수정**: AI가 분석한 주인공 이름과 서사 스타일(서술 문체, 톤, 핵심 규칙 등)을 번역 시작 전에 사용자가 직접 확인하고 자유롭게 수정할 수 있습니다.
 - **📚 동적 문맥 관리**: 번역 과정에서 중요한 **용어(Glossary)**와 등장인물의 **말투(Character Style)**를 동적으로 구축하고 업데이트하여 일관성을 유지합니다.
 - **🤖 번역 모델 선택**: **Flash, Pro** 등 번역에 사용할 Gemini 모델을 UI에서 직접 선택할 수 있습니다.
+- **🤖 작업별 모델 선택 (신규)**: 용어집 추출, 스타일 분석, 메인 번역을 서로 다른 모델로 지정할 수 있습니다. 백엔드는 `translation_model_name`, `style_model_name`, `glossary_model_name` 폼 필드를 받아 각 단계에 다른 모델을 사용합니다. 미지정 시 `model_name`을 기본값으로 사용합니다.
 - **📊 사용량 통계 수집**: 서비스 개선을 위해 번역 소요 시간, 텍스트 길이, 사용 모델 등 익명의 사용 통계를 수집합니다.
 - **📢 실시간 공지 기능**: 서버에서 모든 클라이언트에게 실시간으로 중요 공지를 전송할 수 있습니다. (SSE 사용)
 - **🔍 실시간 진행률 확인**: 번역 작업의 진행 상황을 실시간으로 웹 화면에서 확인할 수 있습니다.
@@ -35,6 +36,31 @@
 - **🔧 자동 오류 수정 (Post-Edit)**: 검증에서 발견된 문제를 AI가 자동으로 수정하고 포괄적인 로그를 생성합니다.
 - **📄 다양한 파일 형식 지원**: TXT, DOCX, EPUB, PDF 등 주요 문서 파일 형식을 지원합니다.
 - **💬 커뮤니티 게시판**: 사용자들이 공지사항, 건의사항, Q&A, 자유게시판을 통해 소통할 수 있는 커뮤니티 기능을 제공합니다.
+
+### 작업별 모델 오버라이드 사용법
+
+백엔드 `/api/v1/jobs` 업로드 시 다음 폼 필드를 통해 단계별 모델을 지정할 수 있습니다.
+
+- `translation_model_name`: 메인 번역에 사용할 모델
+- `style_model_name`: 서사 스타일 분석(주인공/문체) 단계에 사용할 모델
+- `glossary_model_name`: 용어집 추출 및 동적 가이드(구조화 출력) 단계에 사용할 모델
+
+지정하지 않으면 모든 단계에서 `model_name` 값을 사용합니다.
+
+예시 (cURL):
+
+```
+curl -X POST "$API_URL/api/v1/jobs" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -F file=@novel.txt \
+  -F api_key="$GEMINI_API_KEY" \
+  -F model_name="gemini-2.5-flash-lite" \
+  -F translation_model_name="gemini-2.5-pro" \
+  -F style_model_name="gemini-2.5-flash-lite" \
+  -F glossary_model_name="gemini-2.5-flash-lite"
+```
+
+참고: 용어집/스타일 편차 등 구조화 출력이 필요한 단계는 Gemini 계열 모델을 권장합니다.
 
 ## 📂 프로젝트 구조
 

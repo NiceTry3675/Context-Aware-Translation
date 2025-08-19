@@ -11,7 +11,8 @@ def run_validation_in_background(
     job_id: int,
     file_path: str,
     quick_validation: bool,
-    validation_sample_rate: int
+    validation_sample_rate: int,
+    model_name: str | None = None,
 ):
     """Background task to run validation on a completed translation."""
     db = None
@@ -32,7 +33,7 @@ def run_validation_in_background(
         # Get API key - for now using environment variable
         # In production, this should be retrieved from secure storage
         api_key = os.environ.get("GEMINI_API_KEY", "")
-        model_name = "gemini-2.5-flash-lite"
+        model_name = model_name or "gemini-2.5-flash-lite"
         
         # Prepare validation components
         validator, validation_job, translated_path = validation_service.prepare_validation(

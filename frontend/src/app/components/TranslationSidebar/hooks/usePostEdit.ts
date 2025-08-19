@@ -9,11 +9,14 @@ interface UsePostEditProps {
   jobId: string;
   onRefresh?: () => void;
   selectedCases?: Record<number, boolean[]>;
+  apiProvider?: 'gemini' | 'openrouter';
+  defaultModelName?: string;
 }
 
-export function usePostEdit({ jobId, onRefresh, selectedCases }: UsePostEditProps) {
+export function usePostEdit({ jobId, onRefresh, selectedCases, apiProvider, defaultModelName }: UsePostEditProps) {
   const [postEditDialogOpen, setPostEditDialogOpen] = useState(false);
   // Structured-only: issue types removed
+  const [modelName, setModelName] = useState<string>(defaultModelName || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -25,9 +28,10 @@ export function usePostEdit({ jobId, onRefresh, selectedCases }: UsePostEditProp
     
     try {
       const token = await getCachedClerkToken(getToken);
-      await triggerPostEdit(jobId, token || undefined, selectedCases || {});
+      await triggerPostEdit(jobId, token || undefined, selectedCases || {}, modelName || defaultModelName);
       setPostEditDialogOpen(false);
-      // Avoid immediate JWT-backed refresh; rely on public poller to update UI shortly
+      // Lightweight UI kick: public single-job refresh (no JWT)
+      onRefresh?.();
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : '포스트 에디팅 시작 중 오류가 발생했습니다.');
@@ -40,6 +44,9 @@ export function usePostEdit({ jobId, onRefresh, selectedCases }: UsePostEditProp
     postEditDialogOpen,
     setPostEditDialogOpen,
     // no issue-types in structured flow
+    modelName,
+    setModelName,
+    apiProvider,
     loading,
     error,
     handleTriggerPostEdit,

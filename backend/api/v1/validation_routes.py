@@ -52,7 +52,11 @@ async def trigger_validation(
     # Add background task to run validation
     background_tasks.add_task(
         run_validation_in_background,
-        job_id, db_job.filepath, request.quick_validation, validation_sample_rate_percent
+        job_id,
+        db_job.filepath,
+        request.quick_validation,
+        validation_sample_rate_percent,
+        request.model_name,
     )
     
     return {"message": "Validation started", "job_id": job_id}

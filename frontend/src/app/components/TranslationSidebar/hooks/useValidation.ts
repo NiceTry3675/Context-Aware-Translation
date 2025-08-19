@@ -8,12 +8,15 @@ import { triggerValidation } from '../../../utils/api';
 interface UseValidationProps {
   jobId: string;
   onRefresh?: () => void;
+  apiProvider?: 'gemini' | 'openrouter';
+  defaultModelName?: string;
 }
 
-export function useValidation({ jobId, onRefresh }: UseValidationProps) {
+export function useValidation({ jobId, onRefresh, apiProvider, defaultModelName }: UseValidationProps) {
   const [validationDialogOpen, setValidationDialogOpen] = useState(false);
   const [quickValidation, setQuickValidation] = useState(false);
   const [validationSampleRate, setValidationSampleRate] = useState(100);
+  const [modelName, setModelName] = useState<string>(defaultModelName || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -31,11 +34,12 @@ export function useValidation({ jobId, onRefresh }: UseValidationProps) {
       const token = await getCachedClerkToken(getToken);
       console.log('Got token:', !!token);
       
-      await triggerValidation(jobId, token || undefined, quickValidation, validationSampleRate / 100);
+      await triggerValidation(jobId, token || undefined, quickValidation, validationSampleRate / 100, modelName || defaultModelName);
       console.log('Validation triggered successfully');
       
       setValidationDialogOpen(false);
-      // Avoid immediate JWT-backed refresh; rely on public poller to update UI shortly
+      // Lightweight UI kick: public single-job refresh (no JWT)
+      onRefresh?.();
       setError(null);
     } catch (err) {
       console.error('Validation error:', err);
@@ -52,6 +56,9 @@ export function useValidation({ jobId, onRefresh }: UseValidationProps) {
     setQuickValidation,
     validationSampleRate,
     setValidationSampleRate,
+    modelName,
+    setModelName,
+    apiProvider,
     loading,
     error,
     handleTriggerValidation,

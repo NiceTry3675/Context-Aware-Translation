@@ -36,10 +36,12 @@ export function useCanvasState() {
   });
   
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  const { jobs, addJob, refreshJobs } = useTranslationJobs({ apiUrl: API_URL });
+  const { jobs, addJob, refreshJobs, refreshJobPublic } = useTranslationJobs({ apiUrl: API_URL });
   
   // Translation setup states
   const { apiKey, setApiKey, apiProvider, setApiProvider, selectedModel, setSelectedModel } = useApiKey();
+  const [taskModelOverrides, setTaskModelOverrides] = useState<{ styleModel?: string | null; glossaryModel?: string | null }>({});
+  const [taskOverridesEnabled, setTaskOverridesEnabled] = useState<boolean>(false);
   const [file, setFile] = useState<File | null>(null);
   const [styleData, setStyleData] = useState<StyleData | null>(null);
   const [showStyleForm, setShowStyleForm] = useState<boolean>(false);
@@ -69,12 +71,16 @@ export function useCanvasState() {
     apiUrl: API_URL,
     apiKey,
     selectedModel,
+    selectedStyleModel: taskOverridesEnabled ? (taskModelOverrides.styleModel || selectedModel) : undefined,
+    selectedGlossaryModel: taskOverridesEnabled ? (taskModelOverrides.glossaryModel || selectedModel) : undefined,
     onJobCreated: (job) => {
       addJob(job);
       setSelectedJob(job); // Immediately set the new job as selected
       setFile(null);
       setStyleData(null);
       setGlossaryData([]);
+      setTaskModelOverrides({});
+      setTaskOverridesEnabled(false);
       setShowStyleForm(false);
       router.push(`/?jobId=${job.id}`);
       setTabValue(0);
@@ -118,10 +124,10 @@ export function useCanvasState() {
     postEditStatus: selectedJob?.post_edit_status || undefined
   });
 
-  const validation = useValidation({ jobId: jobId || '', onRefresh: refreshJobs });
+  const validation = useValidation({ jobId: jobId || '', onRefresh: () => { if (jobId) { refreshJobPublic(jobId); } }, apiProvider, defaultModelName: selectedModel });
   // Structured-only: legacy selectedIssues not used to build selection array
   const selectedCases = useMemo(() => ({}) as Record<number, boolean[]>, []);
-  const postEdit = usePostEdit({ jobId: jobId || '', onRefresh: refreshJobs, selectedCases });
+  const postEdit = usePostEdit({ jobId: jobId || '', onRefresh: () => { if (jobId) { refreshJobPublic(jobId); } }, selectedCases, apiProvider, defaultModelName: selectedModel });
   
   // Segment navigation hook
   const segmentNav = useSegmentNavigation({
@@ -204,6 +210,8 @@ export function useCanvasState() {
       setStyleData(null);
       setGlossaryData([]);
       setShowStyleForm(false);
+      setTaskModelOverrides({});
+      setTaskOverridesEnabled(false);
     }
   };
   
@@ -309,6 +317,10 @@ export function useCanvasState() {
     setApiProvider,
     selectedModel,
     setSelectedModel,
+    taskOverridesEnabled,
+    setTaskOverridesEnabled,
+    taskModelOverrides,
+    setTaskModelOverrides,
     file,
     setFile,
     styleData,
@@ -351,6 +363,7 @@ export function useCanvasState() {
     handleStartTranslation,
     handleCancelStyleEdit,
     refreshJobs,
+    refreshJobPublic,
     loadData,
     loadMoreSegments,
     
