@@ -35,7 +35,7 @@ export function useValidation({ jobId, onRefresh }: UseValidationProps) {
       console.log('Validation triggered successfully');
       
       setValidationDialogOpen(false);
-      onRefresh?.();
+      // Avoid immediate JWT-backed refresh; rely on public poller to update UI shortly
       setError(null);
     } catch (err) {
       console.error('Validation error:', err);

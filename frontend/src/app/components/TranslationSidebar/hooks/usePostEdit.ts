@@ -27,7 +27,7 @@ export function usePostEdit({ jobId, onRefresh, selectedCases }: UsePostEditProp
       const token = await getCachedClerkToken(getToken);
       await triggerPostEdit(jobId, token || undefined, selectedCases || {});
       setPostEditDialogOpen(false);
-      onRefresh?.();
+      // Avoid immediate JWT-backed refresh; rely on public poller to update UI shortly
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : '포스트 에디팅 시작 중 오류가 발생했습니다.');

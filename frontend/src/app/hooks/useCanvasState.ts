@@ -178,10 +178,10 @@ export function useCanvasState() {
       selectedJob?.post_edit_status === 'IN_PROGRESS'
     ) {
       const interval = setInterval(() => {
-        // Jobs list update: handled in useTranslationJobs poller (public GET /jobs/{id})
-        refreshJobs();
-        // Sidebar data loads call protected endpoints; avoid tokened calls here
-        // loadData is intentionally not called automatically
+        // Jobs list update is handled in useTranslationJobs poller (public GET /jobs/{id}).
+        // Avoid calling refreshJobs() here to prevent frequent Clerk token usage.
+        // Sidebar data loads call protected endpoints; avoid tokened calls here as well.
+        // loadData is intentionally not called automatically.
       }, 3000);
       return () => clearInterval(interval);
     }
