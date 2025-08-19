@@ -12,15 +12,7 @@ from ebooklib import epub
 from bs4 import BeautifulSoup
 from typing import List, Optional
 from ..utils.file_parser import parse_document
-
-
-class SegmentInfo:
-    """Container for segment data and its context."""
-    def __init__(self, text: str, chapter_title: Optional[str] = None, 
-                 chapter_filename: Optional[str] = None):
-        self.text = text
-        self.chapter_title = chapter_title
-        self.chapter_filename = chapter_filename
+from ..schemas import SegmentInfo
 
 
 class TranslationDocument:

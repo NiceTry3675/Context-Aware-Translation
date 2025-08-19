@@ -41,8 +41,8 @@ class ValidationService:
         # Structured validator (single mode)
         validator = TranslationValidator(model_api)
         
-        # Create validation job
-        validation_job = TranslationJob(
+        # Create validation document
+        validation_document = TranslationDocument(
             job.filepath, 
             original_filename=job.filename,
             target_segment_size=job.segment_size
@@ -51,26 +51,26 @@ class ValidationService:
         # Load the translated segments from the translated file
         with open(translated_path, 'r', encoding='utf-8') as f:
             translated_text = f.read()
-            validation_job.translated_segments = translated_text.split('\n')
+            validation_document.translated_segments = translated_text.split('\n')
             # Filter out empty strings from the list
-            validation_job.translated_segments = [s for s in validation_job.translated_segments if s.strip()]
+            validation_document.translated_segments = [s for s in validation_document.translated_segments if s.strip()]
         
         # Handle segment count mismatch
-        if len(validation_job.segments) != len(validation_job.translated_segments):
-            print(f"Warning: Segment count mismatch - Source: {len(validation_job.segments)}, Translated: {len(validation_job.translated_segments)}")
-            if len(validation_job.translated_segments) > len(validation_job.segments):
+        if len(validation_document.segments) != len(validation_document.translated_segments):
+            print(f"Warning: Segment count mismatch - Source: {len(validation_document.segments)}, Translated: {len(validation_document.translated_segments)}")
+            if len(validation_document.translated_segments) > len(validation_document.segments):
                 # Too many translated segments, might be due to line breaks
                 combined_segments = []
-                lines_per_segment = len(validation_job.translated_segments) // len(validation_job.segments)
-                for i in range(0, len(validation_job.translated_segments), lines_per_segment):
-                    combined_segments.append('\n'.join(validation_job.translated_segments[i:i+lines_per_segment]))
-                validation_job.translated_segments = combined_segments[:len(validation_job.segments)]
+                lines_per_segment = len(validation_document.translated_segments) // len(validation_document.segments)
+                for i in range(0, len(validation_document.translated_segments), lines_per_segment):
+                    combined_segments.append('\n'.join(validation_document.translated_segments[i:i+lines_per_segment]))
+                validation_document.translated_segments = combined_segments[:len(validation_document.segments)]
         
         # Load the glossary from the job if available
         if job.final_glossary:
-            validation_job.glossary = json.loads(job.final_glossary) if isinstance(job.final_glossary, str) else job.final_glossary
+            validation_document.glossary = json.loads(job.final_glossary) if isinstance(job.final_glossary, str) else job.final_glossary
         
-        return validator, validation_job, translated_path
+        return validator, validation_document, translated_path
     
     @staticmethod
     def run_validation(
@@ -81,7 +81,7 @@ class ValidationService:
         progress_callback: Optional[Callable[[int], None]] = None
     ) -> dict:
         """Run the validation process and return the report."""
-        results, summary = validator.validate_job(
+        results, summary = validator.validate_document(
             validation_document,
             sample_rate=sample_rate,
             quick_mode=quick_mode,

@@ -34,6 +34,9 @@ from .validation import (
     make_validation_response_schema,
 )
 
+from .segment import SegmentInfo
+from .document import TranslationDocumentData
+
 __all__ = [
     # Glossary
     "ExtractedTerms",
@@ -54,4 +57,7 @@ __all__ = [
     "ValidationCase",
     "ValidationResponse",
     "make_validation_response_schema",
+    # Document and Segment
+    "SegmentInfo",
+    "TranslationDocumentData",
 ]

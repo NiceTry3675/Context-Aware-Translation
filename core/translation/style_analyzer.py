@@ -6,7 +6,6 @@ including narrative style detection, glossary extraction, and style formatting.
 """
 
 import re
-import os
 from typing import Dict, Any, List, Union, Optional
 from ..prompts.manager import PromptManager
 from ..translation.models.gemini import GeminiModel
@@ -14,90 +13,9 @@ from ..translation.models.openrouter import OpenRouterModel
 from ..errors import ProhibitedException, TranslationError
 from ..errors.error_logger import prohibited_content_logger
 from ..utils.file_parser import parse_document
+from ..utils.text_segmentation import create_segments_from_plain_text
 
 
-class SegmentInfo:
-    """Simple container for segment data."""
-    def __init__(self, text, chapter_title=None, chapter_filename=None):
-        self.text = text
-        self.chapter_title = chapter_title
-        self.chapter_filename = chapter_filename
-
-
-def _create_segments_from_plain_text(text: str, target_size: int) -> List[SegmentInfo]:
-    """Helper function to segment a block of text with sentence-aware splitting.
-    This is a copy of the same function from job.py to avoid circular dependencies."""
-    # Split by double newlines (actual paragraph boundaries)
-    raw_paragraphs = re.split(r'\n\s*\n', text)
-    
-    # Process paragraphs to handle hard-wrapped text properly
-    normalized_paragraphs = []
-    for para in raw_paragraphs:
-        if not para.strip():
-            continue
-        
-        # Process lines within paragraph
-        lines = para.strip().split('\n')
-        processed_lines = []
-        current_sentence = ""
-        
-        for i, line in enumerate(lines):
-            line = line.strip()
-            if not line:
-                continue
-            
-            if current_sentence:
-                # Check if previous accumulated text ends with sentence terminator
-                if re.search(r'[.!?]["\']*$', current_sentence):
-                    # Previous sentence is complete
-                    processed_lines.append(current_sentence)
-                    current_sentence = line
-                else:
-                    # Continue accumulating (hard-wrapped line)
-                    current_sentence += " " + line
-            else:
-                current_sentence = line
-        
-        # Add final sentence
-        if current_sentence:
-            processed_lines.append(current_sentence)
-        
-        # Join sentences with newlines to preserve sentence boundaries
-        normalized_para = "\n".join(processed_lines)
-        normalized_paragraphs.append(normalized_para)
-    
-    segments = []
-    current_segment_text = ""
-    
-    for para in normalized_paragraphs:
-        # If adding this paragraph would exceed target size
-        if len(current_segment_text) + len(para) > target_size and current_segment_text:
-            # Save current segment and start new one
-            segments.append(SegmentInfo(current_segment_text.strip()))
-            current_segment_text = ""
-        
-        # If the paragraph itself is larger than target size, split by sentences
-        if len(para) > target_size:
-            # The paragraph already has sentence boundaries preserved as newlines
-            sentences = para.split('\n')
-            
-            for sentence in sentences:
-                sentence = sentence.strip()
-                if not sentence:
-                    continue
-                if len(current_segment_text) + len(sentence) > target_size and current_segment_text:
-                    segments.append(SegmentInfo(current_segment_text.strip()))
-                    current_segment_text = ""
-                current_segment_text += sentence + "\n"
-            current_segment_text = current_segment_text.strip() + "\n\n"
-        else:
-            # Add the whole paragraph
-            current_segment_text += para + "\n\n"
-    
-    if current_segment_text.strip():
-        segments.append(SegmentInfo(current_segment_text.strip()))
-        
-    return segments
 
 
 class StyleAnalyzer:
@@ -131,60 +49,20 @@ class StyleAnalyzer:
         Returns:
             Sample text for analysis
         """
-        # For style-definition simplicity, allow a direct first-chars mode without streaming
+        # Parse document using centralized file parser
+        text = parse_document(filepath)
+        
         if method == "first_chars":
-            text = parse_document(filepath)
             return text[:count]
-
-        # Default behavior: use segmentation logic, with streaming optimization for very large files
-        file_size = os.path.getsize(filepath)
-
-        if file_size > 10 * 1024 * 1024:  # 10MB
-            print(f"Large file detected ({file_size} bytes). Using streaming approach for parsing.")
-            text = self._stream_and_extract_text(filepath, count * 2)  # Extract more than needed for proper segmentation
-        else:
-            text = parse_document(filepath)
-
+        
         if method == "first_segment":
-            segments = _create_segments_from_plain_text(text, count)
+            segments = create_segments_from_plain_text(text, count)
             return segments[0].text if segments else text[:count]
         
         # Fallback to simple character-based extraction
         return text[:count]
 
 
-    def _stream_and_extract_text(self, filepath: str, max_chars: int) -> str:
-        """
-        Streams a text file and extracts up to max_chars characters for initial processing.
-        This is more memory-efficient for very large files.
-        
-        Args:
-            filepath: Path to the file to stream
-            max_chars: Maximum number of characters to extract
-            
-        Returns:
-            Extracted text up to max_chars
-        """
-    # Only works with text files (.txt)
-        _, extension = os.path.splitext(filepath.lower())
-        if extension != '.txt':
-            # For non-text files, fall back to regular parsing
-            return parse_document(filepath)
-
-        extracted_text = ""
-        try:
-            with open(filepath, 'r', encoding='utf-8') as f:
-                # Read in chunks to avoid loading the entire file
-                while len(extracted_text) < max_chars:
-                    chunk = f.read(min(8192, max_chars - len(extracted_text)))  # 8KB chunks or remaining needed
-                    if not chunk:
-                        break
-                    extracted_text += chunk
-            return extracted_text
-        except Exception as e:
-            print(f"Error in streaming text extraction: {e}")
-            # Fall back to regular parsing
-            return parse_document(filepath)
 
 
     def analyze_narrative_style(self, sample_text: str, job_filename: str = "unknown") -> str:
@@ -348,8 +226,7 @@ class StyleAnalyzer:
             Core style description text
         """
         print("\n--- Defining Core Narrative Style... ---")
-        # Extract the sample text using the centralized function
-        # Use a simple first-chars approach to avoid title/dedication-only first segments
+        # Extract sample text using simplified method
         sample_text = self.extract_sample_text(file_path, method="first_chars", count=15000)
         try:
             style = self.analyze_narrative_style(sample_text, job_base_filename)
@@ -363,21 +240,15 @@ class StyleAnalyzer:
 # Keep standalone functions for backward compatibility
 def extract_sample_text(filepath: str, method: str = "first_segment", count: int = 15000) -> str:
     """Backward compatibility wrapper."""
-    # Create a temporary analyzer instance for standalone usage
-    # This is not ideal but maintains backward compatibility
-    from ..utils.file_parser import parse_document
+    text = parse_document(filepath)
+    
     if method == "first_chars":
-        text = parse_document(filepath)
         return text[:count]
-    file_size = os.path.getsize(filepath)
-    if file_size > 10 * 1024 * 1024:  # 10MB
-        print(f"Large file detected ({file_size} bytes). Using streaming approach for parsing.")
-        text = _stream_and_extract_text(filepath, count * 2)
-    else:
-        text = parse_document(filepath)
+    
     if method == "first_segment":
-        segments = _create_segments_from_plain_text(text, count)
+        segments = create_segments_from_plain_text(text, count)
         return segments[0].text if segments else text[:count]
+    
     return text[:count]
 
 def analyze_narrative_style_with_api(
@@ -409,23 +280,3 @@ def parse_glossary_analysis(glossary_text: str) -> List[Dict[str, str]]:
     analyzer = StyleAnalyzer(None)  # Parser doesn't need model API
     return analyzer.parse_glossary_analysis(glossary_text)
 
-def _stream_and_extract_text(filepath: str, max_chars: int) -> str:
-    """Helper function for backward compatibility."""
-    _, extension = os.path.splitext(filepath.lower())
-    if extension != '.txt':
-        from ..utils.file_parser import parse_document
-        return parse_document(filepath)
-    
-    extracted_text = ""
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            while len(extracted_text) < max_chars:
-                chunk = f.read(min(8192, max_chars - len(extracted_text)))
-                if not chunk:
-                    break
-                extracted_text += chunk
-        return extracted_text
-    except Exception as e:
-        print(f"Error in streaming text extraction: {e}")
-        from ..utils.file_parser import parse_document
-        return parse_document(filepath)

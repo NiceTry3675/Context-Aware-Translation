@@ -40,8 +40,8 @@ class PostEditService:
         
         post_editor = PostEditEngine(model_api)
         
-        # Create translation job for post-editing
-        translation_job = TranslationJob(
+        # Create translation document for post-editing
+        translation_document = TranslationDocument(
             job.filepath, 
             original_filename=job.filename,
             target_segment_size=job.segment_size
@@ -70,16 +70,16 @@ class PostEditService:
                 "Invalid translation segments schema. Expected 'translated_text' per segment."
             )
 
-        translation_job.translated_segments = translated_list[:]
+        translation_document.translated_segments = translated_list[:]
 
         # Strict count match with source segments
-        if len(translation_job.translated_segments) != len(translation_job.segments):
+        if len(translation_document.translated_segments) != len(translation_document.segments):
             raise ValueError(
-                f"Translation segments count mismatch (source={len(translation_job.segments)}, "
-                f"translated={len(translation_job.translated_segments)})."
+                f"Translation segments count mismatch (source={len(translation_document.segments)}, "
+                f"translated={len(translation_document.translated_segments)})."
             )
         
-        return post_editor, translation_job, translated_path
+        return post_editor, translation_document, translated_path
     
     @staticmethod
     def run_post_edit(

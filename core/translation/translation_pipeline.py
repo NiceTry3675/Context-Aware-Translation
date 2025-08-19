@@ -6,21 +6,22 @@ translation workflow with context awareness, style consistency, and error handli
 """
 
 import re
-import os
 import time
 from tqdm import tqdm
 from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 
 from .models.gemini import GeminiModel
-from .translation_document import TranslationDocument
+from .document import TranslationDocument
 from .style_analyzer import StyleAnalyzer
+from .progress_tracker import ProgressTracker
 from ..prompts.builder import PromptBuilder
 from ..prompts.manager import PromptManager
 from ..prompts.sanitizer import PromptSanitizer
 from ..config.builder import DynamicConfigBuilder
 from ..errors import ProhibitedException, TranslationError
 from ..errors import prohibited_content_logger
+from ..utils.logging import TranslationLogger
 
 
 def get_segment_ending(segment_text: str, max_chars: int) -> str:
@@ -76,19 +77,13 @@ class TranslationPipeline:
         self.dyn_config_builder = dyn_config_builder
         self.prompt_builder = PromptBuilder(PromptManager.MAIN_TRANSLATION)
         self.style_analyzer = StyleAnalyzer(gemini_api)
-        self.db = db
-        self.job_id = job_id
+        self.progress_tracker = ProgressTracker(db, job_id)
         self.initial_core_style = initial_core_style
         
-        # Initialize logging directories
-        self._init_logging_dirs()
+        # Logger will be initialized with document filename later
+        self.job_id = job_id
+        self.logger = None
     
-    def _init_logging_dirs(self):
-        """Initialize logging directories."""
-        self.prompt_log_dir = "logs/debug_prompts"
-        self.context_log_dir = "logs/context_log"
-        os.makedirs(self.prompt_log_dir, exist_ok=True)
-        os.makedirs(self.context_log_dir, exist_ok=True)
     
     def translate_document(self, document: TranslationDocument):
         """
@@ -110,8 +105,11 @@ class TranslationPipeline:
             error_type = e.__class__.__name__
             raise e
         finally:
-            if self.db and self.job_id:
-                self._record_usage_log(start_time, original_text, translated_text_final, error_type)
+            model_name = getattr(self.gemini_api, 'model_name', 'unknown_model')
+            self.progress_tracker.record_usage_log(
+                original_text, translated_text_final, 
+                model_name, error_type
+            )
     
     def _translate_document_internal(self, document: TranslationDocument):
         """
@@ -120,13 +118,9 @@ class TranslationPipeline:
         Args:
             document: The TranslationDocument to translate
         """
-        # Set up logging paths
-        prompt_log_path = os.path.join(self.prompt_log_dir, 
-                                       f"prompts_job_{self.job_id}_{document.user_base_filename}.txt")
-        context_log_path = os.path.join(self.context_log_dir, 
-                                        f"context_job_{self.job_id}_{document.user_base_filename}.txt")
-        
-        self._init_log_files(prompt_log_path, context_log_path, document.user_base_filename)
+        # Initialize logging for this document
+        self.logger = TranslationLogger(self.job_id, document.user_base_filename)
+        self.logger.initialize_session()
         
         if not document.segments:
             print("No segments to translate. Exiting.")
@@ -134,7 +128,7 @@ class TranslationPipeline:
         
         # Define core narrative style
         core_narrative_style = self._define_core_style(document)
-        self._log_core_style(context_log_path, core_narrative_style)
+        self.logger.log_core_narrative_style(core_narrative_style)
         
         # Translate segments
         total_segments = len(document.segments)
@@ -142,7 +136,7 @@ class TranslationPipeline:
             segment_index = i + 1
             
             # Update progress
-            self._update_progress(i, total_segments)
+            self.progress_tracker.update_progress(i, total_segments)
             
             # Build dynamic guides (glossary and character styles)
             updated_glossary, updated_styles, style_deviation = self._build_dynamic_guides(
@@ -162,10 +156,16 @@ class TranslationPipeline:
             )
             
             # Log context and prompt
-            self._log_segment_context(context_log_path, segment_index, document,
-                                     contextual_glossary, immediate_context_source,
-                                     immediate_context_ko, style_deviation)
-            self._log_prompt(prompt_log_path, segment_index, prompt)
+            context_data = {
+                'style_deviation': style_deviation,
+                'contextual_glossary': contextual_glossary,
+                'full_glossary': document.glossary,
+                'character_styles': document.character_styles,
+                'immediate_context_source': immediate_context_source,
+                'immediate_context_ko': immediate_context_ko
+            }
+            self.logger.log_segment_context(segment_index, context_data)
+            self.logger.log_translation_prompt(segment_index, prompt)
             
             # Translate segment with retries
             translated_text = self._translate_segment_with_retries(
@@ -181,7 +181,9 @@ class TranslationPipeline:
         document.save_final_output()
         
         # Update database with final data
-        self._finalize_translation(document)
+        self.progress_tracker.finalize_translation(
+            document.segments, document.translated_segments, document.glossary
+        )
         
         print(f"\n--- Translation Complete! ---")
         print(f"Output: {document.output_filename}")
@@ -324,105 +326,6 @@ class TranslationPipeline:
             print(f"Minimal prompt also failed: {final_e}")
             raise e from final_e
     
-    def _update_progress(self, current_index: int, total_segments: int):
-        """Update translation progress in the database."""
-        progress = int((current_index / total_segments) * 100)
-        if self.db and self.job_id:
-            from backend import crud
-            crud.update_job_progress(self.db, self.job_id, progress)
     
-    def _finalize_translation(self, document: TranslationDocument):
-        """Finalize translation by updating database with results."""
-        if self.db and self.job_id:
-            from backend import crud
-            
-            # Update glossary
-            crud.update_job_final_glossary(self.db, self.job_id, document.glossary)
-            
-            # Save translation segments for segment view
-            segments_data = []
-            for i, (source_segment, translated_segment) in enumerate(
-                zip(document.segments, document.translated_segments)
-            ):
-                segments_data.append({
-                    "segment_index": i,
-                    "source_text": source_segment.text,
-                    "translated_text": translated_segment
-                })
-            crud.update_job_translation_segments(self.db, self.job_id, segments_data)
     
-    def _record_usage_log(self, start_time: float, original_text: str,
-                         translated_text: str, error_type: Optional[str]):
-        """Record usage statistics to the database."""
-        end_time = time.time()
-        duration = int(end_time - start_time)
-        
-        from backend import crud, schemas
-        
-        log_data = schemas.TranslationUsageLogCreate(
-            job_id=self.job_id,
-            original_length=len(original_text),
-            translated_length=len(translated_text),
-            translation_duration_seconds=duration,
-            model_used=self.gemini_api.model_name,
-            error_type=error_type
-        )
-        crud.create_translation_usage_log(self.db, log_data)
-        print("\n--- Usage log has been recorded. ---")
     
-    # Logging helper methods
-    def _init_log_files(self, prompt_log_path: str, context_log_path: str, filename: str):
-        """Initialize log files with headers."""
-        with open(prompt_log_path, 'w', encoding='utf-8') as f:
-            f.write(f"# PROMPT LOG FOR: {filename}\n\n")
-        with open(context_log_path, 'w', encoding='utf-8') as f:
-            f.write(f"# CONTEXT LOG FOR: {filename}\n\n")
-    
-    def _log_core_style(self, context_log_path: str, core_narrative_style: str):
-        """Log the core narrative style."""
-        with open(context_log_path, 'a', encoding='utf-8') as f:
-            f.write(f"--- Core Narrative Style Defined ---\n")
-            f.write(f"{core_narrative_style}\n")
-            f.write("="*50 + "\n\n")
-    
-    def _log_prompt(self, prompt_log_path: str, segment_index: int, prompt: str):
-        """Log the translation prompt."""
-        with open(prompt_log_path, 'a', encoding='utf-8') as f:
-            f.write(f"--- PROMPT FOR SEGMENT {segment_index} ---\n\n")
-            f.write(prompt)
-            f.write("\n\n" + "="*50 + "\n\n")
-    
-    def _log_segment_context(self, log_path: str, segment_index: int, document: TranslationDocument,
-                            contextual_glossary: dict, immediate_context_source: str,
-                            immediate_context_ko: str, style_deviation: str):
-        """Log the context for a segment translation."""
-        with open(log_path, 'a', encoding='utf-8') as f:
-            f.write(f"--- CONTEXT FOR SEGMENT {segment_index} ---\n\n")
-            f.write("### Narrative Style Deviation:\n")
-            f.write(f"{style_deviation}\n\n")
-            f.write("### Contextual Glossary (For This Segment):\n")
-            if contextual_glossary:
-                for key, value in contextual_glossary.items():
-                    f.write(f"- {key}: {value}\n")
-            else:
-                f.write("- None relevant to this segment.\n")
-            f.write("\n")
-            f.write("### Cumulative Glossary (Full):\n")
-            if document.glossary:
-                for key, value in document.glossary.items():
-                    f.write(f"- {key}: {value}\n")
-            else:
-                f.write("- Empty\n")
-            f.write("\n")
-            f.write("### Cumulative Character Styles:\n")
-            if document.character_styles:
-                for key, value in document.character_styles.items():
-                    f.write(f"- {key}: {value}\n")
-            else:
-                f.write("- Empty\n")
-            f.write("\n")
-            f.write("### Immediate language Context (Previous Segment Ending):\n")
-            f.write(f"{immediate_context_source or 'N/A'}\n\n")
-            f.write("### Immediate Korean Context (Previous Segment Ending):\n")
-            f.write(f"{immediate_context_ko or 'N/A'}\n\n")
-            f.write("="*50 + "\n\n")
