@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from core.config.loader import load_config
 from core.translation.models.gemini import GeminiModel
 from core.config.builder import DynamicConfigBuilder
-from core.translation.translation_document import TranslationDocument
+from core.translation.document import TranslationDocument
 from core.translation.translation_pipeline import TranslationPipeline
 from core.errors.base import TranslationError
 from core.utils.file_parser import parse_document
@@ -109,15 +109,13 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
         if verbose:
             print(f"\nInitializing dynamic config builder for protagonist: {protagonist_name}")
         
-        # Check environment variable for structured output
-        use_structured = os.getenv("USE_STRUCTURED_OUTPUT", "true").lower() == "true"
-        if verbose and use_structured:
+        # Always use structured output for configuration extraction
+        if verbose:
             print("Using structured output for configuration extraction")
         
         dyn_config_builder = DynamicConfigBuilder(
             gemini_model, 
-            protagonist_name,
-            use_structured=use_structured
+            protagonist_name
         )
         
         # Create translation pipeline (no database for CLI mode)

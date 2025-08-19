@@ -4,7 +4,7 @@ from typing import Optional, Callable
 from sqlalchemy.orm import Session
 
 from core.translation.validator import TranslationValidator
-from core.translation.translation_document import TranslationDocument
+from core.translation.document import TranslationDocument
 from .base.base_service import BaseService
 from .. import crud, models
 

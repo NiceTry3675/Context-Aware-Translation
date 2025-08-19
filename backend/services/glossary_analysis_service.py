@@ -11,7 +11,9 @@ import json
 from typing import Optional, Dict, List, Any
 from pathlib import Path
 
-from core.translation.style_analyzer import StyleAnalyzer
+from core.config.glossary import GlossaryManager
+from core.translation.models.gemini import GeminiModel
+from core.translation.models.openrouter import OpenRouterModel
 from .base.base_service import BaseAnalysisService
 
 
@@ -108,9 +110,6 @@ class GlossaryAnalysisService(BaseAnalysisService):
         # Get model API instance
         model_api = self.create_model_api(api_key, model_name)
         
-        # Create style analyzer (which includes glossary methods)
-        style_analyzer = StyleAnalyzer(model_api)
-        
         # Extract sample text using base class utilities
         segments = self.prepare_document_segments(
             filepath, method="first_chars", count=sample_size
@@ -121,17 +120,16 @@ class GlossaryAnalysisService(BaseAnalysisService):
         filename = self.file_manager.get_filename_stem(filepath)
         
         try:
-            # Analyze glossary (extract and translate terms)
-            glossary_text = style_analyzer.analyze_glossary(sample_text, filename)
+            # Create GlossaryManager with appropriate model
+            if isinstance(model_api, GeminiModel):
+                glossary_manager = GlossaryManager(model_api, filename)
+            else:
+                # For non-Gemini models, we can't use structured output
+                print("Warning: Non-Gemini model detected. Glossary extraction may be limited.")
+                return {}
             
-            # Parse the results
-            glossary_list = style_analyzer.parse_glossary_analysis(glossary_text)
-            
-            # Convert list format to dictionary
-            glossary_dict = {}
-            for item in glossary_list:
-                if isinstance(item, dict) and 'source' in item and 'korean' in item:
-                    glossary_dict[item['source']] = item['korean']
+            # Update glossary with the sample text
+            glossary_dict = glossary_manager.update_glossary(sample_text)
             
             print(f"Extracted automatic glossary with {len(glossary_dict)} terms")
             return glossary_dict

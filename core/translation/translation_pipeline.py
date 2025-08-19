@@ -76,7 +76,7 @@ class TranslationPipeline:
         self.gemini_api = gemini_api
         self.dyn_config_builder = dyn_config_builder
         self.prompt_builder = PromptBuilder(PromptManager.MAIN_TRANSLATION)
-        self.style_analyzer = StyleAnalyzer(gemini_api)
+        self.style_analyzer = StyleAnalyzer(gemini_api, job_id)
         self.progress_tracker = ProgressTracker(db, job_id)
         self.initial_core_style = initial_core_style
         
@@ -293,7 +293,13 @@ class TranslationPipeline:
                     )
             
             except TranslationError as e:
-                print(f"Translation failed for segment {segment_index}. Error: {e}")
+                error_msg = f"Translation failed for segment {segment_index}. Error: {e}"
+                print(error_msg)
+                
+                # Log error using centralized logger
+                if self.logger:
+                    self.logger.log_error(e, segment_index, "translate_segment")
+                
                 raise e
         
         raise TranslationError(f"Failed to translate segment {segment_index} after all retries.")
@@ -312,6 +318,10 @@ class TranslationPipeline:
             'soft_retry_attempts': soft_retry_attempts
         }
         
+        # Log using centralized logger
+        if self.logger:
+            self.logger.log_error(e, segment_index, "prohibited_content_final")
+        
         log_path = prohibited_content_logger.log_prohibited_content(
             e, document.user_base_filename, segment_index
         )
@@ -324,6 +334,11 @@ class TranslationPipeline:
             return _extract_translation_from_response(model_response)
         except Exception as final_e:
             print(f"Minimal prompt also failed: {final_e}")
+            
+            # Log the final failure
+            if self.logger:
+                self.logger.log_error(final_e, segment_index, "minimal_prompt_failed")
+            
             raise e from final_e
     
     

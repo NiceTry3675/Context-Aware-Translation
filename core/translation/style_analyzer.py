@@ -1,8 +1,8 @@
 """
 Style Analyzer Module
 
-This module provides comprehensive style analysis functionality for the translation engine,
-including narrative style detection, glossary extraction, and style formatting.
+This module provides style analysis functionality for the translation engine,
+including narrative style detection and style formatting.
 """
 
 import re
@@ -14,6 +14,7 @@ from ..errors import ProhibitedException, TranslationError
 from ..errors.error_logger import prohibited_content_logger
 from ..utils.file_parser import parse_document
 from ..utils.text_segmentation import create_segments_from_plain_text
+from ..utils.logging import TranslationLogger
 
 
 
@@ -26,14 +27,17 @@ class StyleAnalyzer:
     including narrative style detection, glossary extraction, and formatting.
     """
     
-    def __init__(self, model_api: Union[GeminiModel, OpenRouterModel]):
+    def __init__(self, model_api: Union[GeminiModel, OpenRouterModel], job_id: Optional[int] = None):
         """
         Initialize the StyleAnalyzer.
         
         Args:
             model_api: The AI model API instance for analysis
+            job_id: Optional job ID for logging
         """
         self.model_api = model_api
+        self.job_id = job_id
+        self.logger = None
     
     def extract_sample_text(self, filepath: str, method: str = "first_segment", count: int = 15000) -> str:
         """
@@ -76,10 +80,27 @@ class StyleAnalyzer:
         Returns:
             Style analysis text from the AI
         """
+        # Initialize logger if not already done
+        if not self.logger:
+            self.logger = TranslationLogger(self.job_id, job_filename)
+            self.logger.initialize_session()
+        
         prompt = PromptManager.DEFINE_NARRATIVE_STYLE.format(sample_text=sample_text)
+        
+        # Log the style analysis prompt
+        if self.logger:
+            self.logger.log_translation_prompt(0, f"[STYLE ANALYSIS PROMPT]\n{prompt}")
         
         try:
             style = self.model_api.generate_text(prompt)
+            
+            # Log successful style analysis
+            if self.logger:
+                with open(self.logger.context_log_path, 'a', encoding='utf-8') as f:
+                    f.write(f"--- NARRATIVE STYLE ANALYSIS ---\n")
+                    f.write(f"Sample text length: {len(sample_text)} chars\n")
+                    f.write(f"Style analysis result:\n{style}\n\n")
+            
             return style
         except ProhibitedException as e:
             log_path = prohibited_content_logger.log_simple_prohibited_content(
@@ -93,6 +114,11 @@ class StyleAnalyzer:
             return "A standard, neutral literary style ('평서체')."
         except Exception as e:
             print(f"Warning: Could not define narrative style. Error: {e}")
+            
+            # Log error
+            if self.logger:
+                self.logger.log_error(e, context="analyze_narrative_style")
+            
             # Re-raise with the specific error message from the underlying API call
             raise Exception(f"Failed to define core style: {e}") from e
 
@@ -108,6 +134,13 @@ class StyleAnalyzer:
             Dictionary with structured style data
         """
         parsed_style = {}
+        
+        # Log parsing attempt
+        if self.logger:
+            with open(self.logger.context_log_path, 'a', encoding='utf-8') as f:
+                f.write(f"--- PARSING STYLE ANALYSIS ---\n")
+                f.write(f"Input text length: {len(style_text)} chars\n")
+        
         key_mapping = {
             "Protagonist Name": "protagonist_name",
             "Protagonist Name (주인공 이름)": "protagonist_name",
@@ -125,7 +158,15 @@ class StyleAnalyzer:
             if match:
                 value = match.group(1).strip().replace('**', '')
                 parsed_style[json_key] = value
-                
+        
+        # Log parsed results
+        if self.logger:
+            with open(self.logger.context_log_path, 'a', encoding='utf-8') as f:
+                f.write(f"Parsed style components:\n")
+                for key, value in parsed_style.items():
+                    f.write(f"  {key}: {value[:100]}...\n" if len(value) > 100 else f"  {key}: {value}\n")
+                f.write("\n")
+        
         return parsed_style
 
 
@@ -149,70 +190,6 @@ class StyleAnalyzer:
         ]
         return "\n".join(style_parts)
 
-    def analyze_glossary(self, sample_text: str, job_filename: str = "unknown") -> str:
-        """
-        Analyzes the sample text to extract and translate glossary terms in two steps.
-        
-        Args:
-            sample_text: Text sample to analyze.
-            job_filename: Name of the file being processed (for logging).
-            
-        Returns:
-            A string containing term-translation pairs, one per line.
-        """
-        # Step 1: Extract nouns
-        noun_prompt = PromptManager.GLOSSARY_EXTRACT_NOUNS.format(segment_text=sample_text)
-        try:
-            print("--- Extracting nouns for glossary... ---")
-            nouns_text = self.model_api.generate_text(noun_prompt)
-            if "N/A" in nouns_text or not nouns_text.strip():
-                print("No nouns found for glossary.")
-                return ""
-            print(f"Extracted nouns: {nouns_text}")
-        except Exception as e:
-            print(f"Warning: Could not extract nouns for glossary. Error: {e}")
-            raise TranslationError(f"Failed to extract nouns: {e}") from e
-
-        # Step 2: Translate the extracted nouns
-        translate_prompt = PromptManager.GLOSSARY_TRANSLATE_TERMS.format(
-            segment_text=sample_text, 
-            key_terms=nouns_text,
-            existing_glossary="N/A"  # No existing glossary during initial analysis
-        )
-        try:
-            print("--- Translating extracted nouns... ---")
-            translated_text = self.model_api.generate_text(translate_prompt)
-            print(f"Translated terms: {translated_text}")
-            return translated_text
-        except Exception as e:
-            print(f"Warning: Could not translate terms for glossary. Error: {e}")
-            raise TranslationError(f"Failed to translate terms: {e}") from e
-
-    def parse_glossary_analysis(self, glossary_text: str) -> List[Dict[str, str]]:
-        """
-        Parses the term-translation text into a list of structured dictionaries.
-        
-        Args:
-            glossary_text: The raw text from the AI (e.g., "Term1: 번역1\nTerm2: 번역2").
-            
-        Returns:
-            A list of dictionaries, e.g., [{"source": "Term1", "korean": "번역1"}].
-        """
-        parsed_glossary = []
-        if not glossary_text.strip():
-            return parsed_glossary
-
-        lines = glossary_text.strip().split('\n')
-        for line in lines:
-            if ':' in line:
-                parts = line.split(':', 1)
-                term = parts[0].strip()
-                translation = parts[1].strip()
-                if term and translation:
-                    # Changed from "term"/"translation" to "source"/"korean" to match TranslatedTerm schema
-                    parsed_glossary.append({"source": term, "korean": translation})
-        
-        return parsed_glossary
     
     def define_core_style(self, file_path: str, job_base_filename: str = "unknown") -> str:
         """
@@ -226,14 +203,39 @@ class StyleAnalyzer:
             Core style description text
         """
         print("\n--- Defining Core Narrative Style... ---")
+        
+        # Initialize logger if not already done
+        if not self.logger:
+            self.logger = TranslationLogger(self.job_id, job_base_filename)
+            self.logger.initialize_session()
+        
+        # Log core style definition start
+        if self.logger:
+            with open(self.logger.context_log_path, 'a', encoding='utf-8') as f:
+                f.write(f"\n{'='*60}\n")
+                f.write(f"CORE STYLE DEFINITION SESSION\n")
+                f.write(f"File: {file_path}\n")
+                f.write(f"Base filename: {job_base_filename}\n")
+                f.write(f"{'='*60}\n\n")
+        
         # Extract sample text using simplified method
         sample_text = self.extract_sample_text(file_path, method="first_chars", count=15000)
         try:
             style = self.analyze_narrative_style(sample_text, job_base_filename)
             print(f"Style defined as: {style}")
+            
+            # Log successful style definition
+            if self.logger:
+                self.logger.log_core_narrative_style(style)
+            
             return style
         except Exception as e:
             print(f"Warning: Could not define narrative style. Falling back to default. Error: {e}")
+            
+            # Log error
+            if self.logger:
+                self.logger.log_error(e, context="define_core_style")
+            
             raise TranslationError(f"Failed to define core style: {e}") from e
 
 

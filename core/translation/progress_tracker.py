@@ -10,6 +10,7 @@ from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
 
 from ..schemas import SegmentInfo
+from ..utils.logging import TranslationLogger
 
 
 class ProgressTracker:
@@ -22,17 +23,25 @@ class ProgressTracker:
     - Usage statistics recording
     """
     
-    def __init__(self, db: Optional[Session] = None, job_id: Optional[int] = None):
+    def __init__(self, db: Optional[Session] = None, job_id: Optional[int] = None, 
+                 filename: Optional[str] = None):
         """
         Initialize the progress tracker.
         
         Args:
             db: Optional database session
             job_id: Optional job ID for database updates
+            filename: Optional filename for logging
         """
         self.db = db
         self.job_id = job_id
+        self.filename = filename
         self.start_time = time.time()
+        self.logger = None
+        
+        # Initialize logger if we have the necessary info
+        if job_id and filename:
+            self.logger = TranslationLogger(job_id, filename)
     
     def update_progress(self, current_index: int, total_segments: int):
         """
@@ -42,10 +51,16 @@ class ProgressTracker:
             current_index: Current segment index (0-based)
             total_segments: Total number of segments
         """
+        progress = int((current_index / total_segments) * 100)
+        
+        # Log progress to file
+        if self.logger:
+            elapsed_time = time.time() - self.start_time
+            self.logger.log_translation_progress(current_index, total_segments, elapsed_time)
+        
+        # Update database if available
         if not self.db or not self.job_id:
             return
-            
-        progress = int((current_index / total_segments) * 100)
         
         try:
             from backend import crud
@@ -65,6 +80,19 @@ class ProgressTracker:
             translated_segments: Translated text segments
             glossary: Final glossary dictionary
         """
+        # Log completion
+        if self.logger:
+            total_time = time.time() - self.start_time
+            self.logger.log_completion(len(segments), total_time)
+            
+            # Log final glossary summary
+            with open(self.logger.context_log_path, 'a', encoding='utf-8') as f:
+                f.write(f"\n--- FINAL TRANSLATION SUMMARY ---\n")
+                f.write(f"Total segments: {len(segments)}\n")
+                f.write(f"Total glossary entries: {len(glossary)}\n")
+                f.write(f"Total time: {total_time:.1f}s\n")
+                f.write(f"Average time per segment: {total_time/len(segments):.1f}s\n\n")
+        
         if not self.db or not self.job_id:
             return
             
@@ -101,11 +129,23 @@ class ProgressTracker:
             model_name: Name of the AI model used
             error_type: Optional error type if translation failed
         """
-        if not self.db or not self.job_id:
-            return
-            
         end_time = time.time()
         duration = int(end_time - self.start_time)
+        
+        # Log usage statistics to file
+        if self.logger:
+            with open(self.logger.progress_log_path, 'a', encoding='utf-8') as f:
+                f.write(f"\n--- USAGE STATISTICS ---\n")
+                f.write(f"Model used: {model_name}\n")
+                f.write(f"Original text length: {len(original_text)} chars\n")
+                f.write(f"Translated text length: {len(translated_text)} chars\n")
+                f.write(f"Translation duration: {duration}s\n")
+                if error_type:
+                    f.write(f"Error type: {error_type}\n")
+                f.write(f"{'='*50}\n")
+        
+        if not self.db or not self.job_id:
+            return
         
         try:
             from backend import crud, schemas

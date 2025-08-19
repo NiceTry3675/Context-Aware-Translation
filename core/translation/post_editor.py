@@ -14,21 +14,25 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 from tqdm import tqdm
 from core.prompts.manager import PromptManager
+from ..utils.logging import TranslationLogger, StructuredLogger
 
 
 class PostEditEngine:
     """Handles post-editing of translations based on validation reports."""
     
-    def __init__(self, ai_model, verbose: bool = False):
+    def __init__(self, ai_model, verbose: bool = False, job_id: Optional[int] = None):
         """
         Initialize the post-edit engine.
         
         Args:
             ai_model: The AI model to use for post-editing
             verbose: Whether to print verbose output
+            job_id: Optional job ID for logging
         """
         self.ai_model = ai_model
         self.verbose = verbose
+        self.job_id = job_id
+        self.logger = None  # Will be initialized per document
         
         # Create post-edit log directory
         self.postedit_log_dir = Path('logs/postedit_logs')
@@ -62,6 +66,12 @@ class PostEditEngine:
         """
         segments_to_edit = []
         
+        if self.logger:
+            self.logger.log_progress_log_path = self.logger.progress_log_path.replace('progress_', 'postedit_analysis_')
+            with open(self.logger.log_progress_log_path, 'a', encoding='utf-8') as f:
+                f.write(f"\n--- Analyzing Validation Report ---\n")
+                f.write(f"Total validation results: {len(validation_report.get('detailed_results', []))}\n")
+        
         for result in validation_report.get('detailed_results', []):
             segment_idx = result['segment_index']
             cases = result.get('structured_cases') or []
@@ -82,6 +92,14 @@ class PostEditEngine:
                 'segment_index': segment_idx,
                 'structured_cases': chosen_cases,
             })
+            
+            if self.logger:
+                with open(self.logger.log_progress_log_path, 'a', encoding='utf-8') as f:
+                    f.write(f"Segment {segment_idx} needs editing: {len(chosen_cases)} issues\n")
+        
+        if self.logger:
+            with open(self.logger.log_progress_log_path, 'a', encoding='utf-8') as f:
+                f.write(f"Total segments needing edit: {len(segments_to_edit)}\n\n")
         
         return segments_to_edit
     
@@ -147,10 +165,15 @@ class PostEditEngine:
         Returns:
             Post-edited translation text
         """
+        segment_idx = segment_data['segment_index']
         prompt = self.generate_edit_prompt(segment_data, source_text, translated_text, glossary)
         
+        # Log the post-edit prompt
+        if self.logger:
+            self.logger.log_translation_prompt(segment_idx, f"[POST-EDIT PROMPT]\n{prompt}")
+        
         if self.verbose:
-            print(f"Post-editing segment {segment_data['segment_index']}...")
+            print(f"Post-editing segment {segment_idx}...")
             if segment_data.get('structured_cases'):
                 print(f"  - Fixing {len(segment_data['structured_cases'])} validation issues")
         
@@ -169,10 +192,25 @@ class PostEditEngine:
                     lines = lines[:-1]
                 edited_text = '\n'.join(lines)
             
+            # Log successful edit
+            if self.logger:
+                self.logger.log_translation_progress(segment_idx, len(segment_data.get('structured_cases', [])))
+                with open(self.logger.context_log_path, 'a', encoding='utf-8') as f:
+                    f.write(f"--- POST-EDIT SEGMENT {segment_idx} ---\n")
+                    f.write(f"Issues fixed: {len(segment_data.get('structured_cases', []))}\n")
+                    f.write(f"Original: {translated_text[:100]}...\n")
+                    f.write(f"Edited: {edited_text[:100]}...\n\n")
+            
             return edited_text
             
         except Exception as e:
-            print(f"Warning: Post-edit failed for segment {segment_data['segment_index']}: {e}")
+            error_msg = f"Post-edit failed for segment {segment_idx}: {e}"
+            print(f"Warning: {error_msg}")
+            
+            # Log the error
+            if self.logger:
+                self.logger.log_error(e, segment_idx, "post-edit_segment")
+            
             # Return original translation if post-edit fails
             return translated_text
     
@@ -195,8 +233,19 @@ class PostEditEngine:
         Returns:
             List of post-edited translations
         """
+        # Initialize logger for this document
+        self.job_id = job_id or self.job_id
+        self.logger = TranslationLogger(self.job_id, translation_document.user_base_filename)
+        self.logger.initialize_session()
+        
         # Load validation report
         validation_report = self.load_validation_report(validation_report_path)
+        
+        if self.logger:
+            with open(self.logger.context_log_path, 'a', encoding='utf-8') as f:
+                f.write(f"--- POST-EDIT SESSION STARTED ---\n")
+                f.write(f"Validation report: {validation_report_path}\n")
+                f.write(f"Document: {translation_document.user_base_filename}\n\n")
         
         # Identify segments needing edit based on structured case selection
         segments_to_edit = self.identify_segments_needing_edit(validation_report, selected_cases)
@@ -273,11 +322,26 @@ class PostEditEngine:
             'edit_percentage': (len(segments_to_edit) / len(translation_document.translated_segments) * 100),
         }
         
-        # Save post-edit log
+        # Save post-edit log using StructuredLogger
+        log_data = {
+            'summary': summary,
+            'segments': complete_log
+        }
+        StructuredLogger.log_post_edit_report(
+            job_id or self.job_id or 0,
+            translation_document.user_base_filename,
+            log_data
+        )
+        
+        # Also save using the existing method for compatibility
         self._save_postedit_log(complete_log, summary, translation_document.user_base_filename, job_id)
         
         # Print summary
         self._print_summary(summary)
+        
+        # Log completion
+        if self.logger:
+            self.logger.log_completion(len(translation_document.segments))
         
         # Update the translation document with edited segments
         translation_document.translated_segments = edited_segments

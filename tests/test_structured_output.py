@@ -49,7 +49,7 @@ def test_glossary_extraction():
     }
     
     model = GeminiModel(api_key, "gemini-2.0-flash-exp", safety_settings, generation_config)
-    manager = GlossaryManager(model, "test_job", use_structured=True)
+    manager = GlossaryManager(model, "test_job")
     
     # Extract terms
     terms = manager._extract_proper_nouns(sample_text)
@@ -94,7 +94,7 @@ def test_glossary_translation():
     
     # Create manager with existing glossary
     existing_glossary = {"John": "존", "New York": "뉴욕"}
-    manager = GlossaryManager(model, "test_job", initial_glossary=existing_glossary, use_structured=True)
+    manager = GlossaryManager(model, "test_job", initial_glossary=existing_glossary)
     
     # Terms to translate
     terms = ["John Smith", "Sarah Johnson", "Google"]
@@ -144,7 +144,7 @@ def test_character_style_analysis():
     }
     
     model = GeminiModel(api_key, "gemini-2.0-flash-exp", safety_settings, generation_config)
-    manager = CharacterStyleManager(model, "John", use_structured=True)
+    manager = CharacterStyleManager(model, "John")
     
     # Analyze styles
     current_styles = {}
@@ -208,7 +208,7 @@ def test_style_deviation():
     }
     
     model = GeminiModel(api_key, "gemini-2.0-flash-exp", safety_settings, generation_config)
-    builder = DynamicConfigBuilder(model, "John", use_structured=True)
+    builder = DynamicConfigBuilder(model, "John")
     
     # Analyze deviation
     deviation = builder._analyze_style_deviation(sample_text, core_style, "test_job", 0)

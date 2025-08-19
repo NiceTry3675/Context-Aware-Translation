@@ -1,9 +1,8 @@
 import json
-import os
 from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 
-from core.translation.translation_document import TranslationDocument
+from core.translation.document import TranslationDocument
 from core.translation.translation_pipeline import TranslationPipeline
 from core.config.builder import DynamicConfigBuilder
 from .base.base_service import BaseService
@@ -110,14 +109,12 @@ class TranslationService(BaseService):
         db: Session
     ):
         """Execute the translation process."""
-        # Check environment variable for structured output
-        use_structured = os.getenv("USE_STRUCTURED_OUTPUT", "true").lower() == "true"
+        # Always use structured output for configuration extraction
         
         dyn_config_builder = DynamicConfigBuilder(
             model_api,
             protagonist_name,
-            initial_glossary=initial_glossary,
-            use_structured=use_structured
+            initial_glossary=initial_glossary
         )
         
         pipeline = TranslationPipeline(
