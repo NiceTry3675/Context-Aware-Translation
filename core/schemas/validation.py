@@ -19,6 +19,29 @@ from pydantic import BaseModel, Field
 # --------------------
 # Pydantic Models for Validation
 # --------------------
+class ValidationResult(BaseModel):
+    """Represents the result of a translation validation (per segment)."""
+    
+    segment_index: int = Field(..., description="Index of the segment in the translation")
+    source_text: str = Field(..., description="Original source text")
+    translated_text: str = Field(..., description="Translated text")
+    status: str = Field(default="PENDING", description="Validation status: PENDING, PASS, FAIL, or ERROR")
+    structured_cases: Optional[List[ValidationCase]] = Field(default=None, description="List of validation issues found")
+
+    def has_issues(self) -> bool:
+        return bool(self.structured_cases and len(self.structured_cases) > 0)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert model to dict for JSON serialization."""
+        result: Dict[str, Any] = {
+            'segment_index': self.segment_index,
+            'status': self.status,
+            'source_text': self.source_text,
+            'translated_text': self.translated_text,
+        }
+        if self.structured_cases is not None:
+            result['structured_cases'] = [case.model_dump() for case in self.structured_cases]
+        return result
 class ValidationCase(BaseModel):
     """Individual validation issue found in translation."""
     
@@ -136,6 +159,7 @@ make_response_schema = make_validation_response_schema
 
 # Re-export all items
 __all__ = [
+    "ValidationResult",
     "ValidationCase",
     "ValidationResponse",
     "make_validation_response_schema",

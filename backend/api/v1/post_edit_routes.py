@@ -34,7 +34,8 @@ async def trigger_post_edit(
     
     # Validate prerequisites
     try:
-        PostEditService.validate_post_edit_prerequisites(db_job)
+        post_edit_service = PostEditService()
+        post_edit_service.validate_post_edit_prerequisites(db_job)
     except (ValueError, FileNotFoundError) as e:
         raise HTTPException(status_code=400, detail=str(e))
     

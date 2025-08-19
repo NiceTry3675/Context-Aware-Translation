@@ -22,8 +22,11 @@ def run_post_edit_in_background(
             print(f"--- [POST-EDIT] Job ID {job_id} not found ---")
             return
         
+        # Create post-edit service instance
+        post_edit_service = PostEditService()
+        
         # Update status to IN_PROGRESS
-        PostEditService.update_job_post_edit_status(db, job, "IN_PROGRESS")
+        post_edit_service.update_job_post_edit_status(db, job, "IN_PROGRESS")
         print(f"--- [POST-EDIT] Starting post-editing for Job ID: {job_id} ---")
         
         print(f"--- [POST-EDIT] Selected structured cases for {len(selected_cases or {})} segments ---")
@@ -34,7 +37,7 @@ def run_post_edit_in_background(
         model_name = "gemini-2.5-flash-lite"
         
         # Prepare post-edit components
-        post_editor, translation_job, translated_path = PostEditService.prepare_post_edit(
+        post_editor, translation_job, translated_path = post_edit_service.prepare_post_edit(
             job=job,
             api_key=api_key,
             model_name=model_name
@@ -46,9 +49,9 @@ def run_post_edit_in_background(
             print(f"--- [POST-EDIT] Progress: {progress}% ---")
 
         # Run post-editing
-        PostEditService.run_post_edit(
+        post_edit_service.run_post_edit(
             post_editor=post_editor,
-            translation_job=translation_job,
+            translation_document=translation_job,
             translated_path=translated_path,
             validation_report_path=validation_report_path,
             selected_cases=selected_cases,
@@ -57,10 +60,10 @@ def run_post_edit_in_background(
         )
         
         # Get the post-edit log path
-        log_path = PostEditService.get_post_edit_log_path(job)
+        log_path = post_edit_service.get_post_edit_log_path(job)
         
         # Update job with results
-        PostEditService.update_job_post_edit_status(
+        post_edit_service.update_job_post_edit_status(
             db, job, "COMPLETED", log_path=log_path
         )
         
@@ -70,7 +73,8 @@ def run_post_edit_in_background(
         if db:
             job = crud.get_job(db, job_id=job_id)
             if job:
-                PostEditService.update_job_post_edit_status(db, job, "FAILED")
+                post_edit_service = PostEditService()
+                post_edit_service.update_job_post_edit_status(db, job, "FAILED")
         print(f"--- [POST-EDIT] Error post-editing Job ID {job_id}: {e} ---")
         traceback.print_exc()
         

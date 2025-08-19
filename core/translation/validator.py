@@ -9,38 +9,11 @@ frontend and post-edit modules (no legacy arrays, no raw_response).
 from __future__ import annotations
 
 import re
-from datetime import datetime
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
-from pydantic import BaseModel, Field
+from typing import Dict, List, Tuple, Any
 
-from core.schemas.validation import ValidationCase, make_validation_response_schema as make_response_schema
+from core.schemas.validation import ValidationCase, ValidationResult, make_validation_response_schema as make_response_schema
 from core.prompts.manager import PromptManager
-
-
-class ValidationResult(BaseModel):
-    """Represents the result of a translation validation (per segment)."""
-    
-    segment_index: int = Field(..., description="Index of the segment in the translation")
-    source_text: str = Field(..., description="Original source text")
-    translated_text: str = Field(..., description="Translated text")
-    status: str = Field(default="PENDING", description="Validation status: PENDING, PASS, FAIL, or ERROR")
-    structured_cases: Optional[List[ValidationCase]] = Field(default=None, description="List of validation issues found")
-
-    def has_issues(self) -> bool:
-        return bool(self.structured_cases and len(self.structured_cases) > 0)
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert model to dict for JSON serialization."""
-        result: Dict[str, Any] = {
-            'segment_index': self.segment_index,
-            'status': self.status,
-            'source_text': self.source_text,
-            'translated_text': self.translated_text,
-        }
-        if self.structured_cases is not None:
-            result['structured_cases'] = [case.model_dump() for case in self.structured_cases]
-        return result
+from core.utils.logging import StructuredLogger
 
 
 class TranslationValidator:
@@ -49,8 +22,6 @@ class TranslationValidator:
     def __init__(self, ai_model, verbose: bool = False):
         self.ai_model = ai_model
         self.verbose = verbose
-        self.validation_log_dir = Path('logs/validation_logs')
-        self.validation_log_dir.mkdir(parents=True, exist_ok=True)
 
     def validate_segment(
         self,
@@ -109,21 +80,21 @@ class TranslationValidator:
 
         return result
 
-    def validate_job(
+    def validate_document(
         self,
-        translation_job,
+        document,
         *,
         sample_rate: float = 1.0,
         quick_mode: bool = False,
         progress_callback=None,
     ) -> Tuple[List[ValidationResult], Dict[str, Any]]:
         results: List[ValidationResult] = []
-        total_segments = len(translation_job.segments)
-        if total_segments != len(translation_job.translated_segments):
+        total_segments = len(document.segments)
+        if total_segments != len(document.translated_segments):
             print(
-                f"Warning: Segment count mismatch! Source: {total_segments}, Translated: {len(translation_job.translated_segments)}"
+                f"Warning: Segment count mismatch! Source: {total_segments}, Translated: {len(document.translated_segments)}"
             )
-            total_segments = min(total_segments, len(translation_job.translated_segments))
+            total_segments = min(total_segments, len(document.translated_segments))
 
         segments_to_validate = max(1, int(total_segments * sample_rate))
         if sample_rate < 1.0:
@@ -135,40 +106,45 @@ class TranslationValidator:
         else:
             indices = range(total_segments)
 
-        job_validation_dir = self.validation_log_dir / f"{translation_job.user_base_filename}_segments"
-        job_validation_dir.mkdir(exist_ok=True)
+        # Progress tracking handled by centralized logging
+        
+        if self.verbose:
+            print(f"\n{'='*60}")
+            print("Starting Translation Validation (Structured)")
+            print(f"{'='*60}")
+            print(f"Total segments: {total_segments}")
+            print(f"Segments to validate: {segments_to_validate}")
+            print(f"Validation mode: {'Quick' if quick_mode else 'Comprehensive'}")
+            print(f"{'='*60}\n")
 
-        print(f"\n{'='*60}")
-        print("Starting Translation Validation (Structured)")
-        print(f"{'='*60}")
-        print(f"Total segments: {total_segments}")
-        print(f"Segments to validate: {segments_to_validate}")
-        print(f"Validation mode: {'Quick' if quick_mode else 'Comprehensive'}")
-        print(f"Segment reports directory: {job_validation_dir}")
-        print(f"{'='*60}\n")
-
-        # No tqdm dependency here to keep CLI simple in some environments
+        # Process segments with centralized progress tracking
         for i, idx in enumerate(indices):
-            source_text = translation_job.segments[idx].text
-            translated_text = translation_job.translated_segments[idx]
+            source_text = document.segments[idx].text
+            translated_text = document.translated_segments[idx]
 
-            print(f"Validating segment {idx} ({i+1}/{segments_to_validate})...")
+            if self.verbose:
+                print(f"Validating segment {idx} ({i+1}/{segments_to_validate})...")
+            
             res = self.validate_segment(
                 source_text=source_text,
                 translated_text=translated_text,
-                glossary=translation_job.glossary,
+                glossary=document.glossary,
                 segment_index=idx,
                 quick_mode=quick_mode,
             )
             results.append(res)
-            self._save_segment_report(res, job_validation_dir, idx)
+            
             if progress_callback:
                 progress = int(((i + 1) / segments_to_validate) * 100)
                 progress_callback(progress)
 
         summary = self._calculate_summary(results, total_segments, segments_to_validate)
-        self._save_validation_report(results, summary, translation_job.user_base_filename)
-        self._print_detailed_summary(summary, results)
+        
+        # Use centralized structured logging
+        self._save_validation_report_structured(results, summary, document)
+        
+        if self.verbose:
+            self._print_detailed_summary(summary, results)
         return results, summary
 
     def _calculate_summary(self, results: List[ValidationResult], total_segments: int, validated_segments: int) -> Dict[str, Any]:
@@ -218,29 +194,24 @@ class TranslationValidator:
             'segments_with_cases': [r.segment_index for r in results if r.has_issues()],
         }
 
-    def _save_validation_report(self, results: List[ValidationResult], summary: Dict[str, Any], base_filename: str):
-        report_path = self.validation_log_dir / f"{base_filename}_validation_report.json"
-        report = {
+    def _save_validation_report_structured(self, results: List[ValidationResult], summary: Dict[str, Any], document):
+        """Save validation report using centralized structured logging."""
+        report_data = {
             'summary': summary,
             'detailed_results': [r.to_dict() for r in results],
         }
-        import json
-        with open(report_path, 'w', encoding='utf-8') as f:
-            json.dump(report, f, ensure_ascii=False, indent=2)
-        print(f"\nValidation report saved to: {report_path}")
+        
+        job_id = getattr(document, 'job_id', None) or 0
+        StructuredLogger.log_validation_report(
+            job_id=job_id,
+            filename=document.user_base_filename,
+            report_data=report_data
+        )
+        
+        if self.verbose:
+            print(f"\nValidation report saved via StructuredLogger")
 
-    def _save_segment_report(self, result: ValidationResult, output_dir: Path, segment_idx: int):
-        segment_report_path = output_dir / f"segment_{segment_idx:04d}_validation.json"
-        segment_report = {
-            'segment_index': segment_idx,
-            'status': result.status,
-            'validation_result': result.to_dict(),
-            'timestamp': datetime.now().isoformat(),
-        }
-        # raw_response is intentionally not persisted
-        import json
-        with open(segment_report_path, 'w', encoding='utf-8') as f:
-            json.dump(segment_report, f, ensure_ascii=False, indent=2)
+    # Removed _save_segment_report - individual segment reports now handled by centralized logging
 
     def _print_detailed_summary(self, summary: Dict[str, Any], results: List[ValidationResult]):
         print(f"\n{'='*60}")

@@ -3,7 +3,8 @@
 import os
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
 
-from ...services.translation_service import TranslationService
+from ...services.base.model_factory import ModelAPIFactory
+from ...services.utils.file_manager import FileManager
 from ...services.style_analysis_service import StyleAnalysisService
 from ...services.glossary_analysis_service import GlossaryAnalysisService
 from ...schemas import StyleAnalysisResponse, GlossaryAnalysisResponse
@@ -18,14 +19,15 @@ async def analyze_style(
     model_name: str = Form("gemini-2.5-flash-lite"),
 ):
     """Analyze the narrative style of a document."""
-    if not TranslationService.validate_api_key(api_key, model_name):
+    if not ModelAPIFactory.validate_api_key(api_key, model_name):
         raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
     
     try:
-        temp_file_path, _ = TranslationService.save_uploaded_file(file.file, file.filename)
+        temp_file_path, _ = FileManager.save_uploaded_file(file, file.filename)
         
         try:
-            style_result = StyleAnalysisService.analyze_style(
+            style_service = StyleAnalysisService()
+            style_result = style_service.analyze_style(
                 filepath=temp_file_path,
                 api_key=api_key,
                 model_name=model_name,
@@ -50,14 +52,15 @@ async def analyze_glossary(
     model_name: str = Form("gemini-2.5-flash-lite"),
 ):
     """Extract glossary terms from a document."""
-    if not TranslationService.validate_api_key(api_key, model_name):
+    if not ModelAPIFactory.validate_api_key(api_key, model_name):
         raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
     
     try:
-        temp_file_path, _ = TranslationService.save_uploaded_file(file.file, file.filename)
+        temp_file_path, _ = FileManager.save_uploaded_file(file, file.filename)
         
         try:
-            glossary_dict = GlossaryAnalysisService.analyze_glossary(
+            glossary_service = GlossaryAnalysisService()
+            glossary_dict = glossary_service.analyze_glossary(
                 filepath=temp_file_path,
                 api_key=api_key,
                 model_name=model_name,

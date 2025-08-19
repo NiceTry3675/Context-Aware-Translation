@@ -159,8 +159,8 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
             print("="*60)
             
             validator = TranslationValidator(gemini_model, verbose=verbose)
-            validation_results, validation_summary = validator.validate_job(
-                translation_job=document,
+            validation_results, validation_summary = validator.validate_document(
+                document=document,
                 sample_rate=validation_sample_rate,
                 quick_mode=quick_validation
             )

@@ -12,14 +12,18 @@ from typing import Optional, Dict, List, Any
 from pathlib import Path
 
 from core.translation.style_analyzer import StyleAnalyzer
-from core.config.loader import load_config
+from .base.base_service import BaseAnalysisService
 
 
-class GlossaryAnalysisService:
+class GlossaryAnalysisService(BaseAnalysisService):
     """Service layer for glossary analysis operations."""
     
-    @staticmethod
+    def __init__(self):
+        """Initialize glossary analysis service."""
+        super().__init__()
+    
     def analyze_glossary(
+        self,
         filepath: str,
         api_key: str,
         model_name: str,
@@ -41,15 +45,17 @@ class GlossaryAnalysisService:
         """
         # Process user-provided glossary if available
         if user_glossary_data:
-            return GlossaryAnalysisService._process_user_glossary(user_glossary_data)
+            return self._process_user_glossary(user_glossary_data)
+        
+        # Validate inputs for automatic extraction
+        self.validate_analysis_input(filepath, api_key, model_name)
         
         # Otherwise, perform automatic extraction
-        return GlossaryAnalysisService._extract_automatic_glossary(
+        return self._extract_automatic_glossary(
             filepath, api_key, model_name, sample_size
         )
     
-    @staticmethod
-    def _process_user_glossary(user_glossary_data: str) -> Dict[str, str]:
+    def _process_user_glossary(self, user_glossary_data: str) -> Dict[str, str]:
         """
         Process user-provided glossary data.
         
@@ -80,8 +86,8 @@ class GlossaryAnalysisService:
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid glossary JSON: {e}")
     
-    @staticmethod
     def _extract_automatic_glossary(
+        self,
         filepath: str,
         api_key: str,
         model_name: str,
@@ -99,22 +105,20 @@ class GlossaryAnalysisService:
         Returns:
             Dictionary of extracted term mappings
         """
-        from .translation_service import TranslationService
-        
         # Get model API instance
-        config = load_config()
-        model_api = TranslationService.get_model_api(api_key, model_name, config)
+        model_api = self.create_model_api(api_key, model_name)
         
         # Create style analyzer (which includes glossary methods)
         style_analyzer = StyleAnalyzer(model_api)
         
-        # Extract sample text
-        sample_text = style_analyzer.extract_sample_text(
+        # Extract sample text using base class utilities
+        segments = self.prepare_document_segments(
             filepath, method="first_chars", count=sample_size
         )
+        sample_text = '\n'.join(segments)
         
         # Get filename for logging
-        filename = Path(filepath).stem
+        filename = self.file_manager.get_filename_stem(filepath)
         
         try:
             # Analyze glossary (extract and translate terms)
@@ -136,8 +140,8 @@ class GlossaryAnalysisService:
             print(f"Warning: Could not extract automatic glossary: {e}")
             return {}
     
-    @staticmethod
     def merge_glossaries(
+        self,
         base_glossary: Dict[str, str],
         new_glossary: Dict[str, str],
         prefer_new: bool = True
@@ -164,8 +168,8 @@ class GlossaryAnalysisService:
         
         return merged
     
-    @staticmethod
     def filter_glossary_for_segment(
+        self,
         full_glossary: Dict[str, str],
         segment_text: str
     ) -> Dict[str, str]:
@@ -189,8 +193,7 @@ class GlossaryAnalysisService:
         
         return filtered
     
-    @staticmethod
-    def validate_glossary(glossary: Dict[str, str]) -> List[str]:
+    def validate_glossary(self, glossary: Dict[str, str]) -> List[str]:
         """
         Validate glossary entries and return list of issues.
         
@@ -220,8 +223,8 @@ class GlossaryAnalysisService:
         
         return issues
     
-    @staticmethod
     def export_glossary_to_json(
+        self,
         glossary: Dict[str, str],
         filepath: Optional[str] = None
     ) -> str:
@@ -244,8 +247,8 @@ class GlossaryAnalysisService:
         
         return json_str
     
-    @staticmethod
     def import_glossary_from_json(
+        self,
         json_str: Optional[str] = None,
         filepath: Optional[str] = None
     ) -> Dict[str, str]:

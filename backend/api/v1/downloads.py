@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from ...dependencies import get_db, get_required_user
-from ...services.translation_service import TranslationService
+from ...services.utils.file_manager import FileManager
 from ... import crud, models, auth, schemas
 
 router = APIRouter(tags=["downloads"])
@@ -46,7 +46,7 @@ async def download_job_output(
     if not db_job.filepath:
         raise HTTPException(status_code=404, detail="Filepath not found for this job.")
     
-    file_path, user_translated_filename, media_type = TranslationService.get_translated_file_path(db_job)
+    file_path, user_translated_filename, media_type = FileManager.get_translated_file_path(db_job)
     
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail=f"Translated file not found at path: {file_path}")
@@ -227,7 +227,7 @@ async def get_job_content(
     if not db_job.filepath:
         raise HTTPException(status_code=404, detail="Filepath not found for this job.")
     
-    file_path, _, _ = TranslationService.get_translated_file_path(db_job)
+    file_path, _, _ = FileManager.get_translated_file_path(db_job)
     
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail=f"Translated file not found at path: {file_path}")

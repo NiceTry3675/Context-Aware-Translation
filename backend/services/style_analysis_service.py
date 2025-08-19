@@ -12,14 +12,18 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 
 from core.translation.style_analyzer import StyleAnalyzer
-from core.config.loader import load_config
+from .base.base_service import BaseAnalysisService
 
 
-class StyleAnalysisService:
+class StyleAnalysisService(BaseAnalysisService):
     """Service layer for style analysis operations."""
     
-    @staticmethod
+    def __init__(self):
+        """Initialize style analysis service."""
+        super().__init__()
+    
     def analyze_style(
+        self,
         filepath: str,
         api_key: str,
         model_name: str,
@@ -40,27 +44,27 @@ class StyleAnalysisService:
                 - style_text: Formatted style text for the engine
                 - style_data: Parsed style dictionary
         """
-        from .translation_service import TranslationService
+        # Validate inputs
+        self.validate_analysis_input(filepath, api_key, model_name)
         
         # Get model API instance
-        config = load_config()
-        model_api = TranslationService.get_model_api(api_key, model_name, config)
+        model_api = self.create_model_api(api_key, model_name)
         
         # Create style analyzer
         style_analyzer = StyleAnalyzer(model_api)
         
         # Process user-provided style or perform automatic analysis
         if user_style_data:
-            return StyleAnalysisService._process_user_style(
+            return self._process_user_style(
                 user_style_data, style_analyzer
             )
         else:
-            return StyleAnalysisService._perform_automatic_analysis(
+            return self._perform_automatic_analysis(
                 filepath, style_analyzer
             )
     
-    @staticmethod
     def _process_user_style(
+        self,
         user_style_data: str,
         style_analyzer: StyleAnalyzer
     ) -> Dict[str, Any]:
@@ -90,8 +94,8 @@ class StyleAnalysisService:
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid style data JSON: {e}")
     
-    @staticmethod
     def _perform_automatic_analysis(
+        self,
         filepath: str,
         style_analyzer: StyleAnalyzer
     ) -> Dict[str, Any]:
@@ -105,13 +109,14 @@ class StyleAnalysisService:
         Returns:
             Dictionary with analyzed style information
         """
-        # Extract sample text for analysis
-        sample_text = style_analyzer.extract_sample_text(
+        # Extract sample text for analysis using base class utilities
+        segments = self.prepare_document_segments(
             filepath, method="first_chars", count=15000
         )
+        sample_text = '\n'.join(segments)
         
         # Get filename for logging
-        filename = Path(filepath).stem
+        filename = self.file_manager.get_filename_stem(filepath)
         
         # Analyze narrative style
         style_report_text = style_analyzer.analyze_narrative_style(
@@ -136,8 +141,8 @@ class StyleAnalysisService:
             'source': 'automatic_analysis'
         }
     
-    @staticmethod
     def extract_protagonist_name(
+        self,
         filepath: str,
         api_key: str,
         model_name: str
@@ -154,17 +159,16 @@ class StyleAnalysisService:
             Protagonist name or fallback value
         """
         try:
-            result = StyleAnalysisService.analyze_style(
+            result = self.analyze_style(
                 filepath, api_key, model_name
             )
             return result['protagonist_name']
         except Exception as e:
             print(f"Warning: Could not extract protagonist name: {e}")
             # Fallback to filename-based name
-            return Path(filepath).stem.replace('_', ' ').title()
+            return self.file_manager.get_filename_stem(filepath)
     
-    @staticmethod
-    def validate_style_data(style_data: Dict[str, Any]) -> bool:
+    def validate_style_data(self, style_data: Dict[str, Any]) -> bool:
         """
         Validate that style data contains required fields.
         
