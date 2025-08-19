@@ -2551,7 +2551,7 @@
           "source": {
             "type": "string",
             "title": "Source",
-            "description": "Source term in English"
+            "description": "Source term in the source language"
           },
           "korean": {
             "type": "string",

@@ -1112,7 +1112,7 @@ export interface components {
         TranslatedTerm: {
             /**
              * Source
-             * @description Source term in English
+             * @description Source term in the source language
              */
             source: string;
             /**

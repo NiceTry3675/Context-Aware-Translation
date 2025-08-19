@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 // TranslatedTerm Schema
 export const TranslatedTermSchema = z.object({
-  source: z.string().describe("Source term in English"),
+  source: z.string().describe("Source term in the source language"),
   korean: z.string().describe("Korean translation")
 });
 export type TranslatedTerm = z.infer<typeof TranslatedTermSchema>;

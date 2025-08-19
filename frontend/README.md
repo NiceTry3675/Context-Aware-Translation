@@ -2,7 +2,7 @@
 
 ## Overview
 
-A modern web application for AI-powered literary translation of novels from English to Korean. Built with Next.js 15, TypeScript, and Material-UI, this frontend provides an intuitive interface for uploading documents, managing translations, and engaging with the community.
+A modern web application for AI-powered literary translation of novels from various source languages into Korean. Built with Next.js 15, TypeScript, and Material-UI, this frontend provides an intuitive interface for uploading documents, managing translations, and engaging with the community.
 
 ## Tech Stack
 

@@ -2,7 +2,7 @@
   "description": "Single term translation pair.",
   "properties": {
     "source": {
-      "description": "Source term in English",
+      "description": "Source term in the source language",
       "title": "Source",
       "type": "string"
     },

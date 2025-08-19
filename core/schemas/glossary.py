@@ -32,7 +32,7 @@ class ExtractedTerms(BaseModel):
 class TranslatedTerm(BaseModel):
     """Single term translation pair."""
     
-    source: str = Field(..., description="Source term in English")
+    source: str = Field(..., description="Source term in the source language")
     korean: str = Field(..., description="Korean translation")
 
 
@@ -100,7 +100,7 @@ def make_translated_terms_schema(source_terms: List[str]) -> Dict[str, Any]:
                         "source": {
                             "type": "string",
                             "enum": source_terms,  # Constrain to specific terms
-                            "description": "Source term in English"
+                            "description": "Source term in the source language"
                         },
                         "korean": {
                             "type": "string",

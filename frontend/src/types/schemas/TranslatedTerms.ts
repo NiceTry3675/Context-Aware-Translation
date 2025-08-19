@@ -6,7 +6,7 @@
  */
 
 /**
- * Source term in English
+ * Source term in the source language
  */
 export type Source = string;
 /**

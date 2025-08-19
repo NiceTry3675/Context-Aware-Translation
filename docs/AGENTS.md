@@ -4,7 +4,7 @@ This file provides guidance to coding Agent when working with code in this repos
 
 ## Project Overview
 
-Translate English novels into Korean, focusing on contextual consistency of **narrative style, terminology (glossary), and character voice**, not just literal translation.
+Translate novels from various source languages into Korean, focusing on contextual consistency of **narrative style, terminology (glossary), and character voice**, not just literal translation.
 
 ## Tech Stack
 
