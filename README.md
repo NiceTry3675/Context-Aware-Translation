@@ -297,6 +297,15 @@ python init_categories.py
         ```
     -   **데이터베이스 설정**: 로컬 개발 시 PostgreSQL 대신 SQLite(`database.db`)를 사용하려면, `.env` 파일에 `DATABASE_URL`을 추가하지 않거나 주석 처리하세요.
 
+    -   **파일 저장소 설정**: 번역 결과를 외부 객체 스토리지에 보관하려면 다음 변수를 설정하세요.
+        ```env
+        STORAGE_BACKEND="s3"  # 기본값은 'local'
+        R2_ACCESS_KEY_ID=...
+        R2_SECRET_ACCESS_KEY=...
+        R2_BUCKET_NAME=...
+        R2_ENDPOINT_URL=https://<account_id>.r2.cloudflarestorage.com
+        ```
+        기본값(local)을 사용하면 서버 로컬 디스크에 저장합니다.
 ## ▶️ 실행 방법
 
 ### 웹 인터페이스 (권장)

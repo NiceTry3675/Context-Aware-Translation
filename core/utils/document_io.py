@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 from typing import List, Optional, Union
 from pathlib import Path
 
+from backend.services.storage import storage_backend
 from .file_parser import parse_document
 from ..schemas import SegmentInfo, TranslationDocumentData
 
@@ -79,6 +80,7 @@ class DocumentOutputManager:
         # Write to file
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(full_text)
+            storage_backend.save(output_path, output_path)
         
         print(f"✓ Text saved to {output_path}")
     
@@ -139,6 +141,7 @@ class DocumentOutputManager:
             
             # Write the EPUB file
             epub.write_epub(output_path, translated_book, {})
+            storage_backend.save(output_path, output_path)
             print(f"✓ EPUB saved to {output_path}")
             
         except Exception as e:

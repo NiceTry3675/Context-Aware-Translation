@@ -3,6 +3,7 @@ annotated-types==0.7.0
 anyio==4.9.0
 attrs==25.3.0
 beautifulsoup4==4.13.4
+boto3==1.35.82
 cachetools==5.5.2
 certifi==2025.7.9
 cffi==1.17.1

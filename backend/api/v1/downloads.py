@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from ...dependencies import get_db, get_required_user
 from ...services.utils.file_manager import FileManager
+from ...services.storage import storage_backend, LocalStorageBackend
 from ... import crud, models, auth, schemas
 
 router = APIRouter(tags=["downloads"])
@@ -47,11 +48,12 @@ async def download_job_output(
         raise HTTPException(status_code=404, detail="Filepath not found for this job.")
     
     file_path, user_translated_filename, media_type = FileManager.get_translated_file_path(db_job)
-    
-    if not os.path.exists(file_path):
+    if not FileManager.file_exists(file_path):
         raise HTTPException(status_code=404, detail=f"Translated file not found at path: {file_path}")
-    
-    return FileResponse(path=file_path, filename=user_translated_filename, media_type=media_type)
+    if isinstance(storage_backend, LocalStorageBackend):
+        return FileResponse(path=file_path, filename=user_translated_filename, media_type=media_type)
+    url = storage_backend.generate_presigned_url(file_path)
+    return {"url": url}
 
 
 @router.get("/jobs/{job_id}/logs/{log_type}")
@@ -228,14 +230,13 @@ async def get_job_content(
         raise HTTPException(status_code=404, detail="Filepath not found for this job.")
     
     file_path, _, _ = FileManager.get_translated_file_path(db_job)
-    
-    if not os.path.exists(file_path):
+    if not FileManager.file_exists(file_path):
         raise HTTPException(status_code=404, detail=f"Translated file not found at path: {file_path}")
-    
+    local_path = storage_backend.get(file_path)
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(local_path, 'r', encoding='utf-8') as f:
             content = f.read()
-        
+
         # Try to read the original source file
         source_content = None
         if db_job.filepath and os.path.exists(db_job.filepath):

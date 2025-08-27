@@ -6,6 +6,7 @@ from core.translation.post_editor import PostEditEngine
 from core.translation.document import TranslationDocument
 from .base.base_service import BaseService
 from .. import crud, models
+from .storage import storage_backend
 
 
 class PostEditService(BaseService):
@@ -27,6 +28,7 @@ class PostEditService(BaseService):
         
         if not self.file_manager.file_exists(translated_path):
             raise FileNotFoundError(f"Translated file not found: {translated_path}")
+        local_path = storage_backend.get(translated_path)
         
         # Initialize post-editor
         model_api = self.create_model_api(api_key, model_name)
@@ -72,7 +74,7 @@ class PostEditService(BaseService):
                 f"translated={len(translation_document.translated_segments)})."
             )
         
-        return post_editor, translation_document, translated_path
+        return post_editor, translation_document, local_path
     
     def run_post_edit(
         self,
@@ -97,6 +99,7 @@ class PostEditService(BaseService):
         try:
             with open(translated_path, 'w', encoding='utf-8') as f:
                 f.write('\n'.join(edited_segments))
+                storage_backend.save(translated_path, translated_path)
             print(f"--- [POST-EDIT] Successfully updated translated file: {translated_path} ---")
         except IOError as e:
             print(f"--- [POST-EDIT] Error writing to translated file: {e} ---")

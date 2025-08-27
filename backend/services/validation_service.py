@@ -7,6 +7,7 @@ from core.translation.validator import TranslationValidator
 from core.translation.document import TranslationDocument
 from .base.base_service import BaseService
 from .. import crud, models
+from .storage import storage_backend
 
 
 class ValidationService(BaseService):
@@ -30,6 +31,7 @@ class ValidationService(BaseService):
             raise FileNotFoundError(f"Translated file not found: {translated_path}")
         
         # Initialize validator
+        local_path = storage_backend.get(translated_path)
         model_api = self.create_model_api(api_key, model_name)
         # Structured validator (single mode)
         validator = TranslationValidator(model_api)
@@ -42,7 +44,7 @@ class ValidationService(BaseService):
         )
         
         # Load the translated segments from the translated file
-        with open(translated_path, 'r', encoding='utf-8') as f:
+        with open(local_path, 'r', encoding='utf-8') as f:
             translated_text = f.read()
             validation_document.translated_segments = translated_text.split('\n')
             # Filter out empty strings from the list
@@ -63,7 +65,7 @@ class ValidationService(BaseService):
         if job.final_glossary:
             validation_document.glossary = json.loads(job.final_glossary) if isinstance(job.final_glossary, str) else job.final_glossary
         
-        return validator, validation_document, translated_path
+        return validator, validation_document, local_path
     
     def run_validation(
         self,

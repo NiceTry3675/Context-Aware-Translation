@@ -11,6 +11,7 @@ import uuid
 from pathlib import Path
 from typing import Tuple, Optional
 from backend import models
+from backend.services.storage import storage_backend
 
 
 class FileManager:
@@ -139,6 +140,8 @@ class FileManager:
         
         # Delete translated file
         translated_path, _, _ = FileManager.get_translated_file_path(job)
+        if storage_backend.exists(translated_path):
+            storage_backend.delete(translated_path)
         if os.path.exists(translated_path):
             os.remove(translated_path)
         
@@ -190,17 +193,13 @@ class FileManager:
     
     @staticmethod
     def file_exists(filepath: str) -> bool:
-        """
-        Check if a file exists.
-        
-        Args:
-            filepath: File path to check
-            
-        Returns:
-            True if file exists, False otherwise
-        """
-        return filepath and os.path.exists(filepath)
-    
+        if not filepath:
+            return False
+        if os.path.exists(filepath):
+            return True
+        if FileManager.TRANSLATED_DIR in filepath:
+            return storage_backend.exists(filepath)
+        return False
     @staticmethod
     def get_file_extension(filename: str) -> str:
         """
