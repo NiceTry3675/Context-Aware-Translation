@@ -103,6 +103,7 @@ class TranslationJob(TranslationJobBase):
     illustrations_status: Optional[str] = None
     illustrations_progress: Optional[int] = None
     illustrations_count: Optional[int] = None
+    illustrations_data: Optional[List[Dict[str, Any]]] = None
     
     # Structured glossary data (stored as JSON in DB, parsed as Pydantic model)
     final_glossary: Optional[Dict[str, Any]] = None

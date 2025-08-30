@@ -24,6 +24,10 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
+import { useAuth } from '@clerk/nextjs';
+import { getCachedClerkToken } from '../utils/authToken';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface Illustration {
   segment_index: number;
@@ -52,6 +56,7 @@ export default function IllustrationViewer({
   onRegenerateIllustration,
   onDeleteIllustration,
 }: IllustrationViewerProps) {
+  const { getToken } = useAuth();
   const [selectedImage, setSelectedImage] = useState<Illustration | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadedImages, setLoadedImages] = useState<{ [key: number]: string }>({});
@@ -65,14 +70,15 @@ export default function IllustrationViewer({
   }, [jobId, illustrations]);
 
   const loadIllustrations = async () => {
+    const token = await getCachedClerkToken(getToken);
     const illustrationPromises = illustrations.map(async (ill) => {
       if (ill.success) {
         try {
           const response = await fetch(
-            `/api/v1/illustrations/${jobId}/illustration/${ill.segment_index}`,
+            `${API_BASE_URL}/api/v1/illustrations/${jobId}/illustration/${ill.segment_index}`,
             {
               headers: {
-                Authorization: `Bearer ${localStorage.getItem('token')}`,
+                Authorization: token ? `Bearer ${token}` : '',
               },
             }
           );
@@ -394,15 +400,14 @@ export default function IllustrationViewer({
                   />
                   <Typography
                     variant="body2"
-                    color="text.secondary"
-                    sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}
+                    sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1, color: '#000000' }}
                   >
                     프롬프트: {selectedImage.prompt}
                   </Typography>
                 </Box>
               ) : (
                 <Box sx={{ p: 2 }}>
-                  <Typography variant="h6" gutterBottom>
+                  <Typography variant="h6" gutterBottom sx={{ color: '#000000' }}>
                     생성된 프롬프트
                   </Typography>
                   <Box
@@ -420,6 +425,7 @@ export default function IllustrationViewer({
                       sx={{
                         whiteSpace: 'pre-wrap',
                         wordBreak: 'break-word',
+                        color: '#000000',
                       }}
                     >
                       {selectedImage.prompt}
@@ -427,7 +433,7 @@ export default function IllustrationViewer({
                   </Box>
                   {loadedPrompts[selectedImage.segment_index] && (
                     <Box>
-                      <Typography variant="subtitle2" gutterBottom>
+                      <Typography variant="subtitle2" gutterBottom sx={{ color: '#000000' }}>
                         프롬프트 세부 정보
                       </Typography>
                       <Box
@@ -439,6 +445,7 @@ export default function IllustrationViewer({
                           fontSize: '0.85rem',
                           whiteSpace: 'pre-wrap',
                           overflowX: 'auto',
+                          color: '#000000',
                         }}
                       >
                         {JSON.stringify(loadedPrompts[selectedImage.segment_index], null, 2)}
