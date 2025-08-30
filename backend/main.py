@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 load_dotenv()
 
 # Import routers
-from .api.v1 import translation, community, admin, webhooks, announcements, schemas
+from .api.v1 import translation, community, admin, webhooks, announcements, schemas, illustrations
 
 # Note: Database migrations are now handled by Alembic
 # Run `cd backend && alembic upgrade head` to apply migrations
@@ -67,6 +67,7 @@ app.include_router(admin.router)
 app.include_router(webhooks.router)
 app.include_router(announcements.router)
 app.include_router(schemas.router)
+app.include_router(illustrations.router, prefix="/api/v1/illustrations", tags=["illustrations"])
 
 # Root endpoint
 @app.get("/")

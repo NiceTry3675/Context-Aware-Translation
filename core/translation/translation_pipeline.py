@@ -16,10 +16,12 @@ from .models.openrouter import OpenRouterModel
 from .document import TranslationDocument
 from .style_analyzer import StyleAnalyzer
 from .progress_tracker import ProgressTracker
+from .illustration_generator import IllustrationGenerator
 from ..prompts.builder import PromptBuilder
 from ..prompts.manager import PromptManager
 from ..prompts.sanitizer import PromptSanitizer
 from ..config.builder import DynamicConfigBuilder
+from ..schemas.illustration import IllustrationConfig, IllustrationBatch
 from ..errors import ProhibitedException, TranslationError
 from ..errors import prohibited_content_logger
 from ..utils.logging import TranslationLogger
@@ -64,7 +66,9 @@ class TranslationPipeline:
                  db: Optional[Session] = None,
                  job_id: Optional[int] = None,
                  initial_core_style: Optional[str] = None,
-                 style_model_api: Optional[GeminiModel | OpenRouterModel] = None):
+                 style_model_api: Optional[GeminiModel | OpenRouterModel] = None,
+                 illustration_config: Optional[IllustrationConfig] = None,
+                 illustration_api_key: Optional[str] = None):
         """
         Initialize the translation pipeline.
         
@@ -74,6 +78,9 @@ class TranslationPipeline:
             db: Optional database session for progress tracking
             job_id: Optional job ID for database updates
             initial_core_style: Optional pre-defined core narrative style
+            style_model_api: Optional different model for style analysis
+            illustration_config: Optional configuration for illustration generation
+            illustration_api_key: Optional API key for illustration generation
         """
         self.gemini_api = gemini_api
         self.dyn_config_builder = dyn_config_builder
@@ -86,6 +93,21 @@ class TranslationPipeline:
         # Logger will be initialized with document filename later
         self.job_id = job_id
         self.logger = None
+        
+        # Initialize illustration generator if configured
+        self.illustration_config = illustration_config
+        self.illustration_generator = None
+        if illustration_config and illustration_config.enabled and illustration_api_key:
+            try:
+                self.illustration_generator = IllustrationGenerator(
+                    api_key=illustration_api_key,
+                    job_id=job_id,
+                    enable_caching=illustration_config.cache_enabled
+                )
+                print("Illustration generation enabled")
+            except ImportError as e:
+                print(f"Warning: Could not initialize illustration generator: {e}")
+                self.illustration_generator = None
     
     
     def translate_document(self, document: TranslationDocument):
@@ -178,10 +200,23 @@ class TranslationPipeline:
             
             # Append translation and save progress
             document.append_translated_segment(translated_text, segment_info)
+            
+            # Generate illustration if enabled
+            if self.illustration_generator and self._should_generate_illustration(segment_info, i):
+                self._generate_segment_illustration(
+                    segment_info, i, document.glossary, 
+                    core_narrative_style, style_deviation
+                )
+            
             document.save_partial_output()
         
         # Save final output
         document.save_final_output()
+        
+        # Generate illustration batch report if illustrations were created
+        if self.illustration_generator:
+            illustration_metadata = self.illustration_generator.get_illustration_metadata()
+            self.logger.log_debug(f"Illustration generation complete: {illustration_metadata}")
         
         # Update database with final data
         self.progress_tracker.finalize_translation(
@@ -344,6 +379,97 @@ class TranslationPipeline:
             
             raise e from final_e
     
+    def _should_generate_illustration(self, segment_info: Any, segment_index: int) -> bool:
+        """
+        Determine if an illustration should be generated for this segment.
+        
+        Args:
+            segment_info: The segment information
+            segment_index: Index of the current segment
+            
+        Returns:
+            Boolean indicating if illustration should be generated
+        """
+        if not self.illustration_config or not self.illustration_config.enabled:
+            return False
+        
+        # Check maximum illustrations limit
+        if self.illustration_config.max_illustrations:
+            current_count = len(self.illustration_generator.cache) if self.illustration_generator else 0
+            if current_count >= self.illustration_config.max_illustrations:
+                return False
+        
+        # Check minimum segment length
+        if len(segment_info.text) < self.illustration_config.min_segment_length:
+            return False
+        
+        # Check if we should skip dialogue-heavy segments
+        if self.illustration_config.skip_dialogue_heavy:
+            # Simple heuristic: count quotation marks
+            quote_count = segment_info.text.count('"') + segment_info.text.count("'")
+            if quote_count > len(segment_info.text) / 50:  # More than 1 quote per 50 chars
+                return False
+        
+        # Check segments_per_illustration setting
+        if self.illustration_config.segments_per_illustration > 1:
+            # Only generate for every Nth segment
+            if segment_index % self.illustration_config.segments_per_illustration != 0:
+                return False
+        
+        return True
+    
+    def _generate_segment_illustration(self, segment_info: Any, segment_index: int,
+                                     glossary: Dict[str, str], core_style: str,
+                                     style_deviation: str):
+        """
+        Generate an illustration for the current segment.
+        
+        Args:
+            segment_info: The segment information
+            segment_index: Index of the current segment
+            glossary: Current glossary
+            core_style: Core narrative style
+            style_deviation: Style deviation for this segment
+        """
+        if not self.illustration_generator:
+            return
+        
+        try:
+            # Build style hints from configuration and narrative style
+            style_hints = self.illustration_config.style_hints
+            if not style_hints and core_style:
+                style_hints = f"Literary illustration matching: {core_style[:100]}"
+            
+            # Generate the illustration
+            illustration_path, prompt = self.illustration_generator.generate_illustration(
+                segment_text=segment_info.text,
+                segment_index=segment_index,
+                style_hints=style_hints,
+                glossary=glossary
+            )
+            
+            if illustration_path:
+                # Update segment info with illustration data
+                segment_info.illustration_path = illustration_path
+                segment_info.illustration_prompt = prompt
+                segment_info.illustration_status = "generated"
+                
+                print(f"✓ Generated illustration for segment {segment_index}")
+                
+                # Log the generation
+                if self.logger:
+                    self.logger.log_debug(
+                        f"Illustration generated for segment {segment_index}: {illustration_path}"
+                    )
+            else:
+                segment_info.illustration_status = "failed"
+                print(f"✗ Failed to generate illustration for segment {segment_index}")
+                
+        except Exception as e:
+            segment_info.illustration_status = "failed"
+            print(f"Error generating illustration for segment {segment_index}: {e}")
+            if self.logger:
+                self.logger.log_error(e, segment_index, "illustration_generation")
     
     
     

@@ -32,6 +32,7 @@ import PostEditLogViewer from '../PostEditLogViewer';
 import TranslationContentViewer from '../TranslationContentViewer';
 import InfiniteScrollTranslationViewer from '../InfiniteScrollTranslationViewer';
 import SegmentViewer from './SegmentViewer';
+import IllustrationViewer from '../IllustrationViewer';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -201,6 +202,10 @@ export default function ResultsView({
             label="포스트 에디팅"
             disabled={!jobId || (!postEditLog && selectedJob?.post_edit_status !== 'COMPLETED')} 
           />
+          <Tab 
+            label="삽화"
+            disabled={!jobId || !selectedJob?.illustrations_enabled} 
+          />
         </Tabs>
       </Box>
 
@@ -337,6 +342,21 @@ export default function ResultsView({
                 onSegmentClick={onSegmentClick}
               />
             ) : null}
+          </TabPanel>
+          
+          <TabPanel value={tabValue} index={3}>
+            {selectedJob?.illustrations_enabled ? (
+              <IllustrationViewer
+                jobId={jobId || ''}
+                illustrations={selectedJob?.illustrations_data || []}
+                status={selectedJob?.illustrations_status}
+                count={selectedJob?.illustrations_count || 0}
+              />
+            ) : (
+              <Alert severity="info">
+                이 번역 작업에는 삽화 기능이 활성화되지 않았습니다.
+              </Alert>
+            )}
           </TabPanel>
         </Box>
       </Box>

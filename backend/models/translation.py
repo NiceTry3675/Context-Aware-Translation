@@ -38,6 +38,14 @@ class TranslationJob(Base):
     post_edit_progress = Column(Integer, default=0) # Progress percentage 0-100
     post_edit_log_path = Column(String, nullable=True)
     post_edit_completed_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Illustration generation fields
+    illustrations_enabled = Column(Boolean, default=False)
+    illustrations_config = Column(JSON, nullable=True)  # Stores IllustrationConfig as JSON
+    illustrations_data = Column(JSON, nullable=True)  # Stores illustration metadata
+    illustrations_status = Column(String, nullable=True)  # PENDING, IN_PROGRESS, COMPLETED, FAILED
+    illustrations_count = Column(Integer, default=0)  # Number of illustrations generated
+    illustrations_directory = Column(String, nullable=True)  # Path to illustrations directory
 
 class TranslationUsageLog(Base):
     __tablename__ = "translation_usage_logs"

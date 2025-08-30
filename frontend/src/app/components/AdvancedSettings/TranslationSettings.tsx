@@ -1,5 +1,5 @@
 import {
-  Box, Typography, Chip, Slider, FormControlLabel, Switch
+  Box, Typography, Chip, Slider, FormControlLabel, Switch, Select, MenuItem, FormControl, InputLabel
 } from '@mui/material';
 import { TranslationSettings as Settings } from '../../types/ui';
 
@@ -104,6 +104,85 @@ export default function TranslationSettings({ settings, onChange }: TranslationS
               }
               label="검증된 문제 자동 수정 (Post-Edit)"
             />
+          </Box>
+        )}
+      </Box>
+      
+      {/* Illustration Settings */}
+      <Box sx={{ mt: 3 }}>
+        <Typography variant="h6" gutterBottom>삽화 생성 설정</Typography>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={settings.enableIllustrations || false}
+              onChange={(e) => updateSetting('enableIllustrations', e.target.checked)}
+              color="primary"
+            />
+          }
+          label="세그먼트별 삽화 자동 생성"
+        />
+        
+        {settings.enableIllustrations && (
+          <Box sx={{ ml: 3, mt: 2 }}>
+            <FormControl variant="outlined" size="small" sx={{ mb: 2, minWidth: 200 }}>
+              <InputLabel>삽화 스타일</InputLabel>
+              <Select
+                value={settings.illustrationStyle || 'digital_art'}
+                onChange={(e) => updateSetting('illustrationStyle', e.target.value as any)}
+                label="삽화 스타일"
+              >
+                <MenuItem value="realistic">사실적</MenuItem>
+                <MenuItem value="artistic">예술적</MenuItem>
+                <MenuItem value="watercolor">수채화</MenuItem>
+                <MenuItem value="digital_art">디지털 아트</MenuItem>
+                <MenuItem value="sketch">스케치</MenuItem>
+                <MenuItem value="anime">애니메이션</MenuItem>
+                <MenuItem value="vintage">빈티지</MenuItem>
+                <MenuItem value="minimalist">미니멀리스트</MenuItem>
+              </Select>
+            </FormControl>
+            
+            <Box sx={{ mt: 2 }}>
+              <Typography gutterBottom>
+                최대 삽화 개수: <strong>{settings.maxIllustrations || '제한 없음'}</strong>
+              </Typography>
+              <Slider
+                value={settings.maxIllustrations || 0}
+                onChange={(_, newValue) => updateSetting('maxIllustrations', newValue === 0 ? undefined : newValue as number)}
+                valueLabelDisplay="auto"
+                step={5}
+                marks={[
+                  { value: 0, label: '제한 없음' },
+                  { value: 10, label: '10개' },
+                  { value: 25, label: '25개' },
+                  { value: 50, label: '50개' },
+                ]}
+                min={0}
+                max={50}
+                color="secondary"
+              />
+            </Box>
+            
+            <Box sx={{ mt: 2 }}>
+              <Typography gutterBottom>
+                삽화 생성 빈도: <strong>{settings.illustrationsPerSegment || 1}개 세그먼트마다</strong>
+              </Typography>
+              <Slider
+                value={settings.illustrationsPerSegment || 1}
+                onChange={(_, newValue) => updateSetting('illustrationsPerSegment', newValue as number)}
+                valueLabelDisplay="auto"
+                step={1}
+                marks={[
+                  { value: 1, label: '모든 세그먼트' },
+                  { value: 3, label: '3개마다' },
+                  { value: 5, label: '5개마다' },
+                  { value: 10, label: '10개마다' },
+                ]}
+                min={1}
+                max={10}
+                color="secondary"
+              />
+            </Box>
           </Box>
         )}
       </Box>

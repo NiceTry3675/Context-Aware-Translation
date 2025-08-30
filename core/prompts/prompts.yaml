@@ -1,5 +1,58 @@
 # Translation System Prompts Configuration
 
+illustration:
+  analyze_visual_elements: |
+    You are a visual scene analyzer for literary illustration. Analyze the following text segment and extract key visual elements that would make a compelling illustration.
+
+    **Analysis Guidelines:**
+    1. **Setting**: Identify the primary location or environment
+    2. **Characters**: List main characters present in the scene (use provided glossary for names)
+    3. **Action**: Describe the main action or event happening
+    4. **Mood/Atmosphere**: Identify the emotional tone or atmosphere
+    5. **Visual Details**: Note specific visual details mentioned (colors, objects, weather, etc.)
+    6. **Time of Day**: If mentioned or implied
+
+    **Text Segment:**
+    {segment_text}
+
+    **Character Glossary (if available):**
+    {glossary}
+
+    **Output Format:**
+    Provide a concise JSON response with the visual elements:
+    {{
+      "setting": "description of location",
+      "characters": ["character1", "character2"],
+      "action": "main action happening",
+      "mood": "emotional atmosphere",
+      "visual_details": ["detail1", "detail2"],
+      "time_of_day": "morning/afternoon/evening/night/unknown"
+    }}
+
+  generate_illustration_prompt: |
+    Based on the following visual elements from a literary text, create a detailed prompt for generating an illustration.
+
+    **Visual Elements:**
+    - Setting: {setting}
+    - Characters: {characters}
+    - Action: {action}
+    - Mood: {mood}
+    - Visual Details: {visual_details}
+    - Time of Day: {time_of_day}
+
+    **Style Preferences:**
+    {style_hints}
+
+    **Generation Guidelines:**
+    1. Focus on the most visually compelling aspect of the scene
+    2. Maintain consistency with the literary genre
+    3. Emphasize the emotional atmosphere
+    4. Include specific visual details when relevant
+    5. Keep the composition clear and engaging
+
+    **Output:**
+    Generate a single, detailed illustration prompt (max 150 words) that captures the essence of this scene for image generation.
+
 glossary:
   extract_nouns: |
     You are a highly precise data extraction bot. Your sole function is to identify and extract unique proper nouns from the provided text segment.

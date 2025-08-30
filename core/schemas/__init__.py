@@ -36,6 +36,13 @@ from .validation import (
 
 from .segment import SegmentInfo
 from .document import TranslationDocumentData
+from .illustration import (
+    IllustrationStyle,
+    IllustrationStatus,
+    IllustrationConfig,
+    IllustrationData,
+    IllustrationBatch,
+)
 
 __all__ = [
     # Glossary
@@ -60,4 +67,10 @@ __all__ = [
     # Document and Segment
     "SegmentInfo",
     "TranslationDocumentData",
+    # Illustration
+    "IllustrationStyle",
+    "IllustrationStatus",
+    "IllustrationConfig",
+    "IllustrationData",
+    "IllustrationBatch",
 ]

@@ -44,6 +44,11 @@ export interface TranslationSettings {
   validationSampleRate: number;
   quickValidation: boolean;
   enablePostEdit: boolean;
+  // Illustration settings
+  enableIllustrations: boolean;
+  illustrationStyle?: 'realistic' | 'artistic' | 'watercolor' | 'digital_art' | 'sketch' | 'anime' | 'vintage' | 'minimalist';
+  maxIllustrations?: number;
+  illustrationsPerSegment?: number;
 }
 
 // Form data for new translation requests
