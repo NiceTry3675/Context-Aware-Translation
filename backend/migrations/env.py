@@ -18,7 +18,9 @@ sys.path.append(str(Path(__file__).parent.parent))
 from models import Base, User, TranslationJob, TranslationUsageLog, Announcement, PostCategory, Post, Comment
 
 # Get database URL from environment
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./database.db")
+# Use absolute path to ensure consistency regardless of where alembic is run
+project_root = Path(__file__).parent.parent.parent
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{project_root}/database.db")
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

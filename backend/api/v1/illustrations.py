@@ -14,8 +14,8 @@ import json
 from pathlib import Path
 
 from ...database import SessionLocal
-from ...models import TranslationJob
-from ...auth import get_current_user
+from ...models import TranslationJob, User
+from ...auth import get_required_user
 from core.translation.illustration_generator import IllustrationGenerator
 from core.schemas.illustration import (
     IllustrationConfig, 
@@ -38,22 +38,23 @@ def get_db():
 async def generate_illustrations(
     job_id: int,
     config: IllustrationConfig,
-    api_key: str = Query(..., description="API key for Gemini image generation"),
-    max_illustrations: Optional[int] = Query(None, description="Maximum number of illustrations to generate"),
+    api_key: str = Query(..., description="API key for Gemini"),
+    max_illustrations: Optional[int] = Query(None, description="Maximum number of illustration prompts to generate"),
     background_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: User = Depends(get_required_user)
 ):
     """
-    Generate illustrations for a translation job.
+    Generate illustration prompts for a translation job.
     
-    This endpoint triggers illustration generation for all or selected segments
-    of a completed translation job.
+    This endpoint triggers generation of detailed illustration prompts for all or selected segments
+    of a completed translation job. The prompts can then be used with image generation services
+    like DALL-E, Midjourney, or Stable Diffusion to create actual illustrations.
     """
     # Get the translation job
     job = db.query(TranslationJob).filter(
         TranslationJob.id == job_id,
-        TranslationJob.owner_id == current_user.get("id")
+        TranslationJob.owner_id == current_user.id
     ).first()
     
     if not job:
@@ -69,6 +70,7 @@ async def generate_illustrations(
     job.illustrations_enabled = True
     job.illustrations_config = config.dict()
     job.illustrations_status = "IN_PROGRESS"
+    job.illustrations_progress = 0
     db.commit()
     
     # Start background generation
@@ -82,9 +84,11 @@ async def generate_illustrations(
     )
     
     return {
-        "message": "Illustration generation started",
+        "message": "Illustration prompt generation started. Prompts will be created for use with external image generation services.",
         "job_id": job_id,
-        "status": "IN_PROGRESS"
+        "status": "IN_PROGRESS",
+        "type": "prompt_generation",
+        "note": "Generated prompts can be used with services like DALL-E, Midjourney, or Stable Diffusion to create actual illustrations."
     }
 
 
@@ -92,17 +96,18 @@ async def generate_illustrations(
 async def get_job_illustrations(
     job_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: User = Depends(get_required_user)
 ):
     """
-    Get all illustrations for a translation job.
+    Get all illustration prompts for a translation job.
     
-    Returns metadata about all generated illustrations for the specified job.
+    Returns metadata about all generated illustration prompts for the specified job.
+    These prompts can be used with external image generation services.
     """
     # Get the translation job
     job = db.query(TranslationJob).filter(
         TranslationJob.id == job_id,
-        TranslationJob.owner_id == current_user.get("id")
+        TranslationJob.owner_id == current_user.id
     ).first()
     
     if not job:
@@ -113,7 +118,8 @@ async def get_job_illustrations(
             "job_id": job_id,
             "illustrations": [],
             "status": job.illustrations_status or "NOT_STARTED",
-            "count": 0
+            "count": 0,
+            "type": "prompts"
         }
     
     return {
@@ -121,82 +127,84 @@ async def get_job_illustrations(
         "illustrations": job.illustrations_data,
         "status": job.illustrations_status,
         "count": job.illustrations_count,
-        "directory": job.illustrations_directory
+        "directory": job.illustrations_directory,
+        "type": "prompts",
+        "note": "These are illustration prompts, not actual images. Use them with image generation services."
     }
 
 
 @router.get("/{job_id}/illustration/{segment_index}")
-async def get_illustration_image(
+async def get_illustration_prompt(
     job_id: int,
     segment_index: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: User = Depends(get_required_user)
 ):
     """
-    Get a specific illustration image file.
+    Get the illustration prompt for a specific segment.
     
-    Returns the actual image file for download or display.
+    Returns the generated prompt JSON file that can be used with image generation services.
     """
     # Get the translation job
     job = db.query(TranslationJob).filter(
         TranslationJob.id == job_id,
-        TranslationJob.owner_id == current_user.get("id")
+        TranslationJob.owner_id == current_user.id
     ).first()
     
     if not job:
         raise HTTPException(status_code=404, detail="Translation job not found")
     
     if not job.illustrations_directory:
-        raise HTTPException(status_code=404, detail="No illustrations generated for this job")
+        raise HTTPException(status_code=404, detail="No illustration prompts generated for this job")
     
-    # Construct the image path
-    image_filename = f"segment_{segment_index:04d}_illustration.png"
-    image_path = Path(job.illustrations_directory) / image_filename
+    # Construct the prompt file path
+    prompt_filename = f"segment_{segment_index:04d}_prompt.json"
+    prompt_path = Path(job.illustrations_directory) / prompt_filename
     
-    if not image_path.exists():
-        raise HTTPException(status_code=404, detail=f"Illustration not found for segment {segment_index}")
+    if not prompt_path.exists():
+        raise HTTPException(status_code=404, detail=f"Illustration prompt not found for segment {segment_index}")
     
-    return FileResponse(
-        path=str(image_path),
-        media_type="image/png",
-        filename=image_filename
-    )
+    # Read and return the prompt data
+    with open(prompt_path, 'r', encoding='utf-8') as f:
+        prompt_data = json.load(f)
+    
+    return prompt_data
 
 
 @router.delete("/{job_id}/illustration/{segment_index}")
-async def delete_illustration(
+async def delete_illustration_prompt(
     job_id: int,
     segment_index: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: User = Depends(get_required_user)
 ):
     """
-    Delete a specific illustration.
+    Delete a specific illustration prompt.
     
-    Removes the illustration file and updates the job metadata.
+    Removes the prompt file and updates the job metadata.
     """
     # Get the translation job
     job = db.query(TranslationJob).filter(
         TranslationJob.id == job_id,
-        TranslationJob.owner_id == current_user.get("id")
+        TranslationJob.owner_id == current_user.id
     ).first()
     
     if not job:
         raise HTTPException(status_code=404, detail="Translation job not found")
     
     if not job.illustrations_directory:
-        raise HTTPException(status_code=404, detail="No illustrations generated for this job")
+        raise HTTPException(status_code=404, detail="No illustration prompts generated for this job")
     
-    # Construct the image path
-    image_filename = f"segment_{segment_index:04d}_illustration.png"
-    image_path = Path(job.illustrations_directory) / image_filename
+    # Construct the prompt file path
+    prompt_filename = f"segment_{segment_index:04d}_prompt.json"
+    prompt_path = Path(job.illustrations_directory) / prompt_filename
     
-    if not image_path.exists():
-        raise HTTPException(status_code=404, detail=f"Illustration not found for segment {segment_index}")
+    if not prompt_path.exists():
+        raise HTTPException(status_code=404, detail=f"Illustration prompt not found for segment {segment_index}")
     
     # Delete the file
     try:
-        image_path.unlink()
+        prompt_path.unlink()
         
         # Update job metadata
         if job.illustrations_data:
@@ -210,31 +218,31 @@ async def delete_illustration(
             job.illustrations_count = len(illustrations_data)
             db.commit()
         
-        return {"message": f"Illustration for segment {segment_index} deleted successfully"}
+        return {"message": f"Illustration prompt for segment {segment_index} deleted successfully"}
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete illustration: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete illustration prompt: {str(e)}")
 
 
 @router.post("/{job_id}/regenerate/{segment_index}")
-async def regenerate_illustration(
+async def regenerate_illustration_prompt(
     job_id: int,
     segment_index: int,
     style_hints: Optional[str] = Query(None, description="Optional style hints for regeneration"),
-    api_key: str = Query(..., description="API key for Gemini image generation"),
+    api_key: str = Query(..., description="API key for Gemini"),
     background_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    current_user: User = Depends(get_required_user)
 ):
     """
-    Regenerate an illustration for a specific segment.
+    Regenerate an illustration prompt for a specific segment.
     
-    This allows regenerating a single illustration with optional new style hints.
+    This allows regenerating a single illustration prompt with optional new style hints.
     """
     # Get the translation job
     job = db.query(TranslationJob).filter(
         TranslationJob.id == job_id,
-        TranslationJob.owner_id == current_user.get("id")
+        TranslationJob.owner_id == current_user.id
     ).first()
     
     if not job:
@@ -318,18 +326,39 @@ def generate_illustrations_task(
                 if not config.skip_dialogue_heavy or segment_data['text'].count('"') < len(segment_data['text']) / 50:
                     segments_to_illustrate.append(segment_data)
         
-        # Generate illustrations
-        results = generator.generate_batch_illustrations(
-            segments=segments_to_illustrate,
-            style_hints=config.style_hints,
-            glossary=job.final_glossary
-        )
+        # Generate illustration prompts with progress tracking
+        results = []
+        total_segments = len(segments_to_illustrate)
         
-        # Update job with results
+        for idx, segment in enumerate(segments_to_illustrate):
+            # Generate illustration for this segment
+            prompt_path, prompt = generator.generate_illustration(
+                segment_text=segment['text'],
+                segment_index=segment['index'],
+                style_hints=config.style_hints,
+                glossary=job.final_glossary
+            )
+            
+            result = {
+                'segment_index': segment['index'],
+                'prompt_path': prompt_path,
+                'prompt': prompt,
+                'success': prompt_path is not None,
+                'type': 'prompt'
+            }
+            results.append(result)
+            
+            # Update progress
+            progress = int((idx + 1) / total_segments * 100)
+            job.illustrations_progress = progress
+            db_session.commit()
+        
+        # Update job with final results
         job.illustrations_data = results
         job.illustrations_count = sum(1 for r in results if r['success'])
         job.illustrations_directory = str(generator.job_output_dir)
         job.illustrations_status = "COMPLETED"
+        job.illustrations_progress = 100
         
         db_session.commit()
         
@@ -339,6 +368,7 @@ def generate_illustrations_task(
         if job:
             job.illustrations_status = "FAILED"
             job.illustrations_data = {"error": str(e)}
+            job.illustrations_progress = 0
             db_session.commit()
 
 
@@ -350,7 +380,7 @@ def regenerate_single_illustration(
     db_session: Session
 ):
     """
-    Background task to regenerate a single illustration.
+    Background task to regenerate a single illustration prompt.
     """
     try:
         # Get the job
@@ -372,8 +402,8 @@ def regenerate_single_illustration(
         
         segment = segments[segment_index]
         
-        # Generate new illustration
-        illustration_path, prompt = generator.generate_illustration(
+        # Generate new illustration prompt
+        prompt_path, prompt = generator.generate_illustration(
             segment_text=segment.get('source', ''),
             segment_index=segment_index,
             style_hints=style_hints or job.illustrations_config.get('style_hints', ''),
@@ -381,25 +411,27 @@ def regenerate_single_illustration(
         )
         
         # Update job metadata
-        if illustration_path:
+        if prompt_path:
             illustrations_data = job.illustrations_data or []
             
             # Update or add the illustration data
             found = False
             for ill in illustrations_data:
                 if ill.get('segment_index') == segment_index:
-                    ill['illustration_path'] = illustration_path
+                    ill['prompt_path'] = prompt_path
                     ill['prompt'] = prompt
                     ill['success'] = True
+                    ill['type'] = 'prompt'
                     found = True
                     break
             
             if not found:
                 illustrations_data.append({
                     'segment_index': segment_index,
-                    'illustration_path': illustration_path,
+                    'prompt_path': prompt_path,
                     'prompt': prompt,
-                    'success': True
+                    'success': True,
+                    'type': 'prompt'
                 })
             
             job.illustrations_data = illustrations_data
@@ -407,4 +439,4 @@ def regenerate_single_illustration(
             db_session.commit()
             
     except Exception as e:
-        print(f"Error regenerating illustration: {e}")
+        print(f"Error regenerating illustration prompt: {e}")

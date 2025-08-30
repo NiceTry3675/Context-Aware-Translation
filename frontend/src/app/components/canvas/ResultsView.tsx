@@ -20,6 +20,7 @@ import AddCircleIcon from '@mui/icons-material/AddCircle';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EditIcon from '@mui/icons-material/Edit';
+import BrushIcon from '@mui/icons-material/Brush';
 import FirstPageIcon from '@mui/icons-material/FirstPage';
 import LastPageIcon from '@mui/icons-material/LastPage';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
@@ -103,6 +104,7 @@ interface ResultsViewProps {
   ) => void;
   onOpenValidationDialog: () => void;
   onOpenPostEditDialog: () => void;
+  onOpenIllustrationDialog: () => void;
 }
 
 export default function ResultsView({
@@ -134,6 +136,7 @@ export default function ResultsView({
   onCaseSelectionChange,
   onOpenValidationDialog,
   onOpenPostEditDialog,
+  onOpenIllustrationDialog,
 }: ResultsViewProps) {
   const handleCaseSelectionChange = React.useCallback((segmentIndex: number, caseIndex: number, selected: boolean, totalCases: number) => {
     onCaseSelectionChange(segmentIndex, caseIndex, selected, totalCases);
@@ -141,6 +144,7 @@ export default function ResultsView({
 
   const canRunValidation = selectedJob?.status === 'COMPLETED' && (!selectedJob?.validation_status || selectedJob?.validation_status === 'FAILED');
   const canRunPostEdit = selectedJob?.validation_status === 'COMPLETED' && (!selectedJob?.post_edit_status || selectedJob?.post_edit_status === 'FAILED');
+  const canGenerateIllustrations = selectedJob?.status === 'COMPLETED' && (!selectedJob?.illustrations_status || selectedJob?.illustrations_status === 'FAILED');
 
   return (
     <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -182,6 +186,21 @@ export default function ResultsView({
                 sx={{ mb: 1 }}
               >
                 포스트 에디팅 실행
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title={canGenerateIllustrations ? '삽화 생성' : '번역 완료 후 실행 가능'}>
+            <span>
+              <Button
+                variant="contained"
+                color="secondary"
+                size="small"
+                startIcon={<BrushIcon />}
+                onClick={onOpenIllustrationDialog}
+                disabled={!canGenerateIllustrations || selectedJob?.illustrations_status === 'IN_PROGRESS'}
+                sx={{ mb: 1 }}
+              >
+                삽화 생성
               </Button>
             </span>
           </Tooltip>

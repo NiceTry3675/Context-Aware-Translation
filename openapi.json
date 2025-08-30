@@ -1696,6 +1696,304 @@
         }
       }
     },
+    "/api/v1/illustrations/{job_id}/generate": {
+      "post": {
+        "tags": [
+          "illustrations"
+        ],
+        "summary": "Generate Illustrations",
+        "description": "Generate illustration prompts for a translation job.\n\nThis endpoint triggers generation of detailed illustration prompts for all or selected segments\nof a completed translation job. The prompts can then be used with image generation services\nlike DALL-E, Midjourney, or Stable Diffusion to create actual illustrations.",
+        "operationId": "generate_illustrations_api_v1_illustrations__job_id__generate_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "api_key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "API key for Gemini",
+              "title": "Api Key"
+            },
+            "description": "API key for Gemini"
+          },
+          {
+            "name": "max_illustrations",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Maximum number of illustration prompts to generate",
+              "title": "Max Illustrations"
+            },
+            "description": "Maximum number of illustration prompts to generate"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IllustrationConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/illustrations/{job_id}/illustrations": {
+      "get": {
+        "tags": [
+          "illustrations"
+        ],
+        "summary": "Get Job Illustrations",
+        "description": "Get all illustration prompts for a translation job.\n\nReturns metadata about all generated illustration prompts for the specified job.\nThese prompts can be used with external image generation services.",
+        "operationId": "get_job_illustrations_api_v1_illustrations__job_id__illustrations_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/illustrations/{job_id}/illustration/{segment_index}": {
+      "get": {
+        "tags": [
+          "illustrations"
+        ],
+        "summary": "Get Illustration Prompt",
+        "description": "Get the illustration prompt for a specific segment.\n\nReturns the generated prompt JSON file that can be used with image generation services.",
+        "operationId": "get_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "segment_index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Segment Index"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "illustrations"
+        ],
+        "summary": "Delete Illustration Prompt",
+        "description": "Delete a specific illustration prompt.\n\nRemoves the prompt file and updates the job metadata.",
+        "operationId": "delete_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__delete",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "segment_index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Segment Index"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/illustrations/{job_id}/regenerate/{segment_index}": {
+      "post": {
+        "tags": [
+          "illustrations"
+        ],
+        "summary": "Regenerate Illustration Prompt",
+        "description": "Regenerate an illustration prompt for a specific segment.\n\nThis allows regenerating a single illustration prompt with optional new style hints.",
+        "operationId": "regenerate_illustration_prompt_api_v1_illustrations__job_id__regenerate__segment_index__post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "segment_index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Segment Index"
+            }
+          },
+          {
+            "name": "style_hints",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional style hints for regeneration",
+              "title": "Style Hints"
+            },
+            "description": "Optional style hints for regeneration"
+          },
+          {
+            "name": "api_key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "API key for Gemini",
+              "title": "Api Key"
+            },
+            "description": "API key for Gemini"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "summary": "Read Root",
@@ -2104,6 +2402,81 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "IllustrationConfig": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "description": "Whether illustration generation is enabled",
+            "default": false
+          },
+          "style": {
+            "$ref": "#/components/schemas/IllustrationStyle",
+            "description": "The artistic style for generated illustrations",
+            "default": "digital_art"
+          },
+          "style_hints": {
+            "type": "string",
+            "title": "Style Hints",
+            "description": "Additional style hints or preferences for illustration generation",
+            "default": ""
+          },
+          "segments_per_illustration": {
+            "type": "integer",
+            "title": "Segments Per Illustration",
+            "description": "Number of segments to combine for each illustration",
+            "default": 1
+          },
+          "max_illustrations": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Illustrations",
+            "description": "Maximum number of illustrations to generate (None for unlimited)"
+          },
+          "skip_dialogue_heavy": {
+            "type": "boolean",
+            "title": "Skip Dialogue Heavy",
+            "description": "Skip illustration for segments that are mostly dialogue",
+            "default": true
+          },
+          "min_segment_length": {
+            "type": "integer",
+            "title": "Min Segment Length",
+            "description": "Minimum segment length (characters) to generate illustration",
+            "default": 500
+          },
+          "cache_enabled": {
+            "type": "boolean",
+            "title": "Cache Enabled",
+            "description": "Whether to cache generated illustrations",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "IllustrationConfig",
+        "description": "Configuration for illustration generation.\n\nThis model defines the settings and preferences for generating\nillustrations for translation segments."
+      },
+      "IllustrationStyle": {
+        "type": "string",
+        "enum": [
+          "realistic",
+          "artistic",
+          "watercolor",
+          "digital_art",
+          "sketch",
+          "anime",
+          "vintage",
+          "minimalist"
+        ],
+        "title": "IllustrationStyle",
+        "description": "Enumeration of available illustration styles."
       },
       "NarrationStyle": {
         "properties": {
@@ -2754,6 +3127,50 @@
               }
             ],
             "title": "Post Edit Completed At"
+          },
+          "illustrations_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Illustrations Enabled"
+          },
+          "illustrations_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Illustrations Status"
+          },
+          "illustrations_progress": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Illustrations Progress"
+          },
+          "illustrations_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Illustrations Count"
           },
           "final_glossary": {
             "anyOf": [

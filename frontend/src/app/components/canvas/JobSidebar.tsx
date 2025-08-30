@@ -185,7 +185,8 @@ export default function JobSidebar({
               const isProcessing = job.status === 'PROCESSING' || job.status === 'PENDING';
               const isValidating = job.validation_status === 'IN_PROGRESS';
               const isPostEditing = job.post_edit_status === 'IN_PROGRESS';
-              const showProgress = isProcessing || isValidating || isPostEditing;
+              const isIllustrating = job.illustrations_status === 'IN_PROGRESS';
+              const showProgress = isProcessing || isValidating || isPostEditing || isIllustrating;
               
               return (
                 <ListItem
@@ -300,6 +301,15 @@ export default function JobSidebar({
                                 sx={{ fontSize: '0.7rem', height: 20 }}
                               />
                             )}
+                            {job.illustrations_status === 'COMPLETED' && (
+                              <Chip
+                                label="삽화생성완료"
+                                size="small"
+                                color="warning"
+                                variant="outlined"
+                                sx={{ fontSize: '0.7rem', height: 20 }}
+                              />
+                            )}
                           </Stack>
                           {showProgress && (
                             <Box sx={{ mt: 0.5 }}>
@@ -329,6 +339,16 @@ export default function JobSidebar({
                                     value={job.post_edit_progress ?? undefined}
                                     color="info"
                                     sx={{ height: 3 }}
+                                  />
+                                </Tooltip>
+                              )}
+                              {isIllustrating && job.illustrations_progress !== undefined && (
+                                <Tooltip title={`삽화 생성 진행: ${job.illustrations_progress}%`}>
+                                  <LinearProgress
+                                    variant="determinate"
+                                    value={job.illustrations_progress ?? undefined}
+                                    color="warning"
+                                    sx={{ height: 3, mt: 0.5 }}
                                   />
                                 </Tooltip>
                               )}

@@ -204,7 +204,7 @@ export default function IllustrationViewer({
 
       <Grid container spacing={3}>
         {illustrations.map((illustration) => (
-          <Grid item xs={12} sm={6} md={4} lg={3} key={illustration.segment_index}>
+          <Grid key={illustration.segment_index} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
             <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               {loadedImages[illustration.segment_index] ? (
                 <CardMedia

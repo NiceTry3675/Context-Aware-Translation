@@ -54,7 +54,8 @@ export function useCanvasState() {
     enableValidation: false,
     quickValidation: false,
     validationSampleRate: 100,
-    enablePostEdit: false
+    enablePostEdit: false,
+    enableIllustrations: false
   });
   
   // Translation service hook
@@ -133,9 +134,16 @@ export function useCanvasState() {
   const [postEditModelName, setPostEditModelName] = useState<string>('');
   const [selectedCases, setSelectedCases] = useState<Record<number, boolean[]>>({});
 
+  const [illustrationDialogOpen, setIllustrationDialogOpen] = useState(false);
+  const [illustrationStyleHints, setIllustrationStyleHints] = useState<string>('');
+  const [illustrationMinSegmentLength, setIllustrationMinSegmentLength] = useState(100);
+  const [illustrationSkipDialogueHeavy, setIllustrationSkipDialogueHeavy] = useState(false);
+  const [illustrationMaxCount, setIllustrationMaxCount] = useState(10);
+
   const { 
     handleTriggerValidation, 
     handleTriggerPostEdit,
+    handleTriggerIllustration,
     loading: jobActionLoading,
     error: jobActionError,
   } = useJobActions({
@@ -166,6 +174,24 @@ export function useCanvasState() {
       model_name: postEditModelName || selectedModel,
     });
     setPostEditDialogOpen(false);
+    // Clear selectedCases after confirmation
+    setSelectedCases({});
+  };
+
+  const onConfirmIllustration = () => {
+    if (!jobId || !apiKey) return;
+    handleTriggerIllustration(
+      parseInt(jobId, 10),
+      apiKey,
+      {
+        style_hints: illustrationStyleHints,
+        min_segment_length: illustrationMinSegmentLength,
+        skip_dialogue_heavy: illustrationSkipDialogueHeavy,
+        cache_enabled: true,
+      },
+      illustrationMaxCount
+    );
+    setIllustrationDialogOpen(false);
   };
   
   // Segment navigation hook
@@ -196,6 +222,20 @@ export function useCanvasState() {
     }
     return undefined;
   }, [translationContent, postEditLog, translationSegments]);
+
+  // Auto-populate selectedCases when post-edit dialog opens with validation report
+  useEffect(() => {
+    if (postEditDialogOpen && validationReport?.detailed_results && Object.keys(selectedCases).length === 0) {
+      // Auto-select all cases for post-editing when opening from canvas
+      const newSelectedCases: Record<number, boolean[]> = {};
+      validationReport.detailed_results.forEach((result: any) => {
+        if (result.structured_cases && result.structured_cases.length > 0) {
+          newSelectedCases[result.segment_index] = new Array(result.structured_cases.length).fill(true);
+        }
+      });
+      setSelectedCases(newSelectedCases);
+    }
+  }, [postEditDialogOpen, validationReport]);
 
   // Load saved tab preference only on client side
   useEffect(() => {
@@ -426,6 +466,19 @@ export function useCanvasState() {
     setSelectedCases,
     onConfirmPostEdit,
     segmentNav,
+    
+    // Illustration Dialog State and Handlers
+    illustrationDialogOpen,
+    setIllustrationDialogOpen,
+    illustrationStyleHints,
+    setIllustrationStyleHints,
+    illustrationMinSegmentLength,
+    setIllustrationMinSegmentLength,
+    illustrationSkipDialogueHeavy,
+    setIllustrationSkipDialogueHeavy,
+    illustrationMaxCount,
+    setIllustrationMaxCount,
+    onConfirmIllustration,
     
     // Navigation
     router,

@@ -687,6 +687,103 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/illustrations/{job_id}/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Illustrations
+         * @description Generate illustration prompts for a translation job.
+         *
+         *     This endpoint triggers generation of detailed illustration prompts for all or selected segments
+         *     of a completed translation job. The prompts can then be used with image generation services
+         *     like DALL-E, Midjourney, or Stable Diffusion to create actual illustrations.
+         */
+        post: operations["generate_illustrations_api_v1_illustrations__job_id__generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/illustrations/{job_id}/illustrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Job Illustrations
+         * @description Get all illustration prompts for a translation job.
+         *
+         *     Returns metadata about all generated illustration prompts for the specified job.
+         *     These prompts can be used with external image generation services.
+         */
+        get: operations["get_job_illustrations_api_v1_illustrations__job_id__illustrations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/illustrations/{job_id}/illustration/{segment_index}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Illustration Prompt
+         * @description Get the illustration prompt for a specific segment.
+         *
+         *     Returns the generated prompt JSON file that can be used with image generation services.
+         */
+        get: operations["get_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Illustration Prompt
+         * @description Delete a specific illustration prompt.
+         *
+         *     Removes the prompt file and updates the job metadata.
+         */
+        delete: operations["delete_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/illustrations/{job_id}/regenerate/{segment_index}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Regenerate Illustration Prompt
+         * @description Regenerate an illustration prompt for a specific segment.
+         *
+         *     This allows regenerating a single illustration prompt with optional new style hints.
+         */
+        post: operations["regenerate_illustration_prompt_api_v1_illustrations__job_id__regenerate__segment_index__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -904,6 +1001,67 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * IllustrationConfig
+         * @description Configuration for illustration generation.
+         *
+         *     This model defines the settings and preferences for generating
+         *     illustrations for translation segments.
+         */
+        IllustrationConfig: {
+            /**
+             * Enabled
+             * @description Whether illustration generation is enabled
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * @description The artistic style for generated illustrations
+             * @default digital_art
+             */
+            style: components["schemas"]["IllustrationStyle"];
+            /**
+             * Style Hints
+             * @description Additional style hints or preferences for illustration generation
+             * @default
+             */
+            style_hints: string;
+            /**
+             * Segments Per Illustration
+             * @description Number of segments to combine for each illustration
+             * @default 1
+             */
+            segments_per_illustration: number;
+            /**
+             * Max Illustrations
+             * @description Maximum number of illustrations to generate (None for unlimited)
+             */
+            max_illustrations?: number | null;
+            /**
+             * Skip Dialogue Heavy
+             * @description Skip illustration for segments that are mostly dialogue
+             * @default true
+             */
+            skip_dialogue_heavy: boolean;
+            /**
+             * Min Segment Length
+             * @description Minimum segment length (characters) to generate illustration
+             * @default 500
+             */
+            min_segment_length: number;
+            /**
+             * Cache Enabled
+             * @description Whether to cache generated illustrations
+             * @default true
+             */
+            cache_enabled: boolean;
+        };
+        /**
+         * IllustrationStyle
+         * @description Enumeration of available illustration styles.
+         * @enum {string}
+         */
+        IllustrationStyle: "realistic" | "artistic" | "watercolor" | "digital_art" | "sketch" | "anime" | "vintage" | "minimalist";
         /**
          * NarrationStyle
          * @description Narration style details.
@@ -1175,6 +1333,14 @@ export interface components {
             post_edit_progress?: number | null;
             /** Post Edit Completed At */
             post_edit_completed_at?: string | null;
+            /** Illustrations Enabled */
+            illustrations_enabled?: boolean | null;
+            /** Illustrations Status */
+            illustrations_status?: string | null;
+            /** Illustrations Progress */
+            illustrations_progress?: number | null;
+            /** Illustrations Count */
+            illustrations_count?: number | null;
             /** Final Glossary */
             final_glossary?: {
                 [key: string]: unknown;
@@ -2414,6 +2580,178 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    generate_illustrations_api_v1_illustrations__job_id__generate_post: {
+        parameters: {
+            query: {
+                /** @description API key for Gemini */
+                api_key: string;
+                /** @description Maximum number of illustration prompts to generate */
+                max_illustrations?: number | null;
+            };
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IllustrationConfig"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_job_illustrations_api_v1_illustrations__job_id__illustrations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+                segment_index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+                segment_index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regenerate_illustration_prompt_api_v1_illustrations__job_id__regenerate__segment_index__post: {
+        parameters: {
+            query: {
+                /** @description Optional style hints for regeneration */
+                style_hints?: string | null;
+                /** @description API key for Gemini */
+                api_key: string;
+            };
+            header?: never;
+            path: {
+                job_id: number;
+                segment_index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

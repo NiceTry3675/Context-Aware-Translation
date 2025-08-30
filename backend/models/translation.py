@@ -44,6 +44,7 @@ class TranslationJob(Base):
     illustrations_config = Column(JSON, nullable=True)  # Stores IllustrationConfig as JSON
     illustrations_data = Column(JSON, nullable=True)  # Stores illustration metadata
     illustrations_status = Column(String, nullable=True)  # PENDING, IN_PROGRESS, COMPLETED, FAILED
+    illustrations_progress = Column(Integer, default=0)  # Progress percentage 0-100
     illustrations_count = Column(Integer, default=0)  # Number of illustrations generated
     illustrations_directory = Column(String, nullable=True)  # Path to illustrations directory
 

@@ -267,7 +267,11 @@ class IllustrationGenerator:
                             glossary: Optional[Dict[str, str]] = None,
                             max_retries: int = 3) -> Tuple[Optional[str], Optional[str]]:
         """
-        Generate an illustration for a text segment.
+        Generate an illustration prompt for a text segment.
+        
+        Note: This function generates detailed prompts for illustrations.
+        Actual image generation requires integration with an image generation service
+        like DALL-E, Midjourney, or Stable Diffusion.
         
         Args:
             segment_text: The text segment to illustrate
@@ -278,7 +282,7 @@ class IllustrationGenerator:
             max_retries: Maximum number of retry attempts
             
         Returns:
-            Tuple of (illustration_path, prompt_used) or (None, None) on failure
+            Tuple of (prompt_file_path, prompt_used) or (None, None) on failure
         """
         # Check cache first
         if self.enable_caching:
@@ -287,61 +291,50 @@ class IllustrationGenerator:
                 cached_path = self.cache[cache_key]['path']
                 cached_prompt = self.cache[cache_key]['prompt']
                 if Path(cached_path).exists():
-                    logging.info(f"Using cached illustration for segment {segment_index}")
+                    logging.info(f"Using cached illustration prompt for segment {segment_index}")
                     return cached_path, cached_prompt
         
         # Generate the prompt
         prompt = self.create_illustration_prompt(segment_text, context, style_hints, glossary)
         
-        # Attempt to generate the illustration
-        for attempt in range(max_retries):
-            try:
-                # Call Gemini image generation API
-                response = self.client.models.generate_content(
-                    model="gemini-2.5-flash-image-preview",
-                    contents=[prompt]
-                )
-                
-                # Extract and save the image
-                for part in response.candidates[0].content.parts:
-                    if part.inline_data is not None:
-                        # Create image from response
-                        image = Image.open(BytesIO(part.inline_data.data))
-                        
-                        # Save the image
-                        filename = f"segment_{segment_index:04d}_illustration.png"
-                        filepath = self.job_output_dir / filename
-                        image.save(filepath, "PNG")
-                        
-                        # Update cache
-                        if self.enable_caching:
-                            self.cache[cache_key] = {
-                                'path': str(filepath),
-                                'prompt': prompt,
-                                'segment_index': segment_index
-                            }
-                            self._save_cache_metadata()
-                        
-                        # Log success
-                        if self.logger:
-                            self.logger.log_debug(f"Generated illustration for segment {segment_index}: {filepath}")
-                        
-                        return str(filepath), prompt
-                    elif part.text is not None:
-                        # Sometimes the API returns text explaining why it can't generate
-                        logging.warning(f"Text response instead of image: {part.text}")
-                
-            except Exception as e:
-                logging.error(f"Attempt {attempt + 1} failed for segment {segment_index}: {e}")
-                if attempt < max_retries - 1:
-                    # Modify prompt for retry
-                    prompt = f"Simple illustration: {segment_text[:100]}..."
-                    continue
-                else:
-                    if self.logger:
-                        self.logger.log_error(e, segment_index, "illustration_generation")
-        
-        return None, None
+        # Save the prompt to a JSON file (instead of generating an image)
+        try:
+            # Create a JSON file with the prompt and metadata
+            filename = f"segment_{segment_index:04d}_prompt.json"
+            filepath = self.job_output_dir / filename
+            
+            prompt_data = {
+                "segment_index": segment_index,
+                "prompt": prompt,
+                "segment_text": segment_text[:500],  # First 500 chars for reference
+                "style_hints": style_hints,
+                "status": "prompt_ready",
+                "note": "Use this prompt with an image generation service like DALL-E, Midjourney, or Stable Diffusion to create the actual illustration."
+            }
+            
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(prompt_data, f, ensure_ascii=False, indent=2)
+            
+            # Update cache
+            if self.enable_caching:
+                self.cache[cache_key] = {
+                    'path': str(filepath),
+                    'prompt': prompt,
+                    'segment_index': segment_index
+                }
+                self._save_cache_metadata()
+            
+            # Log success
+            if self.logger:
+                self.logger.log_debug(f"Generated illustration prompt for segment {segment_index}: {filepath}")
+            
+            return str(filepath), prompt
+            
+        except Exception as e:
+            logging.error(f"Failed to save illustration prompt for segment {segment_index}: {e}")
+            if self.logger:
+                self.logger.log_error(e, segment_index, "prompt_generation")
+            return None, None
     
     def generate_batch_illustrations(self, 
                                    segments: List[Dict[str, Any]],

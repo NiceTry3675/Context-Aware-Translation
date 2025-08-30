@@ -98,6 +98,12 @@ class TranslationJob(TranslationJobBase):
     post_edit_progress: Optional[int] = None
     post_edit_completed_at: Optional[datetime.datetime] = None
     
+    # Illustration fields
+    illustrations_enabled: Optional[bool] = None
+    illustrations_status: Optional[str] = None
+    illustrations_progress: Optional[int] = None
+    illustrations_count: Optional[int] = None
+    
     # Structured glossary data (stored as JSON in DB, parsed as Pydantic model)
     final_glossary: Optional[Dict[str, Any]] = None
     structured_glossary: Optional[TranslatedTerms] = None
