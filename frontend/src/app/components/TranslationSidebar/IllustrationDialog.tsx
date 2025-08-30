@@ -15,6 +15,11 @@ import {
   Slider,
   Alert,
   Stack,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  SelectChangeEvent,
 } from '@mui/material';
 import BrushIcon from '@mui/icons-material/Brush';
 
@@ -22,6 +27,8 @@ interface IllustrationDialogProps {
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  style?: string;
+  onStyleChange?: (value: string) => void;
   styleHints?: string;
   onStyleHintsChange?: (value: string) => void;
   minSegmentLength?: number;
@@ -37,6 +44,8 @@ export default function IllustrationDialog({
   open,
   onClose,
   onConfirm,
+  style = 'digital_art',
+  onStyleChange,
   styleHints = '',
   onStyleHintsChange,
   minSegmentLength = 100,
@@ -78,6 +87,25 @@ export default function IllustrationDialog({
               ]}
             />
           </Box>
+
+          <FormControl fullWidth>
+            <InputLabel id="style-select-label">삽화 스타일</InputLabel>
+            <Select
+              labelId="style-select-label"
+              value={style}
+              label="삽화 스타일"
+              onChange={(e: SelectChangeEvent) => onStyleChange?.(e.target.value)}
+            >
+              <MenuItem value="realistic">사실적 (Realistic)</MenuItem>
+              <MenuItem value="artistic">예술적 (Artistic)</MenuItem>
+              <MenuItem value="watercolor">수채화 (Watercolor)</MenuItem>
+              <MenuItem value="digital_art">디지털 아트 (Digital Art)</MenuItem>
+              <MenuItem value="sketch">스케치 (Sketch)</MenuItem>
+              <MenuItem value="anime">애니메이션 (Anime)</MenuItem>
+              <MenuItem value="vintage">빈티지 (Vintage)</MenuItem>
+              <MenuItem value="minimalist">미니멀리즘 (Minimalist)</MenuItem>
+            </Select>
+          </FormControl>
 
           <TextField
             label="스타일 힌트"

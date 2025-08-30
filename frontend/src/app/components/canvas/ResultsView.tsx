@@ -144,7 +144,7 @@ export default function ResultsView({
 
   const canRunValidation = selectedJob?.status === 'COMPLETED' && (!selectedJob?.validation_status || selectedJob?.validation_status === 'FAILED');
   const canRunPostEdit = selectedJob?.validation_status === 'COMPLETED' && (!selectedJob?.post_edit_status || selectedJob?.post_edit_status === 'FAILED');
-  const canGenerateIllustrations = selectedJob?.status === 'COMPLETED' && (!selectedJob?.illustrations_status || selectedJob?.illustrations_status === 'FAILED');
+  const canGenerateIllustrations = selectedJob?.status === 'COMPLETED' && selectedJob?.illustrations_status !== 'IN_PROGRESS';
 
   return (
     <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

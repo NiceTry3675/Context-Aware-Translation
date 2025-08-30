@@ -144,36 +144,49 @@ class IllustrationGenerator:
         # Extract key visual elements from the text
         prompt_parts = []
         
-        # Add style hints if provided
-        if style_hints:
-            prompt_parts.append(style_hints)
-        
         # Analyze the segment for visual elements
-        # This is a simplified version - you might want to use AI for better analysis
         visual_elements = self._extract_visual_elements(segment_text, glossary)
         
-        # Build the prompt
+        # Build a more descriptive, image-friendly prompt
+        base_description = []
+        
+        # Start with setting
         if visual_elements['setting']:
-            prompt_parts.append(f"Setting: {visual_elements['setting']}")
+            base_description.append(f"A scene in {visual_elements['setting']}")
+        else:
+            base_description.append("A scene")
         
+        # Add characters with visual descriptions
         if visual_elements['characters']:
-            prompt_parts.append(f"Characters: {', '.join(visual_elements['characters'])}")
+            if len(visual_elements['characters']) == 1:
+                base_description.append(f"featuring {visual_elements['characters'][0]}")
+            else:
+                base_description.append(f"featuring {', '.join(visual_elements['characters'])}")
         
-        if visual_elements['mood']:
-            prompt_parts.append(f"Mood: {visual_elements['mood']}")
-        
+        # Add action
         if visual_elements['action']:
-            prompt_parts.append(f"Action: {visual_elements['action']}")
+            base_description.append(f"with {visual_elements['action']}")
         
-        # Add artistic style
-        prompt_parts.append("Style: high quality digital illustration, literary novel aesthetic")
+        # Add mood/atmosphere
+        if visual_elements['mood']:
+            base_description.append(f"in a {visual_elements['mood']} atmosphere")
         
-        # Combine all parts
-        prompt = " | ".join(prompt_parts)
+        # Combine the base description
+        prompt = " ".join(base_description)
         
-        # Log the generated prompt
-        if self.logger:
-            self.logger.log_debug(f"Generated illustration prompt: {prompt}")
+        # Add style hints at the beginning if provided
+        if style_hints:
+            prompt = f"{style_hints}. {prompt}"
+        
+        # Add artistic style at the end
+        prompt += ". Digital illustration in anime/manga style, high quality, detailed background, vibrant colors"
+        
+        # Make sure prompt is safe and appropriate
+        prompt = prompt.replace("violent", "dramatic")
+        prompt = prompt.replace("blood", "intense")
+        prompt = prompt.replace("death", "dramatic moment")
+        
+        logging.info(f"Generated prompt for image: {prompt[:150]}...")
         
         return prompt
     
@@ -267,11 +280,7 @@ class IllustrationGenerator:
                             glossary: Optional[Dict[str, str]] = None,
                             max_retries: int = 3) -> Tuple[Optional[str], Optional[str]]:
         """
-        Generate an illustration prompt for a text segment.
-        
-        Note: This function generates detailed prompts for illustrations.
-        Actual image generation requires integration with an image generation service
-        like DALL-E, Midjourney, or Stable Diffusion.
+        Generate an illustration for a text segment using Gemini's image generation.
         
         Args:
             segment_text: The text segment to illustrate
@@ -282,7 +291,7 @@ class IllustrationGenerator:
             max_retries: Maximum number of retry attempts
             
         Returns:
-            Tuple of (prompt_file_path, prompt_used) or (None, None) on failure
+            Tuple of (image_file_path, prompt_used) or (None, None) on failure
         """
         # Check cache first
         if self.enable_caching:
@@ -291,50 +300,109 @@ class IllustrationGenerator:
                 cached_path = self.cache[cache_key]['path']
                 cached_prompt = self.cache[cache_key]['prompt']
                 if Path(cached_path).exists():
-                    logging.info(f"Using cached illustration prompt for segment {segment_index}")
+                    logging.info(f"Using cached illustration for segment {segment_index}")
                     return cached_path, cached_prompt
         
         # Generate the prompt
         prompt = self.create_illustration_prompt(segment_text, context, style_hints, glossary)
         
-        # Save the prompt to a JSON file (instead of generating an image)
-        try:
-            # Create a JSON file with the prompt and metadata
-            filename = f"segment_{segment_index:04d}_prompt.json"
-            filepath = self.job_output_dir / filename
-            
-            prompt_data = {
-                "segment_index": segment_index,
-                "prompt": prompt,
-                "segment_text": segment_text[:500],  # First 500 chars for reference
-                "style_hints": style_hints,
-                "status": "prompt_ready",
-                "note": "Use this prompt with an image generation service like DALL-E, Midjourney, or Stable Diffusion to create the actual illustration."
-            }
-            
-            with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump(prompt_data, f, ensure_ascii=False, indent=2)
-            
-            # Update cache
-            if self.enable_caching:
-                self.cache[cache_key] = {
-                    'path': str(filepath),
-                    'prompt': prompt,
-                    'segment_index': segment_index
-                }
-                self._save_cache_metadata()
-            
-            # Log success
-            if self.logger:
-                self.logger.log_debug(f"Generated illustration prompt for segment {segment_index}: {filepath}")
-            
-            return str(filepath), prompt
-            
-        except Exception as e:
-            logging.error(f"Failed to save illustration prompt for segment {segment_index}: {e}")
-            if self.logger:
-                self.logger.log_error(e, segment_index, "prompt_generation")
-            return None, None
+        # Generate the actual image using Gemini
+        for attempt in range(max_retries):
+            try:
+                # Use Gemini's image generation model
+                response = self.client.models.generate_content(
+                    model="gemini-2.5-flash-image-preview",
+                    contents=[prompt]
+                )
+                
+                # Extract the image from the response
+                image_generated = False
+                image_filename = f"segment_{segment_index:04d}.png"
+                image_filepath = self.job_output_dir / image_filename
+                
+                # Check if response has candidates and content
+                if response and hasattr(response, 'candidates') and response.candidates:
+                    candidate = response.candidates[0]
+                    
+                    # Check for content filtering
+                    if hasattr(candidate, 'finish_reason'):
+                        finish_reason = str(candidate.finish_reason)
+                        if 'SAFETY' in finish_reason or 'BLOCKED' in finish_reason:
+                            logging.warning(f"Content filtering triggered for segment {segment_index}: {finish_reason}")
+                            if hasattr(candidate, 'safety_ratings'):
+                                logging.warning(f"Safety ratings: {candidate.safety_ratings}")
+                    
+                    if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                        for part in candidate.content.parts:
+                            # Log text responses (often contain explanations)
+                            if hasattr(part, 'text') and part.text:
+                                logging.info(f"Text response for segment {segment_index}: {part.text[:200]}")
+                            
+                            # Check for image data
+                            if hasattr(part, 'inline_data') and part.inline_data is not None:
+                                # Save the generated image
+                                image = Image.open(BytesIO(part.inline_data.data))
+                                image.save(image_filepath, "PNG")
+                                image_generated = True
+                                logging.info(f"Successfully generated image for segment {segment_index}")
+                                break
+                else:
+                    logging.warning(f"No candidates in response for segment {segment_index}")
+                    if response:
+                        logging.debug(f"Response object: {response}")
+                
+                if not image_generated:
+                    # Fallback: Save prompt as JSON if no image was generated
+                    logging.warning(f"No image generated for segment {segment_index}, saving prompt instead")
+                    logging.debug(f"Prompt that failed: {prompt[:200]}...")
+                    json_filename = f"segment_{segment_index:04d}_prompt.json"
+                    json_filepath = self.job_output_dir / json_filename
+                    
+                    # Determine the failure reason
+                    failure_reason = "unknown"
+                    if response and hasattr(response, 'candidates') and response.candidates:
+                        candidate = response.candidates[0]
+                        if hasattr(candidate, 'finish_reason'):
+                            finish_reason = str(candidate.finish_reason)
+                            if 'SAFETY' in finish_reason or 'BLOCKED' in finish_reason:
+                                failure_reason = f"content_filtering: {finish_reason}"
+                            elif 'STOP' in finish_reason:
+                                failure_reason = "model_chose_not_to_generate_image"
+                    
+                    prompt_data = {
+                        "segment_index": segment_index,
+                        "prompt": prompt,
+                        "segment_text": segment_text[:500],
+                        "style_hints": style_hints,
+                        "status": "image_generation_failed",
+                        "failure_reason": failure_reason,
+                        "note": "Image generation failed. Use this prompt with another service.",
+                        "attempt": attempt + 1
+                    }
+                    
+                    with open(json_filepath, 'w', encoding='utf-8') as f:
+                        json.dump(prompt_data, f, ensure_ascii=False, indent=2)
+                    
+                    return str(json_filepath), prompt
+                
+                # Update cache
+                if self.enable_caching:
+                    self.cache[cache_key] = {
+                        'path': str(image_filepath),
+                        'prompt': prompt,
+                        'segment_index': segment_index
+                    }
+                    self._save_cache_metadata()
+                
+                return str(image_filepath), prompt
+                
+            except Exception as e:
+                logging.error(f"Attempt {attempt + 1} failed to generate illustration for segment {segment_index}: {e}")
+                if attempt == max_retries - 1:
+                    if self.logger:
+                        self.logger.log_error(e, segment_index, "image_generation")
+                    return None, None
+                continue
     
     def generate_batch_illustrations(self, 
                                    segments: List[Dict[str, Any]],
@@ -392,13 +460,15 @@ class IllustrationGenerator:
         
         cutoff_time = time.time() - (keep_days * 24 * 60 * 60)
         
-        for filepath in self.job_output_dir.glob("*.png"):
-            if filepath.stat().st_mtime < cutoff_time:
-                try:
-                    filepath.unlink()
-                    logging.info(f"Deleted old illustration: {filepath}")
-                except Exception as e:
-                    logging.error(f"Failed to delete {filepath}: {e}")
+        # Clean up both PNG images and JSON prompts
+        for pattern in ["*.png", "*.json"]:
+            for filepath in self.job_output_dir.glob(pattern):
+                if filepath.stat().st_mtime < cutoff_time:
+                    try:
+                        filepath.unlink()
+                        logging.info(f"Deleted old illustration file: {filepath}")
+                    except Exception as e:
+                        logging.error(f"Failed to delete {filepath}: {e}")
     
     def get_illustration_metadata(self) -> Dict[str, Any]:
         """

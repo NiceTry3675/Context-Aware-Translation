@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Grid,
   Card,
   CardMedia,
   CardContent,
@@ -28,9 +27,10 @@ import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 
 interface Illustration {
   segment_index: number;
-  illustration_path: string;
+  illustration_path?: string;
   prompt: string;
   success: boolean;
+  type?: string;  // 'image' or 'prompt'
 }
 
 interface IllustrationViewerProps {
@@ -55,16 +55,17 @@ export default function IllustrationViewer({
   const [selectedImage, setSelectedImage] = useState<Illustration | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadedImages, setLoadedImages] = useState<{ [key: number]: string }>({});
+  const [loadedPrompts, setLoadedPrompts] = useState<{ [key: number]: any }>({});
 
   // Load illustrations from API
   useEffect(() => {
     if (jobId && illustrations.length > 0) {
-      loadIllustrationImages();
+      loadIllustrations();
     }
   }, [jobId, illustrations]);
 
-  const loadIllustrationImages = async () => {
-    const imagePromises = illustrations.map(async (ill) => {
+  const loadIllustrations = async () => {
+    const illustrationPromises = illustrations.map(async (ill) => {
       if (ill.success) {
         try {
           const response = await fetch(
@@ -76,9 +77,18 @@ export default function IllustrationViewer({
             }
           );
           if (response.ok) {
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            return { index: ill.segment_index, url };
+            // Check if response is image or JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('image')) {
+              // It's an image
+              const blob = await response.blob();
+              const url = URL.createObjectURL(blob);
+              return { index: ill.segment_index, type: 'image', data: url };
+            } else {
+              // It's JSON (prompt)
+              const data = await response.json();
+              return { index: ill.segment_index, type: 'prompt', data };
+            }
           }
         } catch (error) {
           console.error(`Failed to load illustration ${ill.segment_index}:`, error);
@@ -87,17 +97,26 @@ export default function IllustrationViewer({
       return null;
     });
 
-    const results = await Promise.all(imagePromises);
+    const results = await Promise.all(illustrationPromises);
     const imageMap: { [key: number]: string } = {};
+    const promptMap: { [key: number]: any } = {};
+    
     results.forEach((result) => {
       if (result) {
-        imageMap[result.index] = result.url;
+        if (result.type === 'image') {
+          imageMap[result.index] = result.data;
+        } else {
+          promptMap[result.index] = result.data;
+        }
       }
     });
+    
     setLoadedImages(imageMap);
+    setLoadedPrompts(promptMap);
   };
 
   const handleDownload = (illustration: Illustration) => {
+    // Check if we have an image first
     const imageUrl = loadedImages[illustration.segment_index];
     if (imageUrl) {
       const link = document.createElement('a');
@@ -106,6 +125,20 @@ export default function IllustrationViewer({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    } else {
+      // Fall back to prompt download
+      const promptData = loadedPrompts[illustration.segment_index];
+      if (promptData) {
+        const blob = new Blob([JSON.stringify(promptData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `segment_${illustration.segment_index}_prompt.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
     }
   };
 
@@ -120,10 +153,14 @@ export default function IllustrationViewer({
   const handleDelete = async (segmentIndex: number) => {
     if (onDeleteIllustration) {
       await onDeleteIllustration(segmentIndex);
-      // Remove from loaded images
+      // Remove from loaded images and prompts
       const newLoadedImages = { ...loadedImages };
       delete newLoadedImages[segmentIndex];
       setLoadedImages(newLoadedImages);
+      
+      const newLoadedPrompts = { ...loadedPrompts };
+      delete newLoadedPrompts[segmentIndex];
+      setLoadedPrompts(newLoadedPrompts);
     }
   };
 
@@ -202,10 +239,9 @@ export default function IllustrationViewer({
         )}
       </Stack>
 
-      <Grid container spacing={3}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 3 }}>
         {illustrations.map((illustration) => (
-          <Grid key={illustration.segment_index} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <Card key={illustration.segment_index} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               {loadedImages[illustration.segment_index] ? (
                 <CardMedia
                   component="img"
@@ -215,6 +251,33 @@ export default function IllustrationViewer({
                   sx={{ cursor: 'pointer', objectFit: 'cover' }}
                   onClick={() => handleImageClick(illustration)}
                 />
+              ) : loadedPrompts[illustration.segment_index] ? (
+                <Box
+                  sx={{
+                    height: 200,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: 'grey.100',
+                    p: 2,
+                    cursor: 'pointer',
+                    border: '1px solid',
+                    borderColor: 'grey.300',
+                    '&:hover': {
+                      bgcolor: 'grey.200',
+                    },
+                  }}
+                  onClick={() => handleImageClick(illustration)}
+                >
+                  <Typography variant="h3" color="primary" sx={{ mb: 1 }}>📝</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    프롬프트만 생성됨
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    (이미지 생성 실패)
+                  </Typography>
+                </Box>
               ) : (
                 <Box
                   sx={{
@@ -237,8 +300,10 @@ export default function IllustrationViewer({
                   <Typography variant="subtitle2" gutterBottom>
                     세그먼트 {illustration.segment_index}
                   </Typography>
-                  {illustration.success ? (
-                    <Chip label="생성 완료" color="success" size="small" />
+                  {loadedImages[illustration.segment_index] ? (
+                    <Chip label="이미지 생성 완료" color="success" size="small" />
+                  ) : illustration.success ? (
+                    <Chip label="프롬프트만 생성됨" color="warning" size="small" />
                   ) : (
                     <Chip label="생성 실패" color="error" size="small" />
                   )}
@@ -300,9 +365,8 @@ export default function IllustrationViewer({
                 )}
               </Box>
             </Card>
-          </Grid>
         ))}
-      </Grid>
+      </Box>
 
       {/* Image Dialog */}
       <Dialog
@@ -317,7 +381,7 @@ export default function IllustrationViewer({
               세그먼트 {selectedImage.segment_index} 삽화
             </DialogTitle>
             <DialogContent>
-              {loadedImages[selectedImage.segment_index] && (
+              {loadedImages[selectedImage.segment_index] ? (
                 <Box sx={{ textAlign: 'center' }}>
                   <img
                     src={loadedImages[selectedImage.segment_index]}
@@ -335,6 +399,55 @@ export default function IllustrationViewer({
                   >
                     프롬프트: {selectedImage.prompt}
                   </Typography>
+                </Box>
+              ) : (
+                <Box sx={{ p: 2 }}>
+                  <Typography variant="h6" gutterBottom>
+                    생성된 프롬프트
+                  </Typography>
+                  <Box
+                    sx={{
+                      p: 2,
+                      bgcolor: 'grey.50',
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: 'grey.300',
+                      mb: 2,
+                    }}
+                  >
+                    <Typography
+                      variant="body1"
+                      sx={{
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {selectedImage.prompt}
+                    </Typography>
+                  </Box>
+                  {loadedPrompts[selectedImage.segment_index] && (
+                    <Box>
+                      <Typography variant="subtitle2" gutterBottom>
+                        프롬프트 세부 정보
+                      </Typography>
+                      <Box
+                        sx={{
+                          p: 2,
+                          bgcolor: 'grey.100',
+                          borderRadius: 1,
+                          fontFamily: 'monospace',
+                          fontSize: '0.85rem',
+                          whiteSpace: 'pre-wrap',
+                          overflowX: 'auto',
+                        }}
+                      >
+                        {JSON.stringify(loadedPrompts[selectedImage.segment_index], null, 2)}
+                      </Box>
+                    </Box>
+                  )}
+                  <Alert severity="warning" sx={{ mt: 2 }}>
+                    이미지 생성에 실패했습니다. 이 프롬프트를 다른 이미지 생성 서비스에서 사용할 수 있습니다.
+                  </Alert>
                 </Box>
               )}
             </DialogContent>

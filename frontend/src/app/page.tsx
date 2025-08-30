@@ -190,6 +190,8 @@ function CanvasContent() {
         open={state.illustrationDialogOpen}
         onClose={() => state.setIllustrationDialogOpen(false)}
         onConfirm={state.onConfirmIllustration}
+        style={state.illustrationStyle}
+        onStyleChange={state.setIllustrationStyle}
         styleHints={state.illustrationStyleHints}
         onStyleHintsChange={state.setIllustrationStyleHints}
         minSegmentLength={state.illustrationMinSegmentLength}

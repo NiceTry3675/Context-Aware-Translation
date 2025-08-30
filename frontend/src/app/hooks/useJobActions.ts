@@ -146,6 +146,7 @@ export function useJobActions({ apiUrl, onError, onSuccess }: UseJobActionsOptio
     jobId: number,
     apiKey: string,
     config?: {
+      style?: string;
       style_hints?: string;
       min_segment_length?: number;
       skip_dialogue_heavy?: boolean;

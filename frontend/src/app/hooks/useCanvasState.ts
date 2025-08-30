@@ -135,6 +135,7 @@ export function useCanvasState() {
   const [selectedCases, setSelectedCases] = useState<Record<number, boolean[]>>({});
 
   const [illustrationDialogOpen, setIllustrationDialogOpen] = useState(false);
+  const [illustrationStyle, setIllustrationStyle] = useState<string>('digital_art');
   const [illustrationStyleHints, setIllustrationStyleHints] = useState<string>('');
   const [illustrationMinSegmentLength, setIllustrationMinSegmentLength] = useState(100);
   const [illustrationSkipDialogueHeavy, setIllustrationSkipDialogueHeavy] = useState(false);
@@ -184,6 +185,7 @@ export function useCanvasState() {
       parseInt(jobId, 10),
       apiKey,
       {
+        style: illustrationStyle,
         style_hints: illustrationStyleHints,
         min_segment_length: illustrationMinSegmentLength,
         skip_dialogue_heavy: illustrationSkipDialogueHeavy,
@@ -260,7 +262,8 @@ export function useCanvasState() {
     if (
       selectedJob?.status === 'IN_PROGRESS' ||
       selectedJob?.validation_status === 'IN_PROGRESS' || 
-      selectedJob?.post_edit_status === 'IN_PROGRESS'
+      selectedJob?.post_edit_status === 'IN_PROGRESS' ||
+      selectedJob?.illustrations_status === 'IN_PROGRESS'
     ) {
       const interval = setInterval(() => {
         // Jobs list update is handled in useTranslationJobs poller (public GET /jobs/{id}).
@@ -270,7 +273,7 @@ export function useCanvasState() {
       }, 3000);
       return () => clearInterval(interval);
     }
-  }, [selectedJob?.status, selectedJob?.validation_status, selectedJob?.post_edit_status, refreshJobs]);
+  }, [selectedJob?.status, selectedJob?.validation_status, selectedJob?.post_edit_status, selectedJob?.illustrations_status, refreshJobs]);
 
   // Handle job selection change
   const handleJobChange = (newJobId: string) => {
@@ -362,7 +365,8 @@ export function useCanvasState() {
   const loading = dataLoading || jobActionLoading;
   const isPolling = selectedJob?.status === 'IN_PROGRESS' || 
     selectedJob?.validation_status === 'IN_PROGRESS' || 
-    selectedJob?.post_edit_status === 'IN_PROGRESS';
+    selectedJob?.post_edit_status === 'IN_PROGRESS' ||
+    selectedJob?.illustrations_status === 'IN_PROGRESS';
   const error = dataError || jobActionError || translationError;
 
   return {
@@ -470,6 +474,8 @@ export function useCanvasState() {
     // Illustration Dialog State and Handlers
     illustrationDialogOpen,
     setIllustrationDialogOpen,
+    illustrationStyle,
+    setIllustrationStyle,
     illustrationStyleHints,
     setIllustrationStyleHints,
     illustrationMinSegmentLength,
