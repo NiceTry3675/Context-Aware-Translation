@@ -12,12 +12,14 @@ import {
   Edit as EditIcon,
   Description as DescriptionIcon,
   Chat as ChatIcon,
+  PictureAsPdf as PdfIcon,
 } from '@mui/icons-material';
 import { Job } from '../../../types/ui';
 
 interface DownloadActionsProps {
   job: Job;
   onDownloadTranslation: () => void;
+  onDownloadPdf: () => void;
   onDownloadGlossary: () => void;
   onDownloadPromptLogs: () => void;
   onDownloadContextLogs: () => void;
@@ -33,6 +35,7 @@ interface DownloadActionsProps {
 export default function DownloadActions({
   job,
   onDownloadTranslation,
+  onDownloadPdf,
   onDownloadGlossary,
   onDownloadPromptLogs,
   onDownloadContextLogs,
@@ -56,6 +59,11 @@ export default function DownloadActions({
       
       {job.status === 'COMPLETED' && (
         <>
+          <Tooltip title="PDF로 다운로드 (삽화 포함)">
+            <IconButton color="primary" onClick={onDownloadPdf}>
+              <PdfIcon />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="용어집 다운로드">
             <IconButton color="secondary" onClick={onDownloadGlossary}>
               <MenuBookIcon />

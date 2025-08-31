@@ -293,6 +293,48 @@ export async function triggerPostEdit(
   }
 }
 
+export async function triggerIllustrationGeneration(
+  jobId: string,
+  apiKey: string,
+  token: string | undefined,
+  config?: {
+    style?: string;
+    style_hints?: string;
+    min_segment_length?: number;
+    skip_dialogue_heavy?: boolean;
+    cache_enabled?: boolean;
+  },
+  maxIllustrations?: number
+): Promise<void> {
+  const params = new URLSearchParams({
+    api_key: apiKey,
+    ...(maxIllustrations && { max_illustrations: maxIllustrations.toString() })
+  });
+  
+  const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/generate?${params}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': token ? `Bearer ${token}` : '',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      enabled: true,
+      style: config?.style || 'digital_art',
+      style_hints: config?.style_hints || '',
+      segments_per_illustration: 1,
+      max_illustrations: maxIllustrations || null,
+      min_segment_length: config?.min_segment_length || 100,
+      skip_dialogue_heavy: config?.skip_dialogue_heavy || false,
+      cache_enabled: config?.cache_enabled !== false,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to trigger illustration generation');
+  }
+}
+
 
 
 // ============= Structured API Functions =============

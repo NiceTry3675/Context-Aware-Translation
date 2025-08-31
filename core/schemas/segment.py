@@ -14,7 +14,8 @@ class SegmentInfo(BaseModel):
     Container for segment data and its context.
     
     This model represents a single segment of text within a document, 
-    along with contextual information about its source location.
+    along with contextual information about its source location and
+    optional illustration data.
     """
     text: str = Field(..., description="The text content of the segment")
     chapter_title: Optional[str] = Field(
@@ -24,6 +25,19 @@ class SegmentInfo(BaseModel):
     chapter_filename: Optional[str] = Field(
         default=None, 
         description="The filename of the chapter this segment belongs to"
+    )
+    # Illustration fields
+    illustration_path: Optional[str] = Field(
+        default=None,
+        description="Path to the generated illustration for this segment"
+    )
+    illustration_prompt: Optional[str] = Field(
+        default=None,
+        description="The prompt used to generate the illustration"
+    )
+    illustration_status: Optional[str] = Field(
+        default=None,
+        description="Status of illustration generation (pending, generated, failed)"
     )
     
     class Config:

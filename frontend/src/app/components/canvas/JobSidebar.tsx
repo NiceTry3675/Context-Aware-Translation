@@ -31,6 +31,7 @@ import {
   PlayCircle as ProcessingIcon,
   Delete as DeleteIcon,
   Download as DownloadIcon,
+  PictureAsPdf as PdfIcon,
   AutoStories as AutoStoriesIcon,
 } from '@mui/icons-material';
 import { Job } from '../../types/ui';
@@ -112,7 +113,7 @@ export default function JobSidebar({
   return (
     <Box
       sx={{
-        width: 320,
+        width: 380,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
@@ -185,7 +186,8 @@ export default function JobSidebar({
               const isProcessing = job.status === 'PROCESSING' || job.status === 'PENDING';
               const isValidating = job.validation_status === 'IN_PROGRESS';
               const isPostEditing = job.post_edit_status === 'IN_PROGRESS';
-              const showProgress = isProcessing || isValidating || isPostEditing;
+              const isIllustrating = job.illustrations_status === 'IN_PROGRESS';
+              const showProgress = isProcessing || isValidating || isPostEditing || isIllustrating;
               
               return (
                 <ListItem
@@ -237,6 +239,39 @@ export default function JobSidebar({
                               }}
                             >
                               <DownloadIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="PDF 다운로드">
+                            <IconButton
+                              size="small"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                                try {
+                                  const token = await getCachedClerkToken(getToken);
+                                  const response = await fetch(`${API_URL}/api/v1/jobs/${job.id}/pdf?include_source=false&include_illustrations=true`, {
+                                    headers: {
+                                      'Authorization': token ? `Bearer ${token}` : '',
+                                    },
+                                  });
+                                  if (!response.ok) throw new Error('PDF download failed');
+                                  
+                                  const blob = await response.blob();
+                                  const url = window.URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  const baseFilename = job.filename ? job.filename.replace(/\.[^/.]+$/, '') : `translation_${job.id}`;
+                                  a.download = `${baseFilename}.pdf`;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  document.body.removeChild(a);
+                                  window.URL.revokeObjectURL(url);
+                                } catch (error) {
+                                  console.error('PDF download error:', error);
+                                }
+                              }}
+                            >
+                              <PdfIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
                         </>
@@ -300,6 +335,15 @@ export default function JobSidebar({
                                 sx={{ fontSize: '0.7rem', height: 20 }}
                               />
                             )}
+                            {job.illustrations_status === 'COMPLETED' && (
+                              <Chip
+                                label="삽화생성완료"
+                                size="small"
+                                color="warning"
+                                variant="outlined"
+                                sx={{ fontSize: '0.7rem', height: 20 }}
+                              />
+                            )}
                           </Stack>
                           {showProgress && (
                             <Box sx={{ mt: 0.5 }}>
@@ -329,6 +373,16 @@ export default function JobSidebar({
                                     value={job.post_edit_progress ?? undefined}
                                     color="info"
                                     sx={{ height: 3 }}
+                                  />
+                                </Tooltip>
+                              )}
+                              {isIllustrating && job.illustrations_progress !== undefined && (
+                                <Tooltip title={`삽화 생성 진행: ${job.illustrations_progress}%`}>
+                                  <LinearProgress
+                                    variant="determinate"
+                                    value={job.illustrations_progress ?? undefined}
+                                    color="warning"
+                                    sx={{ height: 3, mt: 0.5 }}
                                   />
                                 </Tooltip>
                               )}

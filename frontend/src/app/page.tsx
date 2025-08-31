@@ -9,6 +9,7 @@ import NewTranslationForm from './components/canvas/NewTranslationForm';
 import ResultsView from './components/canvas/ResultsView';
 import ValidationDialog from './components/TranslationSidebar/ValidationDialog';
 import PostEditDialog from './components/TranslationSidebar/PostEditDialog';
+import IllustrationDialog from './components/TranslationSidebar/IllustrationDialog';
 
 function CanvasContent() {
   const mainContainerRef = useRef<HTMLDivElement>(null);
@@ -149,6 +150,7 @@ function CanvasContent() {
                 }}
                 onOpenValidationDialog={() => state.setValidationDialogOpen(true)}
                 onOpenPostEditDialog={() => state.setPostEditDialogOpen(true)}
+                onOpenIllustrationDialog={() => state.setIllustrationDialogOpen(true)}
               />
             )}
           </Container>
@@ -171,7 +173,10 @@ function CanvasContent() {
 
       <PostEditDialog
         open={state.postEditDialogOpen}
-        onClose={() => state.setPostEditDialogOpen(false)}
+        onClose={() => {
+          state.setPostEditDialogOpen(false);
+          state.setSelectedCases({});
+        }}
         onConfirm={state.onConfirmPostEdit}
         validationReport={state.validationReport}
         loading={state.loading}
@@ -179,6 +184,23 @@ function CanvasContent() {
         apiProvider={state.apiProvider}
         modelName={state.postEditModelName || state.selectedModel}
         onModelNameChange={state.setPostEditModelName}
+      />
+
+      <IllustrationDialog
+        open={state.illustrationDialogOpen}
+        onClose={() => state.setIllustrationDialogOpen(false)}
+        onConfirm={state.onConfirmIllustration}
+        style={state.illustrationStyle}
+        onStyleChange={state.setIllustrationStyle}
+        styleHints={state.illustrationStyleHints}
+        onStyleHintsChange={state.setIllustrationStyleHints}
+        minSegmentLength={state.illustrationMinSegmentLength}
+        onMinSegmentLengthChange={state.setIllustrationMinSegmentLength}
+        skipDialogueHeavy={state.illustrationSkipDialogueHeavy}
+        onSkipDialogueHeavyChange={state.setIllustrationSkipDialogueHeavy}
+        maxIllustrations={state.illustrationMaxCount}
+        onMaxIllustrationsChange={state.setIllustrationMaxCount}
+        loading={state.loading}
       />
     </>
   );

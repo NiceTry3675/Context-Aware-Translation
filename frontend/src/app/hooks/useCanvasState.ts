@@ -54,7 +54,8 @@ export function useCanvasState() {
     enableValidation: false,
     quickValidation: false,
     validationSampleRate: 100,
-    enablePostEdit: false
+    enablePostEdit: false,
+    enableIllustrations: false
   });
   
   // Translation service hook
@@ -133,9 +134,17 @@ export function useCanvasState() {
   const [postEditModelName, setPostEditModelName] = useState<string>('');
   const [selectedCases, setSelectedCases] = useState<Record<number, boolean[]>>({});
 
+  const [illustrationDialogOpen, setIllustrationDialogOpen] = useState(false);
+  const [illustrationStyle, setIllustrationStyle] = useState<string>('digital_art');
+  const [illustrationStyleHints, setIllustrationStyleHints] = useState<string>('');
+  const [illustrationMinSegmentLength, setIllustrationMinSegmentLength] = useState(100);
+  const [illustrationSkipDialogueHeavy, setIllustrationSkipDialogueHeavy] = useState(false);
+  const [illustrationMaxCount, setIllustrationMaxCount] = useState(10);
+
   const { 
     handleTriggerValidation, 
     handleTriggerPostEdit,
+    handleTriggerIllustration,
     loading: jobActionLoading,
     error: jobActionError,
   } = useJobActions({
@@ -166,6 +175,25 @@ export function useCanvasState() {
       model_name: postEditModelName || selectedModel,
     });
     setPostEditDialogOpen(false);
+    // Clear selectedCases after confirmation
+    setSelectedCases({});
+  };
+
+  const onConfirmIllustration = () => {
+    if (!jobId || !apiKey) return;
+    handleTriggerIllustration(
+      parseInt(jobId, 10),
+      apiKey,
+      {
+        style: illustrationStyle,
+        style_hints: illustrationStyleHints,
+        min_segment_length: illustrationMinSegmentLength,
+        skip_dialogue_heavy: illustrationSkipDialogueHeavy,
+        cache_enabled: true,
+      },
+      illustrationMaxCount
+    );
+    setIllustrationDialogOpen(false);
   };
   
   // Segment navigation hook
@@ -197,6 +225,20 @@ export function useCanvasState() {
     return undefined;
   }, [translationContent, postEditLog, translationSegments]);
 
+  // Auto-populate selectedCases when post-edit dialog opens with validation report
+  useEffect(() => {
+    if (postEditDialogOpen && validationReport?.detailed_results && Object.keys(selectedCases).length === 0) {
+      // Auto-select all cases for post-editing when opening from canvas
+      const newSelectedCases: Record<number, boolean[]> = {};
+      validationReport.detailed_results.forEach((result: any) => {
+        if (result.structured_cases && result.structured_cases.length > 0) {
+          newSelectedCases[result.segment_index] = new Array(result.structured_cases.length).fill(true);
+        }
+      });
+      setSelectedCases(newSelectedCases);
+    }
+  }, [postEditDialogOpen, validationReport]);
+
   // Load saved tab preference only on client side
   useEffect(() => {
     setIsClient(true);
@@ -220,7 +262,8 @@ export function useCanvasState() {
     if (
       selectedJob?.status === 'IN_PROGRESS' ||
       selectedJob?.validation_status === 'IN_PROGRESS' || 
-      selectedJob?.post_edit_status === 'IN_PROGRESS'
+      selectedJob?.post_edit_status === 'IN_PROGRESS' ||
+      selectedJob?.illustrations_status === 'IN_PROGRESS'
     ) {
       const interval = setInterval(() => {
         // Jobs list update is handled in useTranslationJobs poller (public GET /jobs/{id}).
@@ -230,7 +273,7 @@ export function useCanvasState() {
       }, 3000);
       return () => clearInterval(interval);
     }
-  }, [selectedJob?.status, selectedJob?.validation_status, selectedJob?.post_edit_status, refreshJobs]);
+  }, [selectedJob?.status, selectedJob?.validation_status, selectedJob?.post_edit_status, selectedJob?.illustrations_status, refreshJobs]);
 
   // Handle job selection change
   const handleJobChange = (newJobId: string) => {
@@ -322,7 +365,8 @@ export function useCanvasState() {
   const loading = dataLoading || jobActionLoading;
   const isPolling = selectedJob?.status === 'IN_PROGRESS' || 
     selectedJob?.validation_status === 'IN_PROGRESS' || 
-    selectedJob?.post_edit_status === 'IN_PROGRESS';
+    selectedJob?.post_edit_status === 'IN_PROGRESS' ||
+    selectedJob?.illustrations_status === 'IN_PROGRESS';
   const error = dataError || jobActionError || translationError;
 
   return {
@@ -426,6 +470,21 @@ export function useCanvasState() {
     setSelectedCases,
     onConfirmPostEdit,
     segmentNav,
+    
+    // Illustration Dialog State and Handlers
+    illustrationDialogOpen,
+    setIllustrationDialogOpen,
+    illustrationStyle,
+    setIllustrationStyle,
+    illustrationStyleHints,
+    setIllustrationStyleHints,
+    illustrationMinSegmentLength,
+    setIllustrationMinSegmentLength,
+    illustrationSkipDialogueHeavy,
+    setIllustrationSkipDialogueHeavy,
+    illustrationMaxCount,
+    setIllustrationMaxCount,
+    onConfirmIllustration,
     
     // Navigation
     router,

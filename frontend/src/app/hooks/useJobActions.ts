@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { components } from '../../types/api';
 import { useAuth, useClerk } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
+import { triggerIllustrationGeneration } from '../utils/api';
 
 interface UseJobActionsOptions {
   apiUrl: string;
@@ -141,12 +142,66 @@ export function useJobActions({ apiUrl, onError, onSuccess }: UseJobActionsOptio
     );
   }, [apiUrl, handleDownload]);
 
+  const handleDownloadPdf = useCallback(async (
+    jobId: number,
+    includeSource: boolean = true,
+    includeIllustrations: boolean = true,
+    pageSize: string = "A4"
+  ) => {
+    const params = new URLSearchParams({
+      include_source: includeSource.toString(),
+      include_illustrations: includeIllustrations.toString(),
+      page_size: pageSize
+    });
+    
+    await handleDownload(
+      `${apiUrl}/api/v1/jobs/${jobId}/pdf?${params.toString()}`,
+      `translation_job_${jobId}.pdf`
+    );
+  }, [apiUrl, handleDownload]);
+
+  const handleTriggerIllustration = useCallback(async (
+    jobId: number,
+    apiKey: string,
+    config?: {
+      style?: string;
+      style_hints?: string;
+      min_segment_length?: number;
+      skip_dialogue_heavy?: boolean;
+      cache_enabled?: boolean;
+    },
+    maxIllustrations?: number
+  ) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = await getCachedClerkToken(getToken);
+      await triggerIllustrationGeneration(
+        jobId.toString(),
+        apiKey,
+        token || undefined,
+        config,
+        maxIllustrations
+      );
+      onSuccess?.();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      console.error('Error triggering illustration generation:', error);
+      setError(errorMessage);
+      onError?.(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, [getToken, onError, onSuccess]);
+
   return {
     handleDownload,
     handleTriggerValidation,
     handleTriggerPostEdit,
+    handleTriggerIllustration,
     handleDownloadValidationReport,
     handleDownloadPostEditLog,
+    handleDownloadPdf,
     loading,
     error,
   };
