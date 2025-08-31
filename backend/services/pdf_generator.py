@@ -6,6 +6,7 @@ including translated text, source text (optional), and illustrations (if availab
 """
 
 import os
+import re
 import fitz  # PyMuPDF
 from typing import Optional, Dict, Any, List, Tuple
 from pathlib import Path
@@ -38,6 +39,9 @@ class PDFGenerator:
     MARGIN_LEFT = 60
     MARGIN_RIGHT = 60
     
+    # Font configuration
+    NANUM_FONT_PATH = os.path.join(os.path.dirname(__file__), '..', 'NanumGothic-Regular.ttf')
+    
     # Font sizes
     TITLE_FONT_SIZE = 24
     HEADING_FONT_SIZE = 18
@@ -65,6 +69,22 @@ class PDFGenerator:
         self.current_page = None
         self.current_y = self.MARGIN_TOP
         self.page_number = 0
+        
+        # Load custom Korean font
+        self.korean_font = None
+        if os.path.exists(self.NANUM_FONT_PATH):
+            try:
+                # Load NanumGothic font from file
+                with open(self.NANUM_FONT_PATH, 'rb') as f:
+                    font_data = f.read()
+                self.korean_font = fitz.Font(fontbuffer=font_data)
+                logging.info(f"Successfully loaded NanumGothic font from {self.NANUM_FONT_PATH}")
+            except Exception as e:
+                logging.warning(f"Failed to load NanumGothic font: {e}. Using fallback CJK font.")
+                self.korean_font = fitz.Font("CJK")  # Fallback to CJK
+        else:
+            logging.warning(f"NanumGothic font not found at {self.NANUM_FONT_PATH}. Using fallback CJK font.")
+            self.korean_font = fitz.Font("CJK")  # Fallback to CJK
         
     def generate(self, 
                  include_source: bool = True,
@@ -123,7 +143,7 @@ class PDFGenerator:
             self.PAGE_WIDTH / 2,
             y_center - 50,
             self.TITLE_FONT_SIZE,
-            font="CJK",  # Explicitly set font
+            font="korean",  # Use Korean font
             align="center",
             color=self.COLOR_BLACK
         )
@@ -381,8 +401,9 @@ class PDFGenerator:
             # Replace other problematic Unicode dashes
             paragraph = paragraph.replace('–', ' - ')  # en dash
             paragraph = paragraph.replace('―', ' - ')  # horizontal bar
-            # Clean up potential double spaces created by replacements within each paragraph
-            paragraph = ' '.join(paragraph.split())
+            # Only clean up excessive spaces (3+ spaces), preserve double spaces
+            paragraph = re.sub(r'   +', '  ', paragraph)  # Replace 3+ spaces with 2
+            paragraph = re.sub(r'  +(?=[가-힣])', ' ', paragraph)  # Single space before Korean
             sanitized_paragraphs.append(paragraph)
         
         # Rejoin with original line breaks preserved
@@ -606,7 +627,7 @@ class PDFGenerator:
                    x: float,
                    y: float,
                    font_size: float,
-                   font: str = "CJK",
+                   font: str = "korean",
                    color: Tuple[float, float, float] = COLOR_BLACK,
                    align: str = "left"):
         """
@@ -618,28 +639,29 @@ class PDFGenerator:
             x: X coordinate
             y: Y coordinate
             font_size: Font size
-            font: Font name
+            font: Font name ("korean" for NanumGothic, "helv" for standard)
             color: RGB color tuple (0-1 range)
             align: Text alignment (left, center, right)
         """
         # Create text writer
         tw = fitz.TextWriter(page.rect)
         
-        # Get the font object - use CJK font for Korean support
-        if font == "CJK":
-            font_obj = fitz.Font(font)  # Noto Sans CJK for Korean
+        # Get the font object
+        if font == "korean" or font == "CJK":
+            font_obj = self.korean_font  # Use loaded NanumGothic font
         else:
-            font_obj = fitz.Font(font)
+            font_obj = fitz.Font(font)  # Use standard font
         
         # Calculate text position based on alignment
         if align == "center":
-            # For CJK fonts, use a more accurate width calculation
-            if font == "CJK":
-                # Count actual CJK characters vs ASCII characters for better estimation
-                cjk_count = sum(1 for c in text if ord(c) > 0x3000)
-                ascii_count = len(text) - cjk_count
-                # CJK characters are wider, ASCII characters are narrower
-                text_width = (cjk_count * font_size * 0.9) + (ascii_count * font_size * 0.5)
+            # For Korean fonts, use a more accurate width calculation
+            if font == "korean" or font == "CJK":
+                # Count actual Korean characters vs ASCII characters for better estimation
+                korean_count = sum(1 for c in text if ord(c) >= 0xAC00 and ord(c) <= 0xD7AF)
+                cjk_count = sum(1 for c in text if ord(c) > 0x3000 and not (ord(c) >= 0xAC00 and ord(c) <= 0xD7AF))
+                ascii_count = len(text) - korean_count - cjk_count
+                # NanumGothic has specific width ratios
+                text_width = (korean_count * font_size * 0.88) + (cjk_count * font_size * 0.9) + (ascii_count * font_size * 0.48)
             else:
                 try:
                     text_width = fitz.get_text_length(text, fontname="helv", fontsize=font_size)
@@ -647,13 +669,14 @@ class PDFGenerator:
                     text_width = len(text) * font_size * 0.5
             x = x - text_width / 2
         elif align == "right":
-            # For CJK fonts, use a more accurate width calculation
-            if font == "CJK":
-                # Count actual CJK characters vs ASCII characters for better estimation
-                cjk_count = sum(1 for c in text if ord(c) > 0x3000)
-                ascii_count = len(text) - cjk_count
-                # CJK characters are wider, ASCII characters are narrower
-                text_width = (cjk_count * font_size * 0.9) + (ascii_count * font_size * 0.5)
+            # For Korean fonts, use a more accurate width calculation
+            if font == "korean" or font == "CJK":
+                # Count actual Korean characters vs ASCII characters for better estimation
+                korean_count = sum(1 for c in text if ord(c) >= 0xAC00 and ord(c) <= 0xD7AF)
+                cjk_count = sum(1 for c in text if ord(c) > 0x3000 and not (ord(c) >= 0xAC00 and ord(c) <= 0xD7AF))
+                ascii_count = len(text) - korean_count - cjk_count
+                # NanumGothic has specific width ratios
+                text_width = (korean_count * font_size * 0.88) + (cjk_count * font_size * 0.9) + (ascii_count * font_size * 0.48)
             else:
                 try:
                     text_width = fitz.get_text_length(text, fontname="helv", fontsize=font_size)
@@ -679,7 +702,7 @@ class PDFGenerator:
                             y: float,
                             font_size: float,
                             width: float,
-                            font: str = "CJK",
+                            font: str = "korean",
                             color: Tuple[float, float, float] = COLOR_BLACK):
         """
         Draw justified text on the page with controlled spacing.
@@ -694,7 +717,13 @@ class PDFGenerator:
             font: Font name
             color: RGB color tuple (0-1 range)
         """
-        words = text.split()
+        # For Korean text, be more careful about word splitting
+        if font == "korean" or font == "CJK":
+            # Split on spaces but keep punctuation attached to words
+            words = re.findall(r'\S+', text)
+        else:
+            words = text.split()
+        
         if len(words) <= 1:
             # Can't justify single word
             self._draw_text(page, text, x, y, font_size, font, color)
@@ -704,16 +733,19 @@ class PDFGenerator:
         tw = fitz.TextWriter(page.rect)
         
         # Get the font object
-        if font == "CJK":
-            font_obj = fitz.Font(font)
+        if font == "korean" or font == "CJK":
+            font_obj = self.korean_font  # Use loaded NanumGothic font
         else:
             font_obj = fitz.Font(font)
         
         # Calculate total text width without spaces
         total_text_width = 0
         for word in words:
-            if font == "CJK":
-                word_width = len(word) * font_size * 0.85
+            if font == "korean" or font == "CJK":
+                # More accurate width calculation for NanumGothic
+                korean_count = sum(1 for c in word if ord(c) >= 0xAC00 and ord(c) <= 0xD7AF)
+                ascii_count = len(word) - korean_count
+                word_width = (korean_count * font_size * 0.88) + (ascii_count * font_size * 0.48)
             else:
                 try:
                     word_width = fitz.get_text_length(word, fontname="helv", fontsize=font_size)
@@ -750,12 +782,13 @@ class PDFGenerator:
             else:
                 max_space = font_size * 0.8  # Most restricted for shorter lines
             
-            min_space = font_size * 0.2  # Minimum space width
+            # Increased minimum space to prevent words sticking together
+            min_space = font_size * 0.35  # Minimum space width (was 0.2)
             
             # Apply the limits
             space_width = max(min(space_width, max_space), min_space)
         else:
-            space_width = font_size * 0.3
+            space_width = font_size * 0.35  # Default space (was 0.3)
         
         # Draw each word with calculated spacing
         current_x = x
@@ -769,8 +802,11 @@ class PDFGenerator:
             )
             
             # Calculate word width
-            if font == "CJK":
-                word_width = len(word) * font_size * 0.85
+            if font == "korean" or font == "CJK":
+                # More accurate width calculation for NanumGothic
+                korean_count = sum(1 for c in word if ord(c) >= 0xAC00 and ord(c) <= 0xD7AF)
+                ascii_count = len(word) - korean_count
+                word_width = (korean_count * font_size * 0.88) + (ascii_count * font_size * 0.48)
             else:
                 try:
                     word_width = fitz.get_text_length(word, fontname="helv", fontsize=font_size)
@@ -785,7 +821,7 @@ class PDFGenerator:
         # Write all text with color
         tw.write_text(page, color=color)
     
-    def _wrap_text(self, text: str, font_size: float, font: str = "CJK") -> List[str]:
+    def _wrap_text(self, text: str, font_size: float, font: str = "korean") -> List[str]:
         """
         Wrap text to fit within page margins.
         
@@ -810,11 +846,12 @@ class PDFGenerator:
             # Check if adding this word would exceed the width
             test_line = ' '.join(current_line + [word])
             
-            # Use a more conservative estimate for CJK fonts
-            if font == "CJK":
-                # Korean characters are wider - use more conservative estimate
-                # Roughly 0.85 of font_size per character to avoid overflow
-                estimated_width = len(test_line) * font_size * 0.85
+            # Use a more conservative estimate for Korean fonts
+            if font == "korean" or font == "CJK":
+                # More accurate width calculation for NanumGothic
+                korean_count = sum(1 for c in test_line if ord(c) >= 0xAC00 and ord(c) <= 0xD7AF)
+                ascii_count = len(test_line) - korean_count
+                estimated_width = (korean_count * font_size * 0.88) + (ascii_count * font_size * 0.48)
             else:
                 try:
                     estimated_width = fitz.get_text_length(test_line, fontname="helv", fontsize=font_size)
@@ -829,8 +866,8 @@ class PDFGenerator:
                     current_line = [word]
                 else:
                     # Word is too long, break it into smaller chunks
-                    # Use conservative estimate for Korean characters
-                    max_chars = int(max_width / (font_size * 0.85))
+                    # Use conservative estimate for NanumGothic characters
+                    max_chars = int(max_width / (font_size * 0.88))
                     for i in range(0, len(word), max_chars):
                         lines.append(word[i:i+max_chars])
                     current_line = []
