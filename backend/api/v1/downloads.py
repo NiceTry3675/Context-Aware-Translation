@@ -2,12 +2,14 @@
 
 import os
 import json
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
 from ...dependencies import get_db, get_required_user
 from ...services.utils.file_manager import FileManager
+from ...services.pdf_generator import generate_translation_pdf
 from ... import crud, models, auth, schemas
 
 router = APIRouter(tags=["downloads"])
@@ -257,3 +259,82 @@ async def get_job_content(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading translation content: {str(e)}")
+
+
+@router.get("/jobs/{job_id}/pdf")
+async def download_job_pdf(
+    job_id: int,
+    include_source: bool = Query(True, description="Include source text in PDF"),
+    include_illustrations: bool = Query(True, description="Include illustrations in PDF"),
+    page_size: str = Query("A4", description="Page size (A4 or Letter)"),
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_required_user)
+):
+    """
+    Download the translation as a PDF document with optional illustrations.
+    
+    This endpoint generates a professional PDF document containing:
+    - Translated text segments
+    - Source text (optional)
+    - Illustrations for each segment where available
+    - Proper formatting and pagination
+    
+    Args:
+        job_id: ID of the translation job
+        include_source: Whether to include source text alongside translations
+        include_illustrations: Whether to embed generated illustrations
+        page_size: Page size format (A4 or Letter)
+    
+    Returns:
+        PDF file response
+    """
+    # Get the job from database
+    db_job = crud.get_job(db, job_id=job_id)
+    if db_job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Check ownership
+    if not db_job.owner or db_job.owner.clerk_user_id != current_user.clerk_user_id:
+        user_is_admin = await auth.is_admin(current_user)
+        if not user_is_admin:
+            raise HTTPException(status_code=403, detail="Not authorized to download this PDF")
+    
+    # Check if job is completed
+    if db_job.status != "COMPLETED":
+        raise HTTPException(
+            status_code=400, 
+            detail=f"PDF generation is available only for completed jobs. Current status: {db_job.status}"
+        )
+    
+    # Validate page size
+    if page_size not in ["A4", "Letter"]:
+        raise HTTPException(status_code=400, detail="Invalid page size. Must be 'A4' or 'Letter'")
+    
+    try:
+        # Generate PDF
+        pdf_bytes = generate_translation_pdf(
+            job_id=job_id,
+            db=db,
+            include_source=include_source,
+            include_illustrations=include_illustrations,
+            page_size=page_size
+        )
+        
+        # Generate filename
+        base_filename = db_job.filename.rsplit('.', 1)[0] if '.' in db_job.filename else db_job.filename
+        pdf_filename = f"{base_filename}_translation.pdf"
+        
+        # Return PDF response
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{pdf_filename}"'
+            }
+        )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logging.error(f"Error generating PDF for job {job_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")

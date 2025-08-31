@@ -35,6 +35,8 @@
 - **✅ 번역 품질 검증**: AI 기반 자동 검증 시스템으로 번역 정확도, 누락 내용, 이름 일관성 등을 체크합니다. 이제 Gemini Structured Output을 사용해 JSON 스키마로 결과를 수집하고, 프론트엔드가 사용하는 기존 리포트 형태로 안정적으로 매핑합니다.
 - **🔧 자동 오류 수정 (Post-Edit)**: 검증에서 발견된 문제를 AI가 자동으로 수정하고 포괄적인 로그를 생성합니다.
 - **📄 다양한 파일 형식 지원**: TXT, DOCX, EPUB, PDF 등 주요 문서 파일 형식을 지원합니다.
+- **📑 PDF 다운로드 기능**: 번역 결과를 전문적인 PDF 문서로 다운로드할 수 있습니다. 원문 포함 옵션과 생성된 삽화를 PDF에 직접 삽입하는 기능을 제공합니다.
+- **🎨 삽화 생성 (실험적)**: AI를 통해 각 번역 세그먼트에 대한 삽화 프롬프트를 생성하고, 외부 이미지 생성 서비스와 연동 가능한 인터페이스를 제공합니다.
 - **💬 커뮤니티 게시판**: 사용자들이 공지사항, 건의사항, Q&A, 자유게시판을 통해 소통할 수 있는 커뮤니티 기능을 제공합니다.
 
 ### 작업별 모델 오버라이드 사용법
@@ -62,134 +64,61 @@ curl -X POST "$API_URL/api/v1/jobs" \
 
 참고: 용어집/스타일 편차 등 구조화 출력이 필요한 단계는 Gemini 계열 모델을 권장합니다.
 
+### 📑 PDF 다운로드 기능
+
+번역이 완료된 작업을 전문적인 PDF 문서로 다운로드할 수 있습니다.
+
+**주요 기능:**
+- **원문 포함 옵션**: 각 세그먼트의 원문을 번역문과 함께 표시
+- **삽화 삽입**: AI로 생성된 삽화를 PDF에 직접 포함
+- **전문적인 레이아웃**: 
+  - 제목 페이지 및 메타데이터
+  - 세그먼트별 구분 및 번호 표시
+  - 페이지 번호 및 여백 설정
+  - A4/Letter 용지 크기 선택
+- **API 엔드포인트**: `GET /api/v1/jobs/{job_id}/pdf`
+  - Query 파라미터:
+    - `include_source`: 원문 포함 여부 (기본값: true)
+    - `include_illustrations`: 삽화 포함 여부 (기본값: true) 
+    - `page_size`: 용지 크기 선택 (A4 또는 Letter)
+
+**사용 방법:**
+1. 번역 완료된 작업 목록에서 PDF 아이콘 클릭
+2. 또는 캔버스 페이지의 작업 사이드바에서 PDF 다운로드 버튼 클릭
+3. PDF가 자동으로 생성되어 다운로드됨
+
 ## 📂 프로젝트 구조
 
 ```
 Context-Aware-Translation/
 ├── backend/                     # 🌐 FastAPI 백엔드 서버
-│   ├── auth.py                  # 인증 관련 로직
-│   ├── auto_init.py             # 자동 초기화 스크립트
-│   ├── crud.py                  # 데이터베이스 CRUD 연산
-│   ├── database.py              # 데이터베이스 연결 설정
-│   ├── main.py                  # FastAPI 앱 진입점
-│   ├── alembic.ini              # Alembic 설정 파일
-│   ├── migrations/              # Alembic 마이그레이션 디렉토리
-│   │   ├── env.py               # Alembic 환경 설정
-│   │   └── versions/            # 마이그레이션 버전 파일들
-│   ├── models/                  # 데이터베이스 모델 패키지
-│   │   ├── _base.py             # SQLAlchemy Base 클래스
-│   │   ├── user.py              # User 모델
-│   │   ├── translation.py       # TranslationJob 관련 모델
-│   │   ├── community.py         # 커뮤니티 관련 모델
-│   │   └── __init__.py          # 모델 export
-│   └── schemas.py               # Pydantic 스키마 정의
+│   ├── api/                     # API 라우터 및 엔드포인트
+│   ├── models/                  # 데이터베이스 모델
+│   ├── services/                # 비즈니스 로직 (PDF 생성 등)
+│   └── migrations/              # Alembic 마이그레이션
 ├── frontend/                    # 💻 Next.js 프론트엔드
-│   ├── src/
-│   │   ├── app/                 # Next.js 앱 라우터 (페이지, 레이아웃)
-│   │   │   ├── (auth)/          # 인증 관련 페이지
-│   │   │   ├── canvas/          # 번역 작업 전용 캔버스 페이지
-│   │   │   ├── community/       # 커뮤니티 관련 페이지
-│   │   │   ├── components/      # 재사용 가능한 컴포넌트
-│   │   │   │   ├── ApiConfiguration/  # API 설정 컴포넌트
-│   │   │   │   ├── AdvancedSettings/  # 고급 번역 설정
-│   │   │   │   ├── FileUpload/        # 파일 업로드 처리
-│   │   │   │   ├── StyleConfiguration/# 스타일 및 용어집 설정
-│   │   │   │   ├── TranslationSidebar/# 캔버스 페이지용 컴포넌트 및 훅
-│   │   │   │   ├── jobs/              # 번역 작업 관련 컴포넌트
-│   │   │   │   ├── sections/          # 페이지 섹션 컴포넌트
-│   │   │   │   ├── shared/            # 공유 컴포넌트 (이슈 칩, 통계 등)
-│   │   │   │   └── translation/       # 번역 관련 컴포넌트
-│   │   │   ├── hooks/           # 커스텀 React 훅
-│   │   │   │   ├── useApiKey.ts         # API 키 관리
-│   │   │   │   ├── useTranslationJobs.ts# 번역 작업 상태 관리
-│   │   │   │   ├── useTranslationService.ts # 번역 서비스 로직
-│   │   │   │   └── useJobActions.ts     # 작업 액션 핸들러
-│   │   │   ├── types/           # TypeScript 타입 정의
-│   │   │   │   ├── job.ts              # 작업 타입
-│   │   │   │   └── translation.ts      # 번역 관련 타입
-│   │   │   ├── utils/           # 유틸리티 함수
-│   │   │   │   ├── api.ts              # API 통신 함수
-│   │   │   │   └── constants/          # 상수 정의
-│   │   │   ├── privacy/         # 개인정보 처리방침 페이지
-│   │   │   ├── favicon.ico      # 파비콘
-│   │   │   ├── globals.css      # 전역 CSS 스타일
-│   │   │   ├── layout.tsx       # 루트 레이아웃
-│   │   │   └── page.tsx         # 메인 페이지 (267 lines)
-│   │   └── theme.ts             # Material-UI 테마 설정
-│   └── public/                  # 정적 파일 디렉토리
+│   └── src/app/
+│       ├── components/          # React 컴포넌트
+│       ├── hooks/               # 커스텀 React 훅
+│       └── canvas/              # 캔버스 페이지
 ├── core/                        # 🧠 핵심 번역 엔진
 │   ├── config/                  # 설정 및 상태 관리
-│   │   ├── builder.py           # 설정 빌더
-│   │   ├── character_style.py   # 등장인물 말투 관리
-│   │   ├── glossary.py          # 용어집 관리
-│   │   └── loader.py            # 설정 로더
-│   ├── errors/                  # 에러 처리
-│   │   ├── api_errors.py        # API 관련 에러
-│   │   ├── base.py              # 기본 에러 클래스
-│   │   └── error_logger.py      # 에러 로깅
-│   ├── prompts/                 # 프롬프트 관리
-│   │   ├── builder.py           # 프롬프트 빌더
-│   │   ├── manager.py           # 프롬프트 매니저
-│   │   ├── prompts.yaml         # 실제 프롬프트 내용
-│   │   ├── README.md            # 프롬프트 문서
-│   │   └── sanitizer.py         # 프롬프트 정화기
-│   ├── translation/             # 번역 로직
-│   │   ├── engine.py            # 번역 엔진
-│   │   ├── job.py               # 번역 작업 관리
-│   │   ├── validator.py         # 번역 품질 검증기
-│   │   ├── post_editor.py       # 자동 오류 수정기
-│   │   └── models/              # AI 모델 인터페이스
-│   │       ├── gemini.py        # Gemini API 인터페이스
-│   │       └── openrouter.py    # OpenRouter API 인터페이스
-│   ├── utils/                   # 유틸리티 함수
-│   │   ├── file_parser.py       # 파일 파서
-│   │   └── retry.py             # 재시도 로직
-│   ├── main.py                  # 번역 엔진 진입점
-│   └── __init__.py              # 패키지 초기화
+│   ├── prompts/                 # AI 프롬프트 관리
+│   └── translation/             # 번역 로직 및 모델
 ├── tests/                       # 🧪 테스트 코드
-│   ├── run_tests.py             # 테스트 실행 스크립트
-│   ├── test_integration.py      # 통합 테스트
-│   └── test_translation_overall.py # 전체 번역 테스트
-├── uploads/                     # 📤 업로드된 원본 파일
-├── translated_novel/            # 📚 번역된 결과물
-├── source_novel/                # 📖 원본 소설 파일
-├── logs/                        # 📁 모든 로그 파일
-│   ├── context_log/            # 📝 문맥 분석 로그
-│   ├── debug_prompts/          # 🔍 디버그 프롬프트
-│   ├── prohibited_content_logs/ # ⚠️ 부적절한 콘텐츠 로그
-│   ├── validation_logs/        # ✅ 번역 품질 검증 보고서
-│   └── postedit_logs/          # 🔧 자동 수정 내역 로그
-├── requirements.txt             # 🐍 Python 의존성
-├── package.json                 # 📦 Node.js 의존성
-└── Dockerfile                   # 🐳 Docker 설정
+├── uploads/                     # 📤 업로드된 파일
+├── translated_novel/            # 📚 번역 결과물
+├── illustrations/               # 🎨 생성된 삽화
+└── logs/                        # 📁 로그 파일
 ```
 
 ## 🏗️ 프론트엔드 아키텍처
 
-### 컴포넌트 구조
-- **모듈화된 컴포넌트**: 각 기능별로 독립적인 컴포넌트로 분리하여 재사용성과 유지보수성 향상
-- **커스텀 훅**: 비즈니스 로직을 `hooks/` 디렉토리의 커스텀 훅으로 분리하여 관심사 분리
-- **타입 안정성**: TypeScript를 활용한 강력한 타입 체크와 IntelliSense 지원
-- **최적화된 메인 페이지**: 776줄에서 267줄로 감소 (66% 코드 감소)
-- **전용 캔버스 페이지**: 번역 결과 확인을 위한 독립적인 작업 공간 (`/canvas`)
-
-### 주요 컴포넌트
-- `ApiConfiguration`: API 제공자 선택 및 키 관리
-- `FileUploadSection`: 파일 업로드 및 분석 처리
-- `TranslationSettings`: 고급 번역 설정 관리
-- `StyleConfigForm`: 스타일 및 용어집 구성
-- `JobsTable`: 번역 작업 목록 및 상태 관리
-- `Canvas Page`: 번역 결과, 검증 보고서, 포스트 에디팅 확인 전용 페이지
-  - 사이드 패널로 작업 정보 및 액션 버튼 제공
-  - 탭 기반 콘텐츠 전환 (번역 결과/검증/포스트에디팅)
-  - 작업 선택 드롭다운으로 빠른 작업 전환
-  - 전체화면 모드 지원
-
-### 커스텀 훅
-- `useTranslationService`: 번역 서비스 비즈니스 로직
-- `useJobActions`: 작업 관련 액션 (다운로드, 검증, 수정)
-- `useTranslationJobs`: 번역 작업 상태 관리
-- `useApiKey`: API 키 및 제공자 설정 관리
+- **Next.js 15 App Router**: 최신 React 서버 컴포넌트 활용
+- **TypeScript**: 타입 안정성과 개발 생산성 향상
+- **Material-UI**: 일관된 디자인 시스템
+- **캔버스 페이지**: 번역 작업 전용 워크스페이스 (전체화면 지원)
+- **커스텀 훅**: 비즈니스 로직 분리 및 재사용
 
 ## 💬 커뮤니티 기능
 
@@ -322,6 +251,7 @@ python init_categories.py
 3. 캔버스 페이지에서 번역 진행 상황 실시간 확인
 4. 번역 완료 후 검증 및 포스트 에디팅 실행 가능
 5. 모든 결과를 넓은 화면에서 편리하게 확인
+6. PDF 형식으로 번역 결과 다운로드 (삽화 포함 가능)
 
 ### CLI (명령줄)
 

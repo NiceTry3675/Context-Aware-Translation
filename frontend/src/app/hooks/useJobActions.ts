@@ -142,6 +142,24 @@ export function useJobActions({ apiUrl, onError, onSuccess }: UseJobActionsOptio
     );
   }, [apiUrl, handleDownload]);
 
+  const handleDownloadPdf = useCallback(async (
+    jobId: number,
+    includeSource: boolean = true,
+    includeIllustrations: boolean = true,
+    pageSize: string = "A4"
+  ) => {
+    const params = new URLSearchParams({
+      include_source: includeSource.toString(),
+      include_illustrations: includeIllustrations.toString(),
+      page_size: pageSize
+    });
+    
+    await handleDownload(
+      `${apiUrl}/api/v1/jobs/${jobId}/pdf?${params.toString()}`,
+      `translation_job_${jobId}.pdf`
+    );
+  }, [apiUrl, handleDownload]);
+
   const handleTriggerIllustration = useCallback(async (
     jobId: number,
     apiKey: string,
@@ -183,6 +201,7 @@ export function useJobActions({ apiUrl, onError, onSuccess }: UseJobActionsOptio
     handleTriggerIllustration,
     handleDownloadValidationReport,
     handleDownloadPostEditLog,
+    handleDownloadPdf,
     loading,
     error,
   };

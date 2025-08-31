@@ -14,6 +14,7 @@ interface JobRowProps {
   onTriggerPostEdit: (jobId: number) => void;
   onDownloadValidationReport: (jobId: number) => void;
   onDownloadPostEditLog: (jobId: number) => void;
+  onDownloadPdf: (jobId: number) => void;
   devMode?: boolean;
   apiUrl: string;
 }
@@ -38,6 +39,7 @@ export default function JobRow({
   onTriggerPostEdit,
   onDownloadValidationReport,
   onDownloadPostEditLog,
+  onDownloadPdf,
   devMode = false,
   apiUrl
 }: JobRowProps) {
@@ -92,6 +94,7 @@ export default function JobRow({
         <DownloadActions
           job={job}
           onDownloadTranslation={handleDownloadTranslation}
+          onDownloadPdf={() => onDownloadPdf(job.id)}
           onDownloadGlossary={handleDownloadGlossary}
           onDownloadPromptLogs={handleDownloadPromptLogs}
           onDownloadContextLogs={handleDownloadContextLogs}

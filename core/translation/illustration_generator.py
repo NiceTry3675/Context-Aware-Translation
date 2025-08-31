@@ -156,12 +156,14 @@ class IllustrationGenerator:
         else:
             base_description.append("A scene")
         
-        # Add characters with visual descriptions
+        # Add characters with visual descriptions (without names)
         if visual_elements['characters']:
-            if len(visual_elements['characters']) == 1:
-                base_description.append(f"featuring {visual_elements['characters'][0]}")
-            else:
-                base_description.append(f"featuring {', '.join(visual_elements['characters'])}")
+            character_descriptions = self._get_character_descriptions(visual_elements['characters'], segment_text)
+            if character_descriptions:
+                if len(character_descriptions) == 1:
+                    base_description.append(f"featuring {character_descriptions[0]}")
+                else:
+                    base_description.append(f"featuring {', '.join(character_descriptions)}")
         
         # Add action
         if visual_elements['action']:
@@ -231,7 +233,7 @@ class IllustrationGenerator:
                 elements['setting'] = setting
                 break
         
-        # Extract characters from glossary if available
+        # Track which characters are present (but store names for reference)
         if glossary:
             for name in glossary.keys():
                 if name in text:
@@ -271,6 +273,74 @@ class IllustrationGenerator:
                 break
         
         return elements
+    
+    def _get_character_descriptions(self, character_names: List[str], segment_text: str) -> List[str]:
+        """
+        Convert character names to generic visual descriptions for illustration.
+        Avoids using actual names to prevent them from appearing as text in images.
+        
+        Args:
+            character_names: List of character names found in the segment
+            segment_text: The text segment for context
+            
+        Returns:
+            List of generic character descriptions
+        """
+        descriptions = []
+        
+        # Map common character archetypes based on context clues
+        text_lower = segment_text.lower()
+        
+        # Create more varied descriptions based on the number of characters
+        num_characters = len(character_names)
+        
+        if num_characters == 1:
+            # Single character - try to be more descriptive
+            if any(word in text_lower for word in ['child', 'boy', 'kid', 'young']):
+                descriptions.append("a young boy")
+            elif any(word in text_lower for word in ['girl', 'young woman']):
+                descriptions.append("a young woman")
+            elif any(word in text_lower for word in ['woman', 'lady', 'female']):
+                descriptions.append("a woman")
+            elif any(word in text_lower for word in ['man', 'gentleman', 'male']):
+                descriptions.append("a man")
+            elif any(word in text_lower for word in ['old', 'elderly', 'aged', 'senior']):
+                descriptions.append("an elderly person")
+            else:
+                descriptions.append("a person")
+                
+        elif num_characters == 2:
+            # Two characters - show them in conversation or interaction
+            if any(word in text_lower for word in ['talking', 'conversation', 'discussing', 'arguing']):
+                descriptions.append("two people in conversation")
+            elif any(word in text_lower for word in ['fighting', 'combat', 'battle']):
+                descriptions.append("two people in confrontation")
+            elif any(word in text_lower for word in ['embracing', 'hugging', 'holding']):
+                descriptions.append("two people embracing")
+            else:
+                descriptions.append("two people together")
+                
+        elif num_characters >= 3:
+            # Multiple characters - describe as a group
+            if any(word in text_lower for word in ['meeting', 'gathering', 'assembled']):
+                descriptions.append("a group of people gathered")
+            elif any(word in text_lower for word in ['crowd', 'audience']):
+                descriptions.append("a crowd of people")
+            elif any(word in text_lower for word in ['team', 'squad', 'group']):
+                descriptions.append("a team of people")
+            else:
+                descriptions.append(f"a group of {num_characters} people")
+        
+        # If we still have no descriptions, use generic fallback
+        if not descriptions:
+            if num_characters == 1:
+                descriptions.append("a person")
+            elif num_characters == 2:
+                descriptions.append("two people")
+            else:
+                descriptions.append("several people")
+        
+        return descriptions
     
     def generate_illustration(self, 
                             segment_text: str,

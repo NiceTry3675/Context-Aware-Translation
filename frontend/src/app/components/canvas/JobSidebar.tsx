@@ -31,6 +31,7 @@ import {
   PlayCircle as ProcessingIcon,
   Delete as DeleteIcon,
   Download as DownloadIcon,
+  PictureAsPdf as PdfIcon,
   AutoStories as AutoStoriesIcon,
 } from '@mui/icons-material';
 import { Job } from '../../types/ui';
@@ -112,7 +113,7 @@ export default function JobSidebar({
   return (
     <Box
       sx={{
-        width: 320,
+        width: 380,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
@@ -238,6 +239,39 @@ export default function JobSidebar({
                               }}
                             >
                               <DownloadIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="PDF 다운로드">
+                            <IconButton
+                              size="small"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                                try {
+                                  const token = await getCachedClerkToken(getToken);
+                                  const response = await fetch(`${API_URL}/api/v1/jobs/${job.id}/pdf?include_source=false&include_illustrations=true`, {
+                                    headers: {
+                                      'Authorization': token ? `Bearer ${token}` : '',
+                                    },
+                                  });
+                                  if (!response.ok) throw new Error('PDF download failed');
+                                  
+                                  const blob = await response.blob();
+                                  const url = window.URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  const baseFilename = job.filename ? job.filename.replace(/\.[^/.]+$/, '') : `translation_${job.id}`;
+                                  a.download = `${baseFilename}.pdf`;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  document.body.removeChild(a);
+                                  window.URL.revokeObjectURL(url);
+                                } catch (error) {
+                                  console.error('PDF download error:', error);
+                                }
+                              }}
+                            >
+                              <PdfIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
                         </>

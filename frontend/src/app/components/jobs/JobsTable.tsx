@@ -17,6 +17,7 @@ interface JobsTableProps {
   onTriggerPostEdit: (jobId: number) => void;
   onDownloadValidationReport: (jobId: number) => void;
   onDownloadPostEditLog: (jobId: number) => void;
+  onDownloadPdf: (jobId: number) => void;
   devMode?: boolean;
   apiUrl: string;
 }
@@ -29,6 +30,7 @@ export default function JobsTable({
   onTriggerPostEdit,
   onDownloadValidationReport,
   onDownloadPostEditLog,
+  onDownloadPdf,
   devMode = false,
   apiUrl
 }: JobsTableProps) {
@@ -87,6 +89,7 @@ export default function JobsTable({
                   onTriggerPostEdit={onTriggerPostEdit}
                   onDownloadValidationReport={onDownloadValidationReport}
                   onDownloadPostEditLog={onDownloadPostEditLog}
+                  onDownloadPdf={onDownloadPdf}
                   devMode={devMode}
                   apiUrl={apiUrl}
                 />
