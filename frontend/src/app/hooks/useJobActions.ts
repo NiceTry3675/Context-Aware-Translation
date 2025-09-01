@@ -6,11 +6,12 @@ import { triggerIllustrationGeneration } from '../utils/api';
 
 interface UseJobActionsOptions {
   apiUrl: string;
+  apiKey?: string;
   onError?: (error: string) => void;
   onSuccess?: () => void;
 }
 
-export function useJobActions({ apiUrl, onError, onSuccess }: UseJobActionsOptions) {
+export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActionsOptions) {
   const { getToken, isSignedIn } = useAuth();
   const { openSignIn } = useClerk();
   const [loading, setLoading] = useState(false);
@@ -72,7 +73,8 @@ export function useJobActions({ apiUrl, onError, onSuccess }: UseJobActionsOptio
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(body),
+        // Add api_key inline to ensure backend uses user-provided key
+        body: JSON.stringify({ ...(body as any), api_key: apiKey }),
       });
       
       if (response.ok) {
@@ -107,7 +109,8 @@ export function useJobActions({ apiUrl, onError, onSuccess }: UseJobActionsOptio
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(body),
+        // Pass api_key so post-edit does not rely on server env
+        body: JSON.stringify({ ...(body as any), api_key: apiKey }),
       });
       
       if (response.ok) {

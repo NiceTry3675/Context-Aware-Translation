@@ -52,6 +52,7 @@ async def trigger_post_edit(
         db_job.validation_report_path,
         request.selected_cases,
         request.model_name,
+        request.api_key,
     )
     
     return {"message": "Post-editing started", "job_id": job_id}

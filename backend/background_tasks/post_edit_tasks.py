@@ -13,6 +13,7 @@ def run_post_edit_in_background(
     validation_report_path: str,
     selected_cases: dict | None = None,
     model_name: str | None = None,
+    api_key: str | None = None,
 ):
     """Background task to run post-editing on a validated translation."""
     db = None
@@ -32,9 +33,10 @@ def run_post_edit_in_background(
         
         print(f"--- [POST-EDIT] Selected structured cases for {len(selected_cases or {})} segments ---")
         
-        # Get API key - for now using environment variable
-        # In production, this should be retrieved from secure storage
-        api_key = os.environ.get("GEMINI_API_KEY", "")
+        # Determine API key: prefer provided, then env
+        api_key = api_key or os.environ.get("GEMINI_API_KEY", "") or os.environ.get("GOOGLE_API_KEY", "")
+        if not api_key:
+            raise RuntimeError("No API key provided for post-edit. Supply api_key in the request or set GEMINI_API_KEY/GOOGLE_API_KEY in env.")
         model_name = model_name or "gemini-2.5-flash-lite"
         
         # Prepare post-edit components

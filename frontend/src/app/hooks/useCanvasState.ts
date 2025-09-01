@@ -149,6 +149,7 @@ export function useCanvasState() {
     error: jobActionError,
   } = useJobActions({
     apiUrl: API_URL,
+    apiKey,
     onSuccess: () => {
       if (jobId) refreshJobPublic(parseInt(jobId, 10));
     },

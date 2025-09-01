@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from ...dependencies import get_db, get_required_user
 from ...background_tasks.validation_tasks import run_validation_in_background
+from ...services.base.model_factory import ModelAPIFactory
 from ... import crud, models, auth
 from ...schemas import ValidationRequest, StructuredValidationReport, ValidationResponse
 
@@ -50,6 +51,7 @@ async def trigger_validation(
     db.commit()
     
     # Add background task to run validation
+    # Pass through API key if provided; background task will fall back to env
     background_tasks.add_task(
         run_validation_in_background,
         job_id,
@@ -57,6 +59,7 @@ async def trigger_validation(
         request.quick_validation,
         validation_sample_rate_percent,
         request.model_name,
+        request.api_key,
     )
     
     return {"message": "Validation started", "job_id": job_id}
@@ -126,3 +129,6 @@ async def get_validation_report(
     
     # Default: return raw report
     return report
+    # If an api_key is provided, ensure it's a Gemini-style key since validation uses Gemini Structured Output
+    if request.api_key and not ModelAPIFactory.is_gemini_key(request.api_key):
+        raise HTTPException(status_code=400, detail="Validation requires a Gemini API key (GEMINI Structured Output).")
