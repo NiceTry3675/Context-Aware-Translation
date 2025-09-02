@@ -72,14 +72,27 @@ const getStatusChip = (job: Job) => {
     PENDING: 'warning',
   };
 
-  return (
+  const chip = (
     <Chip
       label={job.status}
       size="small"
       color={statusColors[job.status] || 'default'}
       sx={{ fontSize: '0.7rem', height: 20 }}
+      // Native title as a fallback tooltip if MUI Tooltip isn't available
+      title={job.status === 'FAILED' && job.error_message ? job.error_message : undefined}
     />
   );
+
+  // Show detailed error on hover when job failed and error_message exists
+  if (job.status === 'FAILED' && job.error_message) {
+    return (
+      <Tooltip title={job.error_message}>
+        <span>{chip}</span>
+      </Tooltip>
+    );
+  }
+
+  return chip;
 };
 
 export default function JobSidebar({

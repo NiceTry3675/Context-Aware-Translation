@@ -35,6 +35,7 @@ interface Illustration {
   prompt: string;
   success: boolean;
   type?: string;  // 'image' or 'prompt'
+  reference_used?: boolean;
 }
 
 interface IllustrationViewerProps {
@@ -307,7 +308,12 @@ export default function IllustrationViewer({
                     세그먼트 {illustration.segment_index}
                   </Typography>
                   {loadedImages[illustration.segment_index] ? (
-                    <Chip label="이미지 생성 완료" color="success" size="small" />
+                    <Stack direction="row" spacing={1}>
+                      <Chip label="이미지 생성 완료" color="success" size="small" />
+                      {illustration.reference_used && (
+                        <Chip label="참조 사용" color="primary" size="small" />
+                      )}
+                    </Stack>
                   ) : illustration.success ? (
                     <Chip label="프롬프트만 생성됨" color="warning" size="small" />
                   ) : (

@@ -24,6 +24,7 @@ except ImportError:
 
 from ..utils.logging import TranslationLogger
 from ..errors import TranslationError
+from ..schemas.illustration import IllustrationStyle
 
 
 class IllustrationGenerator:
@@ -83,6 +84,12 @@ class IllustrationGenerator:
         
         job_dir.mkdir(parents=True, exist_ok=True)
         return job_dir
+
+    def _setup_base_directory(self) -> Path:
+        """Ensure a subdirectory exists for character base images."""
+        base_dir = self.job_output_dir / "base"
+        base_dir.mkdir(parents=True, exist_ok=True)
+        return base_dir
     
     def _load_cache_metadata(self):
         """Load existing cache metadata from disk if available."""
@@ -110,7 +117,7 @@ class IllustrationGenerator:
         except Exception as e:
             logging.warning(f"Failed to save cache metadata: {e}")
     
-    def _get_cache_key(self, text: str, style_hints: str = "") -> str:
+    def _get_cache_key(self, text: str, style_hints: str = "", extra: str = "") -> str:
         """
         Generate a cache key for the given text and style hints.
         
@@ -121,7 +128,7 @@ class IllustrationGenerator:
         Returns:
             MD5 hash as cache key
         """
-        combined = f"{text}|||{style_hints}"
+        combined = f"{text}|||{style_hints}|||{extra}"
         return hashlib.md5(combined.encode()).hexdigest()
     
     def create_illustration_prompt(self, 
@@ -191,6 +198,126 @@ class IllustrationGenerator:
         logging.info(f"Generated prompt for image: {prompt[:150]}...")
         
         return prompt
+
+    def _infer_world_hints(self, text: Optional[str]) -> Dict[str, str]:
+        """Infer high-level world/genre hints from text without over-specifying details."""
+        if not text:
+            return {}
+        t = text.lower()
+        hints: Dict[str, str] = {}
+        # Very lightweight heuristics
+        fantasy_kw = ["castle", "kingdom", "sword", "knight", "mage", "dungeon", "dragon", "guild", "magic"]
+        scifi_kw = ["starship", "spaceship", "planet", "galaxy", "alien", "android", "cyber", "neon", "hacking", "quantum"]
+        historical_kw = ["emperor", "dynasty", "samurai", "shogun", "roman", "medieval", "victorian", "monarchy"]
+        contemporary_kw = ["school", "classroom", "university", "subway", "smartphone", "apartment", "office", "cafe", "city"]
+
+        def contains_any(words):
+            return any(w in t for w in words)
+
+        if contains_any(fantasy_kw):
+            hints["genre"] = "fantasy"
+        elif contains_any(scifi_kw):
+            hints["genre"] = "sci-fi"
+        elif contains_any(historical_kw):
+            hints["genre"] = "historical"
+        elif contains_any(contemporary_kw):
+            hints["genre"] = "contemporary"
+
+        # Very light period cue
+        if "medieval" in t or "castle" in t or "knight" in t:
+            hints["period"] = "medieval"
+        elif "victorian" in t:
+            hints["period"] = "victorian"
+        elif any(k in t for k in ["neon", "cyber", "android", "ai overload"]):
+            hints["period"] = "near-future"
+        else:
+            hints.setdefault("period", "unspecified")
+
+        return hints
+
+    def create_character_base_prompt(self,
+                                     profile: Dict[str, Any],
+                                     style_hints: str = "",
+                                     context_text: Optional[str] = None) -> str:
+        """Build a minimal prompt anchored on the protagonist's name only.
+
+        Keeps details sparse to avoid over-specification and downstream lock-in.
+        """
+        name = str(profile.get('name') or 'Protagonist')
+
+        parts: List[str] = []
+        # Optional global style hints (kept generic if present)
+        if style_hints:
+            parts.append(style_hints)
+        if profile.get('extra_style_hints'):
+            parts.append(str(profile['extra_style_hints']))
+
+        # High-level world hints inferred from text
+        world = self._infer_world_hints(context_text)
+        if world.get("genre"):
+            parts.append(f"genre: {world['genre']}")
+        if world.get("period") and world['period'] != 'unspecified':
+            parts.append(f"period vibe: {world['period']}")
+
+        # Minimal identity; instruct NOT to render text or name
+        parts.append(
+            f"Character design portrait of {name}. Neutral pose. Plain light background. No text, no watermark, do not write the name. No background elements"
+        )
+
+        # High-level style preference only
+        style_pref = str(profile.get('style') or '').lower()
+        if style_pref == 'anime':
+            parts.append("Anime character design, clean linework, high quality")
+        elif style_pref in ['watercolor', 'sketch', 'realistic', 'artistic', 'digital_art', 'vintage', 'minimalist']:
+            parts.append("Digital illustration character design, high quality, consistent lighting")
+        else:
+            parts.append("Digital illustration character design, high quality, consistent lighting")
+
+        return ". ".join(parts)
+
+    def create_scene_prompt_with_profile(self,
+                                         segment_text: str,
+                                         context: Optional[str],
+                                         profile: Dict[str, Any],
+                                         style_hints: str = "") -> str:
+        """Compose a scene prompt that locks the character’s appearance while varying scene/action."""
+        # Consistency lock
+        lock_items = []
+        for key in ['hair_color', 'hair_style', 'eye_color', 'eye_shape', 'skin_tone', 'body_type', 'clothing', 'accessories']:
+            val = profile.get(key)
+            if val:
+                lock_items.append(f"{key.replace('_', ' ')}: {val}")
+        lock_text = "; ".join(lock_items)
+        lock_clause = (
+            f"Maintain the exact same character appearance ({lock_text}). Do not change these traits. "
+            f"Use the attached reference image to preserve identity (face, hair, overall look); do not copy any reference background"
+            if lock_text else
+            "Maintain the same character appearance as previously defined. Use the attached reference image to preserve identity; do not copy any reference background"
+        )
+
+        # Extract visual elements to emphasize scene context
+        elements = self._extract_visual_elements(segment_text, glossary=None)
+        setting_txt = elements.get('setting') or 'an appropriate environment'
+        action_txt = elements.get('action') or 'a context-appropriate action'
+        mood_txt = elements.get('mood') or None
+
+        # Strong scene directive (avoid portraits when scene demanded)
+        scene_directives = [
+            f"Place the character in {setting_txt}",
+            f"showing {action_txt}",
+            "compose as a medium or wide shot (not a simple portrait)",
+            "include background elements matching the environment, with depth and lighting",
+        ]
+        if mood_txt:
+            scene_directives.append(f"overall atmosphere: {mood_txt}")
+
+        base_scene = ". ".join(scene_directives)
+
+        # Strengthen constraints
+        # Style hints come first to bias rendering
+        prefix = (style_hints + ". ") if style_hints else ""
+        scene_prompt = f"{prefix}{lock_clause}. {base_scene}. No text or watermark in the image."
+        return scene_prompt
     
     def _extract_visual_elements(self, 
                                 text: str, 
@@ -348,7 +475,9 @@ class IllustrationGenerator:
                             context: Optional[str] = None,
                             style_hints: str = "",
                             glossary: Optional[Dict[str, str]] = None,
-                            max_retries: int = 3) -> Tuple[Optional[str], Optional[str]]:
+                            max_retries: int = 3,
+                            custom_prompt: Optional[str] = None,
+                            reference_image: Optional[Tuple[bytes, str]] = None) -> Tuple[Optional[str], Optional[str]]:
         """
         Generate an illustration for a text segment using Gemini's image generation.
         
@@ -365,7 +494,17 @@ class IllustrationGenerator:
         """
         # Check cache first
         if self.enable_caching:
-            cache_key = self._get_cache_key(segment_text, style_hints)
+            extra_key = ""
+            if custom_prompt:
+                extra_key += hashlib.md5(custom_prompt.encode()).hexdigest()
+            # If reference image present, add its digest
+            if reference_image is not None:
+                try:
+                    ref_bytes, _ = reference_image
+                    extra_key += hashlib.md5(ref_bytes).hexdigest()
+                except Exception:
+                    pass
+            cache_key = self._get_cache_key(segment_text, style_hints, extra_key)
             if cache_key in self.cache:
                 cached_path = self.cache[cache_key]['path']
                 cached_prompt = self.cache[cache_key]['prompt']
@@ -373,22 +512,45 @@ class IllustrationGenerator:
                     logging.info(f"Using cached illustration for segment {segment_index}")
                     return cached_path, cached_prompt
         
-        # Generate the prompt
-        prompt = self.create_illustration_prompt(segment_text, context, style_hints, glossary)
-        
+        # Generate or accept a custom prompt
+        prompt = custom_prompt if custom_prompt is not None else self.create_illustration_prompt(segment_text, context, style_hints, glossary)
+
         # Generate the actual image using Gemini
         for attempt in range(max_retries):
             try:
-                # Use Gemini's image generation model
-                response = self.client.models.generate_content(
-                    model="gemini-2.5-flash-image-preview",
-                    contents=[prompt]
-                )
-                
-                # Extract the image from the response
-                image_generated = False
+                # Prepare output paths and remove stale files before generation
                 image_filename = f"segment_{segment_index:04d}.png"
                 image_filepath = self.job_output_dir / image_filename
+                json_filename = f"segment_{segment_index:04d}_prompt.json"
+                json_filepath = self.job_output_dir / json_filename
+                try:
+                    if image_filepath.exists():
+                        image_filepath.unlink()
+                except Exception:
+                    pass
+                try:
+                    if json_filepath.exists():
+                        json_filepath.unlink()
+                except Exception:
+                    pass
+                # Use Gemini's image generation model, optionally with reference image
+                contents: List[Any] = []
+                if reference_image is not None:
+                    ref_bytes, ref_mime = reference_image
+                    try:
+                        part = types.Part.from_bytes(data=ref_bytes, mime_type=ref_mime or 'image/png')
+                        contents.append(part)
+                    except Exception as e:
+                        logging.warning(f"Failed to attach reference image for segment {segment_index}: {e}")
+                contents.append(prompt)
+
+                response = self.client.models.generate_content(
+                    model="gemini-2.5-flash-image-preview",
+                    contents=contents
+                )
+
+                # Extract the image from the response
+                image_generated = False
                 
                 # Check if response has candidates and content
                 if response and hasattr(response, 'candidates') and response.candidates:
@@ -425,8 +587,7 @@ class IllustrationGenerator:
                     # Fallback: Save prompt as JSON if no image was generated
                     logging.warning(f"No image generated for segment {segment_index}, saving prompt instead")
                     logging.debug(f"Prompt that failed: {prompt[:200]}...")
-                    json_filename = f"segment_{segment_index:04d}_prompt.json"
-                    json_filepath = self.job_output_dir / json_filename
+                    # json_filename/json_filepath prepared above
                     
                     # Determine the failure reason
                     failure_reason = "unknown"
@@ -516,6 +677,109 @@ class IllustrationGenerator:
                 'success': illustration_path is not None
             })
         
+        return results
+
+    def generate_character_bases(self,
+                                 profile: Dict[str, Any],
+                                 num_variations: int = 3,
+                                 style_hints: str = "",
+                                 reference_image: Optional[Tuple[bytes, str]] = None,
+                                 context_text: Optional[str] = None,
+                                 max_retries: int = 3) -> List[Dict[str, Any]]:
+        """Generate N base character images focusing on appearance only.
+
+        Returns a list of dicts: {index, path, prompt, success, type}
+        """
+        results: List[Dict[str, Any]] = []
+        base_dir = self._setup_base_directory()
+        # Proactively remove previous base files for the same indices to avoid stale previews
+        try:
+            for i in range(1, num_variations + 1):
+                for ext in ("png", "json"):
+                    p = base_dir / f"base_{i:02d}.{ext}"
+                    if p.exists():
+                        p.unlink()
+        except Exception as e:
+            logging.warning(f"Failed to cleanup old base files: {e}")
+
+        # Distinct, independent variants to allow user choice
+        variant_directives = [
+            "clean line art, flat colors, head-and-shoulders portrait",
+            "soft painterly shading, bust portrait, subtle rim light",
+            "semi-realistic rendering, three-quarter view waist-up, balanced studio lighting",
+        ]
+
+        for i in range(num_variations):
+            vh = variant_directives[i % len(variant_directives)]
+            prompt = self.create_character_base_prompt(profile, style_hints=(style_hints + f". {vh}").strip(), context_text=context_text)
+
+            # File targets
+            image_filename = f"base_{i+1:02d}.png"
+            image_filepath = base_dir / image_filename
+            json_filename = f"base_{i+1:02d}_prompt.json"
+            json_filepath = base_dir / json_filename
+
+            success = False
+            generated_path: Optional[str] = None
+
+            for attempt in range(max_retries):
+                try:
+                    contents: List[Any] = []
+                    if reference_image is not None:
+                        ref_bytes, ref_mime = reference_image
+                        try:
+                            part = types.Part.from_bytes(data=ref_bytes, mime_type=ref_mime or 'image/png')
+                            contents.append(part)
+                        except Exception as e:
+                            logging.warning(f"Failed to attach reference image part: {e}")
+                    contents.append(prompt)
+
+                    response = self.client.models.generate_content(
+                        model="gemini-2.5-flash-image-preview",
+                        contents=contents
+                    )
+
+                    image_generated = False
+                    if response and hasattr(response, 'candidates') and response.candidates:
+                        candidate = response.candidates[0]
+                        if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                            for part in candidate.content.parts:
+                                if hasattr(part, 'inline_data') and part.inline_data is not None:
+                                    image = Image.open(BytesIO(part.inline_data.data))
+                                    image.save(image_filepath, "PNG")
+                                    image_generated = True
+                                    break
+
+                    if image_generated:
+                        success = True
+                        generated_path = str(image_filepath)
+                        break
+
+                    # Fallback to prompt JSON
+                    prompt_data = {
+                        "index": i,
+                        "prompt": prompt,
+                        "status": "image_generation_failed",
+                        "note": "Image generation failed. Use this prompt with another service."
+                    }
+                    with open(json_filepath, 'w', encoding='utf-8') as f:
+                        json.dump(prompt_data, f, ensure_ascii=False, indent=2)
+                    generated_path = str(json_filepath)
+                    break
+                except Exception as e:
+                    logging.error(f"Base image attempt {attempt+1} failed: {e}")
+                    if attempt == max_retries - 1:
+                        generated_path = None
+                        success = False
+            results.append({
+                'index': i,
+                'illustration_path': generated_path,
+                'prompt': prompt,
+                'success': success,
+                'type': 'image' if (generated_path and generated_path.endswith('.png')) else 'prompt',
+                'used_reference': reference_image is not None
+            })
+
         return results
     
     def cleanup_old_illustrations(self, keep_days: int = 30):

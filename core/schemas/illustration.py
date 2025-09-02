@@ -200,3 +200,25 @@ class IllustrationBatch(BaseModel):
             'average_generation_time': (self.total_generation_time / self.successful_generations)
                                       if self.successful_generations > 0 else 0
         }
+
+
+class CharacterProfile(BaseModel):
+    """
+    A lightweight character profile to drive consistent base images and scenes.
+    """
+    name: Optional[str] = Field(default=None, description="Character name (not rendered in image)")
+    gender: Optional[str] = Field(default=None, description="Gender or presentation (e.g., male, female, androgynous)")
+    age: Optional[str] = Field(default=None, description="Apparent age (e.g., teen, 20s, 30s)")
+    hair_color: Optional[str] = Field(default=None, description="Primary hair color")
+    hair_style: Optional[str] = Field(default=None, description="Hair style (e.g., short, long, ponytail)")
+    eye_color: Optional[str] = Field(default=None, description="Eye color")
+    eye_shape: Optional[str] = Field(default=None, description="Eye shape/style (e.g., sharp, round)")
+    skin_tone: Optional[str] = Field(default=None, description="Skin tone")
+    body_type: Optional[str] = Field(default=None, description="Body type or build")
+    clothing: Optional[str] = Field(default=None, description="Default outfit description")
+    accessories: Optional[str] = Field(default=None, description="Accessories/jewelry")
+    style: IllustrationStyle = Field(default=IllustrationStyle.DIGITAL_ART, description="Art style preference")
+    extra_style_hints: Optional[str] = Field(default=None, description="Additional stylistic hints")
+
+    class Config:
+        use_enum_values = True

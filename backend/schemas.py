@@ -105,6 +105,12 @@ class TranslationJob(TranslationJobBase):
     illustrations_count: Optional[int] = None
     illustrations_data: Optional[List[Dict[str, Any]]] = None
     
+    # Character base workflow
+    character_profile: Optional[Dict[str, Any]] = None
+    character_base_images: Optional[List[Dict[str, Any]]] = None
+    character_base_selected_index: Optional[int] = None
+    character_base_directory: Optional[str] = None
+    
     # Structured glossary data (stored as JSON in DB, parsed as Pydantic model)
     final_glossary: Optional[Dict[str, Any]] = None
     structured_glossary: Optional[TranslatedTerms] = None

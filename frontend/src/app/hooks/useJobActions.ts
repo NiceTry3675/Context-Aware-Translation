@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { components } from '../../types/api';
 import { useAuth, useClerk } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
-import { triggerIllustrationGeneration } from '../utils/api';
+import { triggerIllustrationGeneration, generateCharacterBases, selectCharacterBase } from '../utils/api';
 
 interface UseJobActionsOptions {
   apiUrl: string;
@@ -202,6 +202,36 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
     handleTriggerValidation,
     handleTriggerPostEdit,
     handleTriggerIllustration,
+    async handleGenerateCharacterBases(jobId: number, apiKey: string, profile: any) {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = await getCachedClerkToken(getToken);
+        await generateCharacterBases(jobId.toString(), apiKey, token || undefined, profile);
+        onSuccess?.();
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'An unknown error occurred';
+        setError(msg);
+        onError?.(msg);
+      } finally {
+        setLoading(false);
+      }
+    },
+    async handleSelectCharacterBase(jobId: number, selectedIndex: number) {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = await getCachedClerkToken(getToken);
+        await selectCharacterBase(jobId.toString(), token || undefined, selectedIndex);
+        onSuccess?.();
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'An unknown error occurred';
+        setError(msg);
+        onError?.(msg);
+      } finally {
+        setLoading(false);
+      }
+    },
     handleDownloadValidationReport,
     handleDownloadPostEditLog,
     handleDownloadPdf,

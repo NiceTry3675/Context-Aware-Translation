@@ -219,6 +219,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/{job_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Job Pdf
+         * @description Download the translation as a PDF document with optional illustrations.
+         *
+         *     This endpoint generates a professional PDF document containing:
+         *     - Translated text segments
+         *     - Source text (optional)
+         *     - Illustrations for each segment where available
+         *     - Proper formatting and pagination
+         *
+         *     Args:
+         *         job_id: ID of the translation job
+         *         include_source: Whether to include source text alongside translations
+         *         include_illustrations: Whether to embed generated illustrations
+         *         page_size: Page size format (A4 or Letter)
+         *
+         *     Returns:
+         *         PDF file response
+         */
+        get: operations["download_job_pdf_api_v1_jobs__job_id__pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/{job_id}/validation": {
         parameters: {
             query?: never;
@@ -711,6 +746,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/illustrations/{job_id}/character/base/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Character Bases
+         * @description Generate base character images (3 variations) focusing only on appearance.
+         */
+        post: operations["generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/illustrations/{job_id}/character/base": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Character Bases
+         * @description Get generated base character images and current selection.
+         */
+        get: operations["get_character_bases_api_v1_illustrations__job_id__character_base_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/illustrations/{job_id}/character/base/{index}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Character Base Asset
+         * @description Get a specific base asset (image if available, otherwise prompt JSON).
+         */
+        get: operations["get_character_base_asset_api_v1_illustrations__job_id__character_base__index__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/illustrations/{job_id}/character/base/select": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Select Character Base
+         * @description Select one of the generated base images by index.
+         */
+        post: operations["select_character_base_api_v1_illustrations__job_id__character_base_select_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/illustrations/{job_id}/illustrations": {
         parameters: {
             query?: never;
@@ -743,18 +858,18 @@ export interface paths {
         };
         /**
          * Get Illustration Prompt
-         * @description Get the illustration prompt for a specific segment.
+         * @description Get the illustration for a specific segment.
          *
-         *     Returns the generated prompt JSON file that can be used with image generation services.
+         *     Returns the generated image if available, otherwise returns the prompt JSON file.
          */
         get: operations["get_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__get"];
         put?: never;
         post?: never;
         /**
          * Delete Illustration Prompt
-         * @description Delete a specific illustration prompt.
+         * @description Delete a specific illustration and its prompt.
          *
-         *     Removes the prompt file and updates the job metadata.
+         *     Removes both the image file (if exists) and prompt file, and updates the job metadata.
          */
         delete: operations["delete_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__delete"];
         options?: never;
@@ -877,6 +992,13 @@ export interface components {
              * @default 15000
              */
             segment_size: number;
+        };
+        /** Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post */
+        Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post: {
+            /** Reference Image */
+            reference_image?: string | null;
+            /** Profile Json */
+            profile_json?: string | null;
         };
         /** Body_upload_image_api_v1_community_upload_image_post */
         Body_upload_image_api_v1_community_upload_image_post: {
@@ -1202,6 +1324,8 @@ export interface components {
             } | null;
             /** Model Name */
             model_name?: string | null;
+            /** Api Key */
+            api_key?: string | null;
         };
         /** PostList */
         PostList: {
@@ -1341,6 +1465,22 @@ export interface components {
             illustrations_progress?: number | null;
             /** Illustrations Count */
             illustrations_count?: number | null;
+            /** Illustrations Data */
+            illustrations_data?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Character Profile */
+            character_profile?: {
+                [key: string]: unknown;
+            } | null;
+            /** Character Base Images */
+            character_base_images?: {
+                [key: string]: unknown;
+            }[] | null;
+            /** Character Base Selected Index */
+            character_base_selected_index?: number | null;
+            /** Character Base Directory */
+            character_base_directory?: string | null;
             /** Final Glossary */
             final_glossary?: {
                 [key: string]: unknown;
@@ -1393,6 +1533,8 @@ export interface components {
             validation_sample_rate: number;
             /** Model Name */
             model_name?: string | null;
+            /** Api Key */
+            api_key?: string | null;
         };
     };
     responses: never;
@@ -1760,6 +1902,44 @@ export interface operations {
     get_job_content_api_v1_jobs__job_id__content_get: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_job_pdf_api_v1_jobs__job_id__pdf_get: {
+        parameters: {
+            query?: {
+                /** @description Include source text in PDF */
+                include_source?: boolean;
+                /** @description Include illustrations in PDF */
+                include_illustrations?: boolean;
+                /** @description Page size (A4 or Letter) */
+                page_size?: string;
+            };
             header?: never;
             path: {
                 job_id: number;
@@ -2601,6 +2781,144 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["IllustrationConfig"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post: {
+        parameters: {
+            query: {
+                /** @description API key for Gemini */
+                api_key: string;
+            };
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_character_bases_api_v1_illustrations__job_id__character_base_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_character_base_asset_api_v1_illustrations__job_id__character_base__index__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+                index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    select_character_base_api_v1_illustrations__job_id__character_base_select_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: number;
+                };
             };
         };
         responses: {
