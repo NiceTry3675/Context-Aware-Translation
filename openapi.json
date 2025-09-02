@@ -557,6 +557,83 @@
         }
       }
     },
+    "/api/v1/jobs/{job_id}/pdf": {
+      "get": {
+        "tags": [
+          "downloads"
+        ],
+        "summary": "Download Job Pdf",
+        "description": "Download the translation as a PDF document with optional illustrations.\n\nThis endpoint generates a professional PDF document containing:\n- Translated text segments\n- Source text (optional)\n- Illustrations for each segment where available\n- Proper formatting and pagination\n\nArgs:\n    job_id: ID of the translation job\n    include_source: Whether to include source text alongside translations\n    include_illustrations: Whether to embed generated illustrations\n    page_size: Page size format (A4 or Letter)\n\nReturns:\n    PDF file response",
+        "operationId": "download_job_pdf_api_v1_jobs__job_id__pdf_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "include_source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include source text in PDF",
+              "default": true,
+              "title": "Include Source"
+            },
+            "description": "Include source text in PDF"
+          },
+          {
+            "name": "include_illustrations",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include illustrations in PDF",
+              "default": true,
+              "title": "Include Illustrations"
+            },
+            "description": "Include illustrations in PDF"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Page size (A4 or Letter)",
+              "default": "A4",
+              "title": "Page Size"
+            },
+            "description": "Page size (A4 or Letter)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/jobs/{job_id}/validation": {
       "put": {
         "tags": [
@@ -1776,6 +1853,213 @@
         }
       }
     },
+    "/api/v1/illustrations/{job_id}/character/base/generate": {
+      "post": {
+        "tags": [
+          "illustrations"
+        ],
+        "summary": "Generate Character Bases",
+        "description": "Generate base character images (3 variations) focusing only on appearance.",
+        "operationId": "generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "api_key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "API key for Gemini",
+              "title": "Api Key"
+            },
+            "description": "API key for Gemini"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/illustrations/{job_id}/character/base": {
+      "get": {
+        "tags": [
+          "illustrations"
+        ],
+        "summary": "Get Character Bases",
+        "description": "Get generated base character images and current selection.",
+        "operationId": "get_character_bases_api_v1_illustrations__job_id__character_base_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/illustrations/{job_id}/character/base/{index}": {
+      "get": {
+        "tags": [
+          "illustrations"
+        ],
+        "summary": "Get Character Base Asset",
+        "description": "Get a specific base asset (image if available, otherwise prompt JSON).",
+        "operationId": "get_character_base_asset_api_v1_illustrations__job_id__character_base__index__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Index"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/illustrations/{job_id}/character/base/select": {
+      "post": {
+        "tags": [
+          "illustrations"
+        ],
+        "summary": "Select Character Base",
+        "description": "Select one of the generated base images by index.",
+        "operationId": "select_character_base_api_v1_illustrations__job_id__character_base_select_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "title": "Selection"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/illustrations/{job_id}/illustrations": {
       "get": {
         "tags": [
@@ -1823,7 +2107,7 @@
           "illustrations"
         ],
         "summary": "Get Illustration Prompt",
-        "description": "Get the illustration prompt for a specific segment.\n\nReturns the generated prompt JSON file that can be used with image generation services.",
+        "description": "Get the illustration for a specific segment.\n\nReturns the generated image if available, otherwise returns the prompt JSON file.",
         "operationId": "get_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__get",
         "parameters": [
           {
@@ -1871,7 +2155,7 @@
           "illustrations"
         ],
         "summary": "Delete Illustration Prompt",
-        "description": "Delete a specific illustration prompt.\n\nRemoves the prompt file and updates the job metadata.",
+        "description": "Delete a specific illustration and its prompt.\n\nRemoves both the image file (if exists) and prompt file, and updates the job metadata.",
         "operationId": "delete_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__delete",
         "parameters": [
           {
@@ -2149,6 +2433,35 @@
           "api_key"
         ],
         "title": "Body_create_job_api_v1_jobs_post"
+      },
+      "Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post": {
+        "properties": {
+          "reference_image": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "binary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Image"
+          },
+          "profile_json": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Json"
+          }
+        },
+        "type": "object",
+        "title": "Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post"
       },
       "Body_upload_image_api_v1_community_upload_image_post": {
         "properties": {
@@ -2736,6 +3049,17 @@
               }
             ],
             "title": "Model Name"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
           }
         },
         "type": "object",
@@ -3172,6 +3496,70 @@
             ],
             "title": "Illustrations Count"
           },
+          "illustrations_data": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Illustrations Data"
+          },
+          "character_profile": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Profile"
+          },
+          "character_base_images": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Base Images"
+          },
+          "character_base_selected_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Base Selected Index"
+          },
+          "character_base_directory": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Base Directory"
+          },
           "final_glossary": {
             "anyOf": [
               {
@@ -3324,6 +3712,17 @@
               }
             ],
             "title": "Model Name"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
           }
         },
         "type": "object",

@@ -34,6 +34,7 @@ import TranslationContentViewer from '../TranslationContentViewer';
 import InfiniteScrollTranslationViewer from '../InfiniteScrollTranslationViewer';
 import SegmentViewer from './SegmentViewer';
 import IllustrationViewer from '../IllustrationViewer';
+import CharacterBaseSelector from '../CharacterBaseSelector';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -61,6 +62,7 @@ interface ResultsViewProps {
   selectedJob: any;
   tabValue: number;
   viewMode: 'full' | 'segment';
+  apiKey?: string;
   errorFilters: {
     critical: boolean;
     missingContent: boolean;
@@ -112,6 +114,7 @@ export default function ResultsView({
   selectedJob,
   tabValue,
   viewMode,
+  apiKey,
   errorFilters,
   isPolling,
   dataLoading,
@@ -223,7 +226,7 @@ export default function ResultsView({
           />
           <Tab 
             label="삽화"
-            disabled={!jobId || !selectedJob?.illustrations_enabled} 
+            disabled={!jobId || selectedJob?.status !== 'COMPLETED'} 
           />
         </Tabs>
       </Box>
@@ -364,12 +367,16 @@ export default function ResultsView({
           </TabPanel>
           
           <TabPanel value={tabValue} index={3}>
+            {jobId && (
+              <CharacterBaseSelector jobId={jobId} apiKey={apiKey} />
+            )}
             {selectedJob?.illustrations_enabled ? (
               <IllustrationViewer
                 jobId={jobId || ''}
                 illustrations={selectedJob?.illustrations_data || []}
                 status={selectedJob?.illustrations_status}
                 count={selectedJob?.illustrations_count || 0}
+                onGenerateIllustrations={onOpenIllustrationDialog}
               />
             ) : (
               <Alert severity="info">

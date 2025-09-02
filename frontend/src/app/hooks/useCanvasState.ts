@@ -190,7 +190,7 @@ export function useCanvasState() {
         style_hints: illustrationStyleHints,
         min_segment_length: illustrationMinSegmentLength,
         skip_dialogue_heavy: illustrationSkipDialogueHeavy,
-        cache_enabled: true,
+        cache_enabled: false,
       },
       illustrationMaxCount
     );

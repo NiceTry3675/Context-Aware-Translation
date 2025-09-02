@@ -336,6 +336,154 @@ export async function triggerIllustrationGeneration(
 }
 
 
+// ============= Character Base API Functions =============
+
+export interface CharacterProfileBody {
+  name?: string;
+  gender?: string;
+  age?: string;
+  hair_color?: string;
+  hair_style?: string;
+  eye_color?: string;
+  eye_shape?: string;
+  skin_tone?: string;
+  body_type?: string;
+  clothing?: string;
+  accessories?: string;
+  style?: string; // matches backend enum values
+  extra_style_hints?: string;
+}
+
+export async function generateCharacterBases(
+  jobId: string,
+  apiKey: string,
+  token: string | undefined,
+  profile: CharacterProfileBody,
+  referenceImage?: File
+): Promise<{ bases: any[]; directory?: string }> {
+  const params = new URLSearchParams({ api_key: apiKey });
+  let response: Response;
+  if (referenceImage) {
+    const form = new FormData();
+    form.append('profile_json', JSON.stringify(profile));
+    form.append('reference_image', referenceImage, referenceImage.name);
+    response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate?${params}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+      body: form,
+    });
+  } else {
+    response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate?${params}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(profile),
+    });
+  }
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to generate character bases');
+  }
+  return await response.json();
+}
+
+export async function analyzeCharacterAppearance(
+  jobId: string,
+  apiKey: string,
+  token: string | undefined,
+  protagonistName?: string
+): Promise<{ prompts: string[]; protagonist_name?: string }> {
+  const params = new URLSearchParams({ api_key: apiKey });
+  if (protagonistName) params.set('protagonist_name', protagonistName);
+  const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/appearance/analyze?${params}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': token ? `Bearer ${token}` : '',
+    },
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to analyze character appearance');
+  }
+  return await response.json();
+}
+
+export async function generateBasesFromPrompt(
+  jobId: string,
+  apiKey: string,
+  token: string | undefined,
+  prompts: string[],
+  referenceImage?: File
+): Promise<{ bases: any[]; directory?: string }> {
+  const params = new URLSearchParams({ api_key: apiKey });
+  let response: Response;
+  if (referenceImage) {
+    const form = new FormData();
+    form.append('prompts_json', JSON.stringify(prompts));
+    form.append('reference_image', referenceImage, referenceImage.name);
+    response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate-from-prompt?${params}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+      body: form,
+    });
+  } else {
+    response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate-from-prompt?${params}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompts }),
+    });
+  }
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to generate base from prompt');
+  }
+  return await response.json();
+}
+
+export async function getCharacterBases(
+  jobId: string,
+  token: string | undefined,
+): Promise<{ profile?: CharacterProfileBody; bases: any[]; selected_index?: number; directory?: string }>{
+  const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base`, {
+    headers: {
+      'Authorization': token ? `Bearer ${token}` : '',
+    },
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch character bases');
+  }
+  return await response.json();
+}
+
+export async function selectCharacterBase(
+  jobId: string,
+  token: string | undefined,
+  selectedIndex: number
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/select`, {
+    method: 'POST',
+    headers: {
+      'Authorization': token ? `Bearer ${token}` : '',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ selected_index: selectedIndex }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to select character base');
+  }
+}
+
+
 
 // ============= Structured API Functions =============
 

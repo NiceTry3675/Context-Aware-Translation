@@ -48,6 +48,12 @@ class TranslationJob(Base):
     illustrations_count = Column(Integer, default=0)  # Number of illustrations generated
     illustrations_directory = Column(String, nullable=True)  # Path to illustrations directory
 
+    # Character base workflow fields
+    character_profile = Column(JSON, nullable=True)  # Stores CharacterProfile as JSON
+    character_base_images = Column(JSON, nullable=True)  # List of generated base images metadata
+    character_base_selected_index = Column(Integer, nullable=True)  # Which base image the user selected
+    character_base_directory = Column(String, nullable=True)  # Directory for base images
+
 class TranslationUsageLog(Base):
     __tablename__ = "translation_usage_logs"
 

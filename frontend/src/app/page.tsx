@@ -115,6 +115,7 @@ function CanvasContent() {
                 selectedJob={state.selectedJob}
                 tabValue={state.tabValue}
                 viewMode={state.viewMode}
+                apiKey={state.apiKey}
                 errorFilters={state.errorFilters}
                 isPolling={state.isPolling}
                 dataLoading={state.dataLoading}
