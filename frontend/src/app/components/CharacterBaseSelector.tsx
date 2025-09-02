@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Box, Button, Card, CardMedia, CardContent, Typography, Stack, Radio, CircularProgress, Alert, TextField } from '@mui/material';
 import { useAuth } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
-import { getCharacterBases, generateCharacterBases, selectCharacterBase, CharacterProfileBody } from '../utils/api';
+import { getCharacterBases, generateCharacterBases, selectCharacterBase, CharacterProfileBody, analyzeCharacterAppearance, generateBasesFromPrompt } from '../utils/api';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -25,6 +25,7 @@ export default function CharacterBaseSelector({ jobId, apiKey, onChange }: Chara
   const [nameInput, setNameInput] = useState<string>("");
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [appearancePrompts, setAppearancePrompts] = useState<string[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -92,6 +93,43 @@ export default function CharacterBaseSelector({ jobId, apiKey, onChange }: Chara
     }
   };
 
+  const handleAnalyzeAppearance = async () => {
+    if (!apiKey) {
+      setError('API Key가 필요합니다. 설정에서 API 키를 입력하세요.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const token = await getCachedClerkToken(getToken);
+      const res = await analyzeCharacterAppearance(jobId, apiKey, token || undefined, nameInput || undefined);
+      setAppearancePrompts(res.prompts || []);
+    } catch (e: any) {
+      setError(e?.message || '외형 분석에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateFromPrompt = async (promptText: string) => {
+    if (!apiKey) {
+      setError('API Key가 필요합니다. 설정에서 API 키를 입력하세요.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const token = await getCachedClerkToken(getToken);
+      await generateBasesFromPrompt(jobId, apiKey, token || undefined, [promptText], referenceFile || undefined);
+      await load();
+      onChange?.();
+    } catch (e: any) {
+      setError(e?.message || '프롬프트로 베이스 생성에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSelect = async () => {
     if (selectedIndex === null) return;
     setLoading(true);
@@ -142,6 +180,9 @@ export default function CharacterBaseSelector({ jobId, apiKey, onChange }: Chara
           onChange={(e) => setNameInput(e.target.value)}
           size="small"
         />
+        <Button variant="outlined" size="small" onClick={handleAnalyzeAppearance} disabled={loading}>
+          외형 자동 분석
+        </Button>
       </Stack>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
@@ -216,6 +257,53 @@ export default function CharacterBaseSelector({ jobId, apiKey, onChange }: Chara
       <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
         <Button variant="contained" disabled={selectedIndex === null || loading} onClick={handleSelect}>선택 완료</Button>
       </Stack>
+
+      {appearancePrompts.length > 0 && (
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1, color: '#000000' }}>분석된 외형 프롬프트</Typography>
+          <Stack spacing={2}>
+            {appearancePrompts.map((p, idx) => (
+              <Box key={idx} sx={{ p: 1.5, border: '1px solid', borderColor: 'grey.700', borderRadius: 1, bgcolor: 'grey.800' }}>
+                <TextField
+                  multiline
+                  minRows={3}
+                  maxRows={10}
+                  fullWidth
+                  value={p}
+                  onChange={(e) => {
+                    const cp = [...appearancePrompts];
+                    cp[idx] = e.target.value;
+                    setAppearancePrompts(cp);
+                  }}
+                  sx={{
+                    '& .MuiInputBase-root': {
+                      bgcolor: 'transparent',
+                      color: '#ffffff',
+                    },
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'grey.700',
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'grey.600',
+                    },
+                    '& .MuiInputBase-input': {
+                      color: '#ffffff',
+                    },
+                    '& textarea': {
+                      color: '#ffffff',
+                    },
+                  }}
+                />
+                <Stack direction="row" justifyContent="flex-end" spacing={1} sx={{ mt: 1 }}>
+                  <Button size="small" variant="contained" onClick={() => handleGenerateFromPrompt(appearancePrompts[idx])} disabled={loading}>
+                    이 프롬프트로 베이스 생성
+                  </Button>
+                </Stack>
+              </Box>
+            ))}
+          </Stack>
+        </Box>
+      )}
     </Box>
   );
 }

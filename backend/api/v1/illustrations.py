@@ -26,6 +26,7 @@ from core.schemas.illustration import (
     CharacterProfile
 )
 from ...services.style_analysis_service import StyleAnalysisService
+from ...services.character_appearance_service import CharacterAppearanceService
 
 router = APIRouter()
 
@@ -189,6 +190,121 @@ async def generate_character_bases(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate character bases: {str(e)}")
+
+
+@router.post("/{job_id}/character/appearance/analyze")
+async def analyze_character_appearance(
+    job_id: int,
+    api_key: str = Query(..., description="API key for model"),
+    protagonist_name: Optional[str] = Query(None, description="Optional protagonist name"),
+    model_name: str = Query("gemini-2.5-flash", description="Model name for analysis"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_required_user)
+):
+    """
+    Analyze early novel text to produce appearance-only prompt candidates for the protagonist.
+    """
+    job = db.query(TranslationJob).filter(
+        TranslationJob.id == job_id,
+        TranslationJob.owner_id == current_user.id
+    ).first()
+
+    if not job:
+        raise HTTPException(status_code=404, detail="Translation job not found")
+
+    try:
+        svc = CharacterAppearanceService()
+        result = svc.analyze_appearance(
+            filepath=job.filepath,
+            api_key=api_key,
+            model_name=model_name,
+            protagonist_name=protagonist_name
+        )
+        return {
+            'job_id': job_id,
+            'prompts': result['prompts'],
+            'protagonist_name': result['protagonist_name'],
+            'sample_size': result['sample_size']
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to analyze appearance: {str(e)}")
+
+
+@router.post("/{job_id}/character/base/generate-from-prompt")
+async def generate_base_from_prompt(
+    job_id: int,
+    request: Request,
+    api_key: str = Query(..., description="API key for Gemini"),
+    reference_image: UploadFile | None = File(default=None),
+    prompts_json: str | None = Form(default=None),
+    prompt: str | None = Form(default=None),
+    num_variations: int = Query(3, ge=1, le=10, description="How many variants to generate when a single prompt is provided"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_required_user)
+):
+    """
+    Generate base image(s) directly from provided prompt text(s).
+    Accepts either JSON body with { prompts: string[] } or multipart with prompts_json/prompt.
+    """
+    job = db.query(TranslationJob).filter(
+        TranslationJob.id == job_id,
+        TranslationJob.owner_id == current_user.id
+    ).first()
+
+    if not job:
+        raise HTTPException(status_code=404, detail="Translation job not found")
+
+    # Parse prompts
+    prompts: List[str] = []
+    if request.headers.get('content-type', '').startswith('application/json'):
+        body = await request.json()
+        if isinstance(body, dict) and 'prompts' in body and isinstance(body['prompts'], list):
+            prompts = [str(p) for p in body['prompts'] if isinstance(p, str) and p.strip()]
+        elif 'prompt' in body and isinstance(body['prompt'], str):
+            prompts = [body['prompt']]
+    else:
+        if prompts_json:
+            try:
+                import json as _json
+                data = _json.loads(prompts_json)
+                if isinstance(data, list):
+                    prompts = [str(p) for p in data if isinstance(p, str) and p.strip()]
+            except Exception:
+                pass
+        if not prompts and prompt:
+            prompts = [prompt]
+
+    if not prompts:
+        raise HTTPException(status_code=400, detail="No prompt(s) provided")
+
+    try:
+        generator = IllustrationGenerator(api_key=api_key, job_id=job_id, enable_caching=False)
+
+        ref_tuple = None
+        if reference_image is not None:
+            ref_bytes = await reference_image.read()
+            ref_mime = reference_image.content_type or 'image/png'
+            ref_tuple = (ref_bytes, ref_mime)
+
+        bases = generator.generate_bases_from_prompts(
+            prompts=prompts,
+            reference_image=ref_tuple,
+            num_variations=num_variations,
+        )
+
+        # Persist base info
+        job.character_base_images = bases
+        job.character_base_directory = str((generator.job_output_dir / "base").resolve())
+        job.character_base_selected_index = None
+        db.commit()
+
+        return {
+            'job_id': job_id,
+            'bases': bases,
+            'directory': job.character_base_directory
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate base from prompt: {str(e)}")
 
 
 @router.get("/{job_id}/character/base")

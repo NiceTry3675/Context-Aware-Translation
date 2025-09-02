@@ -781,6 +781,119 @@ class IllustrationGenerator:
             })
 
         return results
+
+    def generate_bases_from_prompts(
+        self,
+        prompts: List[str],
+        reference_image: Optional[Tuple[bytes, str]] = None,
+        max_retries: int = 3,
+        num_variations: int = 3,
+        add_variant_hints: bool = True
+    ) -> List[Dict[str, Any]]:
+        """Generate base images directly from provided prompts.
+
+        Returns list of {index, illustration_path, prompt, success, type, used_reference}.
+        """
+        results: List[Dict[str, Any]] = []
+        base_dir = self._setup_base_directory()
+
+        # Cleanup previous base files for the targeted indices
+        try:
+            for i in range(1, len(prompts) + 1):
+                for ext in ("png", "json"):
+                    p = base_dir / f"base_{i:02d}.{ext}"
+                    if p.exists():
+                        p.unlink()
+        except Exception as e:
+            logging.warning(f"Failed to cleanup old base files: {e}")
+
+        # Expand single prompt into multiple variant prompts if requested
+        final_prompts: List[str]
+        if len(prompts) == 1 and num_variations > 1:
+            if add_variant_hints:
+                variant_directives = [
+                    "clean line art, flat colors, head-and-shoulders portrait",
+                    "soft painterly shading, bust portrait, subtle rim light",
+                    "semi-realistic rendering, three-quarter view waist-up, balanced studio lighting",
+                ]
+                final_prompts = [
+                    (prompts[0].strip() + ". " + variant_directives[i % len(variant_directives)]).strip()
+                    for i in range(num_variations)
+                ]
+            else:
+                final_prompts = [prompts[0]] * num_variations
+        else:
+            final_prompts = prompts[:num_variations]
+
+        for i, prompt in enumerate(final_prompts):
+            image_filename = f"base_{i+1:02d}.png"
+            image_filepath = base_dir / image_filename
+            json_filename = f"base_{i+1:02d}_prompt.json"
+            json_filepath = base_dir / json_filename
+
+            success = False
+            generated_path: Optional[str] = None
+
+            for attempt in range(max_retries):
+                try:
+                    contents: List[Any] = []
+                    if reference_image is not None:
+                        ref_bytes, ref_mime = reference_image
+                        try:
+                            part = types.Part.from_bytes(data=ref_bytes, mime_type=ref_mime or 'image/png')
+                            contents.append(part)
+                        except Exception as e:
+                            logging.warning(f"Failed to attach reference image part: {e}")
+                    contents.append(prompt)
+
+                    response = self.client.models.generate_content(
+                        model="gemini-2.5-flash-image-preview",
+                        contents=contents
+                    )
+
+                    image_generated = False
+                    if response and hasattr(response, 'candidates') and response.candidates:
+                        candidate = response.candidates[0]
+                        if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                            for part in candidate.content.parts:
+                                if hasattr(part, 'inline_data') and part.inline_data is not None:
+                                    image = Image.open(BytesIO(part.inline_data.data))
+                                    image.save(image_filepath, "PNG")
+                                    image_generated = True
+                                    break
+
+                    if image_generated:
+                        success = True
+                        generated_path = str(image_filepath)
+                        break
+
+                    # Fallback: store prompt JSON
+                    prompt_data = {
+                        "index": i,
+                        "prompt": prompt,
+                        "status": "image_generation_failed",
+                        "note": "Image generation failed. Use this prompt with another service."
+                    }
+                    with open(json_filepath, 'w', encoding='utf-8') as f:
+                        json.dump(prompt_data, f, ensure_ascii=False, indent=2)
+                    generated_path = str(json_filepath)
+                    break
+                except Exception as e:
+                    logging.error(f"Base-from-prompt attempt {attempt+1} failed: {e}")
+                    if attempt == max_retries - 1:
+                        generated_path = None
+                        success = False
+
+            results.append({
+                'index': i,
+                'illustration_path': generated_path,
+                'prompt': prompt,
+                'success': success,
+                'type': 'image' if (generated_path and generated_path.endswith('.png')) else 'prompt',
+                'used_reference': reference_image is not None
+            })
+
+        return results
     
     def cleanup_old_illustrations(self, keep_days: int = 30):
         """

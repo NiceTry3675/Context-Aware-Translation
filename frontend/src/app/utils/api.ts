@@ -391,6 +391,64 @@ export async function generateCharacterBases(
   return await response.json();
 }
 
+export async function analyzeCharacterAppearance(
+  jobId: string,
+  apiKey: string,
+  token: string | undefined,
+  protagonistName?: string
+): Promise<{ prompts: string[]; protagonist_name?: string }> {
+  const params = new URLSearchParams({ api_key: apiKey });
+  if (protagonistName) params.set('protagonist_name', protagonistName);
+  const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/appearance/analyze?${params}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': token ? `Bearer ${token}` : '',
+    },
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to analyze character appearance');
+  }
+  return await response.json();
+}
+
+export async function generateBasesFromPrompt(
+  jobId: string,
+  apiKey: string,
+  token: string | undefined,
+  prompts: string[],
+  referenceImage?: File
+): Promise<{ bases: any[]; directory?: string }> {
+  const params = new URLSearchParams({ api_key: apiKey });
+  let response: Response;
+  if (referenceImage) {
+    const form = new FormData();
+    form.append('prompts_json', JSON.stringify(prompts));
+    form.append('reference_image', referenceImage, referenceImage.name);
+    response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate-from-prompt?${params}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+      body: form,
+    });
+  } else {
+    response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate-from-prompt?${params}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompts }),
+    });
+  }
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to generate base from prompt');
+  }
+  return await response.json();
+}
+
 export async function getCharacterBases(
   jobId: string,
   token: string | undefined,
