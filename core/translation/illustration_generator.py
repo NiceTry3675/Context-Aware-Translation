@@ -529,6 +529,8 @@ class IllustrationGenerator:
                             style_hints: str = "",
                             glossary: Optional[Dict[str, str]] = None,
                             world_atmosphere=None,
+                            custom_prompt: Optional[str] = None,
+                            reference_image: Optional[Tuple[bytes, str]] = None,
                             max_retries: int = 3) -> Tuple[Optional[str], Optional[str]]:
         """
         Generate an illustration for a text segment using Gemini's image generation.
@@ -539,11 +541,17 @@ class IllustrationGenerator:
             context: Optional context from previous segments
             style_hints: Style preferences for the illustration
             glossary: Optional glossary for names
+            world_atmosphere: World and atmosphere analysis data
+            custom_prompt: Optional custom prompt to override automatic generation
+            reference_image: Optional reference image as tuple of (bytes, mime_type)
             max_retries: Maximum number of retry attempts
             
         Returns:
             Tuple of (image_file_path, prompt_used) or (None, None) on failure
         """
+        # Initialize cache_key for later use
+        cache_key = None
+        
         # Check cache first
         if self.enable_caching:
             extra_key = ""
@@ -565,7 +573,10 @@ class IllustrationGenerator:
                     return cached_path, cached_prompt
         
         # Generate the prompt
-        prompt = self.create_illustration_prompt(segment_text, context, style_hints, glossary, world_atmosphere)
+        if custom_prompt:
+            prompt = custom_prompt
+        else:
+            prompt = self.create_illustration_prompt(segment_text, context, style_hints, glossary, world_atmosphere)
         
         # Generate the actual image using Gemini
         for attempt in range(max_retries):
@@ -669,7 +680,7 @@ class IllustrationGenerator:
                     return str(json_filepath), prompt
                 
                 # Update cache
-                if self.enable_caching:
+                if self.enable_caching and cache_key is not None:
                     self.cache[cache_key] = {
                         'path': str(image_filepath),
                         'prompt': prompt,
