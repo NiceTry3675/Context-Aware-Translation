@@ -6,6 +6,7 @@ with middleware, routers, and static files.
 """
 
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,8 +15,14 @@ from fastapi.staticfiles import StaticFiles
 # Load environment variables first
 load_dotenv()
 
+# Import configuration
+from .config import get_settings
+
 # Import routers
-from .api.v1 import translation, community, admin, webhooks, announcements, schemas, illustrations
+from .api.v1 import translation, community, admin, webhooks, announcements, schemas, illustrations, tasks
+
+# Get settings instance
+settings = get_settings()
 
 # Note: Database migrations are now handled by Alembic
 # Run `cd backend && alembic upgrade head` to apply migrations
@@ -30,35 +37,28 @@ except Exception as e:
 
 # Create FastAPI app
 app = FastAPI(
-    title="Context-Aware Translation API",
+    title=settings.app_name,
     description="AI-powered literary translation service with context awareness",
-    version="1.0.0"
+    version=settings.app_version,
+    debug=settings.debug
 )
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://catrans.me",
-        "https://www.catrans.me",
-        "https://context-aware-translation.vercel.app",
-        "https://context-aware-translation-git-dev-cat-rans.vercel.app",
-        "https://context-aware-translation-git-main-cat-rans.vercel.app"
-    ],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
+    allow_origins=settings.cors_origins,
+    allow_credentials=settings.cors_allow_credentials,
+    allow_methods=settings.cors_allow_methods,
+    allow_headers=settings.cors_allow_headers,
 )
 
-# Create uploads directory if it doesn't exist
-UPLOAD_DIR = "uploads/images"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs("uploads", exist_ok=True)
+# Create uploads directory if it doesn't exist (handled by settings validator)
+# The upload directory is already created by the settings validator
 
 # Mount static files for serving uploaded images
-app.mount("/static", StaticFiles(directory="uploads"), name="static")
+upload_path = Path(settings.upload_directory)
+if upload_path.exists():
+    app.mount("/static", StaticFiles(directory=str(upload_path)), name="static")
 
 # Include routers
 app.include_router(translation.router)
@@ -68,9 +68,14 @@ app.include_router(webhooks.router)
 app.include_router(announcements.router)
 app.include_router(schemas.router)
 app.include_router(illustrations.router, prefix="/api/v1/illustrations", tags=["illustrations"])
+app.include_router(tasks.router)
 
 # Root endpoint
 @app.get("/")
 def read_root():
     """Health check endpoint."""
-    return {"message": "Translation Service Backend is running!", "version": "1.0.0"}
+    return {
+        "message": "Translation Service Backend is running!",
+        "version": settings.app_version,
+        "environment": settings.environment
+    }
