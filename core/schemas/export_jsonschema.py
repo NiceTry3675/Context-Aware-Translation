@@ -16,6 +16,10 @@ from .validation import ValidationResponse, ValidationCase
 from .glossary import ExtractedTerms, TranslatedTerms, TranslatedTerm
 from .character_style import CharacterInteraction, DialogueAnalysisResult
 from .narrative_style import NarrativeStyleDefinition, StyleDeviation, NarrationStyle
+from .illustration import (
+    VisualElements, CharacterVisualInfo, LightingInfo, CameraInfo,
+    IllustrationData, IllustrationConfig, IllustrationBatch
+)
 
 
 # Output directory for JSON schemas
@@ -68,6 +72,15 @@ def main():
         (NarrativeStyleDefinition, "NarrativeStyleDefinition"),
         (NarrationStyle, "NarrationStyle"),
         (StyleDeviation, "StyleDeviation"),
+        
+        # Illustration models (used in illustration generation)
+        (VisualElements, "VisualElements"),
+        (CharacterVisualInfo, "CharacterVisualInfo"),
+        (LightingInfo, "LightingInfo"),
+        (CameraInfo, "CameraInfo"),
+        (IllustrationData, "IllustrationData"),
+        (IllustrationConfig, "IllustrationConfig"),
+        (IllustrationBatch, "IllustrationBatch"),
     ]
     
     # Export each model

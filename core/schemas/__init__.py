@@ -42,6 +42,13 @@ from .illustration import (
     IllustrationConfig,
     IllustrationData,
     IllustrationBatch,
+    CameraDistance,
+    CameraAngle,
+    IllustrationWorthiness,
+    CharacterVisualInfo,
+    LightingInfo,
+    CameraInfo,
+    VisualElements,
 )
 
 __all__ = [
@@ -73,4 +80,11 @@ __all__ = [
     "IllustrationConfig",
     "IllustrationData",
     "IllustrationBatch",
+    "CameraDistance",
+    "CameraAngle",
+    "IllustrationWorthiness",
+    "CharacterVisualInfo",
+    "LightingInfo",
+    "CameraInfo",
+    "VisualElements",
 ]

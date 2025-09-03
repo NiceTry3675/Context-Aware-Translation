@@ -9,6 +9,9 @@ from ..schemas.narrative_style import (
     StyleDeviation,
     make_style_deviation_schema,
     parse_style_deviation_response,
+    WorldAtmosphereAnalysis,
+    make_world_atmosphere_schema,
+    parse_world_atmosphere_response,
 )
 
 class DynamicConfigBuilder:
@@ -47,7 +50,7 @@ class DynamicConfigBuilder:
 
     
 
-    def build_dynamic_guides(self, segment_text: str, core_narrative_style: str, current_glossary: dict, current_character_styles: dict, job_base_filename: str, segment_index: int) -> tuple[dict, dict, str]:
+    def build_dynamic_guides(self, segment_text: str, core_narrative_style: str, current_glossary: dict, current_character_styles: dict, job_base_filename: str, segment_index: int, previous_context: Optional[str] = None) -> tuple[dict, dict, str, Optional[WorldAtmosphereAnalysis]]:
         """
         Analyzes a text segment to build dynamic guidelines for translation.
 
@@ -55,16 +58,20 @@ class DynamicConfigBuilder:
         1. Updates the glossary with new proper nouns.
         2. Updates the character style guide based on dialogue.
         3. Analyzes the segment for any narrative style deviations.
+        4. Analyzes world and atmosphere for context and illustration.
 
         Args:
             segment_text: The text content of the current segment.
             core_narrative_style: The core narrative style defined for the novel.
             current_glossary: The glossary dictionary from the TranslationJob.
             current_character_styles: The character styles dictionary from the TranslationJob.
+            job_base_filename: Base filename for logging.
+            segment_index: Index of the current segment.
+            previous_context: Optional previous segment text for context.
 
         Returns:
             A tuple containing the updated glossary, updated character styles,
-            and any style deviation information.
+            style deviation information, and world/atmosphere analysis.
         """
         # 1. Initialize GlossaryManager with the user-defined glossary
         # The current_glossary from the job state is merged with the initial one.
@@ -94,7 +101,16 @@ class DynamicConfigBuilder:
             segment_index
         )
 
-        return updated_glossary, updated_character_styles, style_deviation_info
+        # 4. Analyze world and atmosphere
+        world_atmosphere = self._analyze_world_atmosphere(
+            segment_text,
+            previous_context,
+            updated_glossary,
+            job_base_filename,
+            segment_index
+        )
+
+        return updated_glossary, updated_character_styles, style_deviation_info, world_atmosphere
 
     def _analyze_style_deviation(self, segment_text: str, core_narrative_style: str, job_base_filename: str = "unknown", segment_index: Optional[int] = None) -> str:
         """Analyzes the segment for deviations from the core narrative style using structured output."""
@@ -126,3 +142,43 @@ class DynamicConfigBuilder:
         except Exception as e:
             print(f"Warning: Could not analyze style deviation (structured). {e}")
             return "N/A"
+    
+    def _analyze_world_atmosphere(self, segment_text: str, previous_context: Optional[str], glossary: dict, job_base_filename: str = "unknown", segment_index: Optional[int] = None) -> Optional[WorldAtmosphereAnalysis]:
+        """Analyzes world and atmosphere using structured output."""
+        prompt_manager = PromptManager()
+        
+        # Format glossary for prompt
+        glossary_str = "\n".join([f"{term}: {translation}" for term, translation in glossary.items()]) if glossary else "N/A"
+        
+        # Get the prompt template
+        prompt_template = prompt_manager.get_prompt("world_atmosphere", "analyze")
+        if not prompt_template:
+            print("Warning: world_atmosphere.analyze prompt not found")
+            return None
+        
+        prompt = prompt_template.format(
+            segment_text=segment_text,
+            previous_context=previous_context or "N/A",
+            glossary=glossary_str
+        )
+        
+        try:
+            schema = make_world_atmosphere_schema()
+            response = self.model.generate_structured(prompt, schema)
+            world_atmosphere = parse_world_atmosphere_response(response)
+            return world_atmosphere
+        except ProhibitedException as e:
+            log_path = prohibited_content_logger.log_simple_prohibited_content(
+                api_call_type="world_atmosphere_analysis",
+                prompt=prompt,
+                source_text=segment_text,
+                error_message=str(e),
+                job_filename=job_base_filename,
+                segment_index=segment_index,
+                context={"previous_context": previous_context, "glossary": glossary_str}
+            )
+            print(f"Warning: World atmosphere analysis blocked by safety settings. Log saved to: {log_path}")
+            return None
+        except Exception as e:
+            print(f"Warning: Could not analyze world atmosphere. {e}")
+            return None

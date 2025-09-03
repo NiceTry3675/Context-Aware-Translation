@@ -22,6 +22,30 @@ class IllustrationStyle(str, Enum):
     MINIMALIST = "minimalist"
 
 
+class CameraDistance(str, Enum):
+    """Camera distance/shot types for composition."""
+    EXTREME_CLOSE_UP = "extreme close-up"
+    CLOSE_UP = "close-up"
+    MEDIUM = "medium"
+    WIDE = "wide"
+    EXTREME_WIDE = "extreme wide"
+
+
+class CameraAngle(str, Enum):
+    """Camera angle types for composition."""
+    EYE_LEVEL = "eye-level"
+    LOW_ANGLE = "low-angle"
+    HIGH_ANGLE = "high-angle"
+    DUTCH_ANGLE = "dutch-angle"
+
+
+class IllustrationWorthiness(str, Enum):
+    """Assessment of whether a scene is worth illustrating."""
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
 class IllustrationStatus(str, Enum):
     """Status of illustration generation."""
     PENDING = "pending"
@@ -29,6 +53,49 @@ class IllustrationStatus(str, Enum):
     GENERATED = "generated"
     FAILED = "failed"
     SKIPPED = "skipped"
+
+
+class CharacterVisualInfo(BaseModel):
+    """Visual information about a character in a scene."""
+    name: str = Field(..., description="Character name from glossary")
+    position: str = Field(..., description="Specific body position/posture")
+    expression: Optional[str] = Field(None, description="Facial expression if known")
+    clothing: Optional[str] = Field(None, description="Specific clothing details")
+
+
+class LightingInfo(BaseModel):
+    """Lighting information for a scene."""
+    source: str = Field(..., description="Specific light source")
+    quality: str = Field(..., description="Light quality (harsh/soft/filtered/etc)")
+    direction: str = Field(..., description="Light direction (from above/side/behind/etc)")
+
+
+class CameraInfo(BaseModel):
+    """Camera composition information for a scene."""
+    distance: CameraDistance = Field(..., description="Shot distance/type")
+    angle: CameraAngle = Field(..., description="Camera angle")
+    lens_suggestion: str = Field(..., description="Suggested lens type (85mm portrait/24mm wide/etc)")
+
+
+class VisualElements(BaseModel):
+    """
+    Comprehensive visual elements extracted from a text segment.
+    
+    This model represents all the visual information needed to generate
+    a detailed, cinematic illustration from literary text.
+    """
+    setting: str = Field(..., description="Detailed location with architectural/environmental specifics")
+    setting_details: List[str] = Field(default_factory=list, description="Specific texture/material details and scale indicators")
+    characters: List[CharacterVisualInfo] = Field(default_factory=list, description="Character visual information")
+    action: str = Field(..., description="Precise action with movement details")
+    lighting: LightingInfo = Field(..., description="Lighting setup information")
+    camera: CameraInfo = Field(..., description="Camera composition information")
+    mood: str = Field(..., description="Specific emotional atmosphere")
+    color_palette: List[str] = Field(default_factory=list, description="Color scheme (dominant, accent, mood colors)")
+    key_objects: List[str] = Field(default_factory=list, description="Detailed object descriptions with materials")
+    time_of_day: str = Field(..., description="Specific time with light quality")
+    visual_impact_score: int = Field(..., ge=1, le=10, description="Visual impact rating (1-10)")
+    illustration_worth: IllustrationWorthiness = Field(..., description="Assessment of illustration worthiness")
 
 
 class IllustrationConfig(BaseModel):

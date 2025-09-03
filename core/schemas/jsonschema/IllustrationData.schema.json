@@ -1,0 +1,137 @@
+{
+  "$defs": {
+    "IllustrationStatus": {
+      "description": "Status of illustration generation.",
+      "enum": [
+        "pending",
+        "in_progress",
+        "generated",
+        "failed",
+        "skipped"
+      ],
+      "title": "IllustrationStatus",
+      "type": "string"
+    },
+    "IllustrationStyle": {
+      "description": "Enumeration of available illustration styles.",
+      "enum": [
+        "realistic",
+        "artistic",
+        "watercolor",
+        "digital_art",
+        "sketch",
+        "anime",
+        "vintage",
+        "minimalist"
+      ],
+      "title": "IllustrationStyle",
+      "type": "string"
+    }
+  },
+  "description": "Data model for a generated illustration.\n\nThis model contains all the information about a single generated\nillustration, including its location, metadata, and generation details.",
+  "properties": {
+    "segment_index": {
+      "description": "Index of the segment this illustration belongs to",
+      "title": "Segment Index",
+      "type": "integer"
+    },
+    "file_path": {
+      "description": "File path to the generated illustration",
+      "title": "File Path",
+      "type": "string"
+    },
+    "prompt": {
+      "description": "The prompt used to generate this illustration",
+      "title": "Prompt",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/IllustrationStatus",
+      "description": "Current status of the illustration"
+    },
+    "style": {
+      "$ref": "#/$defs/IllustrationStyle",
+      "description": "The style used for this illustration"
+    },
+    "width": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Width of the illustration in pixels",
+      "title": "Width"
+    },
+    "height": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Height of the illustration in pixels",
+      "title": "Height"
+    },
+    "file_size": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "File size in bytes",
+      "title": "File Size"
+    },
+    "generation_time": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Time taken to generate the illustration in seconds",
+      "title": "Generation Time"
+    },
+    "error_message": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Error message if generation failed",
+      "title": "Error Message"
+    },
+    "metadata": {
+      "additionalProperties": true,
+      "description": "Additional metadata about the illustration",
+      "title": "Metadata",
+      "type": "object"
+    }
+  },
+  "required": [
+    "segment_index",
+    "file_path",
+    "prompt",
+    "status",
+    "style"
+  ],
+  "title": "IllustrationData",
+  "type": "object"
+}

@@ -1,0 +1,222 @@
+{
+  "$defs": {
+    "CameraAngle": {
+      "description": "Camera angle types for composition.",
+      "enum": [
+        "eye-level",
+        "low-angle",
+        "high-angle",
+        "dutch-angle"
+      ],
+      "title": "CameraAngle",
+      "type": "string"
+    },
+    "CameraDistance": {
+      "description": "Camera distance/shot types for composition.",
+      "enum": [
+        "extreme close-up",
+        "close-up",
+        "medium",
+        "wide",
+        "extreme wide"
+      ],
+      "title": "CameraDistance",
+      "type": "string"
+    },
+    "CameraInfo": {
+      "description": "Camera composition information for a scene.",
+      "properties": {
+        "distance": {
+          "$ref": "#/$defs/CameraDistance",
+          "description": "Shot distance/type"
+        },
+        "angle": {
+          "$ref": "#/$defs/CameraAngle",
+          "description": "Camera angle"
+        },
+        "lens_suggestion": {
+          "description": "Suggested lens type (85mm portrait/24mm wide/etc)",
+          "title": "Lens Suggestion",
+          "type": "string"
+        }
+      },
+      "required": [
+        "distance",
+        "angle",
+        "lens_suggestion"
+      ],
+      "title": "CameraInfo",
+      "type": "object"
+    },
+    "CharacterVisualInfo": {
+      "description": "Visual information about a character in a scene.",
+      "properties": {
+        "name": {
+          "description": "Character name from glossary",
+          "title": "Name",
+          "type": "string"
+        },
+        "position": {
+          "description": "Specific body position/posture",
+          "title": "Position",
+          "type": "string"
+        },
+        "expression": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Facial expression if known",
+          "title": "Expression"
+        },
+        "clothing": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Specific clothing details",
+          "title": "Clothing"
+        }
+      },
+      "required": [
+        "name",
+        "position"
+      ],
+      "title": "CharacterVisualInfo",
+      "type": "object"
+    },
+    "IllustrationWorthiness": {
+      "description": "Assessment of whether a scene is worth illustrating.",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "title": "IllustrationWorthiness",
+      "type": "string"
+    },
+    "LightingInfo": {
+      "description": "Lighting information for a scene.",
+      "properties": {
+        "source": {
+          "description": "Specific light source",
+          "title": "Source",
+          "type": "string"
+        },
+        "quality": {
+          "description": "Light quality (harsh/soft/filtered/etc)",
+          "title": "Quality",
+          "type": "string"
+        },
+        "direction": {
+          "description": "Light direction (from above/side/behind/etc)",
+          "title": "Direction",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "quality",
+        "direction"
+      ],
+      "title": "LightingInfo",
+      "type": "object"
+    }
+  },
+  "description": "Comprehensive visual elements extracted from a text segment.\n\nThis model represents all the visual information needed to generate\na detailed, cinematic illustration from literary text.",
+  "properties": {
+    "setting": {
+      "description": "Detailed location with architectural/environmental specifics",
+      "title": "Setting",
+      "type": "string"
+    },
+    "setting_details": {
+      "description": "Specific texture/material details and scale indicators",
+      "items": {
+        "type": "string"
+      },
+      "title": "Setting Details",
+      "type": "array"
+    },
+    "characters": {
+      "description": "Character visual information",
+      "items": {
+        "$ref": "#/$defs/CharacterVisualInfo"
+      },
+      "title": "Characters",
+      "type": "array"
+    },
+    "action": {
+      "description": "Precise action with movement details",
+      "title": "Action",
+      "type": "string"
+    },
+    "lighting": {
+      "$ref": "#/$defs/LightingInfo",
+      "description": "Lighting setup information"
+    },
+    "camera": {
+      "$ref": "#/$defs/CameraInfo",
+      "description": "Camera composition information"
+    },
+    "mood": {
+      "description": "Specific emotional atmosphere",
+      "title": "Mood",
+      "type": "string"
+    },
+    "color_palette": {
+      "description": "Color scheme (dominant, accent, mood colors)",
+      "items": {
+        "type": "string"
+      },
+      "title": "Color Palette",
+      "type": "array"
+    },
+    "key_objects": {
+      "description": "Detailed object descriptions with materials",
+      "items": {
+        "type": "string"
+      },
+      "title": "Key Objects",
+      "type": "array"
+    },
+    "time_of_day": {
+      "description": "Specific time with light quality",
+      "title": "Time Of Day",
+      "type": "string"
+    },
+    "visual_impact_score": {
+      "description": "Visual impact rating (1-10)",
+      "maximum": 10,
+      "minimum": 1,
+      "title": "Visual Impact Score",
+      "type": "integer"
+    },
+    "illustration_worth": {
+      "$ref": "#/$defs/IllustrationWorthiness",
+      "description": "Assessment of illustration worthiness"
+    }
+  },
+  "required": [
+    "setting",
+    "action",
+    "lighting",
+    "camera",
+    "mood",
+    "time_of_day",
+    "visual_impact_score",
+    "illustration_worth"
+  ],
+  "title": "VisualElements",
+  "type": "object"
+}

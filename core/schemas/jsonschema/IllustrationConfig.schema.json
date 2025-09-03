@@ -1,0 +1,78 @@
+{
+  "$defs": {
+    "IllustrationStyle": {
+      "description": "Enumeration of available illustration styles.",
+      "enum": [
+        "realistic",
+        "artistic",
+        "watercolor",
+        "digital_art",
+        "sketch",
+        "anime",
+        "vintage",
+        "minimalist"
+      ],
+      "title": "IllustrationStyle",
+      "type": "string"
+    }
+  },
+  "description": "Configuration for illustration generation.\n\nThis model defines the settings and preferences for generating\nillustrations for translation segments.",
+  "properties": {
+    "enabled": {
+      "default": false,
+      "description": "Whether illustration generation is enabled",
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "style": {
+      "$ref": "#/$defs/IllustrationStyle",
+      "default": "digital_art",
+      "description": "The artistic style for generated illustrations"
+    },
+    "style_hints": {
+      "default": "",
+      "description": "Additional style hints or preferences for illustration generation",
+      "title": "Style Hints",
+      "type": "string"
+    },
+    "segments_per_illustration": {
+      "default": 1,
+      "description": "Number of segments to combine for each illustration",
+      "title": "Segments Per Illustration",
+      "type": "integer"
+    },
+    "max_illustrations": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Maximum number of illustrations to generate (None for unlimited)",
+      "title": "Max Illustrations"
+    },
+    "skip_dialogue_heavy": {
+      "default": true,
+      "description": "Skip illustration for segments that are mostly dialogue",
+      "title": "Skip Dialogue Heavy",
+      "type": "boolean"
+    },
+    "min_segment_length": {
+      "default": 500,
+      "description": "Minimum segment length (characters) to generate illustration",
+      "title": "Min Segment Length",
+      "type": "integer"
+    },
+    "cache_enabled": {
+      "default": true,
+      "description": "Whether to cache generated illustrations",
+      "title": "Cache Enabled",
+      "type": "boolean"
+    }
+  },
+  "title": "IllustrationConfig",
+  "type": "object"
+}
