@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from ...dependencies import get_db, get_required_user
 from ...services.post_edit_service import PostEditService
-from ...background_tasks.post_edit_tasks import run_post_edit_in_background
+from ...tasks.post_edit import process_post_edit_task
 from ... import crud, models, auth
 from ...schemas import PostEditRequest, StructuredPostEditLog
 
@@ -44,15 +44,12 @@ async def trigger_post_edit(
     db_job.post_edit_status = "PENDING"
     db.commit()
     
-    # Add background task to run post-editing
-    background_tasks.add_task(
-        run_post_edit_in_background,
-        job_id,
-        db_job.filepath,
-        db_job.validation_report_path,
-        request.selected_cases,
-        request.model_name,
-        request.api_key,
+    # Start post-editing using Celery
+    process_post_edit_task.delay(
+        job_id=job_id,
+        api_key=request.api_key,
+        model_name=request.model_name,
+        user_id=current_user.id
     )
     
     return {"message": "Post-editing started", "job_id": job_id}

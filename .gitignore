@@ -47,7 +47,7 @@ illustrations/*
 !logs/debug_prompts/prompts_Metamorphosis.txt
 !source_novel/Metamorphosis.txt
 !translated_novel/Metamorphosis_translated.txt
-
+backend/TODO.md
 # Also keep the directory structure for empty folders that might result
 !*/.gitkeep
 

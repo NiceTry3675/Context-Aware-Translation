@@ -6,7 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ...dependencies import get_db, get_required_user
-from ...background_tasks.validation_tasks import run_validation_in_background
+from ...tasks.validation import process_validation_task
 from ...services.base.model_factory import ModelAPIFactory
 from ... import crud, models, auth
 from ...schemas import ValidationRequest, StructuredValidationReport, ValidationResponse
@@ -50,16 +50,17 @@ async def trigger_validation(
     db_job.validation_sample_rate = validation_sample_rate_percent
     db.commit()
     
-    # Add background task to run validation
-    # Pass through API key if provided; background task will fall back to env
-    background_tasks.add_task(
-        run_validation_in_background,
-        job_id,
-        db_job.filepath,
-        request.quick_validation,
-        validation_sample_rate_percent,
-        request.model_name,
-        request.api_key,
+    # Start validation using Celery
+    # Determine validation mode based on quick_validation flag
+    validation_mode = "quick" if request.quick_validation else "comprehensive"
+    
+    process_validation_task.delay(
+        job_id=job_id,
+        api_key=request.api_key,
+        model_name=request.model_name,
+        validation_mode=validation_mode,
+        sample_rate=validation_sample_rate_percent / 100.0,  # Convert percentage to decimal
+        user_id=current_user.id
     )
     
     return {"message": "Validation started", "job_id": job_id}

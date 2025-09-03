@@ -17,6 +17,7 @@ from pathlib import Path
 from ...database import SessionLocal
 from ...models import TranslationJob, User
 from ...auth import get_required_user
+from ...tasks.illustrations import generate_illustrations_task, regenerate_single_illustration
 from core.translation.illustration_generator import IllustrationGenerator
 from core.schemas.illustration import (
     IllustrationConfig, 
@@ -79,11 +80,10 @@ async def generate_illustrations(
     
     print(f"--- [ILLUSTRATIONS] Starting generation for job {job_id} with config: {config.dict()} ---")
     
-    # Start background generation
-    background_tasks.add_task(
-        generate_illustrations_task,
+    # Start illustration generation using Celery
+    generate_illustrations_task.delay(
         job_id=job_id,
-        config=config,
+        config_dict=config.dict(),
         api_key=api_key,
         max_illustrations=max_illustrations
     )
@@ -593,9 +593,8 @@ async def regenerate_illustration_prompt(
     if not job.translation_segments or segment_index >= len(job.translation_segments):
         raise HTTPException(status_code=404, detail=f"Segment {segment_index} not found")
     
-    # Start background regeneration
-    background_tasks.add_task(
-        regenerate_single_illustration,
+    # Start regeneration using Celery
+    regenerate_single_illustration.delay(
         job_id=job_id,
         segment_index=segment_index,
         style_hints=style_hints,
@@ -609,7 +608,7 @@ async def regenerate_illustration_prompt(
     }
 
 
-def generate_illustrations_task(
+def _legacy_generate_illustrations_task(
     job_id: int,
     config: IllustrationConfig,
     api_key: str,
@@ -773,7 +772,7 @@ def generate_illustrations_task(
             db.close()
 
 
-def regenerate_single_illustration(
+def _legacy_regenerate_single_illustration(
     job_id: int,
     segment_index: int,
     style_hints: Optional[str],

@@ -1,241 +1,302 @@
 # Backend Architecture
 
 ## Overview
-The backend has been refactored from a monolithic 1387-line `main.py` file into a clean, modular architecture following the separation of concerns principle. The translation API module has been further decomposed from a single 522-line file into 5 focused modules for better maintainability.
 
-## Directory Structure
+FastAPI-based REST API serving as the bridge between the frontend application and the core translation engine. Uses Celery for distributed task processing and PostgreSQL for data persistence.
+
+## Current Architecture
 
 ```
 backend/
-├── api/v1/                     # API Layer - HTTP request handling
-│   ├── translation.py          # Router aggregator for translation APIs
-│   ├── analysis.py            # Style and glossary analysis endpoints
-│   ├── jobs.py                # Translation job CRUD operations
-│   ├── downloads.py           # File downloads and content retrieval
-│   ├── validation_routes.py   # Translation validation endpoints
-│   ├── post_edit_routes.py    # Post-editing endpoints
-│   ├── community.py           # Community board endpoints  
-│   ├── admin.py              # Admin management endpoints
-│   ├── webhooks.py           # Webhook handlers (Clerk)
-│   └── announcements.py      # SSE streaming endpoints
+├── api/v1/                    # API endpoints (routing layer)
+│   ├── admin.py              # Admin operations
+│   ├── analysis.py           # Translation analysis
+│   ├── announcements.py      # Site announcements
+│   ├── community.py          # Community features
+│   ├── downloads.py          # File downloads
+│   ├── illustrations.py      # AI illustration generation
+│   ├── jobs.py               # Job management
+│   ├── post_edit_routes.py   # Post-editing
+│   ├── schemas.py            # Schema exports
+│   ├── tasks.py              # Task monitoring
+│   ├── translation.py        # Legacy translation
+│   ├── validation_routes.py  # Translation validation
+│   └── webhooks.py           # External integrations
 │
-├── services/                   # Business Logic Layer
-│   ├── translation_service.py  # Translation business logic
-│   ├── validation_service.py   # Validation logic
-│   ├── post_edit_service.py   # Post-editing logic
-│   ├── community_service.py   # Community features logic
-│   └── announcement_service.py # Announcement management
+├── config/                    # Configuration management
+│   ├── __init__.py
+│   ├── logging_config.py    # Structured logging
+│   └── settings.py          # Pydantic settings
 │
-├── background_tasks/           # Async Task Layer
-│   ├── translation_tasks.py   # Background translation jobs
-│   ├── validation_tasks.py    # Background validation
-│   └── post_edit_tasks.py     # Background post-editing
+├── domains/                   # Domain-driven design layer
+│   ├── shared/              # Shared infrastructure
+│   │   ├── events.py       # Domain events
+│   │   ├── repository.py   # Base repository
+│   │   ├── storage.py      # Storage abstraction
+│   │   └── uow.py         # Unit of Work
+│   │
+│   ├── translation/          # Translation domain
+│   │   ├── models.py        # SQLAlchemy models
+│   │   ├── repository.py    # Data access
+│   │   ├── schemas.py       # Pydantic schemas
+│   │   └── service.py       # Business logic
+│   │
+│   ├── community/            # Community domain
+│   │   ├── models.py
+│   │   ├── repository.py
+│   │   ├── schemas.py
+│   │   └── service.py
+│   │
+│   └── user/                # User domain
+│       ├── models.py
+│       ├── repository.py
+│       ├── schemas.py
+│       └── service.py
 │
-├── core/                       # Core translation engine (unchanged)
-│   ├── translation/           # Translation components
-│   ├── config/               # Configuration management
-│   └── prompts/              # AI prompt templates
+├── models/                    # Database models
+│   ├── _base.py             # Base model
+│   ├── community.py         # Community models
+│   ├── outbox.py           # Event sourcing
+│   ├── task_execution.py   # Task tracking
+│   ├── translation.py      # Translation models
+│   └── user.py             # User models
 │
-├── models/                    # SQLAlchemy models package
-│   ├── _base.py              # Base declarative class
-│   ├── user.py               # User model
-│   ├── translation.py        # Translation job models
-│   ├── community.py          # Community models
-│   └── __init__.py           # Model exports
+├── schemas/                   # API schemas (Pydantic)
+│   ├── base.py              # Base schemas
+│   ├── community.py         # Community DTOs
+│   ├── core_schemas.py      # Core translation schemas
+│   ├── jobs.py              # Job DTOs
+│   ├── task_execution.py   # Task DTOs
+│   └── webhooks.py         # Webhook schemas
 │
-├── migrations/                # Alembic migrations
-│   ├── env.py                # Alembic environment
-│   ├── script.py.mako        # Migration template
-│   └── versions/             # Migration versions
+├── services/                  # Business services
+│   ├── announcement_service.py     # Announcement logic
+│   ├── community_service.py        # Community logic
+│   ├── glossary_analysis_service.py # Term extraction
+│   ├── pdf_generator.py           # PDF export
+│   ├── post_edit_service.py       # Post-editing
+│   ├── style_analysis_service.py  # Style analysis
+│   ├── translation_service.py     # Translation orchestration
+│   └── validation_service.py      # Quality checking
 │
-├── alembic.ini               # Alembic configuration
-├── dependencies.py            # Shared FastAPI dependencies
-├── schemas.py                # Pydantic schemas
-├── crud.py                   # Database operations
-├── auth.py                   # Authentication logic
-├── database.py               # Database connection
-├── auto_init.py              # Auto-initialization
-└── main.py                   # Slim entry point (~80 lines)
+├── tasks/                     # Celery tasks
+│   ├── base.py              # Base task classes
+│   ├── celery_app.py        # Celery configuration
+│   ├── event_processor.py   # Event processing
+│   ├── post_edit.py         # Post-edit tasks
+│   ├── translation.py       # Translation tasks
+│   └── validation.py        # Validation tasks
+│
+├── background_tasks/          # DEPRECATED - Legacy wrappers
+│   └── [legacy files]       # To be removed
+│
+├── migrations/               # Alembic database migrations
+│   └── versions/            # Migration files
+│
+├── auth.py                  # Authentication (Clerk)
+├── celery_app.py           # Celery re-export
+├── crud.py                 # Legacy CRUD operations
+├── database.py             # Database configuration
+├── dependencies.py         # Dependency injection
+└── main.py                 # FastAPI application
 ```
 
-## Architecture Layers
+## Core Components
 
-### 1. API Layer (`api/v1/`)
-- **Responsibility**: Handle HTTP requests/responses
-- **Components**: FastAPI routers organized by domain
-- **Key Features**:
-  - Input validation
-  - HTTP status codes
-  - Response formatting
+### 1. API Layer (`/api/v1/`)
+- **Purpose**: HTTP routing and request/response handling
+- **Responsibilities**: 
   - Route definitions
+  - Request validation
+  - Response serialization
+  - Authentication enforcement
+- **Pattern**: Thin controllers delegating to services
 
-### 2. Service Layer (`services/`)
-- **Responsibility**: Business logic and orchestration
-- **Components**: Domain-specific service classes
-- **Key Features**:
-  - Business rule enforcement
-  - Data transformation
-  - Cross-cutting concerns
-  - Reusable logic
+### 2. Domain Layer (`/domains/`)
+- **Purpose**: Core business logic using DDD principles
+- **Components**:
+  - **Models**: Domain entities
+  - **Repository**: Data access abstraction
+  - **Service**: Business operations
+  - **Schemas**: Data transfer objects
+- **Pattern**: Repository pattern with Unit of Work
 
-### 3. Background Task Layer (`background_tasks/`)
-- **Responsibility**: Async processing
-- **Components**: Task functions for long-running operations
-- **Key Features**:
-  - Translation processing
-  - Validation runs
-  - Post-editing operations
-  - Database session management
+### 3. Task Processing (`/tasks/`)
+- **Purpose**: Asynchronous job processing
+- **Technology**: Celery with Redis broker
+- **Features**:
+  - Automatic retry with exponential backoff
+  - Progress tracking
+  - Database-backed execution history
+  - Priority queue routing
+- **Queues**: translation, validation, post_edit, events, default
 
-### 4. Data Access Layer
-- **Components**: `crud.py`, `models.py`, `database.py`
-- **Responsibility**: Database operations and ORM
+### 4. Service Layer (`/services/`)
+- **Purpose**: Business logic orchestration
+- **Responsibilities**:
+  - Integration with core translation engine
+  - File processing
+  - Report generation
+  - External API coordination
 
-## Benefits of New Architecture
+### 5. Storage Abstraction (`/domains/shared/storage.py`)
+- **Purpose**: Unified file storage interface
+- **Backends**: 
+  - LocalStorage (filesystem)
+  - S3Storage (planned)
+  - GCSStorage (planned)
+- **Features**: Path security, async operations
 
-1. **Separation of Concerns**
-   - Each layer has a single, well-defined responsibility
-   - Business logic separated from HTTP handling
-   - Database operations isolated in CRUD layer
+## Data Flow
 
-2. **Improved Testability**
-   - Service layer can be unit tested independently
-   - Mock dependencies easily
-   - Test business logic without HTTP layer
+### Translation Request Flow
+1. **Request**: Client → API endpoint
+2. **Validation**: Pydantic schema validation
+3. **Job Creation**: Store in database with "processing" status
+4. **Task Queue**: Launch Celery task
+5. **Processing**: Task executes with core engine
+6. **Progress**: Updates via task.update_state()
+7. **Completion**: Update job status, store results
+8. **Response**: Client polls for completion
 
-3. **Better Maintainability**
-   - Smaller, focused files (~200-400 lines each)
-   - Clear module boundaries
-   - Easy to locate and modify specific functionality
+### Event Processing
+1. **Domain Event**: Created during business operations
+2. **Outbox Storage**: Persisted transactionally
+3. **Event Processor**: Periodic Celery beat task
+4. **Event Dispatch**: Route to appropriate handlers
+5. **Cleanup**: Remove processed events
 
-4. **Enhanced Reusability**
-   - Services can be used in different contexts (API, CLI, workers)
-   - Shared logic centralized in service layer
-   - Common dependencies in single module
+## Database Schema
 
-5. **Scalability**
-   - Easy to add new endpoints without modifying existing code
-   - Can split into microservices if needed
-   - Background tasks can be moved to separate workers
+### Core Tables
+- **users**: User accounts (Clerk integration)
+- **translation_jobs**: Main job tracking
+- **translation_usage_logs**: API usage metrics
+- **illustration_jobs**: Image generation
+- **posts/comments**: Community content
+- **announcements**: Admin announcements
+- **task_executions**: Celery task history
+- **outbox_events**: Domain events
 
-## API Endpoint Organization
+## Configuration
 
-### Translation API (`/api/v1/`)
-The translation endpoints are organized into logical modules for better maintainability:
+### Environment-Based Settings
+- Development: Local SQLite, verbose logging
+- Production: PostgreSQL, structured JSON logging
+- Testing: In-memory database, minimal logging
 
-#### Analysis Endpoints (`analysis.py`)
-- **POST** `/analyze-style` - Analyze narrative style
-- **POST** `/analyze-glossary` - Extract glossary terms
+### Storage Configuration
+- Local: Filesystem with path validation
+- Cloud: S3/GCS with presigned URLs
+- Security: File type validation, size limits
 
-#### Job Management (`jobs.py`)
-- **GET** `/jobs` - List all translation jobs for current user
-- **POST** `/jobs` - Create translation job (upload file)
-- **GET** `/jobs/{id}` - Get job details and status
-- **DELETE** `/jobs/{id}` - Delete translation job
+## Authentication & Authorization
 
-#### Downloads & Content (`downloads.py`)
-- **GET** `/download/{id}` - Download translated file (legacy)
-- **GET** `/jobs/{id}/output` - Download translated file
-- **GET** `/jobs/{id}/logs/{type}` - Download debug logs
-- **GET** `/jobs/{id}/glossary` - Get final glossary
-- **GET** `/jobs/{id}/segments` - Get segmented translation data
-- **GET** `/jobs/{id}/content` - Get translated content as text
+### Public Access
+- GET community endpoints
+- Webhook endpoints (signature validated)
 
-#### Validation (`validation_routes.py`)
-- **PUT** `/jobs/{id}/validation` - Trigger validation
-- **GET** `/jobs/{id}/validation-report` - Get validation report
+### User Authentication (Clerk JWT)
+- Translation operations
+- Content creation
+- Personal data access
 
-#### Post-Editing (`post_edit_routes.py`)
-- **PUT** `/jobs/{id}/post-edit` - Trigger post-editing
-- **GET** `/jobs/{id}/post-edit-log` - Get post-edit log
+### Admin Authentication
+- ADMIN_SECRET_KEY header
+- Full system access
 
-### Community API (`/api/v1/community/`)
-- Category management
-- Post CRUD operations
-- Comment system
-- Image uploads
-- Privacy controls
+## Monitoring & Observability
 
-### Admin API (`/api/v1/admin/`)
-- Announcement management
-- Category initialization
-- System administration
+### Logging
+- Structured JSON format
+- Correlation IDs for request tracing
+- Performance metrics
 
-### Webhooks (`/api/v1/webhooks/`)
-- Clerk user synchronization
-- External service integration
+### Task Monitoring
+- `/api/v1/tasks/` endpoints
+- Celery Flower web UI
+- Database-backed execution history
 
-### Announcements (`/api/v1/announcements/`)
-- Server-Sent Events streaming
-- Real-time announcement updates
+### Health Checks
+- Database connectivity
+- Redis availability
+- Storage accessibility
 
-## Database Management
+## Performance Optimizations
 
-### Models Organization
-The SQLAlchemy models are organized into a package structure:
-- `models/_base.py`: Contains the declarative Base class
-- `models/user.py`: User authentication and profile models
-- `models/translation.py`: Translation job and usage log models
-- `models/community.py`: Community features (posts, comments, categories)
+### Database
+- Connection pooling
+- Eager loading for relationships
+- Indexed foreign keys
 
-### Migration System (Alembic)
-Database schema changes are managed using Alembic:
-```bash
-# Apply all migrations
-cd backend && alembic upgrade head
+### Caching
+- Redis for session data
+- Query result caching (planned)
 
-# Create a new migration
-alembic revision --autogenerate -m "description"
+### Async Operations
+- File I/O operations
+- External API calls
+- Database queries (where supported)
 
-# View migration history
-alembic history
+## Security Measures
 
-# Rollback to previous version
-alembic downgrade -1
-```
+### Input Validation
+- Pydantic schema enforcement
+- File type whitelisting
+- Request size limits
 
-The migration system supports both SQLite (development) and PostgreSQL (production) transparently.
+### File Security
+- Path traversal prevention
+- Filename sanitization
+- Virus scanning (planned)
 
-## Migration from Old Structure
+### API Security
+- Rate limiting (planned)
+- CORS configuration
+- HTTPS enforcement (production)
 
-The refactoring maintains 100% backward compatibility:
-- All API endpoints remain at the same URLs
-- Request/response formats unchanged
-- Database schema managed via Alembic migrations
-- Frontend requires no modifications
+## Migration Status
+
+### Completed
+- ✅ Celery integration
+- ✅ Task execution tracking
+- ✅ Storage abstraction
+- ✅ Configuration management
+- ✅ Domain structure setup
+
+### In Progress
+- 🔄 CRUD to repository migration
+- 🔄 Service consolidation
+- 🔄 Removing legacy code
+
+### Planned
+- 📋 Complete DDD implementation
+- 📋 Event sourcing completion
+- 📋 Caching layer
+- 📋 GraphQL API (future)
 
 ## Development Guidelines
 
-1. **Adding New Features**
-   - Create service in `services/` for business logic
-   - Add router in `api/v1/` for endpoints
-   - Use `dependencies.py` for shared deps
-   - Add background task if needed
+### Adding New Features
+1. Define domain model if needed
+2. Create/update repository methods
+3. Implement service logic
+4. Add API endpoint
+5. Create Celery task if async
+6. Write tests
+7. Update documentation
 
-2. **Testing**
-   - Unit test services independently
-   - Integration test API endpoints
-   - Mock external dependencies
+### Database Changes
+1. Modify SQLAlchemy models
+2. Generate migration: `alembic revision --autogenerate`
+3. Review and apply: `alembic upgrade head`
 
-3. **Error Handling**
-   - Services raise domain exceptions
-   - API layer converts to HTTP errors
-   - Consistent error response format
+### Task Implementation
+1. Extend `TrackedTask` base class
+2. Implement error handling and retries
+3. Add progress tracking
+4. Update task routing in celery_app.py
 
-## Running the Application
-
-```bash
-# Development
-uvicorn backend.main:app --reload --port 8000
-
-# Production
-uvicorn backend.main:app --host 0.0.0.0 --port 8000
-```
-
-## Environment Variables
-
-Required environment variables remain unchanged:
-- `DATABASE_URL`: PostgreSQL connection string
-- `CLERK_WEBHOOK_SECRET`: Clerk webhook verification
-- `ADMIN_SECRET_KEY`: Admin endpoint authentication
-- `GEMINI_API_KEY`: Default API key for validation/post-edit
+---
+*Last Updated: 2025-09-03*
+*Version: 2.0 - Post-refactoring architecture*

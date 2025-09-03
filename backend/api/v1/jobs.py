@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from ...dependencies import get_db, get_required_user
 from ...services.base.model_factory import ModelAPIFactory
 from ...services.utils.file_manager import FileManager
-from ...background_tasks.translation_tasks import run_translation_in_background
+from ...tasks.translation import process_translation_task
 from ... import crud, models, schemas, auth
 
 router = APIRouter(tags=["jobs"])
@@ -72,12 +72,17 @@ async def create_job(
     
     crud.update_job_filepath(db, job_id=db_job.id, filepath=file_path)
     
-    # Start translation in background
-    background_tasks.add_task(
-        run_translation_in_background,
-        db_job.id, api_key, model_name,
-        style_data, glossary_data,
-        translation_model_name, style_model_name, glossary_model_name
+    # Start translation in background using Celery
+    process_translation_task.delay(
+        job_id=db_job.id,
+        api_key=api_key,
+        model_name=model_name,
+        style_data=style_data,
+        glossary_data=glossary_data,
+        translation_model_name=translation_model_name,
+        style_model_name=style_model_name,
+        glossary_model_name=glossary_model_name,
+        user_id=current_user.id
     )
     
     return db_job
