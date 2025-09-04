@@ -12,7 +12,9 @@ from backend.schemas.community import (
     PostCreate, PostUpdate, PostList,
     Comment as CommentSchema,
     CommentCreate, CommentUpdate,
-    PostCategory as CategorySchema,
+    PostCategory as CategorySchema
+)
+from backend.schemas.user import (
     Announcement as AnnouncementSchema,
     AnnouncementCreate
 )

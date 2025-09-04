@@ -18,7 +18,6 @@ from ...services.utils.file_manager import FileManager
 from ...tasks.translation import process_translation_task
 from ...models.translation import TranslationJob
 from ...models.user import User
-from ...schemas.translation import TranslationJob as TranslationJobSchema, TranslationJobCreate
 from .repository import SqlAlchemyTranslationJobRepository
 from .service import TranslationDomainService
 from ...auth import is_admin

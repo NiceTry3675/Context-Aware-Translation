@@ -8,11 +8,10 @@ from sqlalchemy.orm import Session
 from backend.dependencies import get_db, get_required_user, get_optional_user
 from backend.models.user import User
 from backend.schemas.user import (
-    UserResponse,
-    UserUpdate,
-    AnnouncementResponse,
+    User as UserSchema,
+    Announcement as AnnouncementSchema,
     AnnouncementCreate,
-    UsageLogResponse
+    TranslationUsageLog as UsageLogSchema
 )
 from backend.domains.user.service import UserService
 
@@ -27,12 +26,12 @@ def get_user_service(db: Session = Depends(get_db)) -> UserService:
 
 # User profile endpoints
 
-@router.get("/me", response_model=UserResponse)
+@router.get("/me", response_model=UserSchema)
 def get_current_user_profile(
     current_user: User = Depends(get_required_user)
 ):
     """Get the current user's profile."""
-    return UserResponse.from_orm(current_user)
+    return UserSchema.from_orm(current_user)
 
 
 @router.get("/me/statistics")
@@ -44,7 +43,7 @@ def get_current_user_statistics(
     return service.get_user_statistics(current_user.id)
 
 
-@router.get("/me/usage", response_model=List[UsageLogResponse])
+@router.get("/me/usage", response_model=List[UsageLogSchema])
 def get_current_user_usage(
     limit: int = Query(100, ge=1, le=1000),
     current_user: User = Depends(get_required_user),
@@ -52,7 +51,7 @@ def get_current_user_usage(
 ):
     """Get API usage logs for the current user."""
     logs = service.get_user_usage_logs(current_user.id, limit)
-    return [UsageLogResponse.from_orm(log) for log in logs]
+    return [UsageLogSchema.from_orm(log) for log in logs]
 
 
 @router.get("/me/usage-summary")
@@ -67,7 +66,7 @@ def get_current_user_usage_summary(
 
 # Admin user management endpoints
 
-@router.get("/", response_model=List[UserResponse])
+@router.get("/", response_model=List[UserSchema])
 async def list_users(
     query: Optional[str] = Query(None, description="Search query"),
     role: Optional[str] = Query(None, description="Filter by role"),
@@ -80,10 +79,10 @@ async def list_users(
         raise HTTPException(status_code=403, detail="Admin access required")
     
     users = service.search_users(query, role, limit)
-    return [UserResponse.from_orm(u) for u in users]
+    return [UserSchema.from_orm(u) for u in users]
 
 
-@router.get("/{user_id}", response_model=UserResponse)
+@router.get("/{user_id}", response_model=UserSchema)
 def get_user(
     user_id: int,
     current_user: User = Depends(get_required_user),
@@ -92,7 +91,7 @@ def get_user(
     """Get a specific user's profile (admin only or self)."""
     # Users can view their own profile
     if user_id == current_user.id:
-        return UserResponse.from_orm(current_user)
+        return UserSchema.from_orm(current_user)
     
     # Otherwise must be admin
     if not service.is_admin(current_user):
@@ -102,7 +101,7 @@ def get_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return UserResponse.from_orm(user)
+    return UserSchema.from_orm(user)
 
 
 @router.put("/{user_id}/role")
@@ -117,7 +116,7 @@ async def update_user_role(
         user = await service.update_user_role(user_id, new_role, current_user)
         return {
             "message": f"User role updated to {new_role}",
-            "user": UserResponse.from_orm(user)
+            "user": UserSchema.from_orm(user)
         }
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
@@ -140,16 +139,16 @@ def get_user_statistics(
 
 # Announcement endpoints
 
-@router.get("/announcements/active", response_model=List[AnnouncementResponse])
+@router.get("/announcements/active", response_model=List[AnnouncementSchema])
 def get_active_announcements(
     service: UserService = Depends(get_user_service)
 ):
     """Get active announcements (public endpoint)."""
     announcements = service.get_announcements(active_only=True)
-    return [AnnouncementResponse.from_orm(a) for a in announcements]
+    return [AnnouncementSchema.from_orm(a) for a in announcements]
 
 
-@router.get("/announcements/all", response_model=List[AnnouncementResponse])
+@router.get("/announcements/all", response_model=List[AnnouncementSchema])
 def get_all_announcements(
     limit: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_required_user),
@@ -160,10 +159,10 @@ def get_all_announcements(
         raise HTTPException(status_code=403, detail="Admin access required")
     
     announcements = service.get_announcements(active_only=False, limit=limit)
-    return [AnnouncementResponse.from_orm(a) for a in announcements]
+    return [AnnouncementSchema.from_orm(a) for a in announcements]
 
 
-@router.post("/announcements", response_model=AnnouncementResponse)
+@router.post("/announcements", response_model=AnnouncementSchema)
 async def create_announcement(
     announcement_data: AnnouncementCreate,
     current_user: User = Depends(get_required_user),
@@ -176,12 +175,12 @@ async def create_announcement(
             is_active=announcement_data.is_active,
             admin_user=current_user
         )
-        return AnnouncementResponse.from_orm(announcement)
+        return AnnouncementSchema.from_orm(announcement)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
 
 
-@router.put("/announcements/{announcement_id}", response_model=AnnouncementResponse)
+@router.put("/announcements/{announcement_id}", response_model=AnnouncementSchema)
 async def update_announcement(
     announcement_id: int,
     message: Optional[str] = None,
@@ -197,7 +196,7 @@ async def update_announcement(
             is_active=is_active,
             admin_user=current_user
         )
-        return AnnouncementResponse.from_orm(announcement)
+        return AnnouncementSchema.from_orm(announcement)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -325,10 +324,10 @@ async def stream_announcements(request: Request):
 
 # Legacy compatibility endpoints (will be deprecated)
 
-@router.get("/api/v1/announcements", response_model=List[AnnouncementResponse])
+@router.get("/api/v1/announcements", response_model=List[AnnouncementSchema])
 def get_announcements_legacy(
     service: UserService = Depends(get_user_service)
 ):
     """Legacy endpoint for getting announcements."""
     announcements = service.get_announcements(active_only=True)
-    return [AnnouncementResponse.from_orm(a) for a in announcements]
+    return [AnnouncementSchema.from_orm(a) for a in announcements]

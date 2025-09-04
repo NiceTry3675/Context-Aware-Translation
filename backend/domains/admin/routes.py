@@ -9,9 +9,9 @@ from backend.dependencies import get_db, get_required_user
 from backend.models.user import User
 from backend.models.community import Post, Comment
 from backend.models.translation import TranslationJob
-from backend.schemas.user import UserResponse
+from backend.schemas.user import User as UserSchema
 from backend.schemas.community import PostList, Comment as CommentSchema
-from backend.schemas.job import TranslationJobResponse
+from backend.schemas.job import TranslationJob as TranslationJobSchema
 from backend.domains.admin.policy import (
     Permission,
     enforce_permission,
@@ -39,7 +39,7 @@ async def verify_admin_secret(
 
 # User management endpoints
 
-@router.get("/users", response_model=List[UserResponse])
+@router.get("/users", response_model=List[UserSchema])
 def list_all_users(
     search: Optional[str] = Query(None),
     role: Optional[str] = Query(None),
@@ -55,7 +55,7 @@ def list_all_users(
     
     service = UserService(db)
     users = service.search_users(search, role, limit)
-    return [UserResponse.from_orm(u) for u in users]
+    return [UserSchema.from_orm(u) for u in users]
 
 
 @router.put("/users/{user_id}/role")
@@ -76,7 +76,7 @@ async def change_user_role(
         user = await service.update_user_role(user_id, new_role, current_user)
         return {
             "message": f"User role changed to {new_role}",
-            "user": UserResponse.from_orm(user)
+            "user": UserSchema.from_orm(user)
         }
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -187,7 +187,7 @@ async def delete_any_comment(
 
 # Translation management endpoints
 
-@router.get("/translations", response_model=List[TranslationJobResponse])
+@router.get("/translations", response_model=List[TranslationJobSchema])
 def list_all_translations(
     user_id: Optional[int] = Query(None),
     status: Optional[str] = Query(None),
@@ -209,7 +209,7 @@ def list_all_translations(
         query = query.filter(TranslationJob.status == status)
     
     jobs = query.order_by(TranslationJob.created_at.desc()).limit(limit).all()
-    return [TranslationJobResponse.from_orm(job) for job in jobs]
+    return [TranslationJobSchema.from_orm(job) for job in jobs]
 
 
 @router.delete("/translations/{job_id}")

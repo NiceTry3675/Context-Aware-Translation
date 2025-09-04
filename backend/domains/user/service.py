@@ -7,18 +7,11 @@ import hashlib
 import hmac
 
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 
 from backend.models.user import User
 from backend.models.translation import TranslationJob, TranslationUsageLog
 from backend.models.community import Announcement
-from backend.schemas.user import (
-    UserResponse,
-    UserUpdate,
-    AnnouncementCreate,
-    AnnouncementResponse,
-    UsageLogResponse
-)
 from backend.domains.user.repository import UserRepository, SqlAlchemyUserRepository
 from backend.domains.shared.uow import SqlAlchemyUoW
 from backend.domains.shared.events import DomainEvent
@@ -428,8 +421,6 @@ class UserService:
         Returns:
             List of usage logs
         """
-        from sqlalchemy import desc
-        
         return self.session.query(TranslationUsageLog).filter(
             TranslationUsageLog.user_id == user_id
         ).order_by(
@@ -451,7 +442,6 @@ class UserService:
         Returns:
             Dictionary with usage summary
         """
-        from sqlalchemy import func
         from datetime import timedelta
         
         cutoff_date = datetime.utcnow() - timedelta(days=days)
@@ -687,7 +677,3 @@ class UserService:
         
         # Both are None, no update needed
         return False
-
-
-# Import sqlalchemy func for usage summary
-from sqlalchemy import func
