@@ -68,23 +68,62 @@ class GlossaryAnalysisService(BaseAnalysisService):
             Dictionary of term mappings
         """
         try:
-            glossary = json.loads(user_glossary_data)
-            
-            # Validate glossary format
-            if not isinstance(glossary, dict):
-                raise ValueError("Glossary must be a dictionary mapping terms to translations")
-            
-            # Ensure all values are strings
-            validated_glossary = {}
-            for key, value in glossary.items():
+            raw = json.loads(user_glossary_data)
+
+            # Accept either a flat dictionary { term: translation } or
+            # an array of entries (legacy formats):
+            #   - [{ "Term": "번역" }, { "Name": "이름" }]
+            #   - [{ "source": "Term", "korean": "번역" }, ...]
+            glossary_dict: Dict[str, str] = {}
+
+            if isinstance(raw, dict):
+                # Already the preferred format
+                for k, v in raw.items():
+                    if isinstance(k, str) and isinstance(v, str):
+                        glossary_dict[k] = v
+                    else:
+                        print(f"Warning: Skipping invalid glossary entry: {k} -> {v}")
+
+            elif isinstance(raw, list):
+                for item in raw:
+                    if isinstance(item, dict):
+                        # Case 1: single-key object { "Term": "번역" }
+                        if 'source' in item or 'korean' in item:
+                            # Case 2: object with explicit fields
+                            src = item.get('source')
+                            ko = item.get('korean')
+                            if isinstance(src, str) and isinstance(ko, str):
+                                glossary_dict[src] = ko
+                            else:
+                                print(f"Warning: Skipping invalid source/korean entry: {item}")
+                        elif len(item) == 1:
+                            (k, v), = item.items()
+                            if isinstance(k, str) and isinstance(v, str):
+                                glossary_dict[k] = v
+                            else:
+                                print(f"Warning: Skipping invalid single-key entry: {item}")
+                        else:
+                            # Unrecognized shape; skip
+                            print(f"Warning: Skipping unrecognized glossary object: {item}")
+                    else:
+                        print(f"Warning: Skipping non-object glossary entry: {item}")
+            else:
+                raise ValueError("Unsupported glossary format. Provide a JSON object or array of entries.")
+
+            # Final validation: ensure keys are non-empty strings
+            validated_glossary: Dict[str, str] = {}
+            for key, value in glossary_dict.items():
                 if not isinstance(key, str) or not isinstance(value, str):
-                    print(f"Warning: Skipping invalid glossary entry: {key} -> {value}")
                     continue
-                validated_glossary[key] = value
-            
+                k = key.strip()
+                v = value.strip()
+                if not k:
+                    continue
+                validated_glossary[k] = v
+
             print(f"Loaded user glossary with {len(validated_glossary)} terms")
             return validated_glossary
-            
+
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid glossary JSON: {e}")
     
