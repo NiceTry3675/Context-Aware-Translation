@@ -145,7 +145,8 @@ export default function ResultsView({
     onCaseSelectionChange(segmentIndex, caseIndex, selected, totalCases);
   }, [onCaseSelectionChange]);
 
-  const canRunValidation = selectedJob?.status === 'COMPLETED' && (!selectedJob?.validation_status || selectedJob?.validation_status === 'FAILED');
+  // Allow re-running validation when translation is completed and validation is not currently running
+  const canRunValidation = selectedJob?.status === 'COMPLETED' && selectedJob?.validation_status !== 'IN_PROGRESS';
   const canRunPostEdit = selectedJob?.validation_status === 'COMPLETED' && (!selectedJob?.post_edit_status || selectedJob?.post_edit_status === 'FAILED');
   const canGenerateIllustrations = selectedJob?.status === 'COMPLETED' && selectedJob?.illustrations_status !== 'IN_PROGRESS';
 

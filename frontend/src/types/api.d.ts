@@ -766,6 +766,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/illustrations/{job_id}/character/appearance/analyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze Character Appearance
+         * @description Analyze early novel text to produce appearance-only prompt candidates for the protagonist.
+         */
+        post: operations["analyze_character_appearance_api_v1_illustrations__job_id__character_appearance_analyze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/illustrations/{job_id}/character/base/generate-from-prompt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Base From Prompt
+         * @description Generate base image(s) directly from provided prompt text(s).
+         *     Accepts either JSON body with { prompts: string[] } or multipart with prompts_json/prompt.
+         */
+        post: operations["generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/illustrations/{job_id}/character/base": {
         parameters: {
             query?: never;
@@ -992,6 +1033,15 @@ export interface components {
              * @default 15000
              */
             segment_size: number;
+        };
+        /** Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post */
+        Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post: {
+            /** Reference Image */
+            reference_image?: string | null;
+            /** Prompts Json */
+            prompts_json?: string | null;
+            /** Prompt */
+            prompt?: string | null;
         };
         /** Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post */
         Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post: {
@@ -2819,6 +2869,84 @@ export interface operations {
         requestBody?: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyze_character_appearance_api_v1_illustrations__job_id__character_appearance_analyze_post: {
+        parameters: {
+            query: {
+                /** @description API key for model */
+                api_key: string;
+                /** @description Optional protagonist name */
+                protagonist_name?: string | null;
+                /** @description Model name for analysis */
+                model_name?: string;
+            };
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post: {
+        parameters: {
+            query: {
+                /** @description API key for Gemini */
+                api_key: string;
+                /** @description How many variants to generate when a single prompt is provided */
+                num_variations?: number;
+            };
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post"];
             };
         };
         responses: {

@@ -1914,6 +1914,163 @@
         }
       }
     },
+    "/api/v1/illustrations/{job_id}/character/appearance/analyze": {
+      "post": {
+        "tags": [
+          "illustrations"
+        ],
+        "summary": "Analyze Character Appearance",
+        "description": "Analyze early novel text to produce appearance-only prompt candidates for the protagonist.",
+        "operationId": "analyze_character_appearance_api_v1_illustrations__job_id__character_appearance_analyze_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "api_key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "API key for model",
+              "title": "Api Key"
+            },
+            "description": "API key for model"
+          },
+          {
+            "name": "protagonist_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional protagonist name",
+              "title": "Protagonist Name"
+            },
+            "description": "Optional protagonist name"
+          },
+          {
+            "name": "model_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Model name for analysis",
+              "default": "gemini-2.5-flash",
+              "title": "Model Name"
+            },
+            "description": "Model name for analysis"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/illustrations/{job_id}/character/base/generate-from-prompt": {
+      "post": {
+        "tags": [
+          "illustrations"
+        ],
+        "summary": "Generate Base From Prompt",
+        "description": "Generate base image(s) directly from provided prompt text(s).\nAccepts either JSON body with { prompts: string[] } or multipart with prompts_json/prompt.",
+        "operationId": "generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "api_key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "API key for Gemini",
+              "title": "Api Key"
+            },
+            "description": "API key for Gemini"
+          },
+          {
+            "name": "num_variations",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10,
+              "minimum": 1,
+              "description": "How many variants to generate when a single prompt is provided",
+              "default": 3,
+              "title": "Num Variations"
+            },
+            "description": "How many variants to generate when a single prompt is provided"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/illustrations/{job_id}/character/base": {
       "get": {
         "tags": [
@@ -2433,6 +2590,46 @@
           "api_key"
         ],
         "title": "Body_create_job_api_v1_jobs_post"
+      },
+      "Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post": {
+        "properties": {
+          "reference_image": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "binary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Image"
+          },
+          "prompts_json": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompts Json"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          }
+        },
+        "type": "object",
+        "title": "Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post"
       },
       "Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post": {
         "properties": {

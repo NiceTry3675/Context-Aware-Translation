@@ -63,7 +63,7 @@ export interface ValidationReport {
       current_korean_sentence: string;
       problematic_source_sentence: string;
       reason: string;
-      corrected_korean_sentence?: string;
+      recommend_korean_sentence: string;
       dimension?: string;
       severity?: number;
       tags?: string[];
@@ -76,7 +76,7 @@ export interface ValidationReport {
         current_korean_sentence: string;
         problematic_source_sentence: string;
         reason: string;
-        corrected_korean_sentence?: string;
+        recommend_korean_sentence: string;
         dimension?: string;
         severity?: number;
         tags?: string[];
@@ -102,7 +102,7 @@ export interface PostEditLog {
       current_korean_sentence: string;
       problematic_source_sentence: string;
       reason: string;
-      corrected_korean_sentence?: string;
+      recommend_korean_sentence: string;
       dimension?: string;
       severity?: number;
       tags?: string[];

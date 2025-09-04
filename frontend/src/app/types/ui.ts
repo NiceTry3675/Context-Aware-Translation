@@ -78,7 +78,7 @@ export interface ValidationIssue {
   reason: string;
   dimension: 'completeness' | 'accuracy' | 'addition' | 'name_consistency' | 'dialogue_style' | 'flow' | 'other';
   severity: '1' | '2' | '3';
-  corrected_korean_sentence?: string | null;
+  recommend_korean_sentence?: string | null;
   tags?: string[];
 }
 

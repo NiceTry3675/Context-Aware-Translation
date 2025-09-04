@@ -4,12 +4,12 @@
       "description": "Individual validation issue found in translation.",
       "properties": {
         "current_korean_sentence": {
-          "description": "문제가 되는 현재 한국어 문장 (최대 3~4문장)",
+          "description": "문제가 되는 현재 한국어 문장 (최대 1~2문장)",
           "title": "Current Korean Sentence",
           "type": "string"
         },
         "problematic_source_sentence": {
-          "description": "대응하는 원문 문장 (최대 3~4문장)",
+          "description": "대응하는 원문 문장 (최대 1~2문장)",
           "title": "Problematic Source Sentence",
           "type": "string"
         },
@@ -42,18 +42,10 @@
           "title": "Severity",
           "type": "string"
         },
-        "corrected_korean_sentence": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
+        "recommend_korean_sentence": {
           "description": "권장 수정 번역문",
-          "title": "Corrected Korean Sentence"
+          "title": "Recommend Korean Sentence",
+          "type": "string"
         },
         "tags": {
           "description": "보조 라벨(예: terminology, formality, punctuation)",
@@ -69,7 +61,8 @@
         "problematic_source_sentence",
         "reason",
         "dimension",
-        "severity"
+        "severity",
+        "recommend_korean_sentence"
       ],
       "title": "ValidationCase",
       "type": "object"

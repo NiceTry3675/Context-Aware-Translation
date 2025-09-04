@@ -209,7 +209,10 @@ class GeminiModel:
                     generation_config=genai.GenerationConfig(
                         response_mime_type="application/json",
                         response_schema=response_schema,
+                        # Keep temperature if provided; otherwise inherit a conservative default
                         temperature=self.generation_config.get('temperature', 0.7) if self.generation_config else 0.7,
+                        # Add low top_p default for more deterministic structured output unless overridden
+                        top_p=self.generation_config.get('top_p', 0.2) if self.generation_config else 0.2,
                         max_output_tokens=self.generation_config.get('max_output_tokens', 65536) if self.generation_config else 32768,  # Increased for structured output
                     ),
                     safety_settings=self.safety_settings,

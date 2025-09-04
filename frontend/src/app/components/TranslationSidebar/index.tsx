@@ -121,7 +121,8 @@ export default function TranslationSidebar({
 
   // Keep UI light: do not auto-refresh validation sidebar; user clicks refresh when needed
 
-  const canRunValidation = jobStatus === 'COMPLETED' && (!validationStatus || validationStatus === 'FAILED');
+  // Allow re-running validation when translation is completed and validation is not currently running
+  const canRunValidation = jobStatus === 'COMPLETED' && validationStatus !== 'IN_PROGRESS';
   const canRunPostEdit = validationStatus === 'COMPLETED' && (!postEditStatus || postEditStatus === 'FAILED');
 
   // Calculate selected case counts (structured-only)

@@ -23,11 +23,8 @@ class ValidationService(BaseService):
         model_name: str = "gemini-2.5-flash-lite"
     ) -> tuple[TranslationValidator, TranslationDocument, str]:
         """Prepare the validator and translation job for validation."""
-        # Get the translated file path using FileManager
+        # Get the translated file path using FileManager (used only as fallback)
         translated_path, _, _ = self.file_manager.get_translated_file_path(job)
-        
-        if not self.file_manager.file_exists(translated_path):
-            raise FileNotFoundError(f"Translated file not found: {translated_path}")
         
         # Initialize validator
         model_api = self.create_model_api(api_key, model_name)
@@ -41,23 +38,38 @@ class ValidationService(BaseService):
             target_segment_size=job.segment_size
         )
         
-        # Load the translated segments from the translated file
-        with open(translated_path, 'r', encoding='utf-8') as f:
-            translated_text = f.read()
-            validation_document.translated_segments = translated_text.split('\n')
-            # Filter out empty strings from the list
-            validation_document.translated_segments = [s for s in validation_document.translated_segments if s.strip()]
-        
-        # Handle segment count mismatch
-        if len(validation_document.segments) != len(validation_document.translated_segments):
-            print(f"Warning: Segment count mismatch - Source: {len(validation_document.segments)}, Translated: {len(validation_document.translated_segments)}")
-            if len(validation_document.translated_segments) > len(validation_document.segments):
-                # Too many translated segments, might be due to line breaks
-                combined_segments = []
-                lines_per_segment = len(validation_document.translated_segments) // len(validation_document.segments)
-                for i in range(0, len(validation_document.translated_segments), lines_per_segment):
-                    combined_segments.append('\n'.join(validation_document.translated_segments[i:i+lines_per_segment]))
-                validation_document.translated_segments = combined_segments[:len(validation_document.segments)]
+        # Prefer DB-stored segments for exact boundaries; fallback to file if missing
+        if getattr(job, 'translation_segments', None):
+            try:
+                # Use edited_translation if present, else translated_text
+                validation_document.translated_segments = [
+                    (seg.get('edited_translation') or seg.get('translated_text') or '')
+                    for seg in job.translation_segments
+                ]
+            except Exception as e:
+                print(f"Warning: Failed to load DB translation_segments for validation: {e}")
+        else:
+            # Fallback: read entire translated file as a single string (avoid line-based splitting)
+            if not self.file_manager.file_exists(translated_path):
+                raise FileNotFoundError(f"Translated file not found: {translated_path}")
+            with open(translated_path, 'r', encoding='utf-8') as f:
+                translated_text = f.read()
+                # As a conservative fallback, use one segment per source segment by slicing proportionally
+                # to prevent artificial inflation due to line breaks.
+                # Split text into N chunks where N = len(source segments)
+                n = len(validation_document.segments)
+                if n > 0:
+                    approx_len = max(1, len(translated_text) // n)
+                    chunks = []
+                    start = 0
+                    for i in range(n - 1):
+                        end = start + approx_len
+                        chunks.append(translated_text[start:end].strip())
+                        start = end
+                    chunks.append(translated_text[start:].strip())
+                    validation_document.translated_segments = chunks
+                else:
+                    validation_document.translated_segments = []
         
         # Load the glossary from the job if available
         if job.final_glossary:
