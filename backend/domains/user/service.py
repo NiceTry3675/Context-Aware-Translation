@@ -1,11 +1,13 @@
 """User domain service layer with business logic."""
 
+import json
 from typing import List, Optional, Protocol
 from datetime import datetime
 import hashlib
 import hmac
 
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 
 from backend.models.user import User
 from backend.models.translation import TranslationJob, TranslationUsageLog
@@ -600,6 +602,91 @@ class UserService:
             
             self.session.delete(announcement)
             await uow.commit()
+    
+    # SSE support methods for announcements
+    
+    def get_active_announcement(self) -> Optional[Announcement]:
+        """Get the currently active announcement."""
+        return self.session.query(Announcement).filter(
+            Announcement.is_active == True
+        ).order_by(desc(Announcement.created_at)).first()
+    
+    def deactivate_announcement(self, announcement_id: int) -> Optional[Announcement]:
+        """Deactivate a specific announcement."""
+        announcement = self.session.query(Announcement).filter(
+            Announcement.id == announcement_id
+        ).first()
+        
+        if not announcement:
+            raise ValueError("Announcement not found")
+        
+        announcement.is_active = False
+        self.session.commit()
+        return announcement
+    
+    def deactivate_all_announcements(self) -> int:
+        """Deactivate all active announcements."""
+        count = self.session.query(Announcement).filter(
+            Announcement.is_active == True
+        ).update({"is_active": False})
+        self.session.commit()
+        return count
+    
+    @staticmethod
+    def format_announcement_for_sse(
+        announcement: Optional[Announcement],
+        is_active: bool = True
+    ) -> str:
+        """Format an announcement for Server-Sent Events (SSE)."""
+        if announcement:
+            announcement_data = {
+                "id": announcement.id,
+                "message": announcement.message,
+                "is_active": is_active and announcement.is_active,
+                "created_at": announcement.created_at.isoformat()
+            }
+        else:
+            # Return empty announcement
+            announcement_data = {
+                "id": None,
+                "message": "",
+                "is_active": False,
+                "created_at": datetime.now().isoformat()
+            }
+        
+        json_str = json.dumps(announcement_data, ensure_ascii=False)
+        return f"data: {json_str}\n\n"
+    
+    @staticmethod
+    def format_announcement_for_json(announcement: Announcement) -> dict:
+        """Format an announcement for JSON response."""
+        return {
+            "id": announcement.id,
+            "message": announcement.message,
+            "is_active": announcement.is_active,
+            "created_at": announcement.created_at.isoformat()
+        }
+    
+    @staticmethod
+    def should_send_announcement_update(
+        current: Optional[Announcement],
+        last_sent: Optional[Announcement]
+    ) -> bool:
+        """Determine if an announcement update should be sent."""
+        # If one is None and the other isn't, send update
+        if (current is None) != (last_sent is None):
+            return True
+        
+        # If both exist, check for changes
+        if current and last_sent:
+            return (
+                current.id != last_sent.id or
+                current.message != last_sent.message or
+                current.is_active != last_sent.is_active
+            )
+        
+        # Both are None, no update needed
+        return False
 
 
 # Import sqlalchemy func for usage summary

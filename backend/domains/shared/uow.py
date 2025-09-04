@@ -41,14 +41,15 @@ class SqlAlchemyUoW:
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit the context manager, committing or rolling back as needed."""
-        if exc_type:
-            self.rollback()
-        else:
-            try:
-                self.commit()
-            except Exception:
+        try:
+            if exc_type:
                 self.rollback()
-                raise
+            else:
+                try:
+                    self.commit()
+                except Exception:
+                    self.rollback()
+                    raise
         finally:
             if self.session:
                 self.session.close()

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from ...dependencies import get_db, get_required_user
 from ...services.utils.file_manager import FileManager
-from ...services.pdf_generator import generate_translation_pdf
+from ...domains.shared.pdf_generator import generate_translation_pdf
 from ... import crud, models, auth, schemas
 
 router = APIRouter(tags=["downloads"])

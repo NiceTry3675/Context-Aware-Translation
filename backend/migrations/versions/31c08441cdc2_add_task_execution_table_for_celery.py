@@ -21,28 +21,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Create TaskStatus enum
-    task_status_enum = postgresql.ENUM(
-        'pending', 'started', 'retry', 'success', 'failure', 'revoked',
-        name='taskstatus'
-    )
-    task_status_enum.create(op.get_bind())
-    
-    # Create TaskKind enum
-    task_kind_enum = postgresql.ENUM(
-        'translation', 'validation', 'post_edit', 'illustration', 
-        'event_processing', 'maintenance', 'other',
-        name='taskkind'
-    )
-    task_kind_enum.create(op.get_bind())
-    
+    # For SQLite, we'll use String columns instead of ENUMs
     # Create task_executions table
     op.create_table('task_executions',
         sa.Column('id', sa.String(), nullable=False),
-        sa.Column('kind', task_kind_enum, nullable=False),
+        sa.Column('kind', sa.String(), nullable=False),  # Use String instead of enum
         sa.Column('name', sa.String(), nullable=False),
         sa.Column('job_id', sa.Integer(), nullable=True),
-        sa.Column('status', task_status_enum, nullable=False),
+        sa.Column('status', sa.String(), nullable=False),  # Use String instead of enum
         sa.Column('args', sa.JSON(), nullable=True),
         sa.Column('kwargs', sa.JSON(), nullable=True),
         sa.Column('result', sa.JSON(), nullable=True),
@@ -53,7 +39,7 @@ def upgrade() -> None:
         sa.Column('queue_time', sa.DateTime(), nullable=True),
         sa.Column('start_time', sa.DateTime(), nullable=True),
         sa.Column('end_time', sa.DateTime(), nullable=True),
-        sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=True),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
         sa.Column('updated_at', sa.DateTime(), nullable=True),
         sa.Column('user_id', sa.Integer(), nullable=True),
         sa.Column('extra_data', sa.JSON(), nullable=True),
@@ -83,10 +69,3 @@ def downgrade() -> None:
     
     # Drop table
     op.drop_table('task_executions')
-    
-    # Drop enums
-    task_status_enum = postgresql.ENUM('pending', 'started', 'retry', 'success', 'failure', 'revoked', name='taskstatus')
-    task_status_enum.drop(op.get_bind())
-    
-    task_kind_enum = postgresql.ENUM('translation', 'validation', 'post_edit', 'illustration', 'event_processing', 'maintenance', 'other', name='taskkind')
-    task_kind_enum.drop(op.get_bind())

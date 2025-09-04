@@ -148,6 +148,7 @@ python init_categories.py
     -   Python 3.9+
     -   Node.js 및 npm
     -   Git
+    -   Redis (백그라운드 작업 처리를 위해 필요)
 
 2.  **프로젝트 클론 및 의존성 설치**:
     ```bash
@@ -226,16 +227,37 @@ python init_categories.py
         ```
     -   **데이터베이스 설정**: 로컬 개발 시 PostgreSQL 대신 SQLite(`database.db`)를 사용하려면, `.env` 파일에 `DATABASE_URL`을 추가하지 않거나 주석 처리하세요.
 
+6.  **스크립트 실행 권한 설정** (Linux/Mac):
+    ```bash
+    chmod +x start_backend.sh
+    ```
+
 ## ▶️ 실행 방법
 
 ### 웹 인터페이스 (권장)
 
 각각 다른 터미널에서 아래 명령어를 실행합니다.
 
-1.  **백엔드 서버 실행**:
+1.  **백엔드 서버 실행** (권장 방법):
     ```bash
+    ./start_backend.sh
+    ```
+    
+    이 스크립트는 자동으로:
+    - Redis 서버를 시작합니다
+    - Celery 워커를 백그라운드에서 실행합니다
+    - FastAPI 서버를 시작합니다
+    
+    수동 실행 (개별 컴포넌트 제어가 필요한 경우):
+    ```bash
+    # Redis 시작
+    redis-server --daemonize yes
+    
+    # Celery 워커 시작 (별도 터미널)
+    celery -A backend.celery_app worker --loglevel=info
+    
+    # FastAPI 서버 시작
     uvicorn backend.main:app --reload --port 8000
-    .\venv\Scripts\python.exe -m uvicorn backend.main:app --reload --port 8000
     ```
 
 2.  **프론트엔드 서버 실행**:

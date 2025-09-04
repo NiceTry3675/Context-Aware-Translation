@@ -18,6 +18,10 @@ class TranslationJobRepository(Protocol):
         """Add a new translation job."""
         ...
     
+    def delete(self, job: TranslationJob) -> None:
+        """Delete a translation job."""
+        ...
+    
     def set_status(
         self, 
         id: int, 

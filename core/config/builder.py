@@ -151,8 +151,9 @@ class DynamicConfigBuilder:
         glossary_str = "\n".join([f"{term}: {translation}" for term, translation in glossary.items()]) if glossary else "N/A"
         
         # Get the prompt template
-        prompt_template = prompt_manager.get_prompt("world_atmosphere", "analyze")
-        if not prompt_template:
+        try:
+            prompt_template = prompt_manager._prompts["world_atmosphere"]["analyze"]
+        except (KeyError, TypeError):
             print("Warning: world_atmosphere.analyze prompt not found")
             return None
         
