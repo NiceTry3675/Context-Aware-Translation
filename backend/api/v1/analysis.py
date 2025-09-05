@@ -27,11 +27,16 @@ async def analyze_style(
         temp_file_path, _ = file_manager.save_uploaded_file(file, file.filename)
         
         try:
+            # Create model API for style analysis
+            model_api = ModelAPIFactory.create(api_key, model_name, None)
+            
+            # Create StyleAnalysis instance with model API
             style_service = StyleAnalysis()
+            style_service.set_model_api(model_api)
+            
+            # Call analyze_style without api_key and model_name parameters
             style_result = style_service.analyze_style(
                 filepath=temp_file_path,
-                api_key=api_key,
-                model_name=model_name,
                 user_style_data=None
             )
             # Extract style_data for the response
@@ -62,11 +67,16 @@ async def analyze_glossary(
         temp_file_path, _ = file_manager.save_uploaded_file(file, file.filename)
         
         try:
+            # Create model API for glossary analysis
+            model_api = ModelAPIFactory.create(api_key, model_name, None)
+            
+            # Create GlossaryAnalysis instance with model API
             glossary_service = GlossaryAnalysis()
+            glossary_service.set_model_api(model_api)
+            
+            # Call analyze_glossary without api_key and model_name parameters
             glossary_dict = glossary_service.analyze_glossary(
                 filepath=temp_file_path,
-                api_key=api_key,
-                model_name=model_name,
                 user_glossary_data=None
             )
             # Convert dictionary to frontend format

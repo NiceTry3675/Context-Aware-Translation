@@ -99,11 +99,15 @@ class TranslationRoutes:
         
         # Create job using domain service
         service = TranslationDomainService(lambda: db)
-        job = service.create_translation_job(
+        job_with_id = service.create_translation_job(
             filename=file.filename,
             owner_id=user.id,
             segment_size=segment_size
         )
+        
+        # Fetch the complete job using the ID
+        repo = SqlAlchemyTranslationJobRepository(db)
+        job = repo.get(job_with_id.id)
         
         # Save uploaded file
         sanitized_filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', file.filename)

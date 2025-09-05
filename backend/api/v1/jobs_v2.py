@@ -69,7 +69,7 @@ async def create_translation_job(
     
     try:
         # Create job using the service
-        job = service.create_translation_job(
+        job_with_id = service.create_translation_job(
             filename=file.filename,
             owner_id=current_user['id'],
             idempotency_key=idempotency_key,
@@ -78,6 +78,15 @@ async def create_translation_job(
             post_edit_enabled=enable_post_edit,
             illustrations_enabled=enable_illustrations
         )
+        
+        # Fetch the complete job using the ID
+        from backend.domains.translation import SqlAlchemyTranslationJobRepository
+        db = SessionLocal()
+        try:
+            repo = SqlAlchemyTranslationJobRepository(db)
+            job = repo.get(job_with_id.id)
+        finally:
+            db.close()
         
         # TODO: Add background task to process the translation
         # background_tasks.add_task(process_translation_task, job.id, file)

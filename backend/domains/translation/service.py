@@ -94,13 +94,16 @@ class TranslationDomainService(ServiceBase):
             # Add to repository
             job = job_repo.add(job)
             
+            # Store the job ID immediately after creation to ensure it's available
+            job_id = job.id
+            
             # Store idempotency key if provided
             if idempotency_key:
-                job_repo.store_idempotency_key(owner_id, idempotency_key, job.id)
+                job_repo.store_idempotency_key(owner_id, idempotency_key, job_id)
             
             # Create and publish domain event
             event = TranslationJobCreatedEvent(
-                job_id=job.id,
+                job_id=job_id,
                 user_id=owner_id,
                 filename=filename
             )
@@ -109,8 +112,13 @@ class TranslationDomainService(ServiceBase):
             # Commit transaction (this will also flush the outbox)
             uow.commit()
             
-            logger.info(f"Created translation job {job.id} for user {owner_id}")
-            return job
+            logger.info(f"Created translation job {job_id} for user {owner_id}")
+            
+            # Create a simple object with just the ID to avoid detached instance issues
+            # The caller can re-fetch the full job if needed
+            result = TranslationJob()
+            result.id = job_id
+            return result
     
     def start_translation(self, job_id: int) -> bool:
         """
