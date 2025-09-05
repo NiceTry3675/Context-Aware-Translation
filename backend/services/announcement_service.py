@@ -3,7 +3,8 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from .. import crud, models, schemas
+from .. import models, schemas
+from ..domains.community.repository import SqlAlchemyAnnouncementRepository
 
 
 class AnnouncementService:
@@ -12,7 +13,9 @@ class AnnouncementService:
     @staticmethod
     def get_active_announcement(db: Session) -> Optional[models.Announcement]:
         """Get the currently active announcement."""
-        return crud.get_active_announcement(db)
+        repo = SqlAlchemyAnnouncementRepository(db)
+        active = repo.get_active()
+        return active[0] if active else None
     
     @staticmethod
     def create_announcement(
@@ -20,7 +23,14 @@ class AnnouncementService:
         announcement: schemas.AnnouncementCreate
     ) -> models.Announcement:
         """Create a new announcement."""
-        return crud.create_announcement(db=db, announcement=announcement)
+        repo = SqlAlchemyAnnouncementRepository(db)
+        # Deactivate all other announcements first
+        db.query(models.Announcement).update({models.Announcement.is_active: False})
+        db_announcement = models.Announcement(**announcement.dict())
+        db.add(db_announcement)
+        db.commit()
+        db.refresh(db_announcement)
+        return db_announcement
     
     @staticmethod
     def deactivate_announcement(
@@ -28,15 +38,21 @@ class AnnouncementService:
         announcement_id: int
     ) -> Optional[models.Announcement]:
         """Deactivate a specific announcement."""
-        db_announcement = crud.deactivate_announcement(db, announcement_id)
+        repo = SqlAlchemyAnnouncementRepository(db)
+        db_announcement = repo.get(announcement_id)
         if not db_announcement:
             raise ValueError("Announcement not found")
+        db_announcement.is_active = False
+        db.commit()
+        db.refresh(db_announcement)
         return db_announcement
     
     @staticmethod
     def deactivate_all_announcements(db: Session) -> int:
         """Deactivate all active announcements."""
-        return crud.deactivate_all_announcements(db)
+        updated_count = db.query(models.Announcement).filter(models.Announcement.is_active == True).update({models.Announcement.is_active: False})
+        db.commit()
+        return updated_count
     
     @staticmethod
     def format_announcement_for_sse(

@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 from svix import Webhook
 
 from ...dependencies import get_db
-from ... import crud, schemas
+from ... import schemas, models
+from ...domains.user.repository import SqlAlchemyUserRepository
 
 
 router = APIRouter(prefix="/api/v1/webhooks", tags=["webhooks"])
@@ -53,11 +54,15 @@ async def handle_clerk_webhook(
             email=email_address or None,
             name=user_name or None
         )
-        crud.create_user(db, user=user_in)
+        repo = SqlAlchemyUserRepository(db)
+        db_user = models.User(clerk_user_id=user_in.clerk_user_id, email=user_in.email, name=user_in.name)
+        db.add(db_user)
+        db.commit()
         
     elif event_type == "user.updated":
         clerk_user_id = data["id"]
-        db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
+        repo = SqlAlchemyUserRepository(db)
+        db_user = repo.get_by_clerk_id(clerk_user_id)
         
         user_name = f'{data.get("first_name", "")} {data.get("last_name", "")}'.strip()
         email_addresses = data.get("email_addresses", [])
@@ -65,7 +70,9 @@ async def handle_clerk_webhook(
         
         if db_user:
             user_update = schemas.UserUpdate(email=email_address or None, name=user_name or None)
-            crud.update_user(db, clerk_id=clerk_user_id, user_update=user_update)
+            for key, value in user_update.dict(exclude_unset=True).items():
+                setattr(db_user, key, value)
+            db.commit()
         else:
             print(f"--- [INFO] Webhook received user.updated for non-existent user {clerk_user_id}. Creating them now. ---")
             user_in = schemas.UserCreate(
@@ -73,9 +80,15 @@ async def handle_clerk_webhook(
                 email=email_address or None,
                 name=user_name or None
             )
-            crud.create_user(db, user=user_in)
+            db_user = models.User(clerk_user_id=user_in.clerk_user_id, email=user_in.email, name=user_in.name)
+            db.add(db_user)
+            db.commit()
             
     elif event_type == "user.deleted":
-        crud.delete_user(db, clerk_id=data["id"])
+        repo = SqlAlchemyUserRepository(db)
+        db_user = repo.get_by_clerk_id(data["id"])
+        if db_user:
+            db.delete(db_user)
+            db.commit()
     
     return {"status": "success"}

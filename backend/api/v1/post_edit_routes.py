@@ -2,14 +2,15 @@
 
 import os
 import json
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ...dependencies import get_db, get_required_user
 from ...services.post_edit_service import PostEditService
 from ...tasks.post_edit import process_post_edit_task
-from ... import crud, models, auth
+from ... import models, auth
 from ...schemas import PostEditRequest, StructuredPostEditLog
+from ...domains.translation.repository import SqlAlchemyTranslationJobRepository
 
 router = APIRouter(tags=["post-edit"])
 
@@ -18,12 +19,12 @@ router = APIRouter(tags=["post-edit"])
 async def trigger_post_edit(
     job_id: int,
     request: PostEditRequest,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_required_user)
 ):
     """Trigger post-editing on a validated translation job."""
-    db_job = crud.get_job(db, job_id=job_id)
+    repo = SqlAlchemyTranslationJobRepository(db)
+    db_job = repo.get(job_id)
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     
@@ -71,7 +72,8 @@ async def get_post_edit_log(
     Returns:
         Either raw JSON log or StructuredPostEditLog depending on 'structured' param
     """
-    db_job = crud.get_job(db, job_id=job_id)
+    repo = SqlAlchemyTranslationJobRepository(db)
+    db_job = repo.get(job_id)
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     

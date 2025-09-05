@@ -5,7 +5,6 @@ from .service import (
     UserUpdatedEvent,
     UserRoleChangedEvent,
 )
-from .routes import router as user_router
 
 __all__ = [
     # Repository
@@ -16,6 +15,4 @@ __all__ = [
     "UserCreatedEvent",
     "UserUpdatedEvent",
     "UserRoleChangedEvent",
-    # Router
-    "user_router",
 ]

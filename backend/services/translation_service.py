@@ -8,7 +8,7 @@ from core.config.builder import DynamicConfigBuilder
 from .base.base_service import BaseService
 from .style_analysis_service import StyleAnalysisService
 from .glossary_analysis_service import GlossaryAnalysisService
-from .. import crud, models
+from .. import models
 
 
 class TranslationService(BaseService):

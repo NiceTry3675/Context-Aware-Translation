@@ -5,7 +5,7 @@ This module provides API endpoints for managing and generating illustrations
 for translation segments.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from fastapi import Request
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -45,7 +45,6 @@ async def generate_illustrations(
     config: IllustrationConfig,
     api_key: str = Query(..., description="API key for Gemini"),
     max_illustrations: Optional[int] = Query(None, description="Maximum number of illustration prompts to generate"),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_required_user)
 ):
@@ -104,7 +103,6 @@ async def generate_character_bases(
     api_key: str = Query(..., description="API key for Gemini"),
     reference_image: UploadFile | None = File(default=None),
     profile_json: str | None = Form(default=None),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_required_user)
 ):
@@ -565,7 +563,6 @@ async def regenerate_illustration_prompt(
     segment_index: int,
     style_hints: Optional[str] = Query(None, description="Optional style hints for regeneration"),
     api_key: str = Query(..., description="API key for Gemini"),
-    background_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_required_user)
 ):

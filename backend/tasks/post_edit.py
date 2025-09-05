@@ -12,7 +12,7 @@ from .base import TrackedTask
 from ..database import SessionLocal
 from ..services.post_edit_service import PostEditService
 from ..models import TaskKind
-from .. import crud
+from ..domains.translation.repository import SqlAlchemyTranslationJobRepository
 
 logger = logging.getLogger(__name__)
 
@@ -53,13 +53,15 @@ def process_post_edit_task(
         db = self.db_session
         
         # Get the job
-        job = crud.get_job(db, job_id)
+        repo = SqlAlchemyTranslationJobRepository(db)
+        job = repo.get(job_id)
         if not job:
             logger.error(f"Job ID {job_id} not found")
             raise ValueError(f"Job ID {job_id} not found")
         
         # Update job status
-        crud.update_job_status(db, job_id, "POST_EDITING")
+        repo.set_status(job_id, "POST_EDITING")
+        db.commit()
         logger.info(f"Starting post-edit for Job ID: {job_id}, Model: {model_name}")
         
         # Update task progress
@@ -105,10 +107,12 @@ def process_post_edit_task(
     except SoftTimeLimitExceeded:
         # Handle soft time limit
         if db and job_id:
-            crud.update_job_status(
-                db, job_id, "FAILED", 
-                error_message="Post-edit took too long and was terminated"
+            repo = SqlAlchemyTranslationJobRepository(db)
+            repo.set_status(
+                job_id, "FAILED", 
+                error="Post-edit took too long and was terminated"
             )
+            db.commit()
         logger.error(f"Post-edit task {self.request.id} exceeded time limit")
         raise
         
@@ -117,7 +121,9 @@ def process_post_edit_task(
         error_message = f"Post-edit failed: {str(e)}"
         
         if db and job_id:
-            crud.update_job_status(db, job_id, "FAILED", error_message=error_message)
+            repo = SqlAlchemyTranslationJobRepository(db)
+            repo.set_status(job_id, "FAILED", error=error_message)
+            db.commit()
         
         logger.error(f"Post-edit error for Job ID {job_id}: {e}")
         logger.error(traceback.format_exc())

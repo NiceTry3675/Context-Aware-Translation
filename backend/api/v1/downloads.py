@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 from ...dependencies import get_db, get_required_user
 from ...services.utils.file_manager import FileManager
 from ...domains.shared.pdf_generator import generate_translation_pdf
-from ... import crud, models, auth, schemas
+from ... import models, auth, schemas
+from ...domains.translation.repository import SqlAlchemyTranslationJobRepository
 
 router = APIRouter(tags=["downloads"])
 
@@ -32,7 +33,8 @@ async def download_job_output(
     current_user: models.User = Depends(get_required_user)
 ):
     """Download the output of a translation job."""
-    db_job = crud.get_job(db, job_id=job_id)
+    repo = SqlAlchemyTranslationJobRepository(db)
+    db_job = repo.get(job_id)
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     
@@ -64,7 +66,8 @@ async def download_job_log(
     current_user: models.User = Depends(get_required_user)
 ):
     """Download log files for a translation job."""
-    db_job = crud.get_job(db, job_id=job_id)
+    repo = SqlAlchemyTranslationJobRepository(db)
+    db_job = repo.get(job_id)
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     
@@ -104,7 +107,8 @@ async def get_job_glossary(
     Returns:
         Either raw glossary dict or GlossaryAnalysisResponse depending on 'structured' param
     """
-    db_job = crud.get_job(db, job_id=job_id)
+    repo = SqlAlchemyTranslationJobRepository(db)
+    db_job = repo.get(job_id)
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     
@@ -159,7 +163,8 @@ async def get_job_segments(
     current_user: models.User = Depends(get_required_user)
 ):
     """Get the segmented translation data for a completed translation job with pagination support."""
-    db_job = crud.get_job(db, job_id=job_id)
+    repo = SqlAlchemyTranslationJobRepository(db)
+    db_job = repo.get(job_id)
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     
@@ -213,7 +218,8 @@ async def get_job_content(
     current_user: models.User = Depends(get_required_user)
 ):
     """Get the translated content as text for a completed translation job."""
-    db_job = crud.get_job(db, job_id=job_id)
+    repo = SqlAlchemyTranslationJobRepository(db)
+    db_job = repo.get(job_id)
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     
@@ -289,7 +295,8 @@ async def download_job_pdf(
         PDF file response
     """
     # Get the job from database
-    db_job = crud.get_job(db, job_id=job_id)
+    repo = SqlAlchemyTranslationJobRepository(db)
+    db_job = repo.get(job_id)
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     

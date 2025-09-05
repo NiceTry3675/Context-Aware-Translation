@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from core.translation.post_editor import PostEditEngine
 from core.translation.document import TranslationDocument
 from .base.base_service import BaseService
-from .. import crud, models
+from .. import models
 
 
 class PostEditService(BaseService):

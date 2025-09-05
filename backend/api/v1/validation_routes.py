@@ -2,14 +2,15 @@
 
 import os
 import json
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ...dependencies import get_db, get_required_user
 from ...tasks.validation import process_validation_task
 from ...services.base.model_factory import ModelAPIFactory
-from ... import crud, models, auth
+from ... import models, auth
 from ...schemas import ValidationRequest, StructuredValidationReport, ValidationResponse
+from ...domains.translation.repository import SqlAlchemyTranslationJobRepository
 
 router = APIRouter(tags=["validation"])
 
@@ -17,7 +18,6 @@ router = APIRouter(tags=["validation"])
 @router.put("/jobs/{job_id}/validation")
 async def trigger_validation(
     job_id: int,
-    background_tasks: BackgroundTasks,
     request: ValidationRequest,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_required_user)
@@ -27,7 +27,8 @@ async def trigger_validation(
     print(f"[VALIDATION API] User: {current_user.clerk_user_id if current_user else 'None'}")
     print(f"[VALIDATION API] Request params: quick={request.quick_validation}, rate={request.validation_sample_rate}")
     
-    db_job = crud.get_job(db, job_id=job_id)
+    repo = SqlAlchemyTranslationJobRepository(db)
+    db_job = repo.get(job_id)
     if db_job is None:
         print(f"[VALIDATION API] Job {job_id} not found")
         raise HTTPException(status_code=404, detail="Job not found")
@@ -83,7 +84,8 @@ async def get_validation_report(
         Either raw JSON report or StructuredValidationReport depending on 'structured' param
     """
     print(f"--- [API] Getting validation report for job {job_id} ---")
-    db_job = crud.get_job(db, job_id=job_id)
+    repo = SqlAlchemyTranslationJobRepository(db)
+    db_job = repo.get(job_id)
     if db_job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     

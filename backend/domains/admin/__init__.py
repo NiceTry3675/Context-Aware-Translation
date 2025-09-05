@@ -12,7 +12,6 @@ from .policy import (
     require_admin,
     require_super_admin,
 )
-from .routes import router as admin_router
 
 __all__ = [
     # Policy
@@ -26,6 +25,4 @@ __all__ = [
     "enforce_permission",
     "require_admin",
     "require_super_admin",
-    # Router
-    "admin_router",
 ]

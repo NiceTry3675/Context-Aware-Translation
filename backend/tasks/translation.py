@@ -13,7 +13,8 @@ from .base import TrackedTask
 from ..database import SessionLocal
 from ..services.translation_service import TranslationService
 from ..models import TaskKind
-from .. import crud
+from ..domains.translation.repository import SqlAlchemyTranslationJobRepository
+from ..domains.shared.uow import SqlAlchemyUoW
 
 logger = logging.getLogger(__name__)
 
@@ -64,13 +65,15 @@ def process_translation_task(
         db = self.db_session
         
         # Get the job
-        job = crud.get_job(db, job_id)
+        repo = SqlAlchemyTranslationJobRepository(db)
+        job = repo.get(job_id)
         if not job:
             logger.error(f"Job ID {job_id} not found")
             raise ValueError(f"Job ID {job_id} not found")
         
         # Update job status
-        crud.update_job_status(db, job_id, "PROCESSING")
+        repo.set_status(job_id, "PROCESSING")
+        db.commit()
         logger.info(f"Starting translation for Job ID: {job_id}, File: {job.filename}, Model: {model_name}")
         
         if translation_model_name or style_model_name or glossary_model_name:
@@ -119,7 +122,8 @@ def process_translation_task(
         )
         
         # Mark as completed
-        crud.update_job_status(db, job_id, "COMPLETED")
+        repo.set_status(job_id, "COMPLETED")
+        db.commit()
         logger.info(f"Translation finished for Job ID: {job_id}, File: {job.filename}")
         
         # Update final progress
@@ -137,10 +141,12 @@ def process_translation_task(
     except SoftTimeLimitExceeded:
         # Handle soft time limit
         if db and job_id:
-            crud.update_job_status(
-                db, job_id, "FAILED", 
-                error_message="Translation took too long and was terminated"
+            repo = SqlAlchemyTranslationJobRepository(db)
+            repo.set_status(
+                job_id, "FAILED", 
+                error="Translation took too long and was terminated"
             )
+            db.commit()
         logger.error(f"Translation task {self.request.id} exceeded time limit")
         raise
         
@@ -149,7 +155,9 @@ def process_translation_task(
         error_message = f"Translation failed: {str(e)}"
         
         if db and job_id:
-            crud.update_job_status(db, job_id, "FAILED", error_message=error_message)
+            repo = SqlAlchemyTranslationJobRepository(db)
+            repo.set_status(job_id, "FAILED", error=error_message)
+            db.commit()
         
         logger.error(f"Translation error for Job ID {job_id}: {e}")
         logger.error(traceback.format_exc())

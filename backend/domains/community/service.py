@@ -14,9 +14,9 @@ from backend.models.community import Post, Comment, PostCategory, Announcement
 from backend.schemas.community import (
     PostCreate, PostUpdate, PostList,
     CommentCreate, CommentUpdate,
-    PostCategoryCreate, PostCategoryUpdate,
-    AnnouncementCreate
+    PostCategoryCreate
 )
+from backend.schemas.user import AnnouncementCreate
 from backend.domains.community.repository import (
     PostRepository, SqlAlchemyPostRepository,
     CommentRepository, SqlAlchemyCommentRepository,

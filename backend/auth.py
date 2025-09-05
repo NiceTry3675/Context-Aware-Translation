@@ -8,8 +8,9 @@ from clerk_backend_api.security import AuthenticateRequestOptions
 from typing import Optional
 
 # Internal imports
-from . import crud, models, schemas
+from . import models, schemas
 from .database import SessionLocal
+from .domains.user.repository import SqlAlchemyUserRepository
 
 # Initialize the Clerk client with proper API key.
 clerk = Clerk(bearer_auth=os.environ.get("CLERK_SECRET_KEY"))
@@ -132,7 +133,8 @@ async def get_required_user(
     if not clerk_user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Clerk user ID (sub) not found in token.")
 
-    db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
+    repo = SqlAlchemyUserRepository(db)
+    db_user = repo.get_by_clerk_id(clerk_user_id)
 
     # Helper: extract preferred name/email from JWT claims
     def _name_email_from_claims(claims_dict: dict) -> tuple[str | None, str | None]:
@@ -153,12 +155,16 @@ async def get_required_user(
                 email=email_address,
                 name=name
             )
-            db_user = crud.create_user(db, user=new_user_data)
+            db_user = models.User(clerk_user_id=new_user_data.clerk_user_id, email=new_user_data.email, name=new_user_data.name)
+            db.add(db_user)
+            db.commit()
+            db.refresh(db_user)
             print(f"--- [INFO] Created user {db_user.id} for Clerk ID {clerk_user_id} (claims-based). ---")
         except IntegrityError:
             db.rollback()
             print(f"--- [WARN] Race condition detected for Clerk ID {clerk_user_id}. User likely created by webhook. Refetching... ---")
-            db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
+            repo = SqlAlchemyUserRepository(db)
+            db_user = repo.get_by_clerk_id(clerk_user_id)
             if not db_user:
                 raise HTTPException(status_code=500, detail="Failed to create or find user after race condition.")
     else:
@@ -172,7 +178,11 @@ async def get_required_user(
                 update_data['email'] = email_address
         if update_data:
             user_update = schemas.UserUpdate(**update_data)
-            db_user = crud.update_user(db, clerk_user_id, user_update)
+            if db_user:
+                for key, value in user_update.dict(exclude_unset=True).items():
+                    setattr(db_user, key, value)
+                db.commit()
+                db.refresh(db_user)
             print(f"--- [INFO] Updated user {db_user.id} with: {update_data} (claims-based). ---")
 
     # Sync user role from JWT claims (no external API call)
@@ -197,7 +207,8 @@ async def get_optional_user(
     if not clerk_user_id:
         return None
 
-    db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
+    repo = SqlAlchemyUserRepository(db)
+    db_user = repo.get_by_clerk_id(clerk_user_id)
 
     # If user doesn't exist in DB but is authenticated, create them (claims-based)
     if not db_user:
@@ -214,12 +225,16 @@ async def get_optional_user(
                 email=email_address,
                 name=name
             )
-            db_user = crud.create_user(db, user=new_user_data)
+            db_user = models.User(clerk_user_id=new_user_data.clerk_user_id, email=new_user_data.email, name=new_user_data.name)
+            db.add(db_user)
+            db.commit()
+            db.refresh(db_user)
             print(f"--- [INFO] Created user {db_user.id} for Clerk ID {clerk_user_id} (optional, claims-based). ---")
         except IntegrityError:
             db.rollback()
             print(f"--- [WARN] Race condition detected for Clerk ID {clerk_user_id} during optional auth. Refetching... ---")
-            db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
+            repo = SqlAlchemyUserRepository(db)
+            db_user = repo.get_by_clerk_id(clerk_user_id)
         except Exception as e:
             print(f"--- [ERROR] Failed to create user in optional auth: {e}")
             return None

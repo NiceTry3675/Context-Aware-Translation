@@ -2,7 +2,7 @@
 
 from typing import List
 
-from fastapi import APIRouter, File, UploadFile, BackgroundTasks, Depends, Form, Response
+from fastapi import APIRouter, File, UploadFile, Depends, Form, Response
 from sqlalchemy.orm import Session
 
 from ...dependencies import get_db, get_required_user
@@ -26,7 +26,6 @@ async def list_jobs(
 
 @router.post("/jobs", response_model=TranslationJob)
 async def create_job(
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     api_key: str = Form(...),
     model_name: str = Form("gemini-2.5-flash-lite"),

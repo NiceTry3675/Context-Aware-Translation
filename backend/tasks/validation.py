@@ -12,7 +12,7 @@ from .base import TrackedTask
 from ..database import SessionLocal
 from ..services.validation_service import ValidationService
 from ..models import TaskKind
-from .. import crud
+from ..domains.translation.repository import SqlAlchemyTranslationJobRepository
 
 logger = logging.getLogger(__name__)
 
@@ -57,13 +57,15 @@ def process_validation_task(
         db = self.db_session
         
         # Get the job
-        job = crud.get_job(db, job_id)
+        repo = SqlAlchemyTranslationJobRepository(db)
+        job = repo.get(job_id)
         if not job:
             logger.error(f"Job ID {job_id} not found")
             raise ValueError(f"Job ID {job_id} not found")
         
         # Update job status
-        crud.update_job_status(db, job_id, "VALIDATING")
+        repo.set_status(job_id, "VALIDATING")
+        db.commit()
         logger.info(f"Starting validation for Job ID: {job_id}, Mode: {validation_mode}, Sample Rate: {sample_rate}")
         
         # Update task progress
@@ -109,10 +111,12 @@ def process_validation_task(
     except SoftTimeLimitExceeded:
         # Handle soft time limit
         if db and job_id:
-            crud.update_job_status(
-                db, job_id, "FAILED", 
-                error_message="Validation took too long and was terminated"
+            repo = SqlAlchemyTranslationJobRepository(db)
+            repo.set_status(
+                job_id, "FAILED", 
+                error="Validation took too long and was terminated"
             )
+            db.commit()
         logger.error(f"Validation task {self.request.id} exceeded time limit")
         raise
         
@@ -121,7 +125,9 @@ def process_validation_task(
         error_message = f"Validation failed: {str(e)}"
         
         if db and job_id:
-            crud.update_job_status(db, job_id, "FAILED", error_message=error_message)
+            repo = SqlAlchemyTranslationJobRepository(db)
+            repo.set_status(job_id, "FAILED", error=error_message)
+            db.commit()
         
         logger.error(f"Validation error for Job ID {job_id}: {e}")
         logger.error(traceback.format_exc())

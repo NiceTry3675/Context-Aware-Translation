@@ -3,7 +3,14 @@ import uuid
 from typing import Optional, List
 from sqlalchemy.orm import Session
 
-from .. import crud, models, schemas
+from .. import models, schemas, auth
+from ..domains.community.repository import (
+    SqlAlchemyPostRepository,
+    SqlAlchemyCommentRepository,
+    PostCategoryRepository,
+    SqlAlchemyAnnouncementRepository
+)
+from ..domains.user.repository import SqlAlchemyUserRepository
 
 
 class CommunityService:
@@ -52,18 +59,30 @@ class CommunityService:
     @staticmethod
     def get_categories_overview(db: Session, current_user: Optional[models.User]) -> list:
         """Get categories with their recent posts for community overview."""
-        categories = crud.get_post_categories(db)
+        category_repo = PostCategoryRepository(db)
+        categories = category_repo.list_ordered()
         categories_overview = []
         
         # Get all recent posts (3 per category)
         all_recent_posts = []
         for category in categories:
-            recent_posts = crud.get_posts(db, category_id=category.id, skip=0, limit=3)
+            post_repo = SqlAlchemyPostRepository(db)
+            recent_posts, _ = post_repo.list_by_category(category.id, skip=0, limit=3)
             all_recent_posts.extend(recent_posts)
         
         # Get comment counts for all posts
         post_ids = [post.id for post in all_recent_posts]
-        comment_counts = crud.get_comment_counts_for_posts(db, post_ids)
+        # Get comment counts manually
+        from sqlalchemy import func
+        result = db.query(
+            models.Comment.post_id,
+            func.count(models.Comment.id).label('comment_count')
+        ).filter(
+            models.Comment.post_id.in_(post_ids)
+        ).group_by(
+            models.Comment.post_id
+        ).all()
+        comment_counts = {post_id: count for post_id, count in result}
         
         for category in categories:
             # Filter posts for this category
@@ -83,7 +102,7 @@ class CommunityService:
                 'order': category.order,
                 'created_at': category.created_at,
                 'recent_posts': posts_data,
-                'total_posts': crud.count_posts(db, category_id=category.id)
+                'total_posts': db.query(models.Post).filter(models.Post.category_id == category.id).count()
             }
             categories_overview.append(category_overview)
         
@@ -101,18 +120,50 @@ class CommunityService:
         """Get a list of posts with privacy filtering."""
         category_id = None
         if category:
-            db_category = crud.get_post_category_by_name(db, category)
+            category_repo = PostCategoryRepository(db)
+            db_category = category_repo.get_by_name(category)
             if db_category:
                 category_id = db_category.id
         
-        posts = crud.get_posts(db, category_id=category_id, skip=skip, limit=limit, search=search)
+        post_repo = SqlAlchemyPostRepository(db)
+        if search:
+            posts, _ = post_repo.search(search, category_id=category_id, skip=skip, limit=limit)
+        elif category_id:
+            posts, _ = post_repo.list_by_category(category_id, skip=skip, limit=limit)
+        else:
+            # Get all posts
+            from sqlalchemy.orm import joinedload
+            query = db.query(models.Post).options(
+                joinedload(models.Post.author),
+                joinedload(models.Post.category)
+            )
+            query = query.order_by(
+                models.Post.is_pinned.desc(),
+                models.Post.created_at.desc()
+            )
+            posts = query.offset(skip).limit(limit).all()
         
         post_ids = [post.id for post in posts]
-        comment_counts = crud.get_comment_counts_for_posts(db, post_ids)
+        # Get comment counts manually
+        from sqlalchemy import func
+        result = db.query(
+            models.Comment.post_id,
+            func.count(models.Comment.id).label('comment_count')
+        ).filter(
+            models.Comment.post_id.in_(post_ids)
+        ).group_by(
+            models.Comment.post_id
+        ).all()
+        comment_counts = {post_id: count for post_id, count in result}
         
         sanitized_posts = []
         for post in posts:
-            if crud.can_view_private_post(post, current_user):
+            # Check if user can view the private post
+            can_view = not post.is_private or (current_user and (
+                post.author_id == current_user.id or 
+                auth.is_admin_sync(current_user)
+            ))
+            if can_view:
                 post_data = schemas.PostList.model_validate(post)
                 post_data.comment_count = comment_counts.get(post.id, 0)
                 sanitized_posts.append(post_data)
@@ -149,12 +200,17 @@ class CommunityService:
         current_user: Optional[models.User]
     ) -> models.Post:
         """Get a specific post with sanitized comments."""
-        post = crud.get_post(db, post_id)
+        post_repo = SqlAlchemyPostRepository(db)
+        post = post_repo.get_with_details(post_id)
         if not post:
             raise ValueError("Post not found")
         
         # Check if user can view the private post
-        if not crud.can_view_private_post(post, current_user):
+        can_view = not post.is_private or (current_user and (
+            post.author_id == current_user.id or 
+            auth.is_admin_sync(current_user)
+        ))
+        if not can_view:
             raise PermissionError("Access denied to this private post")
         
         # Sanitize comments within the post
@@ -175,15 +231,21 @@ class CommunityService:
         current_user: Optional[models.User]
     ) -> List[schemas.Comment]:
         """Get comments for a post with privacy filtering."""
-        post = crud.get_post(db, post_id)
+        post_repo = SqlAlchemyPostRepository(db)
+        post = post_repo.get_with_details(post_id)
         if not post:
             raise ValueError("Post not found")
         
         # Check if user can view the post
-        if not crud.can_view_private_post(post, current_user):
+        can_view = not post.is_private or (current_user and (
+            post.author_id == current_user.id or 
+            auth.is_admin_sync(current_user)
+        ))
+        if not can_view:
             raise PermissionError("Access denied to this post and its comments")
         
-        comments = crud.get_comments(db, post_id)
+        comment_repo = SqlAlchemyCommentRepository(db)
+        comments = comment_repo.get_by_post(post_id)
         
         # Sanitize comments based on permissions
         sanitized_comments = []
@@ -225,9 +287,13 @@ class CommunityService:
         
         created_categories = []
         for cat_data in default_categories:
-            existing = crud.get_post_category_by_name(db, cat_data["name"])
+            category_repo = PostCategoryRepository(db)
+            existing = category_repo.get_by_name(cat_data["name"])
             if not existing:
-                category = crud.create_post_category(db, schemas.PostCategoryCreate(**cat_data))
+                category = models.PostCategory(**cat_data)
+                db.add(category)
+                db.commit()
+                db.refresh(category)
                 created_categories.append(category)
         
         return {
@@ -242,7 +308,11 @@ class CommunityService:
         comment_counts: dict
     ) -> dict:
         """Sanitize a post for list view based on user permissions."""
-        can_view = crud.can_view_private_post(post, current_user)
+        # Check if user can view the post
+        can_view = not post.is_private or (current_user and (
+            post.author_id == current_user.id or 
+            auth.is_admin_sync(current_user)
+        ))
         
         if can_view:
             return {
@@ -286,7 +356,13 @@ class CommunityService:
         current_user: Optional[models.User]
     ) -> schemas.Comment:
         """Sanitize a comment based on user permissions."""
-        if crud.can_view_private_comment(comment, current_user):
+        # Check if user can view the comment
+        can_view = not comment.is_private or (current_user and (
+            comment.author_id == current_user.id or 
+            (comment.post and comment.post.author_id == current_user.id) or
+            auth.is_admin_sync(current_user)
+        ))
+        if can_view:
             return comment
         elif comment.is_private:
             return schemas.Comment(

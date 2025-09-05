@@ -6,7 +6,7 @@ with FastAPI endpoints.
 """
 
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 import hashlib
 
@@ -38,7 +38,6 @@ def get_translation_service():
 
 @router.post("/", response_model=TranslationJobResponse)
 async def create_translation_job(
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     api_key: str = None,
     segment_size: int = 15000,
@@ -213,7 +212,6 @@ async def start_validation(
     job_id: int,
     sample_rate: int = 100,
     quick_validation: bool = False,
-    background_tasks: BackgroundTasks = None,
     current_user: dict = Depends(get_current_user_optional),
     service: TranslationDomainService = Depends(get_translation_service)
 ):

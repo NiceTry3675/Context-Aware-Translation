@@ -26,7 +26,6 @@ from .policy import (
     check_policy,
     enforce_policy,
 )
-from .routes import router as community_router
 
 __all__ = [
     # Repository
@@ -54,6 +53,4 @@ __all__ = [
     "PolicyResult",
     "check_policy",
     "enforce_policy",
-    # Router
-    "community_router",
 ]
