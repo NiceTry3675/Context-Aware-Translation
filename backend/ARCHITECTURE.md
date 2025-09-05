@@ -2,13 +2,13 @@
 
 ## Overview
 
-FastAPI-based REST API serving as the bridge between the frontend application and the core translation engine. Uses Celery for distributed task processing and PostgreSQL for data persistence.
+FastAPI-based REST API with domain-driven design. Uses Celery for distributed task processing and PostgreSQL for persistence.
 
 ## Current Architecture
 
 ```
 backend/
-├── api/v1/                    # API endpoints (routing layer)
+├── api/v1/                    # Thin routing layer
 │   ├── admin.py              # Admin operations
 │   ├── analysis.py           # Translation analysis
 │   ├── announcements.py      # Site announcements
@@ -24,36 +24,37 @@ backend/
 │   └── webhooks.py           # External integrations
 │
 ├── config/                    # Configuration management
-│   ├── __init__.py
 │   ├── logging_config.py    # Structured logging
 │   └── settings.py          # Pydantic settings
 │
-├── domains/                   # Domain-driven design layer
-│   ├── shared/              # Shared infrastructure
+├── domains/                   # Business logic (DDD)
+│   ├── shared/              # Cross-cutting concerns
+│   │   ├── analysis/        # Style, glossary, character analysis
+│   │   ├── base/           # Base classes, model factory
+│   │   ├── utils/          # File management
 │   │   ├── events.py       # Domain events
 │   │   ├── repository.py   # Base repository
 │   │   ├── storage.py      # Storage abstraction
 │   │   └── uow.py         # Unit of Work
 │   │
 │   ├── translation/          # Translation domain
-│   │   ├── models.py        # SQLAlchemy models
+│   │   ├── service.py       # Main translation service
+│   │   ├── validation_service.py  # Validation logic
+│   │   ├── post_edit_service.py   # Post-edit logic
 │   │   ├── repository.py    # Data access
-│   │   ├── schemas.py       # Pydantic schemas
-│   │   └── service.py       # Business logic
+│   │   └── routes.py        # Domain routing
 │   │
 │   ├── community/            # Community domain
-│   │   ├── models.py
-│   │   ├── repository.py
-│   │   ├── schemas.py
-│   │   └── service.py
+│   │   ├── service.py       # Community logic
+│   │   ├── repository.py    # Data access
+│   │   └── routes.py        # Domain routing
 │   │
 │   └── user/                # User domain
-│       ├── models.py
-│       ├── repository.py
-│       ├── schemas.py
-│       └── service.py
+│       ├── service.py       # User & announcements
+│       ├── repository.py    # Data access
+│       └── routes.py        # Domain routing
 │
-├── models/                    # Database models
+├── models/                    # SQLAlchemy ORM
 │   ├── _base.py             # Base model
 │   ├── community.py         # Community models
 │   ├── outbox.py           # Event sourcing
@@ -61,7 +62,7 @@ backend/
 │   ├── translation.py      # Translation models
 │   └── user.py             # User models
 │
-├── schemas/                   # API schemas (Pydantic)
+├── schemas/                   # Pydantic DTOs
 │   ├── base.py              # Base schemas
 │   ├── community.py         # Community DTOs
 │   ├── core_schemas.py      # Core translation schemas
@@ -69,17 +70,7 @@ backend/
 │   ├── task_execution.py   # Task DTOs
 │   └── webhooks.py         # Webhook schemas
 │
-├── services/                  # Business services
-│   ├── announcement_service.py     # Announcement logic
-│   ├── community_service.py        # Community logic
-│   ├── glossary_analysis_service.py # Term extraction
-│   ├── pdf_generator.py           # PDF export
-│   ├── post_edit_service.py       # Post-editing
-│   ├── style_analysis_service.py  # Style analysis
-│   ├── translation_service.py     # Translation orchestration
-│   └── validation_service.py      # Quality checking
-│
-├── tasks/                     # Celery tasks
+├── tasks/                     # Celery background tasks
 │   ├── base.py              # Base task classes
 │   ├── celery_app.py        # Celery configuration
 │   ├── event_processor.py   # Event processing
@@ -87,17 +78,9 @@ backend/
 │   ├── translation.py       # Translation tasks
 │   └── validation.py        # Validation tasks
 │
-├── background_tasks/          # DEPRECATED - Legacy wrappers
-│   └── [legacy files]       # To be removed
-│
-├── migrations/               # Alembic database migrations
-│   └── versions/            # Migration files
-│
-├── auth.py                  # Authentication (Clerk)
-├── celery_app.py           # Celery re-export
-├── crud.py                 # Legacy CRUD operations
+├── migrations/               # Alembic migrations
+├── auth.py                  # Clerk authentication
 ├── database.py             # Database configuration
-├── dependencies.py         # Dependency injection
 └── main.py                 # FastAPI application
 ```
 
@@ -105,198 +88,156 @@ backend/
 
 ### 1. API Layer (`/api/v1/`)
 - **Purpose**: HTTP routing and request/response handling
-- **Responsibilities**: 
-  - Route definitions
-  - Request validation
-  - Response serialization
-  - Authentication enforcement
-- **Pattern**: Thin controllers delegating to services
+- **Responsibilities**: Validation, serialization, auth enforcement
+- **Pattern**: Thin controllers delegating to domain services
 
 ### 2. Domain Layer (`/domains/`)
 - **Purpose**: Core business logic using DDD principles
-- **Components**:
-  - **Models**: Domain entities
-  - **Repository**: Data access abstraction
-  - **Service**: Business operations
-  - **Schemas**: Data transfer objects
-- **Pattern**: Repository pattern with Unit of Work
+- **Structure**:
+  ```
+  domain/
+  ├── service.py       # Business operations
+  ├── repository.py    # Data access
+  └── routes.py        # Domain-specific routing
+  ```
+- **Shared Modules**:
+  - `analysis/`: Style, glossary, character analysis
+  - `base/`: ServiceBase, ModelAPIFactory
+  - `utils/`: FileManager utilities
+  - `storage.py`: Pluggable storage backends
+  - `uow.py`: Transaction management
+  - `events.py`: Domain event system
 
 ### 3. Task Processing (`/tasks/`)
-- **Purpose**: Asynchronous job processing
 - **Technology**: Celery with Redis broker
+- **Queues**: translation, validation, post_edit, events, default
 - **Features**:
   - Automatic retry with exponential backoff
-  - Progress tracking
+  - Progress tracking via `update_state()`
   - Database-backed execution history
   - Priority queue routing
-- **Queues**: translation, validation, post_edit, events, default
 
-### 4. Service Layer (`/services/`)
-- **Purpose**: Business logic orchestration
-- **Responsibilities**:
-  - Integration with core translation engine
-  - File processing
-  - Report generation
-  - External API coordination
-
-### 5. Storage Abstraction (`/domains/shared/storage.py`)
-- **Purpose**: Unified file storage interface
-- **Backends**: 
-  - LocalStorage (filesystem)
-  - S3Storage (planned)
-  - GCSStorage (planned)
-- **Features**: Path security, async operations
+### 4. Storage Abstraction
+```python
+# Pluggable backends
+storage = get_storage(settings)
+await storage.save_file(path, content)
+async for chunk in storage.open_file(path):
+    process(chunk)
+```
+- **Backends**: LocalStorage, S3Storage (planned), GCSStorage (planned)
+- **Security**: Path traversal protection, type validation
 
 ## Data Flow
 
-### Translation Request Flow
-1. **Request**: Client → API endpoint
-2. **Validation**: Pydantic schema validation
-3. **Job Creation**: Store in database with "processing" status
-4. **Task Queue**: Launch Celery task
-5. **Processing**: Task executes with core engine
-6. **Progress**: Updates via task.update_state()
-7. **Completion**: Update job status, store results
-8. **Response**: Client polls for completion
+### Translation Pipeline
+```
+Client Request → API Endpoint → Domain Service → Celery Task → Core Engine
+       ↓              ↓              ↓              ↓            ↓
+   Validation    Job Creation    Repository    Progress     Results
+                                    ↓           Updates     Storage
+                                 Database         ↓            ↓
+                                              Task Status   Response
+```
 
 ### Event Processing
-1. **Domain Event**: Created during business operations
-2. **Outbox Storage**: Persisted transactionally
-3. **Event Processor**: Periodic Celery beat task
-4. **Event Dispatch**: Route to appropriate handlers
-5. **Cleanup**: Remove processed events
+```
+Domain Operation → Domain Event → Outbox Storage → Event Processor
+                                       ↓                ↓
+                                  Transaction      Celery Beat
+                                                        ↓
+                                                  Event Dispatch
+```
 
 ## Database Schema
 
 ### Core Tables
-- **users**: User accounts (Clerk integration)
-- **translation_jobs**: Main job tracking
-- **translation_usage_logs**: API usage metrics
-- **illustration_jobs**: Image generation
-- **posts/comments**: Community content
-- **announcements**: Admin announcements
-- **task_executions**: Celery task history
-- **outbox_events**: Domain events
+- `users`: Clerk user mapping
+- `translation_jobs`: Job tracking with status enum
+- `task_executions`: Celery execution history
+- `posts`, `comments`: Community content
+- `announcements`: Admin announcements
+- `outbox_events`: Domain events for async processing
 
-## Configuration
+## Authentication
 
-### Environment-Based Settings
-- Development: Local SQLite, verbose logging
-- Production: PostgreSQL, structured JSON logging
-- Testing: In-memory database, minimal logging
+### Three Levels
+1. **Public**: Read-only community endpoints
+2. **User**: Clerk JWT required (translation, posting)
+3. **Admin**: ADMIN_SECRET_KEY header required
 
-### Storage Configuration
-- Local: Filesystem with path validation
-- Cloud: S3/GCS with presigned URLs
-- Security: File type validation, size limits
+## Task Monitoring
 
-## Authentication & Authorization
+### Endpoints
+- GET `/api/v1/tasks/{id}`: Task status with progress
+- GET `/api/v1/tasks/`: List with filters
+- POST `/api/v1/tasks/{id}/cancel`: Cancel task
 
-### Public Access
-- GET community endpoints
-- Webhook endpoints (signature validated)
-
-### User Authentication (Clerk JWT)
-- Translation operations
-- Content creation
-- Personal data access
-
-### Admin Authentication
-- ADMIN_SECRET_KEY header
-- Full system access
-
-## Monitoring & Observability
-
-### Logging
-- Structured JSON format
-- Correlation IDs for request tracing
-- Performance metrics
-
-### Task Monitoring
-- `/api/v1/tasks/` endpoints
-- Celery Flower web UI
-- Database-backed execution history
-
-### Health Checks
-- Database connectivity
-- Redis availability
-- Storage accessibility
+### Tools
+- Celery Flower: Web UI at `:5555`
+- Database: `task_executions` table
+- Logs: Structured JSON with correlation IDs
 
 ## Performance Optimizations
 
-### Database
-- Connection pooling
-- Eager loading for relationships
-- Indexed foreign keys
+- **Database**: Connection pooling, eager loading, indexed FKs
+- **Async**: File I/O, external APIs, streaming large files
+- **Caching**: Redis for session data (query cache planned)
+- **Queues**: Priority routing, worker concurrency
 
-### Caching
-- Redis for session data
-- Query result caching (planned)
+## Security
 
-### Async Operations
-- File I/O operations
-- External API calls
-- Database queries (where supported)
-
-## Security Measures
-
-### Input Validation
-- Pydantic schema enforcement
-- File type whitelisting
-- Request size limits
-
-### File Security
-- Path traversal prevention
-- Filename sanitization
-- Virus scanning (planned)
-
-### API Security
-- Rate limiting (planned)
-- CORS configuration
-- HTTPS enforcement (production)
+- **Input**: Pydantic validation, file type whitelist
+- **Files**: Path traversal protection, size limits
+- **API**: CORS config, JWT validation, rate limiting (planned)
+- **Storage**: Presigned URLs for cloud backends
 
 ## Migration Status
 
-### Completed
-- ✅ Celery integration
-- ✅ Task execution tracking
-- ✅ Storage abstraction
-- ✅ Configuration management
-- ✅ Domain structure setup
+### ✅ Completed (2025-01-05)
+- Domain-driven architecture implementation
+- Service layer removal and consolidation
+- Celery integration with task tracking
+- Storage abstraction layer
+- Configuration management
+- Unit of Work pattern
+- Domain event system
 
-### In Progress
-- 🔄 CRUD to repository migration
-- 🔄 Service consolidation
-- 🔄 Removing legacy code
+### 🔄 In Progress
+- CRUD to repository pattern migration
+- Event sourcing completion
 
-### Planned
-- 📋 Complete DDD implementation
-- 📋 Event sourcing completion
-- 📋 Caching layer
-- 📋 GraphQL API (future)
+### 📋 Planned
+- Caching layer implementation
+- S3/GCS storage backends
+- GraphQL API
+- Rate limiting
 
 ## Development Guidelines
 
-### Adding New Features
-1. Define domain model if needed
-2. Create/update repository methods
-3. Implement service logic
+### Adding Features
+1. Define domain model/schema
+2. Update repository methods
+3. Implement in domain service
 4. Add API endpoint
 5. Create Celery task if async
 6. Write tests
-7. Update documentation
 
 ### Database Changes
-1. Modify SQLAlchemy models
-2. Generate migration: `alembic revision --autogenerate`
-3. Review and apply: `alembic upgrade head`
+```bash
+alembic revision --autogenerate -m "description"
+alembic upgrade head
+```
 
 ### Task Implementation
-1. Extend `TrackedTask` base class
-2. Implement error handling and retries
-3. Add progress tracking
-4. Update task routing in celery_app.py
+```python
+class MyTask(TrackedTask):
+    def run(self, job_id):
+        # Automatic tracking, retry, progress
+        self.update_state(state='PROGRESS', meta={'progress': 50})
+        return result
+```
 
 ---
-*Last Updated: 2025-09-03*
-*Version: 2.0 - Post-refactoring architecture*
+*Last Updated: 2025-01-05*  
+*Version: 3.0 - Domain-driven architecture*

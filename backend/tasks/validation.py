@@ -76,19 +76,46 @@ def process_validation_task(
         
         # Run validation
         validation_service = ValidationDomainService()
-        validation_result = validation_service.validate_translation(
+        
+        # Prepare validation components
+        validator, validation_document, translated_path = validation_service.prepare_validation(
+            session=db,
             job_id=job_id,
             api_key=api_key,
-            model_name=model_name,
-            validation_mode=validation_mode,
-            sample_rate=sample_rate
+            model_name=model_name
+        )
+        
+        # Run the validation
+        quick_mode = validation_mode == 'quick'
+        validation_result = validation_service.run_validation(
+            validator=validator,
+            validation_document=validation_document,
+            sample_rate=sample_rate,
+            quick_mode=quick_mode,
+            progress_callback=lambda p: current_task.update_state(
+                state='PROCESSING',
+                meta={'current': p, 'total': 100, 'status': f'Validating... {p}%'}
+            )
         )
         
         # Store validation results
         if validation_result:
+            # Save the validation report
+            report_path = validation_service.save_validation_report(
+                job=job,
+                report=validation_result
+            )
+            
             # Update job with validation results
             job.validation_completed = True
-            job.validation_report = validation_result.get('report_path')
+            job.validation_report_path = report_path
+            validation_service.update_job_validation_status(
+                session=db,
+                job_id=job_id,
+                status="completed",
+                progress=100,
+                report_path=report_path
+            )
             db.commit()
             
             logger.info(f"Validation completed for Job ID: {job_id}")

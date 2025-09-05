@@ -72,11 +72,43 @@ def process_post_edit_task(
         
         # Run post-editing
         post_edit_service = PostEditDomainService()
-        post_edit_result = post_edit_service.apply_post_edit(
+        
+        # Prepare post-editing components
+        post_editor, translation_document, translated_path = post_edit_service.prepare_post_edit(
+            session=db,
             job_id=job_id,
             api_key=api_key,
             model_name=model_name
         )
+        
+        # Get validation report path from job
+        validation_report_path = job.validation_report_path if hasattr(job, 'validation_report_path') else None
+        if not validation_report_path:
+            # Try to find validation report file
+            import os
+            validation_dir = f"translated_novel/{job_id}"
+            validation_report_path = os.path.join(validation_dir, "validation_report.json")
+            if not os.path.exists(validation_report_path):
+                validation_report_path = None
+        
+        # Run the post-editing
+        edited_segments = post_edit_service.run_post_edit(
+            post_editor=post_editor,
+            translation_document=translation_document,
+            translated_path=translated_path,
+            validation_report_path=validation_report_path,
+            progress_callback=lambda p: current_task.update_state(
+                state='PROCESSING',
+                meta={'current': p, 'total': 100, 'status': f'Post-editing... {p}%'}
+            ),
+            job_id=job_id
+        )
+        
+        # Create result paths
+        post_edit_result = {
+            'edited_path': translated_path,  # The file is edited in place
+            'log_path': post_edit_service.get_post_edit_log_path(job)
+        }
         
         # Store post-edit results
         if post_edit_result:

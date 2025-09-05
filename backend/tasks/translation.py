@@ -89,7 +89,8 @@ def process_translation_task(
         )
         
         # Prepare translation components
-        translation_service = TranslationDomainService()
+        from backend.database import SessionLocal
+        translation_service = TranslationDomainService(SessionLocal)
         components = translation_service.prepare_translation_job(
             job_id=job_id,
             job=job,
