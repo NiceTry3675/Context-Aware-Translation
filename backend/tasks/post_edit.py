@@ -10,7 +10,7 @@ import logging
 from ..celery_app import celery_app
 from .base import TrackedTask
 from ..database import SessionLocal
-from ..services.post_edit_service import PostEditService
+from ..domains.translation.post_edit_service import PostEditDomainService
 from ..models import TaskKind
 from ..domains.translation.repository import SqlAlchemyTranslationJobRepository
 
@@ -71,7 +71,7 @@ def process_post_edit_task(
         )
         
         # Run post-editing
-        post_edit_service = PostEditService()
+        post_edit_service = PostEditDomainService()
         post_edit_result = post_edit_service.apply_post_edit(
             job_id=job_id,
             api_key=api_key,

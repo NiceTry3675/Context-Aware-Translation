@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from ...dependencies import get_db, get_required_user
 from ...tasks.validation import process_validation_task
-from ...services.base.model_factory import ModelAPIFactory
+from ...domains.shared.base import ModelAPIFactory
 from ... import models, auth
 from ...schemas import ValidationRequest, StructuredValidationReport, ValidationResponse
 from ...domains.translation.repository import SqlAlchemyTranslationJobRepository

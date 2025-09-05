@@ -3,10 +3,9 @@
 import os
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException
 
-from ...services.base.model_factory import ModelAPIFactory
-from ...services.utils.file_manager import FileManager
-from ...services.style_analysis_service import StyleAnalysisService
-from ...services.glossary_analysis_service import GlossaryAnalysisService
+from ...domains.shared.base import ModelAPIFactory
+from ...domains.shared.utils import FileManager
+from ...domains.shared.analysis import StyleAnalysis, GlossaryAnalysis
 from ...schemas import StyleAnalysisResponse, GlossaryAnalysisResponse
 
 router = APIRouter(tags=["analysis"])
@@ -23,10 +22,12 @@ async def analyze_style(
         raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
     
     try:
-        temp_file_path, _ = FileManager.save_uploaded_file(file, file.filename)
+        # Create FileManager instance
+        file_manager = FileManager()
+        temp_file_path, _ = file_manager.save_uploaded_file(file, file.filename)
         
         try:
-            style_service = StyleAnalysisService()
+            style_service = StyleAnalysis()
             style_result = style_service.analyze_style(
                 filepath=temp_file_path,
                 api_key=api_key,
@@ -56,10 +57,12 @@ async def analyze_glossary(
         raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
     
     try:
-        temp_file_path, _ = FileManager.save_uploaded_file(file, file.filename)
+        # Create FileManager instance
+        file_manager = FileManager()
+        temp_file_path, _ = file_manager.save_uploaded_file(file, file.filename)
         
         try:
-            glossary_service = GlossaryAnalysisService()
+            glossary_service = GlossaryAnalysis()
             glossary_dict = glossary_service.analyze_glossary(
                 filepath=temp_file_path,
                 api_key=api_key,

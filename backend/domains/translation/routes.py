@@ -13,8 +13,8 @@ from typing import List, Optional
 from fastapi import HTTPException, UploadFile, File, Form, Response
 from sqlalchemy.orm import Session
 
-from ...services.base.model_factory import ModelAPIFactory
-from ...services.utils.file_manager import FileManager
+from ...domains.shared.base import ModelAPIFactory
+from ...domains.shared.utils import FileManager
 from ...tasks.translation import process_translation_task
 from ...models.translation import TranslationJob
 from ...models.user import User
@@ -197,11 +197,12 @@ class TranslationRoutes:
         
         # Delete associated files
         try:
-            FileManager.delete_job_files(job)
+            file_manager = FileManager()
+            file_manager.delete_job_files(job)
         except Exception as e:
             # Log the error but proceed with deleting the DB record
             print(f"Error deleting files for job {job_id}: {e}")
         
         # Delete the job from the database
-        repo.delete(job)
+        repo.delete(job.id)
         db.commit()

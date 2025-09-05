@@ -10,7 +10,7 @@ import logging
 from ..celery_app import celery_app
 from .base import TrackedTask
 from ..database import SessionLocal
-from ..services.validation_service import ValidationService
+from ..domains.translation.validation_service import ValidationDomainService
 from ..models import TaskKind
 from ..domains.translation.repository import SqlAlchemyTranslationJobRepository
 
@@ -75,7 +75,7 @@ def process_validation_task(
         )
         
         # Run validation
-        validation_service = ValidationService()
+        validation_service = ValidationDomainService()
         validation_result = validation_service.validate_translation(
             job_id=job_id,
             api_key=api_key,

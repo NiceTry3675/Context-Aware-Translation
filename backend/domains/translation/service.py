@@ -16,9 +16,8 @@ from sqlalchemy.orm import Session
 from core.translation.document import TranslationDocument
 from core.translation.translation_pipeline import TranslationPipeline
 from core.config.builder import DynamicConfigBuilder
-from backend.services.base.base_service import BaseService
-from backend.services.style_analysis_service import StyleAnalysisService
-from backend.services.glossary_analysis_service import GlossaryAnalysisService
+from backend.domains.shared.base import ServiceBase
+from backend.domains.shared.analysis import StyleAnalysis, GlossaryAnalysis
 from backend.domains.shared import (
     SqlAlchemyUoW,
     OutboxRepository,
@@ -32,7 +31,7 @@ from backend.models.translation import TranslationJob
 logger = logging.getLogger(__name__)
 
 
-class TranslationDomainService(BaseService):
+class TranslationDomainService(ServiceBase):
     """
     Domain service for translation operations.
     
@@ -365,11 +364,16 @@ class TranslationDomainService(BaseService):
         
         try:
             print(f"--- Analyzing style for Job ID: {job_id} ---")
-            style_service = StyleAnalysisService()
+            # Create model API for style analysis
+            style_model_api_for_analysis = self.create_model_api(api_key, style_model_name)
+            
+            # Create StyleAnalysis instance with model API
+            style_service = StyleAnalysis()
+            style_service.set_model_api(style_model_api_for_analysis)
+            
+            # Call analyze_style without api_key and model_name parameters
             style_result = style_service.analyze_style(
                 filepath=job.filepath,
-                api_key=api_key,
-                model_name=style_model_name,
                 user_style_data=style_data
             )
             
@@ -395,11 +399,16 @@ class TranslationDomainService(BaseService):
             else:
                 print(f"--- Extracting automatic glossary for Job ID: {job_id} ---")
             
-            glossary_service = GlossaryAnalysisService()
+            # Create model API for glossary analysis
+            glossary_model_api_for_analysis = self.create_model_api(api_key, glossary_model_name)
+            
+            # Create GlossaryAnalysis instance with model API
+            glossary_service = GlossaryAnalysis()
+            glossary_service.set_model_api(glossary_model_api_for_analysis)
+            
+            # Call analyze_glossary without api_key and model_name parameters
             initial_glossary = glossary_service.analyze_glossary(
                 filepath=job.filepath,
-                api_key=api_key,
-                model_name=glossary_model_name,
                 user_glossary_data=glossary_data
             )
             

@@ -26,8 +26,7 @@ from core.schemas.illustration import (
     IllustrationStatus,
     CharacterProfile
 )
-from ...services.style_analysis_service import StyleAnalysisService
-from ...services.character_appearance_service import CharacterAppearanceService
+from ...domains.shared.analysis import StyleAnalysis, CharacterAnalysis
 
 router = APIRouter()
 
@@ -146,7 +145,7 @@ async def generate_character_bases(
             else:
                 # Try extracting using style analysis
                 try:
-                    style_svc = StyleAnalysisService()
+                    style_svc = StyleAnalysis()
                     protagonist = style_svc.extract_protagonist_name(
                         filepath=job.filepath,
                         api_key=api_key,
@@ -211,7 +210,7 @@ async def analyze_character_appearance(
         raise HTTPException(status_code=404, detail="Translation job not found")
 
     try:
-        svc = CharacterAppearanceService()
+        svc = CharacterAnalysis()
         result = svc.analyze_appearance(
             filepath=job.filepath,
             api_key=api_key,

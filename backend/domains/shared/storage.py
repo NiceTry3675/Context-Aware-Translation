@@ -469,3 +469,11 @@ def create_storage(settings) -> Storage:
         )
     else:
         raise ValueError(f"Unsupported storage backend: {settings.storage_backend}")
+
+
+def get_storage(settings) -> Storage:
+    """
+    Get storage instance based on settings.
+    Alias for create_storage for consistency with naming conventions.
+    """
+    return create_storage(settings)

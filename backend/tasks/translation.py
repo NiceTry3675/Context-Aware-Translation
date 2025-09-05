@@ -11,7 +11,7 @@ import logging
 from ..celery_app import celery_app
 from .base import TrackedTask
 from ..database import SessionLocal
-from ..services.translation_service import TranslationService
+from ..domains.translation.service import TranslationDomainService
 from ..models import TaskKind
 from ..domains.translation.repository import SqlAlchemyTranslationJobRepository
 from ..domains.shared.uow import SqlAlchemyUoW
@@ -89,7 +89,7 @@ def process_translation_task(
         )
         
         # Prepare translation components
-        translation_service = TranslationService()
+        translation_service = TranslationDomainService()
         components = translation_service.prepare_translation_job(
             job_id=job_id,
             job=job,
@@ -109,7 +109,7 @@ def process_translation_task(
         )
         
         # Run the translation
-        TranslationService.run_translation(
+        TranslationDomainService.run_translation(
             job_id=job_id,
             translation_document=components['translation_document'],
             model_api=components['model_api'],

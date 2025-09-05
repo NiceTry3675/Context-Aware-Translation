@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
 from ...dependencies import get_db, get_required_user
-from ...services.utils.file_manager import FileManager
+from ...domains.shared.utils import FileManager
 from ...domains.shared.pdf_generator import generate_translation_pdf
 from ... import models, auth, schemas
 from ...domains.translation.repository import SqlAlchemyTranslationJobRepository
@@ -50,7 +50,8 @@ async def download_job_output(
     if not db_job.filepath:
         raise HTTPException(status_code=404, detail="Filepath not found for this job.")
     
-    file_path, user_translated_filename, media_type = FileManager.get_translated_file_path(db_job)
+    file_manager = FileManager()
+    file_path, user_translated_filename, media_type = file_manager.get_translated_file_path(db_job)
     
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail=f"Translated file not found at path: {file_path}")
@@ -174,11 +175,36 @@ async def get_job_segments(
         if not user_is_admin:
             raise HTTPException(status_code=403, detail="Not authorized to access this content")
     
+    # Check if either translation is completed OR validation is completed (validation creates segments too)
     if db_job.status != "COMPLETED":
-        raise HTTPException(status_code=400, detail=f"Translation segments are available only for completed jobs. Current status: {db_job.status}")
+        # If translation not complete, check if validation is done (which also provides segments)
+        if db_job.validation_status != "COMPLETED":
+            raise HTTPException(status_code=400, detail=f"Translation segments are available only for completed jobs or validated jobs. Job status: {db_job.status}, Validation status: {db_job.validation_status}")
     
-    # Return empty segments if not available (for jobs completed before segmentation was implemented)
-    if not db_job.translation_segments:
+    # Get segments from different sources based on availability
+    segments = db_job.translation_segments
+    
+    # If no translation segments but validation is complete, extract from validation report
+    if not segments and db_job.validation_status == "COMPLETED" and db_job.validation_report_path:
+        try:
+            with open(db_job.validation_report_path, 'r', encoding='utf-8') as f:
+                report = json.load(f)
+            
+            # Extract segments from validation report
+            segments = []
+            for result in report.get('detailed_results', []):
+                segment_data = {
+                    "source_text": result.get('source_text', ''),
+                    "translated_text": result.get('translated_text', ''),
+                    "segment_index": result.get('segment_index', 0)
+                }
+                segments.append(segment_data)
+        except Exception as e:
+            print(f"Error reading validation report for segments: {e}")
+            segments = []
+    
+    # Return empty segments if still not available
+    if not segments:
         return {
             "job_id": job_id,
             "filename": db_job.filename,
@@ -188,15 +214,15 @@ async def get_job_segments(
             "offset": offset,
             "limit": limit,
             "completed_at": db_job.completed_at.isoformat() if db_job.completed_at else None,
-            "message": "This job was completed before segment storage was implemented. Please run validation or post-editing to see segmented content."
+            "message": "No segments available for this job."
         }
     
     # Get total segments
-    total_segments = len(db_job.translation_segments)
+    total_segments = len(segments)
     
     # Apply pagination
     end_index = min(offset + limit, total_segments)
-    paginated_segments = db_job.translation_segments[offset:end_index]
+    paginated_segments = segments[offset:end_index]
     
     # Return paginated segments as JSON
     return {
@@ -229,42 +255,76 @@ async def get_job_content(
         if not user_is_admin:
             raise HTTPException(status_code=403, detail="Not authorized to access this content")
     
+    # Check if either translation is completed OR validation is completed
     if db_job.status != "COMPLETED":
-        raise HTTPException(status_code=400, detail=f"Translation content is available only for completed jobs. Current status: {db_job.status}")
+        # If translation not complete, check if validation is done (which also provides content)
+        if db_job.validation_status != "COMPLETED":
+            raise HTTPException(status_code=400, detail=f"Translation content is available only for completed jobs or validated jobs. Job status: {db_job.status}, Validation status: {db_job.validation_status}")
     
-    if not db_job.filepath:
-        raise HTTPException(status_code=404, detail="Filepath not found for this job.")
+    # Determine which file to return based on what's available
+    file_path = None
     
-    file_path, _, _ = FileManager.get_translated_file_path(db_job)
+    # Check if we have a translation file (post-edit overwrites the original, so we use the same path)
+    if db_job.filepath:
+        file_manager = FileManager()
+        file_path, _, _ = file_manager.get_translated_file_path(db_job)
+        if not os.path.exists(file_path):
+            # If translated file doesn't exist but validation is complete, we can extract from validation report
+            if db_job.validation_status != "COMPLETED" or not db_job.validation_report_path:
+                raise HTTPException(status_code=404, detail=f"Translated file not found")
+            file_path = None  # Will extract from validation report
+    elif db_job.validation_status == "COMPLETED" and db_job.validation_report_path:
+        # For validation-only case, we need to extract content from validation report
+        file_path = None  # Will handle below
+    else:
+        raise HTTPException(status_code=404, detail="No content file found for this job.")
     
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail=f"Translated file not found at path: {file_path}")
+    # Handle validation report case specially - extract translated content from report
+    if file_path is None and db_job.validation_status == "COMPLETED" and db_job.validation_report_path:
+        try:
+            with open(db_job.validation_report_path, 'r', encoding='utf-8') as f:
+                report = json.load(f)
+            
+            # Extract translated segments from validation report
+            translated_segments = []
+            for result in report.get('detailed_results', []):
+                translated_text = result.get('translated_text', '')
+                if translated_text:
+                    translated_segments.append(translated_text)
+            
+            content = '\n'.join(translated_segments) if translated_segments else ""
+            if not content:
+                raise HTTPException(status_code=404, detail="No translated content found in validation report")
+        except Exception as e:
+            print(f"Error reading validation report: {e}")
+            raise HTTPException(status_code=500, detail="Error extracting content from validation report")
+    else:
+        # Regular file reading
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error reading file: {str(e)}")
     
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        # Try to read the original source file
-        source_content = None
-        if db_job.filepath and os.path.exists(db_job.filepath):
-            try:
-                # Parse the original file to get the text content
-                from core.utils.file_parser import parse_document
-                source_content = parse_document(db_job.filepath)
-            except Exception as e:
-                # Log error but don't fail the whole request
-                print(f"Error reading source file: {e}")
-        
-        # Return content as JSON with metadata
-        return {
-            "job_id": job_id,
-            "filename": db_job.filename,
-            "content": content,
-            "source_content": source_content,
-            "completed_at": db_job.completed_at.isoformat() if db_job.completed_at else None
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading translation content: {str(e)}")
+    # Try to read the original source file
+    source_content = None
+    if db_job.filepath and os.path.exists(db_job.filepath):
+        try:
+            # Parse the original file to get the text content
+            from core.utils.file_parser import parse_document
+            source_content = parse_document(db_job.filepath)
+        except Exception as e:
+            # Log error but don't fail the whole request
+            print(f"Error reading source file: {e}")
+    
+    # Return content as JSON with metadata
+    return {
+        "job_id": job_id,
+        "filename": db_job.filename,
+        "content": content,
+        "source_content": source_content,
+        "completed_at": db_job.completed_at.isoformat() if db_job.completed_at else None
+    }
 
 
 @router.get("/jobs/{job_id}/pdf")

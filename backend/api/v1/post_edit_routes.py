@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ...dependencies import get_db, get_required_user
-from ...services.post_edit_service import PostEditService
+from ...domains.translation.post_edit_service import PostEditDomainService
 from ...tasks.post_edit import process_post_edit_task
 from ... import models, auth
 from ...schemas import PostEditRequest, StructuredPostEditLog
@@ -35,7 +35,7 @@ async def trigger_post_edit(
     
     # Validate prerequisites
     try:
-        post_edit_service = PostEditService()
+        post_edit_service = PostEditDomainService()
         post_edit_service.validate_post_edit_prerequisites(db_job)
     except (ValueError, FileNotFoundError) as e:
         raise HTTPException(status_code=400, detail=str(e))
