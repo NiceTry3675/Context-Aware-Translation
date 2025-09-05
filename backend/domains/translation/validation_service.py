@@ -72,34 +72,68 @@ class ValidationDomainService:
             ValueError: If job not found
             FileNotFoundError: If translated file not found
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"[VALIDATION PREP] Starting validation preparation for job_id={job_id}")
+        api_key_display = f"{api_key[:8]}..." if api_key else "None"
+        logger.info(f"[VALIDATION PREP] Model: {model_name}, API key: {api_key_display}")
+        
         repository = self._get_repository(session)
         job = repository.get(job_id)
         
         if not job:
+            logger.error(f"[VALIDATION PREP] Translation job {job_id} not found")
             raise ValueError(f"Translation job {job_id} not found")
+        
+        logger.info(f"[VALIDATION PREP] Found job: status={job.status}, filepath={job.filepath}")
         
         # Get the translated file path
         translated_path = self._get_translated_file_path(job)
+        logger.info(f"[VALIDATION PREP] Translated file path: {translated_path}")
         
         if not self._file_manager.file_exists(translated_path):
+            logger.error(f"[VALIDATION PREP] Translated file not found: {translated_path}")
             raise FileNotFoundError(f"Translated file not found: {translated_path}")
         
+        logger.info(f"[VALIDATION PREP] Translated file exists, initializing validator...")
+        
         # Initialize validator with the model API
-        from backend.domains.shared.base.model_factory import ModelAPIFactory
-        model_factory = ModelAPIFactory()
-        model_api = model_factory.create(api_key, model_name)
-        validator = TranslationValidator(model_api)
+        try:
+            from backend.domains.shared.base.model_factory import ModelAPIFactory
+            model_factory = ModelAPIFactory()
+            logger.info(f"[VALIDATION PREP] Creating model API with factory...")
+            model_api = model_factory.create(api_key, model_name)
+            logger.info(f"[VALIDATION PREP] Model API created: {type(model_api)}")
+            validator = TranslationValidator(model_api)
+            logger.info(f"[VALIDATION PREP] Validator initialized")
+        except Exception as e:
+            logger.error(f"[VALIDATION PREP] Error creating validator: {str(e)}")
+            raise
         
         # Create validation document
-        validation_document = TranslationDocument(
-            job.filepath,
-            original_filename=job.filename,
-            target_segment_size=job.segment_size
-        )
+        logger.info(f"[VALIDATION PREP] Creating validation document from {job.filepath}")
+        try:
+            validation_document = TranslationDocument(
+                job.filepath,
+                original_filename=job.filename,
+                target_segment_size=job.segment_size
+            )
+            logger.info(f"[VALIDATION PREP] Validation document created with {len(validation_document.segments)} segments")
+        except Exception as e:
+            logger.error(f"[VALIDATION PREP] Error creating validation document: {str(e)}")
+            raise
         
         # Load the translated segments from the translated file
-        translated_content = self._file_manager.read_file(translated_path)
-        validation_document.translated_segments = translated_content.split('\n')
+        logger.info(f"[VALIDATION PREP] Loading translated segments from {translated_path}")
+        try:
+            translated_content = self._file_manager.read_file(translated_path)
+            logger.info(f"[VALIDATION PREP] Read {len(translated_content)} characters from translated file")
+            validation_document.translated_segments = translated_content.split('\n')
+            logger.info(f"[VALIDATION PREP] Split into {len(validation_document.translated_segments)} segments")
+        except Exception as e:
+            logger.error(f"[VALIDATION PREP] Error loading translated segments: {str(e)}")
+            raise
         # Filter out empty strings from the list
         validation_document.translated_segments = [
             s for s in validation_document.translated_segments if s.strip()
@@ -188,8 +222,8 @@ class ValidationDomainService:
         Returns:
             Path to the saved report
         """
-        # Get the validation report path
-        report_path = self._get_validation_report_path(job)
+        # Use FileManager's standardized path for consistency
+        report_path = self._file_manager.get_validation_report_path(job)
         
         # Ensure directory exists
         report_dir = os.path.dirname(report_path)
@@ -233,7 +267,7 @@ class ValidationDomainService:
         
         # Emit appropriate domain event
         if self._uow:
-            if status == "processing":
+            if status == "PROCESSING":
                 event = DomainEvent(
                     event_type=EventType.VALIDATION_STARTED,
                     aggregate_id=job_id,
@@ -242,7 +276,7 @@ class ValidationDomainService:
                 )
                 self._uow.collect_event(event)
             
-            elif status == "completed":
+            elif status == "COMPLETED":
                 event = DomainEvent(
                     event_type=EventType.VALIDATION_COMPLETED,
                     aggregate_id=job_id,
@@ -254,7 +288,7 @@ class ValidationDomainService:
                 )
                 self._uow.collect_event(event)
             
-            elif status == "failed":
+            elif status == "FAILED":
                 event = DomainEvent(
                     event_type=EventType.VALIDATION_FAILED,
                     aggregate_id=job_id,
@@ -301,7 +335,7 @@ class ValidationDomainService:
         
         # Start validation
         self.update_job_validation_status(
-            session, job_id, "processing", progress=0
+            session, job_id, "PROCESSING", progress=0
         )
         
         try:
@@ -325,7 +359,7 @@ class ValidationDomainService:
             
             # Update status to completed
             self.update_job_validation_status(
-                session, job_id, "completed", 
+                session, job_id, "COMPLETED", 
                 progress=100, 
                 report_path=report_path
             )
@@ -335,19 +369,15 @@ class ValidationDomainService:
         except Exception as e:
             # Update status to failed
             self.update_job_validation_status(
-                session, job_id, "failed",
+                session, job_id, "FAILED",
                 error_message=str(e)
             )
             raise
     
     def _get_translated_file_path(self, job: TranslationJob) -> str:
         """Get the path to the translated file for a job."""
-        settings = get_settings()
-        upload_dir = settings.upload_directory or "uploads"
-        return os.path.join(upload_dir, f"{job.id}", "translated.txt")
-    
-    def _get_validation_report_path(self, job: TranslationJob) -> str:
-        """Get the path where the validation report should be saved."""
-        settings = get_settings()
-        upload_dir = settings.upload_directory or "uploads"
-        return os.path.join(upload_dir, f"{job.id}", "validation_report.json")
+        # The translated files are saved in the translated_novel directory
+        # with the pattern: {job_id}_{original_filename_without_ext}_translated.txt
+        base_filename = os.path.splitext(job.filename)[0]  # Remove extension
+        translated_filename = f"{job.id}_{base_filename}_translated.txt"
+        return os.path.join("translated_novel", translated_filename)

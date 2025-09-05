@@ -1,12 +1,25 @@
 """
 Backend schemas package - re-exports all schema classes for backward compatibility.
+
+This package now imports from domain-specific schema modules but maintains
+the same interface for backward compatibility.
 """
 
-# Base schemas
-from .base import KSTTimezoneBase, UTC_ZONE, KST_ZONE
+# Import from new domain locations
+# Base schemas from shared domain
+from backend.domains.shared.schemas import (
+    KSTTimezoneBase,
+    UTC_ZONE,
+    KST_ZONE,
+    TaskStatus,
+    TaskKind,
+    TaskExecutionResponse,
+    TaskExecutionListResponse,
+    TaskStatsResponse,
+)
 
-# User schemas
-from .user import (
+# User domain schemas
+from backend.domains.user.schemas import (
     UserBase,
     UserCreate,
     UserUpdate,
@@ -19,15 +32,23 @@ from .user import (
     Announcement,
 )
 
-# Job schemas
-from .job import (
+# Translation domain schemas
+from backend.domains.translation.schemas import (
     TranslationJobBase,
     TranslationJobCreate,
     TranslationJob,
+    GlossaryTerm,
+    StyleAnalysisResponse,
+    GlossaryAnalysisResponse,
+    ValidationRequest,
+    PostEditRequest,
+    PostEditSegment,
+    StructuredPostEditLog,
+    StructuredValidationReport,
 )
 
-# Community schemas
-from .community import (
+# Community domain schemas
+from backend.domains.community.schemas import (
     PostCategoryBase,
     PostCategoryCreate,
     PostCategory,
@@ -42,17 +63,8 @@ from .community import (
     Comment,
 )
 
-# Translation schemas
-from .translation import (
-    GlossaryTerm,
-    StyleAnalysisResponse,
-    GlossaryAnalysisResponse,
-    ValidationRequest,
-    PostEditRequest,
-    PostEditSegment,
-    StructuredPostEditLog,
-    StructuredValidationReport,
-    # Re-export core schemas that are used
+# Re-export core schemas that are used (these come from core package)
+from core.schemas import (
     ValidationCase,
     ValidationResponse,
     ExtractedTerms,
@@ -64,18 +76,15 @@ from .translation import (
     StyleDeviation,
 )
 
-# Task execution schemas
-from .task_execution import (
-    TaskStatus,
-    TaskKind,
-    TaskExecutionResponse,
-    TaskExecutionListResponse,
-    TaskStatsResponse,
-)
-
 # Update forward references after all imports are complete
+# Need to rebuild models with circular dependencies
+from backend.domains.user.schemas import User
+from backend.domains.community.schemas import Comment, Post, PostList
+
+# Force rebuild to resolve forward references
 Comment.model_rebuild()
-Post.model_rebuild()
+Post.model_rebuild() 
+PostList.model_rebuild()
 
 # Export all schemas
 __all__ = [

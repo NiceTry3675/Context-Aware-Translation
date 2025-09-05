@@ -231,18 +231,8 @@ class PostEditDomainService:
         Returns:
             Path to the post-edit log file
         """
-        settings = get_settings()
-        upload_dir = settings.upload_directory or "uploads"
-        # Check if log exists in the standard location
-        log_path = os.path.join(upload_dir, f"{job.id}", "logs", "postedit_log.json")
-        
-        # Also check the legacy location if needed
-        if not self._file_manager.file_exists(log_path):
-            legacy_path = f"logs/postedit_logs/{job.id}_postedit.json"
-            if self._file_manager.file_exists(legacy_path):
-                return legacy_path
-        
-        return log_path
+        # Use FileManager's standardized path for consistency
+        return self._file_manager.get_post_edit_log_path(job)
     
     def update_job_post_edit_status(
         self,
@@ -390,6 +380,6 @@ class PostEditDomainService:
     
     def _get_translated_file_path(self, job: TranslationJob) -> str:
         """Get the path to the translated file for a job."""
-        settings = get_settings()
-        upload_dir = settings.upload_directory or "uploads"
-        return os.path.join(upload_dir, f"{job.id}", "translated.txt")
+        # Use FileManager's method to get the correct translated file path
+        file_path, _, _ = self._file_manager.get_translated_file_path(job)
+        return file_path

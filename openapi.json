@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Context-Aware Translation API",
+    "title": "Context-Aware Translation System",
     "description": "AI-powered literary translation service with context awareness",
     "version": "1.0.0"
   },
@@ -838,19 +838,19 @@
         }
       }
     },
-    "/api/v1/community/upload-image": {
+    "/community/upload-image": {
       "post": {
         "tags": [
           "community"
         ],
         "summary": "Upload Image",
         "description": "Upload an image for posts.",
-        "operationId": "upload_image_api_v1_community_upload_image_post",
+        "operationId": "upload_image_community_upload_image_post",
         "requestBody": {
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/Body_upload_image_api_v1_community_upload_image_post"
+                "$ref": "#/components/schemas/Body_upload_image_community_upload_image_post"
               }
             }
           },
@@ -878,14 +878,14 @@
         }
       }
     },
-    "/api/v1/community/categories": {
+    "/community/categories": {
       "get": {
         "tags": [
           "community"
         ],
         "summary": "Get Categories",
         "description": "Get all post categories.",
-        "operationId": "get_categories_api_v1_community_categories_get",
+        "operationId": "get_categories_community_categories_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -896,7 +896,7 @@
                     "$ref": "#/components/schemas/PostCategory"
                   },
                   "type": "array",
-                  "title": "Response Get Categories Api V1 Community Categories Get"
+                  "title": "Response Get Categories Community Categories Get"
                 }
               }
             }
@@ -904,14 +904,14 @@
         }
       }
     },
-    "/api/v1/community/categories/overview": {
+    "/community/categories/overview": {
       "get": {
         "tags": [
           "community"
         ],
-        "summary": "Get Categories With Recent Posts",
-        "description": "Get categories with their recent posts for community overview.",
-        "operationId": "get_categories_with_recent_posts_api_v1_community_categories_overview_get",
+        "summary": "Get Categories With Stats",
+        "description": "Get categories with their recent posts and statistics.",
+        "operationId": "get_categories_with_stats_community_categories_overview_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -924,14 +924,14 @@
         }
       }
     },
-    "/api/v1/community/posts": {
+    "/community/posts": {
       "get": {
         "tags": [
           "community"
         ],
-        "summary": "Get Posts",
-        "description": "Get posts, masking private ones based on user permissions.",
-        "operationId": "get_posts_api_v1_community_posts_get",
+        "summary": "List Posts",
+        "description": "Get posts with filtering and pagination.",
+        "operationId": "list_posts_community_posts_get",
         "parameters": [
           {
             "name": "category",
@@ -946,28 +946,28 @@
                   "type": "null"
                 }
               ],
+              "description": "Category name to filter by",
               "title": "Category"
-            }
+            },
+            "description": "Category name to filter by"
           },
           {
-            "name": "skip",
+            "name": "category_id",
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer",
-              "default": 0,
-              "title": "Skip"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 20,
-              "title": "Limit"
-            }
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Category ID to filter by",
+              "title": "Category Id"
+            },
+            "description": "Category ID to filter by"
           },
           {
             "name": "search",
@@ -982,7 +982,32 @@
                   "type": "null"
                 }
               ],
+              "description": "Search query",
               "title": "Search"
+            },
+            "description": "Search query"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
             }
           }
         ],
@@ -996,7 +1021,7 @@
                   "items": {
                     "$ref": "#/components/schemas/PostList"
                   },
-                  "title": "Response Get Posts Api V1 Community Posts Get"
+                  "title": "Response List Posts Community Posts Get"
                 }
               }
             }
@@ -1019,7 +1044,7 @@
         ],
         "summary": "Create Post",
         "description": "Create a new post.",
-        "operationId": "create_post_api_v1_community_posts_post",
+        "operationId": "create_post_community_posts_post",
         "requestBody": {
           "required": true,
           "content": {
@@ -1054,14 +1079,14 @@
         }
       }
     },
-    "/api/v1/community/posts/{post_id}": {
+    "/community/posts/{post_id}": {
       "get": {
         "tags": [
           "community"
         ],
         "summary": "Get Post",
-        "description": "Get a specific post, masking private comments based on user permissions.",
-        "operationId": "get_post_api_v1_community_posts__post_id__get",
+        "description": "Get a specific post with comments.",
+        "operationId": "get_post_community_posts__post_id__get",
         "parameters": [
           {
             "name": "post_id",
@@ -1102,7 +1127,7 @@
         ],
         "summary": "Update Post",
         "description": "Update a post.",
-        "operationId": "update_post_api_v1_community_posts__post_id__put",
+        "operationId": "update_post_community_posts__post_id__put",
         "parameters": [
           {
             "name": "post_id",
@@ -1153,7 +1178,7 @@
         ],
         "summary": "Delete Post",
         "description": "Delete a post.",
-        "operationId": "delete_post_api_v1_community_posts__post_id__delete",
+        "operationId": "delete_post_community_posts__post_id__delete",
         "parameters": [
           {
             "name": "post_id",
@@ -1187,14 +1212,14 @@
         }
       }
     },
-    "/api/v1/community/posts/{post_id}/view": {
+    "/community/posts/{post_id}/view": {
       "post": {
         "tags": [
           "community"
         ],
-        "summary": "Increment Post View",
-        "description": "Increment post view count (separate endpoint).",
-        "operationId": "increment_post_view_api_v1_community_posts__post_id__view_post",
+        "summary": "Increment View Count",
+        "description": "Increment post view count.",
+        "operationId": "increment_view_count_community_posts__post_id__view_post",
         "parameters": [
           {
             "name": "post_id",
@@ -1228,14 +1253,14 @@
         }
       }
     },
-    "/api/v1/community/posts/{post_id}/comments": {
+    "/community/posts/{post_id}/comments": {
       "get": {
         "tags": [
           "community"
         ],
-        "summary": "Get Comments",
-        "description": "Get comments for a post, masking private ones based on user permissions.",
-        "operationId": "get_comments_api_v1_community_posts__post_id__comments_get",
+        "summary": "Get Post Comments",
+        "description": "Get comments for a post.",
+        "operationId": "get_post_comments_community_posts__post_id__comments_get",
         "parameters": [
           {
             "name": "post_id",
@@ -1257,7 +1282,7 @@
                   "items": {
                     "$ref": "#/components/schemas/Comment"
                   },
-                  "title": "Response Get Comments Api V1 Community Posts  Post Id  Comments Get"
+                  "title": "Response Get Post Comments Community Posts  Post Id  Comments Get"
                 }
               }
             }
@@ -1280,7 +1305,7 @@
         ],
         "summary": "Create Comment",
         "description": "Create a comment on a post.",
-        "operationId": "create_comment_api_v1_community_posts__post_id__comments_post",
+        "operationId": "create_comment_community_posts__post_id__comments_post",
         "parameters": [
           {
             "name": "post_id",
@@ -1326,14 +1351,14 @@
         }
       }
     },
-    "/api/v1/community/comments/{comment_id}": {
+    "/community/comments/{comment_id}": {
       "put": {
         "tags": [
           "community"
         ],
         "summary": "Update Comment",
         "description": "Update a comment.",
-        "operationId": "update_comment_api_v1_community_comments__comment_id__put",
+        "operationId": "update_comment_community_comments__comment_id__put",
         "parameters": [
           {
             "name": "comment_id",
@@ -1384,7 +1409,7 @@
         ],
         "summary": "Delete Comment",
         "description": "Delete a comment.",
-        "operationId": "delete_comment_api_v1_community_comments__comment_id__delete",
+        "operationId": "delete_comment_community_comments__comment_id__delete",
         "parameters": [
           {
             "name": "comment_id",
@@ -1393,6 +1418,113 @@
             "schema": {
               "type": "integer",
               "title": "Comment Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/community/announcements": {
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Get Announcements",
+        "description": "Get all active announcements.",
+        "operationId": "get_announcements_community_announcements_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Announcement"
+                  },
+                  "type": "array",
+                  "title": "Response Get Announcements Community Announcements Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Create Announcement",
+        "description": "Create a new announcement (admin only).",
+        "operationId": "create_announcement_community_announcements_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnouncementCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Announcement"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/community/announcements/{announcement_id}": {
+      "delete": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Delete Announcement",
+        "description": "Delete an announcement (admin only).",
+        "operationId": "delete_announcement_community_announcements__announcement_id__delete",
+        "parameters": [
+          {
+            "name": "announcement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Announcement Id"
             }
           }
         ],
@@ -1665,7 +1797,7 @@
         "tags": [
           "announcements"
         ],
-        "summary": "Stream Announcements",
+        "summary": "Stream announcements via Server-Sent Events",
         "description": "Stream announcements via Server-Sent Events.",
         "operationId": "stream_announcements_api_v1_announcements_stream_get",
         "responses": {
@@ -1888,6 +2020,163 @@
             "multipart/form-data": {
               "schema": {
                 "$ref": "#/components/schemas/Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/illustrations/{job_id}/character/appearance/analyze": {
+      "post": {
+        "tags": [
+          "illustrations"
+        ],
+        "summary": "Analyze Character Appearance",
+        "description": "Analyze early novel text to produce appearance-only prompt candidates for the protagonist.",
+        "operationId": "analyze_character_appearance_api_v1_illustrations__job_id__character_appearance_analyze_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "api_key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "API key for model",
+              "title": "Api Key"
+            },
+            "description": "API key for model"
+          },
+          {
+            "name": "protagonist_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional protagonist name",
+              "title": "Protagonist Name"
+            },
+            "description": "Optional protagonist name"
+          },
+          {
+            "name": "model_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Model name for analysis",
+              "default": "gemini-2.5-flash",
+              "title": "Model Name"
+            },
+            "description": "Model name for analysis"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/illustrations/{job_id}/character/base/generate-from-prompt": {
+      "post": {
+        "tags": [
+          "illustrations"
+        ],
+        "summary": "Generate Base From Prompt",
+        "description": "Generate base image(s) directly from provided prompt text(s).\nAccepts either JSON body with { prompts: string[] } or multipart with prompts_json/prompt.",
+        "operationId": "generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "api_key",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "API key for Gemini",
+              "title": "Api Key"
+            },
+            "description": "API key for Gemini"
+          },
+          {
+            "name": "num_variations",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10,
+              "minimum": 1,
+              "description": "How many variants to generate when a single prompt is provided",
+              "default": 3,
+              "title": "Num Variations"
+            },
+            "description": "How many variants to generate when a single prompt is provided"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post"
               }
             }
           }
@@ -2278,6 +2567,284 @@
         }
       }
     },
+    "/api/v1/tasks/{task_id}": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Get Task Status",
+        "description": "Get the status of a specific task.\n\nReturns both database tracking info and real-time Celery status.",
+        "operationId": "get_task_status_api_v1_tasks__task_id__get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskExecutionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "List Tasks",
+        "description": "List tasks with optional filters.\n\n- Users can see their own tasks\n- Admins can see all tasks\n- Anonymous users can't see any tasks",
+        "operationId": "list_tasks_api_v1_tasks__get",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TaskKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TaskStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "job_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskExecutionListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}/cancel": {
+      "post": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Cancel Task",
+        "description": "Cancel a running task.\n\nOnly the task owner or an admin can cancel a task.",
+        "operationId": "cancel_task_api_v1_tasks__task_id__cancel_post",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/job/{job_id}/tasks": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Get Job Tasks",
+        "description": "Get all tasks associated with a specific job.",
+        "operationId": "get_job_tasks_api_v1_tasks_job__job_id__tasks_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TaskExecutionResponse"
+                  },
+                  "title": "Response Get Job Tasks Api V1 Tasks Job  Job Id  Tasks Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/stats/summary": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Get Task Stats",
+        "description": "Get task execution statistics.\n\nAdmin only endpoint.",
+        "operationId": "get_task_stats_api_v1_tasks_stats_summary_get",
+        "parameters": [
+          {
+            "name": "hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Number of hours to look back",
+              "default": 24,
+              "title": "Hours"
+            },
+            "description": "Number of hours to look back"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "summary": "Read Root",
@@ -2298,6 +2865,35 @@
   },
   "components": {
     "schemas": {
+      "Announcement": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message",
+          "id",
+          "created_at"
+        ],
+        "title": "Announcement"
+      },
       "AnnouncementCreate": {
         "properties": {
           "message": {
@@ -2434,6 +3030,46 @@
         ],
         "title": "Body_create_job_api_v1_jobs_post"
       },
+      "Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post": {
+        "properties": {
+          "reference_image": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "binary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Image"
+          },
+          "prompts_json": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompts Json"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
+          }
+        },
+        "type": "object",
+        "title": "Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post"
+      },
       "Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post": {
         "properties": {
           "reference_image": {
@@ -2463,7 +3099,7 @@
         "type": "object",
         "title": "Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post"
       },
-      "Body_upload_image_api_v1_community_upload_image_post": {
+      "Body_upload_image_community_upload_image_post": {
         "properties": {
           "file": {
             "type": "string",
@@ -2475,7 +3111,7 @@
         "required": [
           "file"
         ],
-        "title": "Body_upload_image_api_v1_community_upload_image_post"
+        "title": "Body_upload_image_community_upload_image_post"
       },
       "CharacterInteraction": {
         "properties": {
@@ -2770,6 +3406,132 @@
             "title": "Cache Enabled",
             "description": "Whether to cache generated illustrations",
             "default": true
+          },
+          "use_character_profile": {
+            "type": "boolean",
+            "title": "Use Character Profile",
+            "description": "Use character profile for consistent appearance across scenes",
+            "default": false
+          },
+          "profile_lock_enabled": {
+            "type": "boolean",
+            "title": "Profile Lock Enabled",
+            "description": "Lock character appearance using reference images for consistency",
+            "default": false
+          },
+          "base_image_generation_count": {
+            "type": "integer",
+            "title": "Base Image Generation Count",
+            "description": "Number of base character images to generate for selection",
+            "default": 3
+          },
+          "allow_reference_images": {
+            "type": "boolean",
+            "title": "Allow Reference Images",
+            "description": "Allow using reference images for generation",
+            "default": true
+          },
+          "reference_image_source": {
+            "type": "string",
+            "title": "Reference Image Source",
+            "description": "Source for reference images: 'base_selection', 'upload', 'none'",
+            "default": "base_selection"
+          },
+          "allow_custom_prompts": {
+            "type": "boolean",
+            "title": "Allow Custom Prompts",
+            "description": "Allow custom prompt overrides for specific scenes",
+            "default": true
+          },
+          "prefer_custom_prompts": {
+            "type": "boolean",
+            "title": "Prefer Custom Prompts",
+            "description": "Prefer custom prompts over automatic generation when available",
+            "default": false
+          },
+          "model_name": {
+            "type": "string",
+            "title": "Model Name",
+            "description": "AI model to use for image generation",
+            "default": "gemini-2.5-flash-image-preview"
+          },
+          "image_quality": {
+            "type": "string",
+            "title": "Image Quality",
+            "description": "Image quality setting: 'low', 'medium', 'high', 'ultra'",
+            "default": "high"
+          },
+          "aspect_ratio": {
+            "type": "string",
+            "title": "Aspect Ratio",
+            "description": "Preferred aspect ratio for generated images",
+            "default": "16:9"
+          },
+          "image_width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Width",
+            "description": "Target image width in pixels (None for model default)"
+          },
+          "image_height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Height",
+            "description": "Target image height in pixels (None for model default)"
+          },
+          "max_retries": {
+            "type": "integer",
+            "title": "Max Retries",
+            "description": "Maximum retry attempts for failed generations",
+            "default": 3
+          },
+          "fallback_to_prompt_only": {
+            "type": "boolean",
+            "title": "Fallback To Prompt Only",
+            "description": "Save prompt as JSON when image generation fails",
+            "default": true
+          },
+          "safety_filter_level": {
+            "type": "string",
+            "title": "Safety Filter Level",
+            "description": "Safety filter level: 'low', 'medium', 'high'",
+            "default": "medium"
+          },
+          "retry_on_safety_filter": {
+            "type": "boolean",
+            "title": "Retry On Safety Filter",
+            "description": "Retry with modified prompt when safety filter triggers",
+            "default": true
+          },
+          "use_world_atmosphere": {
+            "type": "boolean",
+            "title": "Use World Atmosphere",
+            "description": "Use AI-analyzed world atmosphere data for richer prompts",
+            "default": true
+          },
+          "combine_segments_threshold": {
+            "type": "number",
+            "title": "Combine Segments Threshold",
+            "description": "Similarity threshold for combining adjacent segments (0.0-1.0)",
+            "default": 0.8
+          },
+          "illustration_density": {
+            "type": "string",
+            "title": "Illustration Density",
+            "description": "Illustration frequency: 'sparse', 'moderate', 'dense'",
+            "default": "moderate"
           }
         },
         "type": "object",
@@ -3242,6 +4004,268 @@
         ],
         "title": "StyleAnalysisResponse",
         "description": "Response for style analysis - extends core NarrativeStyleDefinition"
+      },
+      "TaskExecutionListResponse": {
+        "properties": {
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskExecutionResponse"
+            },
+            "type": "array",
+            "title": "Tasks"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tasks",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "title": "TaskExecutionListResponse",
+        "description": "Response for list of task executions."
+      },
+      "TaskExecutionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/TaskKind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "attempts": {
+            "type": "integer",
+            "title": "Attempts"
+          },
+          "max_retries": {
+            "type": "integer",
+            "title": "Max Retries"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "next_retry_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Retry At"
+          },
+          "queue_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Time"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Time"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration"
+          },
+          "queue_duration": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Duration"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "celery_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Celery State"
+          },
+          "celery_info": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Celery Info"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "status",
+          "attempts",
+          "max_retries",
+          "created_at"
+        ],
+        "title": "TaskExecutionResponse",
+        "description": "Response model for task execution status."
+      },
+      "TaskKind": {
+        "type": "string",
+        "enum": [
+          "translation",
+          "validation",
+          "post_edit",
+          "illustration",
+          "event_processing",
+          "maintenance",
+          "other"
+        ],
+        "title": "TaskKind",
+        "description": "Types of background tasks."
+      },
+      "TaskStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "started",
+          "retry",
+          "success",
+          "failure",
+          "revoked"
+        ],
+        "title": "TaskStatus",
+        "description": "Task execution status."
       },
       "TranslatedTerm": {
         "properties": {

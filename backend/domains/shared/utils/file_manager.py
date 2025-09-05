@@ -141,11 +141,23 @@ class FileManager:
         Returns:
             Validation report file path
         """
-        # Use job-specific directory
-        job_dir = os.path.join(self.UPLOAD_DIR, str(job.id))
-        os.makedirs(job_dir, exist_ok=True)
+        # Use pattern: {job_id}_{original_filename_without_ext}_validation_report.json
+        base_filename = os.path.splitext(job.filename)[0]  # Remove extension from original filename
+        report_filename = f"{job.id}_{base_filename}_validation_report.json"
         
-        return os.path.join(job_dir, "validation_report.json")
+        # Check if report exists in translated_novel directory (new location)
+        new_path = os.path.join(self.TRANSLATED_DIR, report_filename)
+        if os.path.exists(new_path):
+            return new_path
+            
+        # Check legacy location for backward compatibility
+        legacy_path = os.path.join(self.VALIDATION_LOG_DIR, report_filename)
+        if os.path.exists(legacy_path):
+            return legacy_path
+        
+        # For new reports, save in translated_novel directory
+        os.makedirs(self.TRANSLATED_DIR, exist_ok=True)
+        return new_path
     
     def get_post_edit_log_path(self, job) -> str:
         """
@@ -157,11 +169,23 @@ class FileManager:
         Returns:
             Post-edit log file path
         """
-        # Check if log exists in job directory
-        job_dir = os.path.join(self.UPLOAD_DIR, str(job.id), "logs")
-        os.makedirs(job_dir, exist_ok=True)
+        # Use pattern: {job_id}_{original_filename_without_ext}_postedit_log.json
+        base_filename = os.path.splitext(job.filename)[0]  # Remove extension from original filename
+        log_filename = f"{job.id}_{base_filename}_postedit_log.json"
         
-        return os.path.join(job_dir, "postedit_log.json")
+        # Check if log exists in translated_novel directory (new location)
+        new_path = os.path.join(self.TRANSLATED_DIR, log_filename)
+        if os.path.exists(new_path):
+            return new_path
+            
+        # Check legacy location for backward compatibility
+        legacy_path = os.path.join(self.POST_EDIT_LOG_DIR, log_filename)
+        if os.path.exists(legacy_path):
+            return legacy_path
+        
+        # For new logs, save in translated_novel directory
+        os.makedirs(self.TRANSLATED_DIR, exist_ok=True)
+        return new_path
     
     def delete_job_files(self, job) -> None:
         """

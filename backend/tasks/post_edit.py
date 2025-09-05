@@ -81,14 +81,16 @@ def process_post_edit_task(
             model_name=model_name
         )
         
-        # Get validation report path from job
+        # Get validation report path from job (stored in database)
         validation_report_path = job.validation_report_path if hasattr(job, 'validation_report_path') else None
-        if not validation_report_path:
-            # Try to find validation report file
+        if not validation_report_path or not os.path.exists(validation_report_path):
+            # If not found in DB or file doesn't exist, try FileManager's standard path
             import os
-            validation_dir = f"translated_novel/{job_id}"
-            validation_report_path = os.path.join(validation_dir, "validation_report.json")
+            from backend.domains.shared.utils import FileManager
+            file_manager = FileManager()
+            validation_report_path = file_manager.get_validation_report_path(job)
             if not os.path.exists(validation_report_path):
+                # No validation report found
                 validation_report_path = None
         
         # Run the post-editing

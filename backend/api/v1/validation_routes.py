@@ -41,6 +41,10 @@ async def trigger_validation(
     if db_job.status != "COMPLETED":
         raise HTTPException(status_code=400, detail=f"Can only validate completed jobs. Current status: {db_job.status}")
     
+    # If an api_key is provided, ensure it's a Gemini-style key since validation uses Gemini Structured Output
+    if request.api_key and not ModelAPIFactory.is_gemini_key(request.api_key):
+        raise HTTPException(status_code=400, detail="Validation requires a Gemini API key (GEMINI Structured Output).")
+    
     # Convert validation_sample_rate from 0-1 to 0-100 for storage
     validation_sample_rate_percent = int(request.validation_sample_rate * 100)
     
@@ -132,6 +136,3 @@ async def get_validation_report(
     
     # Default: return raw report
     return report
-    # If an api_key is provided, ensure it's a Gemini-style key since validation uses Gemini Structured Output
-    if request.api_key and not ModelAPIFactory.is_gemini_key(request.api_key):
-        raise HTTPException(status_code=400, detail="Validation requires a Gemini API key (GEMINI Structured Output).")
