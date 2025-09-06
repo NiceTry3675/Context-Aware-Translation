@@ -8,7 +8,8 @@ from clerk_backend_api.security import AuthenticateRequestOptions
 from typing import Optional
 
 # Internal imports
-from . import models, schemas
+from .domains.shared import schemas
+from .domains.user.models import User
 from .database import SessionLocal
 from .domains.user.repository import SqlAlchemyUserRepository
 
@@ -115,7 +116,7 @@ async def get_current_user_claims(request: Request) -> Optional[dict]:
 async def get_required_user(
     claims: dict = Depends(get_current_user_claims),
     db: Session = Depends(get_db)
-) -> models.User:
+) -> User:
     """
     Dependency that requires a user to be authenticated.
     It ensures a user exists in our database for the given Clerk JWT claims.
@@ -155,7 +156,7 @@ async def get_required_user(
                 email=email_address,
                 name=name
             )
-            db_user = models.User(clerk_user_id=new_user_data.clerk_user_id, email=new_user_data.email, name=new_user_data.name)
+            db_user = User(clerk_user_id=new_user_data.clerk_user_id, email=new_user_data.email, name=new_user_data.name)
             db.add(db_user)
             db.commit()
             db.refresh(db_user)
@@ -194,7 +195,7 @@ async def get_required_user(
 async def get_optional_user(
     claims: Optional[dict] = Depends(get_current_user_claims),
     db: Session = Depends(get_db)
-) -> Optional[models.User]:
+) -> Optional[User]:
     """
     Dependency that provides the user model if authenticated, but doesn't fail if not.
     Returns the user model instance or None.
@@ -225,7 +226,7 @@ async def get_optional_user(
                 email=email_address,
                 name=name
             )
-            db_user = models.User(clerk_user_id=new_user_data.clerk_user_id, email=new_user_data.email, name=new_user_data.name)
+            db_user = User(clerk_user_id=new_user_data.clerk_user_id, email=new_user_data.email, name=new_user_data.name)
             db.add(db_user)
             db.commit()
             db.refresh(db_user)
@@ -244,7 +245,7 @@ async def get_optional_user(
 
     return db_user
 
-async def sync_user_role_from_claims(db: Session, db_user: models.User, claims: dict | None) -> models.User:
+async def sync_user_role_from_claims(db: Session, db_user: User, claims: dict | None) -> User:
     """
     Prefer JWT claims public_metadata for role; avoid remote Clerk API calls.
     """
@@ -263,7 +264,7 @@ async def sync_user_role_from_claims(db: Session, db_user: models.User, claims: 
         print(f"--- [WARN] Could not sync user role from claims for {db_user.clerk_user_id}: {e}")
     return db_user
 
-async def is_admin(user: models.User) -> bool:
+async def is_admin(user: User) -> bool:
     """
     사용자가 관리자인지 확인
     1. 로컬 데이터베이스의 role 컬럼 확인
@@ -284,7 +285,7 @@ async def is_admin(user: models.User) -> bool:
     
     return False
 
-def is_admin_sync(user: models.User) -> bool:
+def is_admin_sync(user: User) -> bool:
     """
     동기 버전: 사용자가 관리자인지 확인
     주로 CRUD 함수들에서 사용 (로컬 DB만 확인)

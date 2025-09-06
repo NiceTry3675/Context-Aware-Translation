@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, desc
 
-from backend.models.translation import TranslationJob, TranslationUsageLog
+from backend.domains.translation.models import TranslationJob, TranslationUsageLog
 from backend.domains.shared.repository import SqlAlchemyRepository
 
 

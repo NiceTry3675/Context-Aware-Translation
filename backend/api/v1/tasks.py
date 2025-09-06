@@ -8,8 +8,9 @@ from sqlalchemy import and_, or_
 from datetime import datetime, timedelta
 
 from ...dependencies import get_db, get_optional_user, get_required_user
-from ...models import TaskExecution, TaskStatus, TaskKind, User
-from ...schemas.task_execution import (
+from ...domains.shared.models.task_execution import TaskExecution, TaskStatus, TaskKind
+from backend.domains.user.models import User
+from ...domains.shared.schemas.task_execution import (
     TaskExecutionResponse, 
     TaskExecutionListResponse,
     TaskStatsResponse

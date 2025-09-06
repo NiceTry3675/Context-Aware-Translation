@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session
 from ...dependencies import get_db, get_required_user
 from ...tasks.validation import process_validation_task
 from ...domains.shared.base import ModelAPIFactory
-from ... import models, auth
-from ...schemas import ValidationRequest, StructuredValidationReport, ValidationResponse
+from ... import auth
+from ...domains.user.models import User
+from ...domains.translation.schemas import ValidationRequest, StructuredValidationReport, ValidationResponse
 from ...domains.translation.repository import SqlAlchemyTranslationJobRepository
 
 router = APIRouter(tags=["validation"])
@@ -20,7 +21,7 @@ async def trigger_validation(
     job_id: int,
     request: ValidationRequest,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_required_user)
+    current_user: User = Depends(get_required_user)
 ):
     """Trigger validation on a completed translation job."""
     print(f"[VALIDATION API] Received validation request for job {job_id}")
@@ -76,7 +77,7 @@ async def get_validation_report(
     job_id: int,
     structured: bool = False,  # Optional parameter to return structured response
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_required_user)
+    current_user: User = Depends(get_required_user)
 ):
     """Get the validation report for a job.
     

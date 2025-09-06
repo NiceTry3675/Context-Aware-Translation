@@ -9,9 +9,9 @@ import hmac
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func
 
-from backend.models.user import User
-from backend.models.translation import TranslationJob, TranslationUsageLog
-from backend.models.community import Announcement
+from backend.domains.user.models import User
+from backend.domains.translation.models import TranslationJob, TranslationUsageLog
+from backend.domains.community.models import Announcement
 from backend.domains.user.repository import UserRepository, SqlAlchemyUserRepository
 from backend.domains.shared.uow import SqlAlchemyUoW
 from backend.domains.shared.events import DomainEvent

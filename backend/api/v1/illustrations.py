@@ -15,7 +15,8 @@ import json
 from pathlib import Path
 
 from ...database import SessionLocal
-from ...models import TranslationJob, User
+from backend.domains.translation.models import TranslationJob
+from backend.domains.user.models import User
 from ...auth import get_required_user
 from ...tasks.illustrations import generate_illustrations_task, regenerate_single_illustration
 from core.translation.illustration_generator import IllustrationGenerator

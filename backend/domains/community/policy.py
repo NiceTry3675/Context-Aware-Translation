@@ -4,8 +4,8 @@ from typing import Optional, Protocol
 from dataclasses import dataclass
 from enum import Enum
 
-from backend.models.user import User
-from backend.models.community import Post, Comment, PostCategory
+from backend.domains.user.models import User
+from backend.domains.community.models import Post, Comment, PostCategory
 
 
 class Action(Enum):

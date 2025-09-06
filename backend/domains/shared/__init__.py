@@ -1,6 +1,6 @@
 from .uow import UnitOfWork, SqlAlchemyUoW, create_uow
 from .repository import BaseRepository, SqlAlchemyRepository
-from .events import (
+from .events_legacy import (
     DomainEvent,
     EventType,
     EventDispatcher,

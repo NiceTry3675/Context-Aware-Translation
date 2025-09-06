@@ -16,7 +16,7 @@ from PIL import Image
 from io import BytesIO
 import logging
 
-from ...models import TranslationJob
+from backend.domains.translation.models import TranslationJob
 from sqlalchemy.orm import Session
 
 

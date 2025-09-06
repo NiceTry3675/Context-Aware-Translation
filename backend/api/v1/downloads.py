@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 from ...dependencies import get_db, get_required_user
 from ...domains.shared.utils import FileManager
 from ...domains.shared.pdf_generator import generate_translation_pdf
-from ... import models, auth, schemas
+from ...domains.shared import schemas
+from ... import auth
+from ...domains.user.models import User
 from ...domains.translation.repository import SqlAlchemyTranslationJobRepository
 
 router = APIRouter(tags=["downloads"])
@@ -20,7 +22,7 @@ router = APIRouter(tags=["downloads"])
 async def download_job_output_legacy(
     job_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_required_user)
+    current_user: User = Depends(get_required_user)
 ):
     """Legacy download endpoint for backward compatibility."""
     return await download_job_output(job_id, db, current_user)
@@ -30,7 +32,7 @@ async def download_job_output_legacy(
 async def download_job_output(
     job_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_required_user)
+    current_user: User = Depends(get_required_user)
 ):
     """Download the output of a translation job."""
     repo = SqlAlchemyTranslationJobRepository(db)
@@ -64,7 +66,7 @@ async def download_job_log(
     job_id: int,
     log_type: str,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_required_user)
+    current_user: User = Depends(get_required_user)
 ):
     """Download log files for a translation job."""
     repo = SqlAlchemyTranslationJobRepository(db)
@@ -97,7 +99,7 @@ async def get_job_glossary(
     job_id: int,
     structured: bool = False,  # Optional parameter to return structured response
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_required_user)
+    current_user: User = Depends(get_required_user)
 ):
     """Get the final glossary for a completed translation job.
     
@@ -161,7 +163,7 @@ async def get_job_segments(
     offset: int = Query(0, ge=0, description="Starting segment index"),
     limit: int = Query(3, ge=1, le=200, description="Number of segments to return"),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_required_user)
+    current_user: User = Depends(get_required_user)
 ):
     """Get the segmented translation data for a completed translation job with pagination support."""
     repo = SqlAlchemyTranslationJobRepository(db)
@@ -241,7 +243,7 @@ async def get_job_segments(
 async def get_job_content(
     job_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_required_user)
+    current_user: User = Depends(get_required_user)
 ):
     """Get the translated content as text for a completed translation job."""
     repo = SqlAlchemyTranslationJobRepository(db)
@@ -334,7 +336,7 @@ async def download_job_pdf(
     include_illustrations: bool = Query(True, description="Include illustrations in PDF"),
     page_size: str = Query("A4", description="Page size (A4 or Letter)"),
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_required_user)
+    current_user: User = Depends(get_required_user)
 ):
     """
     Download the translation as a PDF document with optional illustrations.

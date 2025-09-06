@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
-from backend.models.user import User
+from backend.domains.user.models import User
 from backend.domains.shared.repository import SqlAlchemyRepository
 
 

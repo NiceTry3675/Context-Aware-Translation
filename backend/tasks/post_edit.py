@@ -11,7 +11,7 @@ from ..celery_app import celery_app
 from .base import TrackedTask
 from ..database import SessionLocal
 from ..domains.translation.post_edit_service import PostEditDomainService
-from ..models import TaskKind
+from ..domains.shared.models.task_execution import TaskKind
 from ..domains.translation.repository import SqlAlchemyTranslationJobRepository
 
 logger = logging.getLogger(__name__)

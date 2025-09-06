@@ -26,7 +26,7 @@ from backend.domains.shared import (
     TranslationJobFailedEvent,
 )
 from backend.domains.translation import SqlAlchemyTranslationJobRepository
-from backend.models.translation import TranslationJob
+from backend.domains.translation.models import TranslationJob
 
 logger = logging.getLogger(__name__)
 

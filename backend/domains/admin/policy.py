@@ -4,7 +4,7 @@ from typing import Optional, List, Protocol, Set
 from dataclasses import dataclass
 from enum import Enum
 
-from backend.models.user import User
+from backend.domains.user.models import User
 
 
 class Permission(Enum):

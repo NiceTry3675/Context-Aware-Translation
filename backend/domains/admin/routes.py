@@ -6,12 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from sqlalchemy.orm import Session
 
 from backend.dependencies import get_db, get_required_user
-from backend.models.user import User
-from backend.models.community import Post, Comment
-from backend.models.translation import TranslationJob
-from backend.schemas.user import User as UserSchema
-from backend.schemas.community import PostList, Comment as CommentSchema
-from backend.schemas.job import TranslationJob as TranslationJobSchema
+from backend.domains.user.models import User
+from backend.domains.community.models import Post, Comment
+from backend.domains.translation.models import TranslationJob
+from backend.domains.user.schemas import User as UserSchema
+from backend.domains.community.schemas import PostList, Comment as CommentSchema, PostUpdate
+from backend.domains.translation.schemas import TranslationJob as TranslationJobSchema
 from backend.domains.admin.policy import (
     Permission,
     enforce_permission,
@@ -134,7 +134,6 @@ async def pin_post(
         raise HTTPException(status_code=403, detail=str(e))
     
     service = CommunityService(db)
-    from backend.schemas.community import PostUpdate
     
     try:
         post = await service.update_post(
@@ -248,7 +247,7 @@ def get_system_metrics(
         raise HTTPException(status_code=403, detail=str(e))
     
     # Get various system metrics
-    from backend.models.task_execution import TaskExecution, TaskStatus
+    from backend.domains.shared.models.task_execution import TaskExecution, TaskStatus
     from sqlalchemy import func
     
     metrics = {

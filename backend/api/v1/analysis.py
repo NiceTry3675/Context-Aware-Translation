@@ -6,7 +6,7 @@ from fastapi import APIRouter, File, UploadFile, Form, HTTPException
 from ...domains.shared.base import ModelAPIFactory
 from ...domains.shared.utils import FileManager
 from ...domains.shared.analysis import StyleAnalysis, GlossaryAnalysis
-from ...schemas import StyleAnalysisResponse, GlossaryAnalysisResponse
+from ...domains.translation.schemas import StyleAnalysisResponse, GlossaryAnalysisResponse
 
 router = APIRouter(tags=["analysis"])
 

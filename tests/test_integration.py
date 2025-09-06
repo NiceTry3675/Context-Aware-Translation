@@ -50,7 +50,7 @@ class TestIntegrationTranslation(unittest.TestCase):
         self.db = SessionLocal()
         
         # Create a test job in the database
-        from backend.models import TranslationJob as DBTranslationJob
+        from backend.domains.translation.models import TranslationJob as DBTranslationJob
         test_job = DBTranslationJob(
             filename=f"test_catcher_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
             status="PROCESSING"
@@ -63,7 +63,7 @@ class TestIntegrationTranslation(unittest.TestCase):
         """Clean up database."""
         if hasattr(self, 'db'):
             # Delete the test job
-            from backend.models import TranslationJob as DBTranslationJob
+            from backend.domains.translation.models import TranslationJob as DBTranslationJob
             job = self.db.query(DBTranslationJob).filter(DBTranslationJob.id == self.job_id).first()
             if job:
                 self.db.delete(job)

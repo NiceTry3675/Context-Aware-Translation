@@ -4,7 +4,7 @@ Railway 배포 시 필요한 초기 설정을 자동으로 수행합니다.
 """
 import logging
 from sqlalchemy.orm import Session
-from . import models, schemas
+from .domains.community.models import PostCategory
 from .database import engine
 
 logging.basicConfig(level=logging.INFO)
@@ -16,7 +16,7 @@ def init_categories():
         with Session(engine) as db:
             # 기존 카테고리가 있는지 확인
             try:
-                existing_categories = db.query(models.PostCategory).all()
+                existing_categories = db.query(PostCategory).all()
                 if existing_categories:
                     logger.info(f"✅ Categories already exist ({len(existing_categories)} found). Skipping initialization.")
                     return existing_categories
@@ -58,7 +58,7 @@ def init_categories():
             created_categories = []
             for cat_data in default_categories:
                 # Create category directly
-                category = models.PostCategory(**cat_data)
+                category = PostCategory(**cat_data)
                 db.add(category)
                 db.commit()
                 db.refresh(category)

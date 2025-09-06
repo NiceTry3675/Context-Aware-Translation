@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 from svix import Webhook
 
 from ...dependencies import get_db
-from ... import schemas, models
+from ...domains.user import schemas
+from ...domains.user.models import User
 from ...domains.user.repository import SqlAlchemyUserRepository
 
 
@@ -55,7 +56,7 @@ async def handle_clerk_webhook(
             name=user_name or None
         )
         repo = SqlAlchemyUserRepository(db)
-        db_user = models.User(clerk_user_id=user_in.clerk_user_id, email=user_in.email, name=user_in.name)
+        db_user = User(clerk_user_id=user_in.clerk_user_id, email=user_in.email, name=user_in.name)
         db.add(db_user)
         db.commit()
         
@@ -80,7 +81,7 @@ async def handle_clerk_webhook(
                 email=email_address or None,
                 name=user_name or None
             )
-            db_user = models.User(clerk_user_id=user_in.clerk_user_id, email=user_in.email, name=user_in.name)
+            db_user = User(clerk_user_id=user_in.clerk_user_id, email=user_in.email, name=user_in.name)
             db.add(db_user)
             db.commit()
             

@@ -7,7 +7,7 @@ from sqlalchemy.sql import func
 from datetime import datetime
 import enum
 
-from ._base import Base
+from .base import Base
 
 
 class TaskStatus(str, enum.Enum):

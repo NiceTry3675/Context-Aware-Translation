@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from ...dependencies import get_db, verify_admin_secret
 from ...domains.community.service import CommunityService
 from ...domains.user.service import UserService
-from ... import schemas
+from ...domains.user import schemas
 
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
@@ -23,7 +23,7 @@ async def create_new_announcement(
     # Deactivate all other announcements first
     service.deactivate_all_announcements()
     # Create the new announcement as an admin user (using system admin context)
-    from ...models import Announcement
+    from ...domains.community.models import Announcement
     db_announcement = Announcement(**announcement.dict())
     db.add(db_announcement)
     db.commit()
@@ -73,7 +73,7 @@ def deactivate_all_announcements(db: Session = Depends(get_db)):
 @router.post("/community/init-categories", dependencies=[Depends(verify_admin_secret)])
 def initialize_categories(db: Session = Depends(get_db)):
     """Initialize default post categories."""
-    from ...models import PostCategory
+    from ...domains.community.models import PostCategory
     from ...domains.community.repository import PostCategoryRepository
     
     default_categories = [

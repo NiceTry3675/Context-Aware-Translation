@@ -21,7 +21,7 @@ class OutboxRepository:
         Note: The actual OutboxEvent model will be created via migration.
         For now, this is the interface definition.
         """
-        from backend.models import OutboxEvent  # Will be created in migration
+        from backend.domains.shared.models.outbox import OutboxEvent
         
         outbox_entry = OutboxEvent(
             event_id=event.event_id,
@@ -39,7 +39,7 @@ class OutboxRepository:
     
     def get_unprocessed_events(self, limit: int = 100) -> List[DomainEvent]:
         """Get unprocessed events from the outbox."""
-        from backend.models import OutboxEvent  # Will be created in migration
+        from backend.domains.shared.models.outbox import OutboxEvent
         
         entries = self.session.query(OutboxEvent).filter(
             OutboxEvent.processed == False
@@ -64,7 +64,7 @@ class OutboxRepository:
     
     def mark_as_processed(self, event_id: str) -> bool:
         """Mark an event as processed."""
-        from backend.models import OutboxEvent  # Will be created in migration
+        from backend.domains.shared.models.outbox import OutboxEvent
         
         result = self.session.query(OutboxEvent).filter(
             OutboxEvent.event_id == event_id
@@ -78,7 +78,7 @@ class OutboxRepository:
     
     def mark_batch_as_processed(self, event_ids: List[str]) -> int:
         """Mark multiple events as processed."""
-        from backend.models import OutboxEvent  # Will be created in migration
+        from backend.domains.shared.models.outbox import OutboxEvent
         
         result = self.session.query(OutboxEvent).filter(
             OutboxEvent.event_id.in_(event_ids)
@@ -92,7 +92,7 @@ class OutboxRepository:
     
     def delete_processed_events(self, older_than_days: int = 7) -> int:
         """Delete processed events older than specified days."""
-        from backend.models import OutboxEvent  # Will be created in migration
+        from backend.domains.shared.models.outbox import OutboxEvent
         from datetime import timedelta
         
         cutoff_date = datetime.utcnow() - timedelta(days=older_than_days)
@@ -109,7 +109,7 @@ class OutboxRepository:
     
     def get_failed_events(self, limit: int = 100) -> List[DomainEvent]:
         """Get events that failed processing (for retry)."""
-        from backend.models import OutboxEvent  # Will be created in migration
+        from backend.domains.shared.models.outbox import OutboxEvent
         
         # Events are considered failed if they're old and unprocessed
         from datetime import timedelta
@@ -142,7 +142,7 @@ class OutboxRepository:
     
     def increment_retry_count(self, event_id: str) -> bool:
         """Increment the retry count for an event."""
-        from backend.models import OutboxEvent  # Will be created in migration
+        from backend.domains.shared.models.outbox import OutboxEvent
         
         result = self.session.query(OutboxEvent).filter(
             OutboxEvent.event_id == event_id

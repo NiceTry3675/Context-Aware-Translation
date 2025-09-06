@@ -9,14 +9,14 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from backend.models.user import User
-from backend.models.community import Post, Comment, PostCategory, Announcement
-from backend.schemas.community import (
+from backend.domains.user.models import User
+from backend.domains.community.models import Post, Comment, PostCategory, Announcement
+from backend.domains.community.schemas import (
     PostCreate, PostUpdate, PostList,
     CommentCreate, CommentUpdate,
     PostCategoryCreate
 )
-from backend.schemas.user import AnnouncementCreate
+from backend.domains.user.schemas import AnnouncementCreate
 from backend.domains.community.repository import (
     PostRepository, SqlAlchemyPostRepository,
     CommentRepository, SqlAlchemyCommentRepository,

@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from core.translation.post_editor import PostEditEngine
 from core.translation.document import TranslationDocument
-from backend.models.translation import TranslationJob
+from backend.domains.translation.models import TranslationJob
 from backend.domains.translation.repository import TranslationJobRepository, SqlAlchemyTranslationJobRepository
 from backend.domains.shared.uow import SqlAlchemyUoW
 from backend.domains.shared.events import DomainEvent, EventType

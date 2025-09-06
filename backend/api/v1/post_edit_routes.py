@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session
 from ...dependencies import get_db, get_required_user
 from ...domains.translation.post_edit_service import PostEditDomainService
 from ...tasks.post_edit import process_post_edit_task
-from ... import models, auth
-from ...schemas import PostEditRequest, StructuredPostEditLog
+from ... import auth
+from ...domains.user.models import User
+from ...domains.translation.schemas import PostEditRequest, StructuredPostEditLog
 from ...domains.translation.repository import SqlAlchemyTranslationJobRepository
 
 router = APIRouter(tags=["post-edit"])
@@ -20,7 +21,7 @@ async def trigger_post_edit(
     job_id: int,
     request: PostEditRequest,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_required_user)
+    current_user: User = Depends(get_required_user)
 ):
     """Trigger post-editing on a validated translation job."""
     repo = SqlAlchemyTranslationJobRepository(db)
@@ -61,7 +62,7 @@ async def get_post_edit_log(
     job_id: int,
     structured: bool = False,  # Optional parameter to return structured response
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_required_user)
+    current_user: User = Depends(get_required_user)
 ):
     """Get the post-edit log for a job.
     

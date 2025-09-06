@@ -31,13 +31,18 @@ backend/
 │   ├── shared/              # Cross-cutting concerns
 │   │   ├── analysis/        # Style, glossary, character analysis
 │   │   ├── base/           # Base classes, model factory
+│   │   ├── events/         # Domain event system
+│   │   ├── models/         # Shared SQLAlchemy models
+│   │   ├── schemas/        # Shared Pydantic schemas
 │   │   ├── utils/          # File management
-│   │   ├── events.py       # Domain events
+│   │   ├── events_legacy.py # Legacy events (to be removed)
 │   │   ├── repository.py   # Base repository
 │   │   ├── storage.py      # Storage abstraction
 │   │   └── uow.py         # Unit of Work
 │   │
 │   ├── translation/          # Translation domain
+│   │   ├── models.py        # SQLAlchemy models
+│   │   ├── schemas.py       # Pydantic schemas
 │   │   ├── service.py       # Main translation service
 │   │   ├── validation_service.py  # Validation logic
 │   │   ├── post_edit_service.py   # Post-edit logic
@@ -45,30 +50,26 @@ backend/
 │   │   └── routes.py        # Domain routing
 │   │
 │   ├── community/            # Community domain
+│   │   ├── models.py        # SQLAlchemy models
+│   │   ├── schemas.py       # Pydantic schemas
 │   │   ├── service.py       # Community logic
 │   │   ├── repository.py    # Data access
 │   │   └── routes.py        # Domain routing
 │   │
 │   └── user/                # User domain
+│       ├── models.py        # SQLAlchemy models
+│       ├── schemas.py       # Pydantic schemas
 │       ├── service.py       # User & announcements
 │       ├── repository.py    # Data access
 │       └── routes.py        # Domain routing
 │
-├── models/                    # SQLAlchemy ORM
+├── models/                    # Legacy SQLAlchemy ORM (migrating to domains)
 │   ├── _base.py             # Base model
-│   ├── community.py         # Community models
-│   ├── outbox.py           # Event sourcing
-│   ├── task_execution.py   # Task tracking
-│   ├── translation.py      # Translation models
-│   └── user.py             # User models
-│
-├── schemas/                   # Pydantic DTOs
-│   ├── base.py              # Base schemas
-│   ├── community.py         # Community DTOs
-│   ├── core_schemas.py      # Core translation schemas
-│   ├── jobs.py              # Job DTOs
-│   ├── task_execution.py   # Task DTOs
-│   └── webhooks.py         # Webhook schemas
+│   ├── community.py         # Community models (moved to domains/community/models.py)
+│   ├── outbox.py           # Event sourcing (moved to domains/shared/models/)
+│   ├── task_execution.py   # Task tracking (moved to domains/shared/models/)
+│   ├── translation.py      # Translation models (moved to domains/translation/models.py)
+│   └── user.py             # User models (moved to domains/user/models.py)
 │
 ├── tasks/                     # Celery background tasks
 │   ├── base.py              # Base task classes
@@ -96,6 +97,8 @@ backend/
 - **Structure**:
   ```
   domain/
+  ├── models.py        # SQLAlchemy ORM models
+  ├── schemas.py       # Pydantic DTOs
   ├── service.py       # Business operations
   ├── repository.py    # Data access
   └── routes.py        # Domain-specific routing
@@ -103,10 +106,12 @@ backend/
 - **Shared Modules**:
   - `analysis/`: Style, glossary, character analysis
   - `base/`: ServiceBase, ModelAPIFactory
+  - `events/`: Domain event system (contracts, publisher, processor)
+  - `models/`: Shared SQLAlchemy models (base, outbox, task_execution)
+  - `schemas/`: Shared Pydantic schemas (base, task_execution)
   - `utils/`: FileManager utilities
   - `storage.py`: Pluggable storage backends
   - `uow.py`: Transaction management
-  - `events.py`: Domain event system
 
 ### 3. Task Processing (`/tasks/`)
 - **Technology**: Celery with Redis broker
@@ -194,7 +199,7 @@ Domain Operation → Domain Event → Outbox Storage → Event Processor
 
 ## Migration Status
 
-### ✅ Completed (2025-01-05)
+### ✅ Completed (2025-01-06)
 - Domain-driven architecture implementation
 - Service layer removal and consolidation
 - Celery integration with task tracking
@@ -202,6 +207,7 @@ Domain Operation → Domain Event → Outbox Storage → Event Processor
 - Configuration management
 - Unit of Work pattern
 - Domain event system
+- Schema migration to domain modules (removed backend/schemas/)
 
 ### 🔄 In Progress
 - CRUD to repository pattern migration
@@ -216,12 +222,13 @@ Domain Operation → Domain Event → Outbox Storage → Event Processor
 ## Development Guidelines
 
 ### Adding Features
-1. Define domain model/schema
-2. Update repository methods
-3. Implement in domain service
-4. Add API endpoint
-5. Create Celery task if async
-6. Write tests
+1. Define domain model in `domains/{domain}/models.py`
+2. Define schema in `domains/{domain}/schemas.py`
+3. Update repository methods
+4. Implement in domain service
+5. Add API endpoint in `api/v1/` or domain's `routes.py`
+6. Create Celery task if async
+7. Write tests
 
 ### Database Changes
 ```bash
@@ -239,5 +246,5 @@ class MyTask(TrackedTask):
 ```
 
 ---
-*Last Updated: 2025-01-05*  
-*Version: 3.0 - Domain-driven architecture*
+*Last Updated: 2025-01-06*  
+*Version: 3.1 - Domain-driven architecture with schema consolidation*

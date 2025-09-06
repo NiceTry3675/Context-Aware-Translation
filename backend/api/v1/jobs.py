@@ -6,8 +6,8 @@ from fastapi import APIRouter, File, UploadFile, Depends, Form, Response
 from sqlalchemy.orm import Session
 
 from ...dependencies import get_db, get_required_user
-from ...models import User
-from ...schemas import TranslationJob
+from backend.domains.user.models import User
+from ...domains.translation.schemas import TranslationJob
 from ...domains.translation.routes import TranslationRoutes
 
 router = APIRouter(tags=["jobs"])

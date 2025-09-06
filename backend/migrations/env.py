@@ -11,11 +11,21 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Add parent directory to path so we can import our models
-sys.path.append(str(Path(__file__).parent.parent))
+# Add parent directories to path so we can import our models
+# Add backend directory and project root
+backend_dir = Path(__file__).parent.parent
+project_root = backend_dir.parent
+sys.path.insert(0, str(backend_dir))
+sys.path.insert(0, str(project_root))
 
 # Import Base and all models to ensure they're registered
-from models import Base, User, TranslationJob, TranslationUsageLog, Announcement, PostCategory, Post, Comment
+# Using new domain-specific paths
+from backend.domains.shared.models.base import Base
+from backend.domains.shared.models.task_execution import TaskExecution
+from backend.domains.shared.models.outbox import OutboxEvent
+from backend.domains.user.models import User
+from backend.domains.translation.models import TranslationJob, TranslationUsageLog
+from backend.domains.community.models import Announcement, PostCategory, Post, Comment
 
 # Get database URL from environment
 # Use absolute path to ensure consistency regardless of where alembic is run

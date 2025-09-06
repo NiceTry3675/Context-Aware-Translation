@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Header, Request, Query
 from sqlalchemy.orm import Session
 
 from backend.dependencies import get_db, get_required_user, get_optional_user
-from backend.models.user import User
-from backend.schemas.user import (
+from backend.domains.user.models import User
+from backend.domains.user.schemas import (
     User as UserSchema,
     Announcement as AnnouncementSchema,
     AnnouncementCreate,

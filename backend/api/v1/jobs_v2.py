@@ -13,10 +13,9 @@ import hashlib
 from backend.database import SessionLocal
 from backend.auth import get_current_user_optional
 from backend.domains.translation.service import TranslationDomainService
-from backend.schemas import (
-    TranslationJobResponse,
-    TranslationJobCreate,
-    PaginatedJobsResponse
+from backend.domains.translation.schemas import (
+    TranslationJob,
+    TranslationJobCreate
 )
 
 router = APIRouter(prefix="/api/v2/jobs", tags=["jobs-v2"])
@@ -36,7 +35,7 @@ def get_translation_service():
     return TranslationDomainService(SessionLocal)
 
 
-@router.post("/", response_model=TranslationJobResponse)
+@router.post("/", response_model=TranslationJob)
 async def create_translation_job(
     file: UploadFile = File(...),
     api_key: str = None,
@@ -97,7 +96,7 @@ async def create_translation_job(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/", response_model=PaginatedJobsResponse)
+@router.get("/", response_model=List[TranslationJob])
 async def list_user_jobs(
     limit: int = 20,
     cursor: Optional[int] = None,

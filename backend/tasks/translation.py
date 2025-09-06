@@ -12,7 +12,7 @@ from ..celery_app import celery_app
 from .base import TrackedTask
 from ..database import SessionLocal
 from ..domains.translation.service import TranslationDomainService
-from ..models import TaskKind
+from ..domains.shared.models.task_execution import TaskKind
 from ..domains.translation.repository import SqlAlchemyTranslationJobRepository
 from ..domains.shared.uow import SqlAlchemyUoW
 

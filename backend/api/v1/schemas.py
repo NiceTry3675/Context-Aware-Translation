@@ -84,26 +84,30 @@ def get_backend_schemas() -> Dict[str, Any]:
     
     Returns schemas used in FastAPI endpoints for request/response models.
     """
-    from backend.schemas import (
-        Job,
-        JobCreate,
+    from backend.domains.translation.schemas import (
+        TranslationJob,
+        TranslationJobCreate,
+        StyleAnalysisResponse,
+        GlossaryAnalysisResponse,
+        ValidationRequest,
+        PostEditRequest
+    )
+    from backend.domains.community.schemas import (
         Post,
         PostCreate,
         Comment,
         CommentCreate,
-        PostCategory,
+        PostCategory
+    )
+    from backend.domains.user.schemas import (
+        User,
         Announcement,
-        AnnouncementCreate,
-        StyleAnalysisResponse,
-        GlossaryAnalysisResponse,
-        ValidationRequest,
-        PostEditRequest,
-        UserInfo
+        AnnouncementCreate
     )
     
     backend_models = [
-        Job,
-        JobCreate,
+        TranslationJob,
+        TranslationJobCreate,
         Post,
         PostCreate,
         Comment,
@@ -115,7 +119,7 @@ def get_backend_schemas() -> Dict[str, Any]:
         GlossaryAnalysisResponse,
         ValidationRequest,
         PostEditRequest,
-        UserInfo
+        User
     ]
     
     return {

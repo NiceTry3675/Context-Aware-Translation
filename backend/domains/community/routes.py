@@ -6,15 +6,15 @@ from fastapi import APIRouter, File, UploadFile, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from backend.dependencies import get_db, get_required_user, get_optional_user
-from backend.models.user import User
-from backend.schemas.community import (
+from backend.domains.user.models import User
+from backend.domains.community.schemas import (
     Post as PostSchema,
     PostCreate, PostUpdate, PostList,
     Comment as CommentSchema,
     CommentCreate, CommentUpdate,
     PostCategory as CategorySchema
 )
-from backend.schemas.user import (
+from backend.domains.user.schemas import (
     Announcement as AnnouncementSchema,
     AnnouncementCreate
 )

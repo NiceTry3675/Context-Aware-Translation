@@ -16,8 +16,8 @@ from sqlalchemy.orm import Session
 from ...domains.shared.base import ModelAPIFactory
 from ...domains.shared.utils import FileManager
 from ...tasks.translation import process_translation_task
-from ...models.translation import TranslationJob
-from ...models.user import User
+from backend.domains.translation.models import TranslationJob
+from backend.domains.user.models import User
 from .repository import SqlAlchemyTranslationJobRepository
 from .service import TranslationDomainService
 from ...auth import is_admin
