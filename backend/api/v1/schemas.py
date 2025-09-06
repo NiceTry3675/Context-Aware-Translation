@@ -86,12 +86,14 @@ def get_backend_schemas() -> Dict[str, Any]:
     """
     from backend.domains.translation.schemas import (
         TranslationJob,
-        TranslationJobCreate,
+        TranslationJobCreate
+    )
+    from backend.domains.post_edit.schemas import PostEditRequest
+    from backend.domains.analysis.schemas import (
         StyleAnalysisResponse,
         GlossaryAnalysisResponse,
-        ValidationRequest,
-        PostEditRequest
     )
+    from backend.domains.validation.schemas import ValidationRequest
     from backend.domains.community.schemas import (
         Post,
         PostCreate,

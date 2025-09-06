@@ -7,7 +7,7 @@ from sqlalchemy.sql import func
 from datetime import datetime
 import enum
 
-from .base import Base
+from ..shared.models.base import Base
 
 
 class TaskStatus(str, enum.Enum):
@@ -18,6 +18,7 @@ class TaskStatus(str, enum.Enum):
     SUCCESS = "success"
     FAILURE = "failure"
     REVOKED = "revoked"
+    RUNNING = "running"
 
 
 class TaskKind(str, enum.Enum):

@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session
 
 from backend.dependencies import get_db, get_required_user
 from backend.domains.user.models import User
-from backend.domains.community.models import Post, Comment
+from backend.domains.community.models import Post, Comment, PostCategory
 from backend.domains.translation.models import TranslationJob
-from backend.domains.user.schemas import User as UserSchema
+from backend.domains.user.schemas import User as UserSchema, AnnouncementCreate
 from backend.domains.community.schemas import PostList, Comment as CommentSchema, PostUpdate
 from backend.domains.translation.schemas import TranslationJob as TranslationJobSchema
 from backend.domains.admin.policy import (
@@ -20,7 +20,9 @@ from backend.domains.admin.policy import (
 )
 from backend.domains.user.service import UserService
 from backend.domains.community.service import CommunityService
+from backend.domains.community.repository import PostCategoryRepository
 from backend.config.settings import get_settings
+from fastapi.responses import JSONResponse
 
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -233,6 +235,175 @@ async def delete_translation_job(
     return {"message": f"Translation job {job_id} deleted"}
 
 
+# Announcement management endpoints
+
+@router.post("/announcements")
+async def create_announcement(
+    announcement: AnnouncementCreate,
+    current_user: User = Depends(get_required_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new announcement (requires ANNOUNCEMENT_CREATE permission)."""
+    try:
+        enforce_permission(current_user, Permission.ANNOUNCEMENT_CREATE)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    
+    service = UserService(db)
+    # Deactivate all other announcements first
+    service.deactivate_all_announcements()
+    
+    # Create the new announcement
+    from backend.domains.community.models import Announcement
+    db_announcement = Announcement(**announcement.dict())
+    db.add(db_announcement)
+    db.commit()
+    db.refresh(db_announcement)
+    
+    return JSONResponse(
+        content=UserService.format_announcement_for_json(db_announcement),
+        media_type="application/json; charset=utf-8"
+    )
+
+
+@router.put("/announcements/{announcement_id}/deactivate")
+async def deactivate_announcement(
+    announcement_id: int,
+    current_user: User = Depends(get_required_user),
+    db: Session = Depends(get_db)
+):
+    """Deactivate a specific announcement (requires ANNOUNCEMENT_DELETE permission)."""
+    try:
+        enforce_permission(current_user, Permission.ANNOUNCEMENT_DELETE)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    
+    try:
+        service = UserService(db)
+        db_announcement = service.deactivate_announcement(announcement_id)
+        return JSONResponse(
+            content=UserService.format_announcement_for_json(db_announcement),
+            media_type="application/json; charset=utf-8"
+        )
+    except ValueError as e:
+        return JSONResponse(
+            status_code=404,
+            content={"detail": str(e)},
+            media_type="application/json; charset=utf-8"
+        )
+
+
+@router.put("/announcements/deactivate-all")
+async def deactivate_all_announcements(
+    current_user: User = Depends(get_required_user),
+    db: Session = Depends(get_db)
+):
+    """Deactivate all active announcements (requires ANNOUNCEMENT_DELETE permission)."""
+    try:
+        enforce_permission(current_user, Permission.ANNOUNCEMENT_DELETE)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    
+    service = UserService(db)
+    updated_count = service.deactivate_all_announcements()
+    
+    return JSONResponse(
+        content={
+            "message": f"모든 공지가 비활성화되었습니다.",
+            "deactivated_count": updated_count,
+            "success": True
+        },
+        media_type="application/json; charset=utf-8"
+    )
+
+
+@router.post("/community/init-categories")
+async def initialize_categories(
+    current_user: User = Depends(get_required_user),
+    db: Session = Depends(get_db)
+):
+    """Initialize default post categories (requires SYSTEM_CONFIG permission)."""
+    try:
+        enforce_permission(current_user, Permission.SYSTEM_CONFIG)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    
+    default_categories = [
+        {"name": "notice", "display_name": "공지사항", "description": "중요한 공지사항", "is_admin_only": True, "order": 1},
+        {"name": "suggestion", "display_name": "건의사항", "description": "서비스 개선을 위한 제안", "is_admin_only": False, "order": 2},
+        {"name": "qna", "display_name": "Q&A", "description": "질문과 답변", "is_admin_only": False, "order": 3},
+        {"name": "free", "display_name": "자유게시판", "description": "자유로운 소통 공간", "is_admin_only": False, "order": 4}
+    ]
+    
+    created_categories = []
+    category_repo = PostCategoryRepository(db)
+    for cat_data in default_categories:
+        existing = category_repo.get_by_name(cat_data["name"])
+        if not existing:
+            category = PostCategory(**cat_data)
+            db.add(category)
+            db.commit()
+            db.refresh(category)
+            created_categories.append(category)
+    
+    return {
+        "message": f"Created {len(created_categories)} categories",
+        "categories": created_categories
+    }
+
+
+# Legacy announcement endpoints (for backward compatibility)
+
+@router.post("/legacy/announcements")
+async def create_announcement_legacy(
+    announcement: AnnouncementCreate,
+    admin_secret: str = Depends(verify_admin_secret),
+    db: Session = Depends(get_db)
+):
+    """Legacy endpoint to create announcement using admin secret."""
+    if not admin_secret:
+        raise HTTPException(status_code=401, detail="Invalid admin secret")
+    
+    service = UserService(db)
+    service.deactivate_all_announcements()
+    
+    from backend.domains.community.models import Announcement
+    db_announcement = Announcement(**announcement.dict())
+    db.add(db_announcement)
+    db.commit()
+    db.refresh(db_announcement)
+    
+    return JSONResponse(
+        content=UserService.format_announcement_for_json(db_announcement),
+        media_type="application/json; charset=utf-8"
+    )
+
+
+@router.put("/legacy/announcements/{announcement_id}/deactivate")
+async def deactivate_announcement_legacy(
+    announcement_id: int,
+    admin_secret: str = Depends(verify_admin_secret),
+    db: Session = Depends(get_db)
+):
+    """Legacy endpoint to deactivate announcement using admin secret."""
+    if not admin_secret:
+        raise HTTPException(status_code=401, detail="Invalid admin secret")
+    
+    try:
+        service = UserService(db)
+        db_announcement = service.deactivate_announcement(announcement_id)
+        return JSONResponse(
+            content=UserService.format_announcement_for_json(db_announcement),
+            media_type="application/json; charset=utf-8"
+        )
+    except ValueError as e:
+        return JSONResponse(
+            status_code=404,
+            content={"detail": str(e)},
+            media_type="application/json; charset=utf-8"
+        )
+
+
 # System administration endpoints
 
 @router.get("/system/metrics")
@@ -247,7 +418,7 @@ def get_system_metrics(
         raise HTTPException(status_code=403, detail=str(e))
     
     # Get various system metrics
-    from backend.domains.shared.models.task_execution import TaskExecution, TaskStatus
+    from backend.domains.tasks.models import TaskExecution, TaskStatus
     from sqlalchemy import func
     
     metrics = {

@@ -1,17 +1,12 @@
-"""Validation API endpoints."""
+"""Validation API endpoints - thin router layer."""
 
-import os
-import json
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ...dependencies import get_db, get_required_user
-from ...tasks.validation import process_validation_task
-from ...domains.shared.base import ModelAPIFactory
-from ... import auth
 from ...domains.user.models import User
-from ...domains.translation.schemas import ValidationRequest, StructuredValidationReport, ValidationResponse
-from ...domains.translation.repository import SqlAlchemyTranslationJobRepository
+from ...domains.validation.schemas import ValidationRequest
+from ...domains.validation import get_validation_routes
 
 router = APIRouter(tags=["validation"])
 
@@ -24,52 +19,8 @@ async def trigger_validation(
     current_user: User = Depends(get_required_user)
 ):
     """Trigger validation on a completed translation job."""
-    print(f"[VALIDATION API] Received validation request for job {job_id}")
-    print(f"[VALIDATION API] User: {current_user.clerk_user_id if current_user else 'None'}")
-    print(f"[VALIDATION API] Request params: quick={request.quick_validation}, rate={request.validation_sample_rate}")
-    
-    repo = SqlAlchemyTranslationJobRepository(db)
-    db_job = repo.get(job_id)
-    if db_job is None:
-        print(f"[VALIDATION API] Job {job_id} not found")
-        raise HTTPException(status_code=404, detail="Job not found")
-    
-    # Check ownership or admin role
-    user_is_admin = await auth.is_admin(current_user)
-    if not db_job.owner or (db_job.owner.clerk_user_id != current_user.clerk_user_id and not user_is_admin):
-        raise HTTPException(status_code=403, detail="Not authorized to validate this job")
-    
-    if db_job.status != "COMPLETED":
-        raise HTTPException(status_code=400, detail=f"Can only validate completed jobs. Current status: {db_job.status}")
-    
-    # If an api_key is provided, ensure it's a Gemini-style key since validation uses Gemini Structured Output
-    if request.api_key and not ModelAPIFactory.is_gemini_key(request.api_key):
-        raise HTTPException(status_code=400, detail="Validation requires a Gemini API key (GEMINI Structured Output).")
-    
-    # Convert validation_sample_rate from 0-1 to 0-100 for storage
-    validation_sample_rate_percent = int(request.validation_sample_rate * 100)
-    
-    # Update job with validation settings
-    db_job.validation_enabled = True
-    db_job.validation_status = "PENDING"
-    db_job.quick_validation = request.quick_validation
-    db_job.validation_sample_rate = validation_sample_rate_percent
-    db.commit()
-    
-    # Start validation using Celery
-    # Determine validation mode based on quick_validation flag
-    validation_mode = "quick" if request.quick_validation else "comprehensive"
-    
-    process_validation_task.delay(
-        job_id=job_id,
-        api_key=request.api_key,
-        model_name=request.model_name,
-        validation_mode=validation_mode,
-        sample_rate=validation_sample_rate_percent / 100.0,  # Convert percentage to decimal
-        user_id=current_user.id
-    )
-    
-    return {"message": "Validation started", "job_id": job_id}
+    ValidationRoutes = get_validation_routes()
+    return await ValidationRoutes.trigger_validation(db, current_user, job_id, request)
 
 
 @router.get("/jobs/{job_id}/validation-report", response_model=None)
@@ -79,61 +30,6 @@ async def get_validation_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_required_user)
 ):
-    """Get the validation report for a job.
-    
-    Args:
-        job_id: The job ID
-        structured: If True, returns a StructuredValidationReport with core ValidationResponse
-    
-    Returns:
-        Either raw JSON report or StructuredValidationReport depending on 'structured' param
-    """
-    print(f"--- [API] Getting validation report for job {job_id} ---")
-    repo = SqlAlchemyTranslationJobRepository(db)
-    db_job = repo.get(job_id)
-    if db_job is None:
-        raise HTTPException(status_code=404, detail="Job not found")
-    
-    # Check ownership or admin role
-    user_is_admin = await auth.is_admin(current_user)
-    if not db_job.owner or (db_job.owner.clerk_user_id != current_user.clerk_user_id and not user_is_admin):
-        raise HTTPException(status_code=403, detail="Not authorized to access this validation report")
-    
-    if db_job.validation_status != "COMPLETED":
-        print(f"--- [API] Validation not completed. Status: {db_job.validation_status} ---")
-        raise HTTPException(status_code=400, detail=f"Validation not completed. Current status: {db_job.validation_status}")
-    
-    print(f"--- [API] Validation report path: {db_job.validation_report_path} ---")
-    if not db_job.validation_report_path or not os.path.exists(db_job.validation_report_path):
-        print(f"--- [API] Report not found at path: {db_job.validation_report_path} ---")
-        raise HTTPException(status_code=404, detail="Validation report not found")
-    
-    # Read and return the JSON report
-    with open(db_job.validation_report_path, 'r', encoding='utf-8') as f:
-        report = json.load(f)
-    
-    print(f"--- [API] Successfully loaded validation report with {len(report.get('detailed_results', []))} results ---")
-    
-    # If structured response requested, parse and return StructuredValidationReport
-    if structured:
-        # Extract all validation cases from detailed results
-        all_cases = []
-        for result in report.get('detailed_results', []):
-            cases = result.get('structured_cases', [])
-            if not cases and result.get('validation_result'):
-                cases = result['validation_result'].get('structured_cases', [])
-            if cases:
-                all_cases.extend(cases)
-        
-        # Create ValidationResponse from cases
-        validation_response = ValidationResponse(cases=all_cases)
-        
-        # Return structured report
-        return StructuredValidationReport.from_validation_response(
-            response=validation_response,
-            summary=report.get('summary', {}),
-            results=report.get('detailed_results', [])
-        )
-    
-    # Default: return raw report
-    return report
+    """Get the validation report for a job."""
+    ValidationRoutes = get_validation_routes()
+    return await ValidationRoutes.get_validation_report(db, current_user, job_id, structured)

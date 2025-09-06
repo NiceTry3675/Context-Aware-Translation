@@ -17,7 +17,7 @@ from core.translation.document import TranslationDocument
 from core.translation.translation_pipeline import TranslationPipeline
 from core.config.builder import DynamicConfigBuilder
 from backend.domains.shared.base import ServiceBase
-from backend.domains.shared.analysis import StyleAnalysis, GlossaryAnalysis
+from backend.domains.analysis import StyleAnalysis, GlossaryAnalysis
 from backend.domains.shared import (
     SqlAlchemyUoW,
     OutboxRepository,

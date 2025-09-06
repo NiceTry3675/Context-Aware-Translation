@@ -9,7 +9,7 @@ import logging
 import uuid
 
 from ..database import SessionLocal
-from ..domains.shared.models.task_execution import TaskExecution, TaskStatus, TaskKind
+from ..domains.tasks.models import TaskExecution, TaskStatus, TaskKind
 from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)

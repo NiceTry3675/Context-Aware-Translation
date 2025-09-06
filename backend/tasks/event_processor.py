@@ -10,7 +10,7 @@ from ..celery_app import celery_app
 from .base import DatabaseTask
 from ..database import SessionLocal
 from ..domains.shared.models.outbox import OutboxEvent
-from ..domains.shared.models.task_execution import TaskKind
+from ..domains.tasks.models import TaskKind
 from sqlalchemy import and_
 
 logger = logging.getLogger(__name__)

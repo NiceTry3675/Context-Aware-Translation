@@ -14,6 +14,7 @@ class TaskStatus(str, Enum):
     SUCCESS = "success"
     FAILURE = "failure"
     REVOKED = "revoked"
+    RUNNING = "running"
 
 
 class TaskKind(str, Enum):
@@ -40,8 +41,8 @@ class TaskExecutionResponse(BaseModel):
     message: Optional[str] = None
     
     # Retry info
-    attempts: int
-    max_retries: int
+    attempts: int = 0
+    max_retries: int = 3
     last_error: Optional[str] = None
     next_retry_at: Optional[datetime] = None
     
@@ -63,6 +64,11 @@ class TaskExecutionResponse(BaseModel):
     celery_state: Optional[str] = None
     celery_info: Optional[Dict[str, Any]] = None
     
+    # Task arguments and results
+    args: Optional[List[Any]] = None
+    kwargs: Optional[Dict[str, Any]] = None
+    result: Optional[Any] = None
+    
     class Config:
         from_attributes = True
 
@@ -71,8 +77,12 @@ class TaskExecutionListResponse(BaseModel):
     """Response for list of task executions."""
     tasks: List[TaskExecutionResponse]
     total: int
-    page: int
-    page_size: int
+    offset: int = 0
+    limit: int = 20
+    
+    # Legacy fields for compatibility
+    page: Optional[int] = None
+    page_size: Optional[int] = None
     
     
 class TaskStatsResponse(BaseModel):
@@ -85,3 +95,12 @@ class TaskStatsResponse(BaseModel):
     success_rate: float
     failure_rate: float
     recent_failures: List[TaskExecutionResponse]
+
+
+class TaskStatsSimple(BaseModel):
+    """Simple task statistics."""
+    period_hours: int
+    status_counts: Dict[str, int]
+    kind_counts: Dict[str, int]
+    average_durations: Dict[str, float]
+    total_tasks: int

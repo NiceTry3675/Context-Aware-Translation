@@ -18,8 +18,9 @@ load_dotenv()
 # Import configuration
 from .config import get_settings
 
-# Import routers
-from .api.v1 import translation, community, admin, webhooks, announcements, schemas, illustrations, tasks
+# Import main API router
+from .api.v1 import router as api_v1_router
+from .api.v1 import schemas  # Keep schemas separate for special handling
 
 # Get settings instance
 settings = get_settings()
@@ -61,14 +62,8 @@ if upload_path.exists():
     app.mount("/static", StaticFiles(directory=str(upload_path)), name="static")
 
 # Include routers
-app.include_router(translation.router)
-app.include_router(community.router)
-app.include_router(admin.router)
-app.include_router(webhooks.router)
-app.include_router(announcements.router)
-app.include_router(schemas.router)
-app.include_router(illustrations.router, prefix="/api/v1/illustrations", tags=["illustrations"])
-app.include_router(tasks.router)
+app.include_router(api_v1_router)  # All v1 API routes
+app.include_router(schemas.router)  # Schema endpoint (for OpenAPI schema export)
 
 # Root endpoint
 @app.get("/")
