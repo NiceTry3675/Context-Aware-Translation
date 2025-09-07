@@ -92,9 +92,9 @@ curl -X POST "$API_URL/api/v1/jobs" \
 ```
 Context-Aware-Translation/
 ├── backend/                     # 🌐 FastAPI 백엔드 서버
-│   ├── api/                     # API 라우터 및 엔드포인트
-│   ├── models/                  # 데이터베이스 모델
-│   ├── services/                # 비즈니스 로직 (PDF 생성 등)
+│   ├── domains/                 # 도메인 주도 설계 (DDD)
+│   ├── celery_tasks/            # 비동기 작업 처리
+│   ├── config/                  # 설정 및 의존성 관리
 │   └── migrations/              # Alembic 마이그레이션
 ├── frontend/                    # 💻 Next.js 프론트엔드
 │   └── src/app/

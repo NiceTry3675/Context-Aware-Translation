@@ -4,8 +4,11 @@ import os
 from typing import List, Optional
 
 from fastapi import Depends, HTTPException, Header, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from svix import Webhook
+import asyncio
+import json
 
 from backend.config.dependencies import get_db, get_required_user
 from backend.domains.user.models import User
@@ -40,6 +43,38 @@ async def list_announcements(
     """Get active announcements (public endpoint)."""
     announcements = service.get_announcements(active_only=True)
     return [AnnouncementSchema.from_orm(a) for a in announcements]
+
+
+async def stream_announcements(
+    service: UserService = Depends(get_user_service)
+):
+    """Stream announcements via Server-Sent Events (SSE)."""
+    async def event_generator():
+        while True:
+            try:
+                # Get active announcements
+                announcements = service.get_announcements(active_only=True)
+                announcements_data = [AnnouncementSchema.from_orm(a).dict() for a in announcements]
+                
+                # Send as SSE event
+                yield f"data: {json.dumps(announcements_data)}\n\n"
+                
+                # Wait 30 seconds before next update
+                await asyncio.sleep(30)
+            except Exception as e:
+                # Send error event
+                yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+                break
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable proxy buffering
+        }
+    )
 
 
 async def handle_clerk_webhook(

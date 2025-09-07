@@ -6,11 +6,11 @@
  */
 
 /**
- * 문제가 되는 현재 한국어 문장 (최대 3~4문장)
+ * 문제가 되는 현재 한국어 문장 (최대 1~2문장)
  */
 export type CurrentKoreanSentence = string;
 /**
- * 대응하는 원문 문장 (최대 3~4문장)
+ * 대응하는 원문 문장 (최대 1~2문장)
  */
 export type ProblematicSourceSentence = string;
 /**
@@ -35,7 +35,7 @@ export type Severity = '1' | '2' | '3';
 /**
  * 권장 수정 번역문
  */
-export type CorrectedKoreanSentence = string | null;
+export type RecommendKoreanSentence = string;
 /**
  * 보조 라벨(예: terminology, formality, punctuation)
  */
@@ -50,7 +50,7 @@ export interface ValidationCase {
   reason: Reason;
   dimension: Dimension;
   severity: Severity;
-  corrected_korean_sentence?: CorrectedKoreanSentence;
+  recommend_korean_sentence: RecommendKoreanSentence;
   tags?: Tags;
   [k: string]: unknown;
 }

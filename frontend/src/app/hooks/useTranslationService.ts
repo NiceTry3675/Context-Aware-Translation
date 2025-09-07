@@ -74,7 +74,7 @@ export function useTranslationService({
       styleFormData.append('api_key', apiKey);
       styleFormData.append('model_name', selectedStyleModel || selectedModel);
 
-      const styleResponse = await fetch(`${apiUrl}/api/v1/analyze-style`, {
+      const styleResponse = await fetch(`${apiUrl}/api/v1/analysis/style`, {
         method: 'POST',
         body: styleFormData,
       });
@@ -105,7 +105,7 @@ export function useTranslationService({
         glossaryFormData.append('model_name', selectedGlossaryModel || selectedModel);
 
         try {
-          const glossaryResponse = await fetch(`${apiUrl}/api/v1/analyze-glossary`, {
+          const glossaryResponse = await fetch(`${apiUrl}/api/v1/analysis/glossary`, {
             method: 'POST',
             body: glossaryFormData,
           });

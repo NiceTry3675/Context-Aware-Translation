@@ -4,46 +4,6 @@
  */
 
 export interface paths {
-    "/api/v1/analyze-style": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Analyze Style
-         * @description Analyze the narrative style of a document.
-         */
-        post: operations["analyze_style_api_v1_analyze_style_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/analyze-glossary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Analyze Glossary
-         * @description Extract glossary terms from a document.
-         */
-        post: operations["analyze_glossary_api_v1_analyze_glossary_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/jobs": {
         parameters: {
             query?: never;
@@ -54,12 +14,37 @@ export interface paths {
         /**
          * List Jobs
          * @description List all translation jobs for the current user.
+         *
+         *     Args:
+         *         skip: Number of jobs to skip for pagination
+         *         limit: Maximum number of jobs to return
+         *         user: Current authenticated user
+         *         service: Translation domain service
+         *
+         *     Returns:
+         *         List of translation jobs
          */
         get: operations["list_jobs_api_v1_jobs_get"];
         put?: never;
         /**
          * Create Job
          * @description Create a new translation job.
+         *
+         *     Args:
+         *         file: File to translate
+         *         api_key: API key for translation service
+         *         model_name: Default model name
+         *         translation_model_name: Optional override for translation model
+         *         style_model_name: Optional override for style model
+         *         glossary_model_name: Optional override for glossary model
+         *         style_data: Optional style data
+         *         glossary_data: Optional glossary data
+         *         segment_size: Segment size for translation
+         *         user: Current authenticated user
+         *         service: Translation domain service
+         *
+         *     Returns:
+         *         Created translation job
          */
         post: operations["create_job_api_v1_jobs_post"];
         delete?: never;
@@ -77,16 +62,146 @@ export interface paths {
         };
         /**
          * Get Job
-         * @description Get a translation job.
+         * @description Get a translation job by ID.
+         *
+         *     Args:
+         *         job_id: Job ID
+         *         service: Translation domain service
+         *
+         *     Returns:
+         *         Translation job
          */
         get: operations["get_job_api_v1_jobs__job_id__get"];
         put?: never;
         post?: never;
         /**
          * Delete Job
-         * @description Delete a translation job and its associated files.
+         * @description Delete a translation job.
+         *
+         *     Args:
+         *         job_id: Job ID to delete
+         *         user: Current authenticated user
+         *         service: Translation domain service
+         *
+         *     Returns:
+         *         204 No Content response
          */
         delete: operations["delete_job_api_v1_jobs__job_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/validate/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate Job
+         * @description Trigger validation on a completed translation job.
+         *
+         *     Args:
+         *         job_id: Job ID
+         *         request: Validation request parameters
+         *         user: Current authenticated user
+         *         service: Validation domain service
+         *
+         *     Returns:
+         *         Task information for the validation job
+         */
+        post: operations["validate_job_api_v1_validate__job_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/validation/{job_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Validation Status
+         * @description Get the validation report for a job.
+         *
+         *     Args:
+         *         job_id: Job ID
+         *         structured: Whether to return structured response
+         *         user: Current authenticated user
+         *         service: Validation domain service
+         *
+         *     Returns:
+         *         Validation report (structured or plain)
+         */
+        get: operations["get_validation_status_api_v1_validation__job_id__status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/post-edit/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Edit Job
+         * @description Trigger post-editing on a validated translation job.
+         *
+         *     Args:
+         *         job_id: Job ID
+         *         request: Post-edit request parameters
+         *         user: Current authenticated user
+         *         service: Post-edit domain service
+         *
+         *     Returns:
+         *         Task information for the post-edit job
+         */
+        post: operations["post_edit_job_api_v1_post_edit__job_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/post-edit/{job_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Post Edit Status
+         * @description Get the post-edit report for a job.
+         *
+         *     Args:
+         *         job_id: Job ID
+         *         user: Current authenticated user
+         *         service: Post-edit domain service
+         *
+         *     Returns:
+         *         Post-edit report with changes and statistics
+         */
+        get: operations["get_post_edit_status_api_v1_post_edit__job_id__status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -100,77 +215,18 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Download Job Output Legacy
-         * @description Legacy download endpoint for backward compatibility.
-         */
-        get: operations["download_job_output_legacy_api_v1_download__job_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/{job_id}/output": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Download Job Output
+         * Download File
          * @description Download the output of a translation job.
-         */
-        get: operations["download_job_output_api_v1_jobs__job_id__output_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/{job_id}/logs/{log_type}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Download Job Log
-         * @description Download log files for a translation job.
-         */
-        get: operations["download_job_log_api_v1_jobs__job_id__logs__log_type__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/{job_id}/glossary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Job Glossary
-         * @description Get the final glossary for a completed translation job.
          *
          *     Args:
-         *         job_id: The job ID
-         *         structured: If True, returns a GlossaryAnalysisResponse with structured data
+         *         job_id: Job ID
+         *         user: Current authenticated user (from dependency)
+         *         db: Database session (from dependency)
          *
          *     Returns:
-         *         Either raw glossary dict or GlossaryAnalysisResponse depending on 'structured' param
+         *         FileResponse with the translated file
          */
-        get: operations["get_job_glossary_api_v1_jobs__job_id__glossary_get"];
+        get: operations["download_file_api_v1_download__job_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -179,176 +235,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/jobs/{job_id}/segments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Job Segments
-         * @description Get the segmented translation data for a completed translation job with pagination support.
-         */
-        get: operations["get_job_segments_api_v1_jobs__job_id__segments_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/{job_id}/content": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Job Content
-         * @description Get the translated content as text for a completed translation job.
-         */
-        get: operations["get_job_content_api_v1_jobs__job_id__content_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/{job_id}/pdf": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Download Job Pdf
-         * @description Download the translation as a PDF document with optional illustrations.
-         *
-         *     This endpoint generates a professional PDF document containing:
-         *     - Translated text segments
-         *     - Source text (optional)
-         *     - Illustrations for each segment where available
-         *     - Proper formatting and pagination
-         *
-         *     Args:
-         *         job_id: ID of the translation job
-         *         include_source: Whether to include source text alongside translations
-         *         include_illustrations: Whether to embed generated illustrations
-         *         page_size: Page size format (A4 or Letter)
-         *
-         *     Returns:
-         *         PDF file response
-         */
-        get: operations["download_job_pdf_api_v1_jobs__job_id__pdf_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/{job_id}/validation": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Trigger Validation
-         * @description Trigger validation on a completed translation job.
-         */
-        put: operations["trigger_validation_api_v1_jobs__job_id__validation_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/{job_id}/validation-report": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Validation Report
-         * @description Get the validation report for a job.
-         *
-         *     Args:
-         *         job_id: The job ID
-         *         structured: If True, returns a StructuredValidationReport with core ValidationResponse
-         *
-         *     Returns:
-         *         Either raw JSON report or StructuredValidationReport depending on 'structured' param
-         */
-        get: operations["get_validation_report_api_v1_jobs__job_id__validation_report_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/{job_id}/post-edit": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Trigger Post Edit
-         * @description Trigger post-editing on a validated translation job.
-         */
-        put: operations["trigger_post_edit_api_v1_jobs__job_id__post_edit_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/jobs/{job_id}/post-edit-log": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Post Edit Log
-         * @description Get the post-edit log for a job.
-         *
-         *     Args:
-         *         job_id: The job ID
-         *         structured: If True, returns a StructuredPostEditLog with ValidationCase objects
-         *
-         *     Returns:
-         *         Either raw JSON log or StructuredPostEditLog depending on 'structured' param
-         */
-        get: operations["get_post_edit_log_api_v1_jobs__job_id__post_edit_log_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/community/upload-image": {
+    "/api/v1/export/{job_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -358,17 +245,137 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Upload Image
-         * @description Upload an image for posts.
+         * Export Job
+         * @description Export translation job in different formats.
+         *
+         *     Args:
+         *         job_id: Job ID
+         *         format: Export format (pdf, etc.)
+         *         include_source: Whether to include source text
+         *         include_illustrations: Whether to include illustrations
+         *         page_size: Page size format
+         *         user: Current authenticated user (from dependency)
+         *         db: Database session (from dependency)
+         *
+         *     Returns:
+         *         Response with exported file
          */
-        post: operations["upload_image_community_upload_image_post"];
+        post: operations["export_job_api_v1_export__job_id__post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/community/categories": {
+    "/api/v1/analysis/style": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze Style
+         * @description Analyze the narrative style of a document.
+         *
+         *     Args:
+         *         file: Uploaded file to analyze
+         *         api_key: API key for the AI model
+         *         model_name: Model to use for analysis
+         *
+         *     Returns:
+         *         StyleAnalysisResponse with analysis results
+         */
+        post: operations["analyze_style_api_v1_analysis_style_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analysis/glossary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze Glossary
+         * @description Extract glossary terms from a document.
+         *
+         *     Args:
+         *         file: Uploaded file to analyze
+         *         api_key: API key for the AI model
+         *         model_name: Model to use for analysis
+         *
+         *     Returns:
+         *         GlossaryAnalysisResponse with extracted terms
+         */
+        post: operations["analyze_glossary_api_v1_analysis_glossary_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analysis/characters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze Characters
+         * @description Analyze characters in a document.
+         *
+         *     Args:
+         *         file: Uploaded file to analyze
+         *         api_key: API key for the AI model
+         *         model_name: Model to use for analysis
+         *
+         *     Returns:
+         *         CharacterAnalysisResponse with character analysis results
+         */
+        post: operations["analyze_characters_api_v1_analysis_characters_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/illustrations/generate/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Illustrations
+         * @description Generate illustration prompts for a translation job.
+         *
+         *     This endpoint triggers generation of detailed illustration prompts for all or selected segments
+         *     of a completed translation job. The prompts can then be used with image generation services
+         *     like DALL-E, Midjourney, or Stable Diffusion to create actual illustrations.
+         */
+        post: operations["generate_illustrations_api_v1_illustrations_generate__job_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/illustrations/{job_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -376,10 +383,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Categories
-         * @description Get all post categories.
+         * Get Job Illustrations
+         * @description Get all illustration prompts for a translation job.
+         *
+         *     Returns metadata about all generated illustration prompts for the specified job.
+         *     These prompts can be used with external image generation services.
          */
-        get: operations["get_categories_community_categories_get"];
+        get: operations["get_job_illustrations_api_v1_illustrations__job_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -388,7 +398,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/community/categories/overview": {
+    "/api/v1/tasks": {
         parameters: {
             query?: never;
             header?: never;
@@ -396,10 +406,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Categories With Stats
-         * @description Get categories with their recent posts and statistics.
+         * List Tasks
+         * @description List tasks with optional filters.
+         *
+         *     - Users can see their own tasks
+         *     - Admins can see all tasks
+         *     - Anonymous users can't see any tasks
          */
-        get: operations["get_categories_with_stats_community_categories_overview_get"];
+        get: operations["list_tasks_api_v1_tasks_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -408,7 +422,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/community/posts": {
+    "/api/v1/tasks/stats/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Task Stats
+         * @description Get task execution statistics.
+         *
+         *     Admin only endpoint.
+         */
+        get: operations["get_task_stats_api_v1_tasks_stats_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Task Status
+         * @description Get the status of a specific task.
+         *
+         *     Returns both database tracking info and real-time Celery status.
+         */
+        get: operations["get_task_status_api_v1_tasks__task_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Task
+         * @description Cancel a running task.
+         *
+         *     Only the task owner or an admin can cancel a task.
+         */
+        post: operations["cancel_task_api_v1_tasks__task_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/job/{job_id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Job Tasks
+         * @description Get all tasks associated with a specific job.
+         */
+        get: operations["get_job_tasks_api_v1_tasks_job__job_id__tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/posts": {
         parameters: {
             query?: never;
             header?: never;
@@ -419,20 +519,20 @@ export interface paths {
          * List Posts
          * @description Get posts with filtering and pagination.
          */
-        get: operations["list_posts_community_posts_get"];
+        get: operations["list_posts_api_v1_posts_get"];
         put?: never;
         /**
          * Create Post
          * @description Create a new post.
          */
-        post: operations["create_post_community_posts_post"];
+        post: operations["create_post_api_v1_posts_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/community/posts/{post_id}": {
+    "/api/v1/posts/{post_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -443,24 +543,16 @@ export interface paths {
          * Get Post
          * @description Get a specific post with comments.
          */
-        get: operations["get_post_community_posts__post_id__get"];
-        /**
-         * Update Post
-         * @description Update a post.
-         */
-        put: operations["update_post_community_posts__post_id__put"];
+        get: operations["get_post_api_v1_posts__post_id__get"];
+        put?: never;
         post?: never;
-        /**
-         * Delete Post
-         * @description Delete a post.
-         */
-        delete: operations["delete_post_community_posts__post_id__delete"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/community/posts/{post_id}/view": {
+    "/api/v1/comments": {
         parameters: {
             query?: never;
             header?: never;
@@ -468,43 +560,79 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put?: never;
-        /**
-         * Increment View Count
-         * @description Increment post view count.
-         */
-        post: operations["increment_view_count_community_posts__post_id__view_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/community/posts/{post_id}/comments": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Post Comments
-         * @description Get comments for a post.
-         */
-        get: operations["get_post_comments_community_posts__post_id__comments_get"];
         put?: never;
         /**
          * Create Comment
          * @description Create a comment on a post.
          */
-        post: operations["create_comment_community_posts__post_id__comments_post"];
+        post: operations["create_comment_api_v1_comments_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/community/comments/{comment_id}": {
+    "/api/v1/users/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Current User
+         * @description Get the current user's profile.
+         */
+        get: operations["get_current_user_api_v1_users_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Announcements
+         * @description Get active announcements (public endpoint).
+         */
+        get: operations["list_announcements_api_v1_announcements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/announcements/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream Announcements
+         * @description Stream announcements via Server-Sent Events (SSE).
+         */
+        get: operations["stream_announcements_api_v1_announcements_stream_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/posts/{post_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -512,61 +640,13 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /**
-         * Update Comment
-         * @description Update a comment.
-         */
-        put: operations["update_comment_community_comments__comment_id__put"];
-        post?: never;
-        /**
-         * Delete Comment
-         * @description Delete a comment.
-         */
-        delete: operations["delete_comment_community_comments__comment_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/community/announcements": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Announcements
-         * @description Get all active announcements.
-         */
-        get: operations["get_announcements_community_announcements_get"];
-        put?: never;
-        /**
-         * Create Announcement
-         * @description Create a new announcement (admin only).
-         */
-        post: operations["create_announcement_community_announcements_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/community/announcements/{announcement_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
         put?: never;
         post?: never;
         /**
-         * Delete Announcement
-         * @description Delete an announcement (admin only).
+         * Delete Any Post
+         * @description Delete any post (requires POST_DELETE_ANY permission).
          */
-        delete: operations["delete_announcement_community_announcements__announcement_id__delete"];
+        delete: operations["delete_any_post_api_v1_admin_posts__post_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -582,110 +662,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create New Announcement
-         * @description Create a new announcement.
+         * Create Announcement
+         * @description Create a new announcement (requires ANNOUNCEMENT_CREATE permission).
          */
-        post: operations["create_new_announcement_api_v1_admin_announcements_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/announcements/{announcement_id}/deactivate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Deactivate Existing Announcement
-         * @description Deactivate a specific announcement.
-         */
-        put: operations["deactivate_existing_announcement_api_v1_admin_announcements__announcement_id__deactivate_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/announcements/deactivate-all": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Deactivate All Announcements
-         * @description Deactivate all active announcements.
-         */
-        put: operations["deactivate_all_announcements_api_v1_admin_announcements_deactivate_all_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/community/init-categories": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Initialize Categories
-         * @description Initialize default post categories.
-         */
-        post: operations["initialize_categories_api_v1_admin_community_init_categories_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/webhooks/clerk": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Handle Clerk Webhook
-         * @description Handle Clerk webhook events for user management.
-         */
-        post: operations["handle_clerk_webhook_api_v1_webhooks_clerk_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/announcements/stream": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Stream announcements via Server-Sent Events
-         * @description Stream announcements via Server-Sent Events.
-         */
-        get: operations["stream_announcements_api_v1_announcements_stream_get"];
-        put?: never;
-        post?: never;
+        post: operations["create_announcement_api_v1_admin_announcements_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -766,334 +746,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/illustrations/{job_id}/generate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Generate Illustrations
-         * @description Generate illustration prompts for a translation job.
-         *
-         *     This endpoint triggers generation of detailed illustration prompts for all or selected segments
-         *     of a completed translation job. The prompts can then be used with image generation services
-         *     like DALL-E, Midjourney, or Stable Diffusion to create actual illustrations.
-         */
-        post: operations["generate_illustrations_api_v1_illustrations__job_id__generate_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/illustrations/{job_id}/character/base/generate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Generate Character Bases
-         * @description Generate base character images (3 variations) focusing only on appearance.
-         */
-        post: operations["generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/illustrations/{job_id}/character/appearance/analyze": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Analyze Character Appearance
-         * @description Analyze early novel text to produce appearance-only prompt candidates for the protagonist.
-         */
-        post: operations["analyze_character_appearance_api_v1_illustrations__job_id__character_appearance_analyze_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/illustrations/{job_id}/character/base/generate-from-prompt": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Generate Base From Prompt
-         * @description Generate base image(s) directly from provided prompt text(s).
-         *     Accepts either JSON body with { prompts: string[] } or multipart with prompts_json/prompt.
-         */
-        post: operations["generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/illustrations/{job_id}/character/base": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Character Bases
-         * @description Get generated base character images and current selection.
-         */
-        get: operations["get_character_bases_api_v1_illustrations__job_id__character_base_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/illustrations/{job_id}/character/base/{index}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Character Base Asset
-         * @description Get a specific base asset (image if available, otherwise prompt JSON).
-         */
-        get: operations["get_character_base_asset_api_v1_illustrations__job_id__character_base__index__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/illustrations/{job_id}/character/base/select": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Select Character Base
-         * @description Select one of the generated base images by index.
-         */
-        post: operations["select_character_base_api_v1_illustrations__job_id__character_base_select_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/illustrations/{job_id}/illustrations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Job Illustrations
-         * @description Get all illustration prompts for a translation job.
-         *
-         *     Returns metadata about all generated illustration prompts for the specified job.
-         *     These prompts can be used with external image generation services.
-         */
-        get: operations["get_job_illustrations_api_v1_illustrations__job_id__illustrations_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/illustrations/{job_id}/illustration/{segment_index}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Illustration Prompt
-         * @description Get the illustration for a specific segment.
-         *
-         *     Returns the generated image if available, otherwise returns the prompt JSON file.
-         */
-        get: operations["get_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__get"];
-        put?: never;
-        post?: never;
-        /**
-         * Delete Illustration Prompt
-         * @description Delete a specific illustration and its prompt.
-         *
-         *     Removes both the image file (if exists) and prompt file, and updates the job metadata.
-         */
-        delete: operations["delete_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/illustrations/{job_id}/regenerate/{segment_index}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Regenerate Illustration Prompt
-         * @description Regenerate an illustration prompt for a specific segment.
-         *
-         *     This allows regenerating a single illustration prompt with optional new style hints.
-         */
-        post: operations["regenerate_illustration_prompt_api_v1_illustrations__job_id__regenerate__segment_index__post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/tasks/{task_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Task Status
-         * @description Get the status of a specific task.
-         *
-         *     Returns both database tracking info and real-time Celery status.
-         */
-        get: operations["get_task_status_api_v1_tasks__task_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/tasks/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Tasks
-         * @description List tasks with optional filters.
-         *
-         *     - Users can see their own tasks
-         *     - Admins can see all tasks
-         *     - Anonymous users can't see any tasks
-         */
-        get: operations["list_tasks_api_v1_tasks__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/tasks/{task_id}/cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Cancel Task
-         * @description Cancel a running task.
-         *
-         *     Only the task owner or an admin can cancel a task.
-         */
-        post: operations["cancel_task_api_v1_tasks__task_id__cancel_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/tasks/job/{job_id}/tasks": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Job Tasks
-         * @description Get all tasks associated with a specific job.
-         */
-        get: operations["get_job_tasks_api_v1_tasks_job__job_id__tasks_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/tasks/stats/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Task Stats
-         * @description Get task execution statistics.
-         *
-         *     Admin only endpoint.
-         */
-        get: operations["get_task_stats_api_v1_tasks_stats_summary_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/": {
         parameters: {
             query?: never;
@@ -1145,35 +797,29 @@ export interface components {
              */
             is_active: boolean;
         };
-        /** Body_analyze_glossary_api_v1_analyze_glossary_post */
-        Body_analyze_glossary_api_v1_analyze_glossary_post: {
+        /** Body_analyze_characters_api_v1_analysis_characters_post */
+        Body_analyze_characters_api_v1_analysis_characters_post: {
             /**
              * File
              * Format: binary
              */
             file: string;
-            /** Api Key */
-            api_key: string;
-            /**
-             * Model Name
-             * @default gemini-2.5-flash-lite
-             */
-            model_name: string;
         };
-        /** Body_analyze_style_api_v1_analyze_style_post */
-        Body_analyze_style_api_v1_analyze_style_post: {
+        /** Body_analyze_glossary_api_v1_analysis_glossary_post */
+        Body_analyze_glossary_api_v1_analysis_glossary_post: {
             /**
              * File
              * Format: binary
              */
             file: string;
-            /** Api Key */
-            api_key: string;
+        };
+        /** Body_analyze_style_api_v1_analysis_style_post */
+        Body_analyze_style_api_v1_analysis_style_post: {
             /**
-             * Model Name
-             * @default gemini-2.5-flash-lite
+             * File
+             * Format: binary
              */
-            model_name: string;
+            file: string;
         };
         /** Body_create_job_api_v1_jobs_post */
         Body_create_job_api_v1_jobs_post: {
@@ -1196,38 +842,28 @@ export interface components {
             /** Glossary Model Name */
             glossary_model_name?: string | null;
             /** Style Data */
-            style_data?: string;
+            style_data?: string | null;
             /** Glossary Data */
-            glossary_data?: string;
+            glossary_data?: string | null;
             /**
              * Segment Size
              * @default 15000
              */
             segment_size: number;
         };
-        /** Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post */
-        Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post: {
-            /** Reference Image */
-            reference_image?: string | null;
-            /** Prompts Json */
-            prompts_json?: string | null;
-            /** Prompt */
-            prompt?: string | null;
-        };
-        /** Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post */
-        Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post: {
-            /** Reference Image */
-            reference_image?: string | null;
-            /** Profile Json */
-            profile_json?: string | null;
-        };
-        /** Body_upload_image_community_upload_image_post */
-        Body_upload_image_community_upload_image_post: {
-            /**
-             * File
-             * Format: binary
-             */
-            file: string;
+        /**
+         * CharacterAnalysisResponse
+         * @description Response for character analysis
+         */
+        CharacterAnalysisResponse: {
+            /** Characters */
+            characters: {
+                [key: string]: unknown;
+            }[];
+            /** Interactions */
+            interactions?: components["schemas"]["CharacterInteraction"][] | null;
+            /** Dialogue Analysis */
+            dialogue_analysis?: components["schemas"]["DialogueAnalysisResult"][] | null;
         };
         /**
          * CharacterInteraction
@@ -1288,11 +924,6 @@ export interface components {
             is_private: boolean;
             /** Post Id */
             post_id: number;
-        };
-        /** CommentUpdate */
-        CommentUpdate: {
-            /** Content */
-            content: string;
         };
         /**
          * DialogueAnalysisResult
@@ -1649,7 +1280,10 @@ export interface components {
              */
             images: string[];
         };
-        /** PostEditRequest */
+        /**
+         * PostEditRequest
+         * @description Request schema for post-editing operations.
+         */
         PostEditRequest: {
             /** Selected Cases */
             selected_cases?: {
@@ -1659,49 +1293,6 @@ export interface components {
             model_name?: string | null;
             /** Api Key */
             api_key?: string | null;
-        };
-        /** PostList */
-        PostList: {
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /** Updated At */
-            updated_at?: string | null;
-            /** Id */
-            id: number;
-            /** Title */
-            title: string;
-            author: components["schemas"]["User"];
-            category: components["schemas"]["PostCategory"];
-            /** Is Pinned */
-            is_pinned: boolean;
-            /** Is Private */
-            is_private: boolean;
-            /** View Count */
-            view_count: number;
-            /**
-             * Images
-             * @default []
-             */
-            images: string[];
-            /**
-             * Comment Count
-             * @default 0
-             */
-            comment_count: number;
-        };
-        /** PostUpdate */
-        PostUpdate: {
-            /** Title */
-            title?: string | null;
-            /** Content */
-            content?: string | null;
-            /** Is Pinned */
-            is_pinned?: boolean | null;
-            /** Images */
-            images?: string[] | null;
         };
         /**
          * StyleAnalysisResponse
@@ -1729,10 +1320,20 @@ export interface components {
             tasks: components["schemas"]["TaskExecutionResponse"][];
             /** Total */
             total: number;
+            /**
+             * Offset
+             * @default 0
+             */
+            offset: number;
+            /**
+             * Limit
+             * @default 20
+             */
+            limit: number;
             /** Page */
-            page: number;
+            page?: number | null;
             /** Page Size */
-            page_size: number;
+            page_size?: number | null;
         };
         /**
          * TaskExecutionResponse
@@ -1751,9 +1352,15 @@ export interface components {
             progress?: number | null;
             /** Message */
             message?: string | null;
-            /** Attempts */
+            /**
+             * Attempts
+             * @default 0
+             */
             attempts: number;
-            /** Max Retries */
+            /**
+             * Max Retries
+             * @default 3
+             */
             max_retries: number;
             /** Last Error */
             last_error?: string | null;
@@ -1784,6 +1391,14 @@ export interface components {
             celery_info?: {
                 [key: string]: unknown;
             } | null;
+            /** Args */
+            args?: unknown[] | null;
+            /** Kwargs */
+            kwargs?: {
+                [key: string]: unknown;
+            } | null;
+            /** Result */
+            result?: unknown | null;
         };
         /**
          * TaskKind
@@ -1792,11 +1407,33 @@ export interface components {
          */
         TaskKind: "translation" | "validation" | "post_edit" | "illustration" | "event_processing" | "maintenance" | "other";
         /**
+         * TaskStatsSimple
+         * @description Simple task statistics.
+         */
+        TaskStatsSimple: {
+            /** Period Hours */
+            period_hours: number;
+            /** Status Counts */
+            status_counts: {
+                [key: string]: number;
+            };
+            /** Kind Counts */
+            kind_counts: {
+                [key: string]: number;
+            };
+            /** Average Durations */
+            average_durations: {
+                [key: string]: number;
+            };
+            /** Total Tasks */
+            total_tasks: number;
+        };
+        /**
          * TaskStatus
          * @description Task execution status.
          * @enum {string}
          */
-        TaskStatus: "pending" | "started" | "retry" | "success" | "failure" | "revoked";
+        TaskStatus: "pending" | "started" | "retry" | "success" | "failure" | "revoked" | "running";
         /**
          * TranslatedTerm
          * @description Single term translation pair.
@@ -1929,7 +1566,10 @@ export interface components {
             /** Error Type */
             type: string;
         };
-        /** ValidationRequest */
+        /**
+         * ValidationRequest
+         * @description Request schema for validation operations.
+         */
         ValidationRequest: {
             /**
              * Quick Validation
@@ -1955,72 +1595,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    analyze_style_api_v1_analyze_style_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": components["schemas"]["Body_analyze_style_api_v1_analyze_style_post"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StyleAnalysisResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    analyze_glossary_api_v1_analyze_glossary_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": components["schemas"]["Body_analyze_glossary_api_v1_analyze_glossary_post"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["GlossaryAnalysisResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_jobs_api_v1_jobs_get: {
         parameters: {
             query?: {
@@ -2146,239 +1720,7 @@ export interface operations {
             };
         };
     };
-    download_job_output_legacy_api_v1_download__job_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    download_job_output_api_v1_jobs__job_id__output_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    download_job_log_api_v1_jobs__job_id__logs__log_type__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: number;
-                log_type: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_job_glossary_api_v1_jobs__job_id__glossary_get: {
-        parameters: {
-            query?: {
-                structured?: boolean;
-            };
-            header?: never;
-            path: {
-                job_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_job_segments_api_v1_jobs__job_id__segments_get: {
-        parameters: {
-            query?: {
-                /** @description Starting segment index */
-                offset?: number;
-                /** @description Number of segments to return */
-                limit?: number;
-            };
-            header?: never;
-            path: {
-                job_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_job_content_api_v1_jobs__job_id__content_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    download_job_pdf_api_v1_jobs__job_id__pdf_get: {
-        parameters: {
-            query?: {
-                /** @description Include source text in PDF */
-                include_source?: boolean;
-                /** @description Include illustrations in PDF */
-                include_illustrations?: boolean;
-                /** @description Page size (A4 or Letter) */
-                page_size?: string;
-            };
-            header?: never;
-            path: {
-                job_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    trigger_validation_api_v1_jobs__job_id__validation_put: {
+    validate_job_api_v1_validate__job_id__post: {
         parameters: {
             query?: never;
             header?: never;
@@ -2413,7 +1755,7 @@ export interface operations {
             };
         };
     };
-    get_validation_report_api_v1_jobs__job_id__validation_report_get: {
+    get_validation_status_api_v1_validation__job_id__status_get: {
         parameters: {
             query?: {
                 structured?: boolean;
@@ -2446,7 +1788,7 @@ export interface operations {
             };
         };
     };
-    trigger_post_edit_api_v1_jobs__job_id__post_edit_put: {
+    post_edit_job_api_v1_post_edit__job_id__post: {
         parameters: {
             query?: never;
             header?: never;
@@ -2481,10 +1823,75 @@ export interface operations {
             };
         };
     };
-    get_post_edit_log_api_v1_jobs__job_id__post_edit_log_get: {
+    get_post_edit_status_api_v1_post_edit__job_id__status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_file_api_v1_download__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_job_api_v1_export__job_id__post: {
         parameters: {
             query?: {
-                structured?: boolean;
+                format?: string;
+                include_source?: boolean;
+                include_illustrations?: boolean;
+                page_size?: string;
             };
             header?: never;
             path: {
@@ -2514,16 +1921,131 @@ export interface operations {
             };
         };
     };
-    upload_image_community_upload_image_post: {
+    analyze_style_api_v1_analysis_style_post: {
         parameters: {
-            query?: never;
+            query: {
+                api_key: string;
+                model_name?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["Body_upload_image_community_upload_image_post"];
+                "multipart/form-data": components["schemas"]["Body_analyze_style_api_v1_analysis_style_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StyleAnalysisResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyze_glossary_api_v1_analysis_glossary_post: {
+        parameters: {
+            query: {
+                api_key: string;
+                model_name?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_analyze_glossary_api_v1_analysis_glossary_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlossaryAnalysisResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyze_characters_api_v1_analysis_characters_post: {
+        parameters: {
+            query: {
+                api_key: string;
+                model_name?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_analyze_characters_api_v1_analysis_characters_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharacterAnalysisResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_illustrations_api_v1_illustrations_generate__job_id__post: {
+        parameters: {
+            query: {
+                /** @description API key for Gemini */
+                api_key: string;
+                /** @description Maximum number of illustration prompts to generate */
+                max_illustrations?: number | null;
+            };
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IllustrationConfig"];
             };
         };
         responses: {
@@ -2547,31 +2069,13 @@ export interface operations {
             };
         };
     };
-    get_categories_community_categories_get: {
+    get_job_illustrations_api_v1_illustrations__job_id__get: {
         parameters: {
             query?: never;
             header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PostCategory"][];
-                };
+            path: {
+                job_id: number;
             };
-        };
-    };
-    get_categories_with_stats_community_categories_overview_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -2585,9 +2089,178 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
-    list_posts_community_posts_get: {
+    list_tasks_api_v1_tasks_get: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["TaskKind"] | null;
+                status?: components["schemas"]["TaskStatus"] | null;
+                job_id?: number | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskExecutionListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_task_stats_api_v1_tasks_stats_summary_get: {
+        parameters: {
+            query?: {
+                /** @description Number of hours to look back */
+                hours?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskStatsSimple"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_task_status_api_v1_tasks__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskExecutionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_task_api_v1_tasks__task_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_job_tasks_api_v1_tasks_job__job_id__tasks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskExecutionResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_posts_api_v1_posts_get: {
         parameters: {
             query?: {
                 /** @description Category name to filter by */
@@ -2611,7 +2284,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PostList"][];
+                    "application/json": components["schemas"]["Post"][];
                 };
             };
             /** @description Validation Error */
@@ -2625,7 +2298,7 @@ export interface operations {
             };
         };
     };
-    create_post_community_posts_post: {
+    create_post_api_v1_posts_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -2658,7 +2331,7 @@ export interface operations {
             };
         };
     };
-    get_post_community_posts__post_id__get: {
+    get_post_api_v1_posts__post_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -2689,141 +2362,13 @@ export interface operations {
             };
         };
     };
-    update_post_community_posts__post_id__put: {
+    create_comment_api_v1_comments_post: {
         parameters: {
-            query?: never;
-            header?: never;
-            path: {
+            query: {
                 post_id: number;
             };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PostUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Post"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_post_community_posts__post_id__delete: {
-        parameters: {
-            query?: never;
             header?: never;
-            path: {
-                post_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    increment_view_count_community_posts__post_id__view_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                post_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_post_comments_community_posts__post_id__comments_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                post_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Comment"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_comment_community_posts__post_id__comments_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                post_id: number;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody: {
@@ -2852,48 +2397,11 @@ export interface operations {
             };
         };
     };
-    update_comment_community_comments__comment_id__put: {
+    get_current_user_api_v1_users_me_get: {
         parameters: {
             query?: never;
             header?: never;
-            path: {
-                comment_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CommentUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Comment"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_comment_community_comments__comment_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                comment_id: number;
-            };
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;
@@ -2904,21 +2412,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
+                    "application/json": components["schemas"]["User"];
                 };
             };
         };
     };
-    get_announcements_community_announcements_get: {
+    list_announcements_api_v1_announcements_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -2938,7 +2437,56 @@ export interface operations {
             };
         };
     };
-    create_announcement_community_announcements_post: {
+    stream_announcements_api_v1_announcements_stream_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    delete_any_post_api_v1_admin_posts__post_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_announcement_api_v1_admin_announcements_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -2967,220 +2515,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_announcement_community_announcements__announcement_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                announcement_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_new_announcement_api_v1_admin_announcements_post: {
-        parameters: {
-            query?: never;
-            header: {
-                "x-admin-secret": string;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AnnouncementCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    deactivate_existing_announcement_api_v1_admin_announcements__announcement_id__deactivate_put: {
-        parameters: {
-            query?: never;
-            header: {
-                "x-admin-secret": string;
-            };
-            path: {
-                announcement_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    deactivate_all_announcements_api_v1_admin_announcements_deactivate_all_put: {
-        parameters: {
-            query?: never;
-            header: {
-                "x-admin-secret": string;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    initialize_categories_api_v1_admin_community_init_categories_post: {
-        parameters: {
-            query?: never;
-            header: {
-                "x-admin-secret": string;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    handle_clerk_webhook_api_v1_webhooks_clerk_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "svix-id"?: string;
-                "svix-timestamp"?: string;
-                "svix-signature"?: string;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    stream_announcements_api_v1_announcements_stream_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
                 };
             };
         };
@@ -3258,554 +2592,6 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
-                };
-            };
-        };
-    };
-    generate_illustrations_api_v1_illustrations__job_id__generate_post: {
-        parameters: {
-            query: {
-                /** @description API key for Gemini */
-                api_key: string;
-                /** @description Maximum number of illustration prompts to generate */
-                max_illustrations?: number | null;
-            };
-            header?: never;
-            path: {
-                job_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["IllustrationConfig"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post: {
-        parameters: {
-            query: {
-                /** @description API key for Gemini */
-                api_key: string;
-            };
-            header?: never;
-            path: {
-                job_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "multipart/form-data": components["schemas"]["Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    analyze_character_appearance_api_v1_illustrations__job_id__character_appearance_analyze_post: {
-        parameters: {
-            query: {
-                /** @description API key for model */
-                api_key: string;
-                /** @description Optional protagonist name */
-                protagonist_name?: string | null;
-                /** @description Model name for analysis */
-                model_name?: string;
-            };
-            header?: never;
-            path: {
-                job_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post: {
-        parameters: {
-            query: {
-                /** @description API key for Gemini */
-                api_key: string;
-                /** @description How many variants to generate when a single prompt is provided */
-                num_variations?: number;
-            };
-            header?: never;
-            path: {
-                job_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "multipart/form-data": components["schemas"]["Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_character_bases_api_v1_illustrations__job_id__character_base_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_character_base_asset_api_v1_illustrations__job_id__character_base__index__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: number;
-                index: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    select_character_base_api_v1_illustrations__job_id__character_base_select_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": {
-                    [key: string]: number;
-                };
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_job_illustrations_api_v1_illustrations__job_id__illustrations_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: number;
-                segment_index: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: number;
-                segment_index: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    regenerate_illustration_prompt_api_v1_illustrations__job_id__regenerate__segment_index__post: {
-        parameters: {
-            query: {
-                /** @description Optional style hints for regeneration */
-                style_hints?: string | null;
-                /** @description API key for Gemini */
-                api_key: string;
-            };
-            header?: never;
-            path: {
-                job_id: number;
-                segment_index: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_task_status_api_v1_tasks__task_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                task_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TaskExecutionResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_tasks_api_v1_tasks__get: {
-        parameters: {
-            query?: {
-                kind?: components["schemas"]["TaskKind"] | null;
-                status?: components["schemas"]["TaskStatus"] | null;
-                job_id?: number | null;
-                limit?: number;
-                offset?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TaskExecutionListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    cancel_task_api_v1_tasks__task_id__cancel_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                task_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_job_tasks_api_v1_tasks_job__job_id__tasks_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                job_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TaskExecutionResponse"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_task_stats_api_v1_tasks_stats_summary_get: {
-        parameters: {
-            query?: {
-                /** @description Number of hours to look back */
-                hours?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

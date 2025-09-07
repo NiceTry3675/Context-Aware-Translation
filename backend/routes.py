@@ -217,6 +217,12 @@ router.add_api_route(
     response_model=List[Announcement],
     tags=["users"]
 )
+router.add_api_route(
+    "/announcements/stream", 
+    user.stream_announcements, 
+    methods=["GET"],
+    tags=["users"]
+)
 
 # Admin endpoints
 router.add_api_route(
