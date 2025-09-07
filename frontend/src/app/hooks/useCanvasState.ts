@@ -110,6 +110,7 @@ export function useCanvasState() {
     postEditLog,
     translationContent,
     translationSegments,
+    illustrationStatus,
     loading: dataLoading,
     error: dataError,
     selectedIssues,
@@ -121,7 +122,8 @@ export function useCanvasState() {
     jobId: jobId || '', 
     jobStatus: selectedJob?.status || '', 
     validationStatus: selectedJob?.validation_status || undefined,
-    postEditStatus: selectedJob?.post_edit_status || undefined
+    postEditStatus: selectedJob?.post_edit_status || undefined,
+    illustrationsStatus: selectedJob?.illustrations_status || undefined
   });
 
   // State for dialogs, managed centrally
@@ -151,7 +153,13 @@ export function useCanvasState() {
     apiUrl: API_URL,
     apiKey,
     onSuccess: () => {
-      if (jobId) refreshJobPublic(parseInt(jobId, 10));
+      if (jobId) {
+        refreshJobPublic(parseInt(jobId, 10));
+        // Reload data to fetch validation report or post-edit log
+        setTimeout(() => {
+          loadData();
+        }, 2000); // Wait 2 seconds for backend to process
+      }
     },
     onError: (error) => {
       // TODO: Show error in a snackbar
@@ -423,6 +431,7 @@ export function useCanvasState() {
     postEditLog,
     translationContent,
     translationSegments,
+    illustrationStatus,
     fullSourceText,
     selectedIssues,
     setSelectedIssues,

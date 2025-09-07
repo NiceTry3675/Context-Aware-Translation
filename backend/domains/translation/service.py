@@ -21,6 +21,7 @@ from fastapi.responses import FileResponse
 
 from core.translation.document import TranslationDocument
 from core.translation.translation_pipeline import TranslationPipeline
+from .storage_adapter import create_storage_handler
 from core.config.builder import DynamicConfigBuilder
 from backend.domains.shared.service_base import DomainServiceBase
 from backend.domains.analysis import StyleAnalysis, GlossaryAnalysis
@@ -385,11 +386,15 @@ class TranslationDomainService(DomainServiceBase):
         style_model_api = self.validate_and_create_model(api_key, style_model_name) if style_model_name else model_api
         glossary_model_api = self.validate_and_create_model(api_key, glossary_model_name) if glossary_model_name else model_api
         
+        # Create storage handler for core integration
+        storage_handler = create_storage_handler()
+        
         translation_document = TranslationDocument(
             job.filepath,
             original_filename=job.filename,
             target_segment_size=job.segment_size,
-            job_id=job_id
+            job_id=job_id,
+            storage_handler=storage_handler
         )
         
         # Process style data using StyleAnalysisService
@@ -808,8 +813,18 @@ class TranslationDomainService(DomainServiceBase):
             if job is None:
                 raise HTTPException(status_code=404, detail="Job not found")
             
-            if job.status != "COMPLETED":
-                raise HTTPException(status_code=400, detail="Job not completed yet")
+            # Allow access if translation is completed OR if validation/post-edit is completed
+            can_access = (
+                job.status == "COMPLETED" or
+                (job.status == "VALIDATING" and job.validation_status == "COMPLETED") or
+                (job.status == "POST_EDITING" and job.post_edit_status == "COMPLETED")
+            )
+            
+            if not can_access:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Job not accessible. Status: {job.status}, Validation: {job.validation_status}, Post-edit: {job.post_edit_status}"
+                )
             
             # Try to get segments from database first
             segments = job.translation_segments or []
@@ -861,9 +876,18 @@ class TranslationDomainService(DomainServiceBase):
             if job is None:
                 raise HTTPException(status_code=404, detail="Job not found")
             
-            # Allow fetching segments for completed or failed jobs that have segments
-            if job.status not in ["COMPLETED", "FAILED"]:
-                raise HTTPException(status_code=400, detail="Job not completed yet")
+            # Allow access if translation is completed OR if validation/post-edit is completed
+            can_access = (
+                job.status in ["COMPLETED", "FAILED"] or
+                (job.status == "VALIDATING" and job.validation_status == "COMPLETED") or
+                (job.status == "POST_EDITING" and job.post_edit_status == "COMPLETED")
+            )
+            
+            if not can_access:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Job not accessible. Status: {job.status}, Validation: {job.validation_status}, Post-edit: {job.post_edit_status}"
+                )
             
             segments = job.translation_segments or []
             

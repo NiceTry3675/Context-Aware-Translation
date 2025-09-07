@@ -24,7 +24,7 @@ from .utils.file_parser import parse_document
 from .utils.retry import retry_with_softer_prompt, retry_on_prohibited_segment
 
 # Error handling
-from .errors import (
+from shared.errors import (
     ProhibitedException,
     TranslationError,
     prohibited_content_logger

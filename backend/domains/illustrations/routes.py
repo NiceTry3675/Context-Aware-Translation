@@ -36,9 +36,7 @@ router = APIRouter(prefix="/illustrations", tags=["illustrations"])
 @router.post("/{job_id}/generate")
 async def generate_illustrations(
     job_id: int,
-    config: IllustrationConfig,
-    api_key: str = Query(..., description="API key for Gemini"),
-    max_illustrations: Optional[int] = Query(None, description="Maximum number of illustration prompts to generate"),
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_required_user)
 ):
@@ -48,7 +46,21 @@ async def generate_illustrations(
     This endpoint triggers generation of detailed illustration prompts for all or selected segments
     of a completed translation job. The prompts can then be used with image generation services
     like DALL-E, Midjourney, or Stable Diffusion to create actual illustrations.
+    
+    Expects JSON body with:
+    - config: IllustrationConfig object
+    - api_key: API key for Gemini
+    - max_illustrations: Optional maximum number of illustrations
     """
+    # Parse request body
+    body = await request.json()
+    config = IllustrationConfig(**body.get('config', {}))
+    api_key = body.get('api_key')
+    max_illustrations = body.get('max_illustrations')
+    
+    if not api_key:
+        raise HTTPException(status_code=400, detail="API key is required")
+    
     # Get the translation job
     job = db.query(TranslationJob).filter(
         TranslationJob.id == job_id,
@@ -94,7 +106,7 @@ async def generate_illustrations(
 async def generate_character_bases(
     job_id: int,
     request: Request,
-    api_key: str = Query(..., description="API key for Gemini"),
+    api_key: str = Form(..., description="API key for Gemini"),
     reference_image: UploadFile | None = File(default=None),
     profile_json: str | None = Form(default=None),
     db: Session = Depends(get_db),
@@ -187,15 +199,27 @@ async def generate_character_bases(
 @router.post("/{job_id}/character/appearance/analyze")
 async def analyze_character_appearance(
     job_id: int,
-    api_key: str = Query(..., description="API key for model"),
-    protagonist_name: Optional[str] = Query(None, description="Optional protagonist name"),
-    model_name: str = Query("gemini-2.5-flash", description="Model name for analysis"),
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_required_user)
 ):
     """
     Analyze early novel text to produce appearance-only prompt candidates for the protagonist.
+    
+    Expects JSON body with:
+    - api_key: API key for model
+    - protagonist_name: Optional protagonist name
+    - model_name: Model name for analysis (default: gemini-2.5-flash)
     """
+    # Parse request body
+    body = await request.json()
+    api_key = body.get('api_key')
+    protagonist_name = body.get('protagonist_name')
+    model_name = body.get('model_name', 'gemini-2.5-flash')
+    
+    if not api_key:
+        raise HTTPException(status_code=400, detail="API key is required")
+    
     job = db.query(TranslationJob).filter(
         TranslationJob.id == job_id,
         TranslationJob.owner_id == current_user.id
@@ -226,11 +250,11 @@ async def analyze_character_appearance(
 async def generate_base_from_prompt(
     job_id: int,
     request: Request,
-    api_key: str = Query(..., description="API key for Gemini"),
+    api_key: str = Form(..., description="API key for Gemini"),
     reference_image: UploadFile | None = File(default=None),
     prompts_json: str | None = Form(default=None),
     prompt: str | None = Form(default=None),
-    num_variations: int = Query(3, ge=1, le=10, description="How many variants to generate when a single prompt is provided"),
+    num_variations: int = Form(3, ge=1, le=10, description="How many variants to generate when a single prompt is provided"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_required_user)
 ):
@@ -398,6 +422,37 @@ async def select_character_base(
     return {"message": "Base image selected", "selected_index": selected_index}
 
 
+@router.get("/{job_id}/status")
+async def get_illustrations_status(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_required_user)
+):
+    """
+    Get the illustration generation status for a translation job.
+    
+    Returns lightweight status information without loading all illustration data.
+    """
+    # Get the translation job
+    job = db.query(TranslationJob).filter(
+        TranslationJob.id == job_id,
+        TranslationJob.owner_id == current_user.id
+    ).first()
+    
+    if not job:
+        raise HTTPException(status_code=404, detail="Translation job not found")
+    
+    # Return status information
+    return {
+        "job_id": job_id,
+        "status": job.illustrations_status or "NOT_STARTED",
+        "progress": job.illustrations_progress,
+        "count": job.illustrations_count or 0,
+        "enabled": job.illustrations_enabled,
+        "directory": job.illustrations_directory,
+        "has_character_base": job.character_base_selected_index is not None
+    }
+
 @router.get("/{job_id}/illustrations")
 async def get_job_illustrations(
     job_id: int,
@@ -555,8 +610,7 @@ async def delete_illustration_prompt(
 async def regenerate_illustration_prompt(
     job_id: int,
     segment_index: int,
-    style_hints: Optional[str] = Query(None, description="Optional style hints for regeneration"),
-    api_key: str = Query(..., description="API key for Gemini"),
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_required_user)
 ):
@@ -564,7 +618,19 @@ async def regenerate_illustration_prompt(
     Regenerate an illustration prompt for a specific segment.
     
     This allows regenerating a single illustration prompt with optional new style hints.
+    
+    Expects JSON body with:
+    - api_key: API key for Gemini
+    - style_hints: Optional style hints for regeneration
     """
+    # Parse request body
+    body = await request.json()
+    api_key = body.get('api_key')
+    style_hints = body.get('style_hints')
+    
+    if not api_key:
+        raise HTTPException(status_code=400, detail="API key is required")
+    
     # Get the translation job
     job = db.query(TranslationJob).filter(
         TranslationJob.id == job_id,

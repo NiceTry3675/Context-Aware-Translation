@@ -1,7 +1,7 @@
 import time
 import google.generativeai as genai
 from google.api_core import exceptions as google_exceptions
-from ...errors import ProhibitedException
+from shared.errors import ProhibitedException
 from ...utils.retry import retry_with_softer_prompt
 
 class GeminiModel:

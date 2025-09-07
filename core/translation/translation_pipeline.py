@@ -22,9 +22,9 @@ from ..prompts.manager import PromptManager
 from ..prompts.sanitizer import PromptSanitizer
 from ..config.builder import DynamicConfigBuilder
 from ..schemas.illustration import IllustrationConfig, IllustrationBatch
-from ..errors import ProhibitedException, TranslationError
-from ..errors import prohibited_content_logger
-from ..utils.logging import TranslationLogger
+from shared.errors import ProhibitedException, TranslationError
+from shared.errors import prohibited_content_logger
+from shared.utils.logging import TranslationLogger
 
 
 def get_segment_ending(segment_text: str, max_chars: int) -> str:

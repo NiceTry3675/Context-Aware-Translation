@@ -8,6 +8,7 @@ using Google's Gemini image generation API.
 import os
 import json
 import hashlib
+import concurrent.futures
 from typing import Optional, Dict, Any, Tuple, List
 from pathlib import Path
 from PIL import Image
@@ -22,8 +23,8 @@ except ImportError:
     GENAI_AVAILABLE = False
     logging.warning("google-genai package not installed. Image generation will be disabled.")
 
-from ..utils.logging import TranslationLogger
-from ..errors import TranslationError
+from shared.utils.logging import TranslationLogger
+from shared.errors import TranslationError
 from ..schemas.illustration import IllustrationStyle
 
 
@@ -41,7 +42,7 @@ class IllustrationGenerator:
     def __init__(self, 
                  api_key: str, 
                  job_id: Optional[int] = None,
-                 output_dir: str = "illustrations",
+                 output_dir: str = "logs/jobs",
                  enable_caching: bool = True):
         """
         Initialize the illustration generator.
@@ -56,7 +57,16 @@ class IllustrationGenerator:
             raise ImportError("google-genai package is required for illustration generation. "
                             "Please install it with: pip install google-genai")
         
-        self.client = genai.Client(api_key=api_key)
+        if not api_key:
+            raise ValueError("API key is required for illustration generation")
+        
+        logging.info(f"[ILLUSTRATION] Initializing GenAI client with API key: {api_key[:10]}...")
+        try:
+            self.client = genai.Client(api_key=api_key)
+            logging.info("[ILLUSTRATION] GenAI client initialized successfully")
+        except Exception as e:
+            logging.error(f"[ILLUSTRATION] Failed to initialize GenAI client: {e}")
+            raise
         self.job_id = job_id
         self.output_dir = output_dir
         self.enable_caching = enable_caching
@@ -78,9 +88,9 @@ class IllustrationGenerator:
         """
         base_dir = Path(self.output_dir)
         if self.job_id:
-            job_dir = base_dir / f"job_{self.job_id}"
+            job_dir = base_dir / str(self.job_id) / "illustrations"
         else:
-            job_dir = base_dir / "default"
+            job_dir = base_dir / "default" / "illustrations"
         
         job_dir.mkdir(parents=True, exist_ok=True)
         return job_dir
@@ -607,10 +617,45 @@ class IllustrationGenerator:
                         logging.warning(f"Failed to attach reference image for segment {segment_index}: {e}")
                 contents.append(prompt)
 
-                response = self.client.models.generate_content(
-                    model="gemini-2.5-flash-image-preview",
-                    contents=contents
-                )
+                logging.info(f"[ILLUSTRATION] Calling Gemini API for segment {segment_index}, attempt {attempt + 1}/{max_retries}")
+                logging.info(f"[ILLUSTRATION] Using model: gemini-2.5-flash-image-preview")
+                logging.info(f"[ILLUSTRATION] Prompt length: {len(prompt)} chars")
+                
+                # Add timeout to prevent hanging
+                def generate_with_timeout():
+                    return self.client.models.generate_content(
+                        model="gemini-2.5-flash-image-preview",
+                        contents=contents
+                    )
+                
+                # Use ThreadPoolExecutor with timeout
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(generate_with_timeout)
+                    try:
+                        # 120 second timeout for image generation (increased from 60)
+                        response = future.result(timeout=120)
+                        logging.info(f"[ILLUSTRATION] Received response from Gemini API for segment {segment_index}")
+                    except concurrent.futures.TimeoutError:
+                        logging.error(f"[ILLUSTRATION] Timeout waiting for Gemini API response for segment {segment_index}")
+                        future.cancel()
+                        if attempt == max_retries - 1:
+                            # Save prompt as fallback on final attempt
+                            json_filename = f"segment_{segment_index:04d}_prompt.json"
+                            json_filepath = self.job_output_dir / json_filename
+                            prompt_data = {
+                                "segment_index": segment_index,
+                                "prompt": prompt,
+                                "segment_text": segment_text[:500],
+                                "style_hints": style_hints,
+                                "status": "timeout",
+                                "failure_reason": "API call timed out after 120 seconds",
+                                "note": "Image generation timed out. Use this prompt with another service.",
+                                "attempt": attempt + 1
+                            }
+                            with open(json_filepath, 'w', encoding='utf-8') as f:
+                                json.dump(prompt_data, f, ensure_ascii=False, indent=2)
+                            return str(json_filepath), prompt
+                        continue
 
                 # Extract the image from the response
                 image_generated = False
@@ -797,10 +842,24 @@ class IllustrationGenerator:
                             logging.warning(f"Failed to attach reference image part: {e}")
                     contents.append(prompt)
 
-                    response = self.client.models.generate_content(
-                        model="gemini-2.5-flash-image-preview",
-                        contents=contents
-                    )
+                    # Add timeout to prevent hanging
+                    def generate_with_timeout():
+                        return self.client.models.generate_content(
+                            model="gemini-2.5-flash-image-preview",
+                            contents=contents
+                        )
+                    
+                    # Use ThreadPoolExecutor with timeout
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(generate_with_timeout)
+                        try:
+                            # 120 second timeout for image generation
+                            response = future.result(timeout=120)
+                            logging.info(f"[ILLUSTRATION] Received response from Gemini API for base generation")
+                        except concurrent.futures.TimeoutError:
+                            logging.error(f"[ILLUSTRATION] Timeout waiting for Gemini API response for base generation")
+                            future.cancel()
+                            raise Exception("API call timed out after 120 seconds")
 
                     image_generated = False
                     if response and hasattr(response, 'candidates') and response.candidates:
@@ -909,10 +968,24 @@ class IllustrationGenerator:
                             logging.warning(f"Failed to attach reference image part: {e}")
                     contents.append(prompt)
 
-                    response = self.client.models.generate_content(
-                        model="gemini-2.5-flash-image-preview",
-                        contents=contents
-                    )
+                    # Add timeout to prevent hanging
+                    def generate_with_timeout():
+                        return self.client.models.generate_content(
+                            model="gemini-2.5-flash-image-preview",
+                            contents=contents
+                        )
+                    
+                    # Use ThreadPoolExecutor with timeout
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(generate_with_timeout)
+                        try:
+                            # 120 second timeout for image generation
+                            response = future.result(timeout=120)
+                            logging.info(f"[ILLUSTRATION] Received response from Gemini API for base generation")
+                        except concurrent.futures.TimeoutError:
+                            logging.error(f"[ILLUSTRATION] Timeout waiting for Gemini API response for base generation")
+                            future.cancel()
+                            raise Exception("API call timed out after 120 seconds")
 
                     image_generated = False
                     if response and hasattr(response, 'candidates') and response.candidates:

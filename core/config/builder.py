@@ -2,8 +2,8 @@ from ..translation.models.gemini import GeminiModel
 from ..prompts.manager import PromptManager
 from .glossary import GlossaryManager
 from .character_style import CharacterStyleManager
-from ..errors import ProhibitedException
-from ..errors import prohibited_content_logger
+from shared.errors import ProhibitedException
+from shared.errors import prohibited_content_logger
 from typing import List, Dict, Optional, Union
 from ..schemas.narrative_style import (
     StyleDeviation,

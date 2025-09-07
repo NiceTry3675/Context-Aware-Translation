@@ -115,21 +115,35 @@ export interface PostEditLog {
 
 export async function fetchValidationReport(jobId: string, token?: string): Promise<ValidationReport | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/validation-report`, {
+    console.log(`[fetchValidationReport] Fetching validation report for job ${jobId}`);
+    const response = await fetch(`${API_BASE_URL}/api/v1/validation/${jobId}/status`, {
       headers: {
         'Authorization': token ? `Bearer ${token}` : '',
       },
     });
 
+    console.log(`[fetchValidationReport] Response status: ${response.status}`);
+
     if (!response.ok) {
       if (response.status === 404 || response.status === 400) {
+        const errorData = await response.json();
+        console.log(`[fetchValidationReport] Error response:`, errorData);
         // Return null for both 404 (report not found) and 400 (validation not completed)
         return null;
       }
       throw new Error(`Failed to fetch validation report: ${response.statusText}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    console.log(`[fetchValidationReport] Response data:`, data);
+    
+    // Check if this is a "not_validated" response
+    if (data.status === 'not_validated') {
+      console.log(`[fetchValidationReport] Job not validated, returning null`);
+      return null;
+    }
+    
+    return data;
   } catch (error) {
     console.error('Error fetching validation report:', error);
     throw error;
@@ -138,7 +152,7 @@ export async function fetchValidationReport(jobId: string, token?: string): Prom
 
 export async function fetchPostEditLog(jobId: string, token?: string): Promise<PostEditLog | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/post-edit-log`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/post-edit/${jobId}/status`, {
       headers: {
         'Authorization': token ? `Bearer ${token}` : '',
       },
@@ -155,6 +169,38 @@ export async function fetchPostEditLog(jobId: string, token?: string): Promise<P
     return await response.json();
   } catch (error) {
     console.error('Error fetching post-edit log:', error);
+    throw error;
+  }
+}
+
+export interface IllustrationStatus {
+  job_id: number;
+  status: string;
+  progress: number | null;
+  count: number;
+  enabled: boolean;
+  directory: string | null;
+  has_character_base: boolean;
+}
+
+export async function fetchIllustrationStatus(jobId: string, token?: string): Promise<IllustrationStatus | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/status`, {
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        return null;
+      }
+      throw new Error(`Failed to fetch illustration status: ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching illustration status:', error);
     throw error;
   }
 }
@@ -306,26 +352,25 @@ export async function triggerIllustrationGeneration(
   },
   maxIllustrations?: number
 ): Promise<void> {
-  const params = new URLSearchParams({
-    api_key: apiKey,
-    ...(maxIllustrations && { max_illustrations: maxIllustrations.toString() })
-  });
-  
-  const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/generate?${params}`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/generate`, {
     method: 'POST',
     headers: {
       'Authorization': token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      enabled: true,
-      style: config?.style || 'digital_art',
-      style_hints: config?.style_hints || '',
-      segments_per_illustration: 1,
+      api_key: apiKey,
       max_illustrations: maxIllustrations || null,
-      min_segment_length: config?.min_segment_length || 100,
-      skip_dialogue_heavy: config?.skip_dialogue_heavy || false,
-      cache_enabled: config?.cache_enabled !== false,
+      config: {
+        enabled: true,
+        style: config?.style || 'digital_art',
+        style_hints: config?.style_hints || '',
+        segments_per_illustration: 1,
+        max_illustrations: maxIllustrations || null,
+        min_segment_length: config?.min_segment_length || 100,
+        skip_dialogue_heavy: config?.skip_dialogue_heavy || false,
+        cache_enabled: config?.cache_enabled !== false,
+      }
     }),
   });
 
@@ -361,29 +406,21 @@ export async function generateCharacterBases(
   profile: CharacterProfileBody,
   referenceImage?: File
 ): Promise<{ bases: any[]; directory?: string }> {
-  const params = new URLSearchParams({ api_key: apiKey });
   let response: Response;
+  // Always use FormData since backend expects it
+  const form = new FormData();
+  form.append('api_key', apiKey);
+  form.append('profile_json', JSON.stringify(profile));
   if (referenceImage) {
-    const form = new FormData();
-    form.append('profile_json', JSON.stringify(profile));
     form.append('reference_image', referenceImage, referenceImage.name);
-    response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate?${params}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-      },
-      body: form,
-    });
-  } else {
-    response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate?${params}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(profile),
-    });
   }
+  response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate`, {
+    method: 'POST',
+    headers: {
+      'Authorization': token ? `Bearer ${token}` : '',
+    },
+    body: form,
+  });
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.detail || 'Failed to generate character bases');
@@ -397,13 +434,17 @@ export async function analyzeCharacterAppearance(
   token: string | undefined,
   protagonistName?: string
 ): Promise<{ prompts: string[]; protagonist_name?: string }> {
-  const params = new URLSearchParams({ api_key: apiKey });
-  if (protagonistName) params.set('protagonist_name', protagonistName);
-  const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/appearance/analyze?${params}`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/appearance/analyze`, {
     method: 'POST',
     headers: {
       'Authorization': token ? `Bearer ${token}` : '',
+      'Content-Type': 'application/json',
     },
+    body: JSON.stringify({
+      api_key: apiKey,
+      protagonist_name: protagonistName,
+      model_name: 'gemini-2.5-flash'
+    }),
   });
   if (!response.ok) {
     const err = await response.json();
@@ -419,29 +460,22 @@ export async function generateBasesFromPrompt(
   prompts: string[],
   referenceImage?: File
 ): Promise<{ bases: any[]; directory?: string }> {
-  const params = new URLSearchParams({ api_key: apiKey });
   let response: Response;
+  // Always use FormData since backend expects it
+  const form = new FormData();
+  form.append('api_key', apiKey);
+  form.append('prompts_json', JSON.stringify(prompts));
+  form.append('num_variations', '3');
   if (referenceImage) {
-    const form = new FormData();
-    form.append('prompts_json', JSON.stringify(prompts));
     form.append('reference_image', referenceImage, referenceImage.name);
-    response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate-from-prompt?${params}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-      },
-      body: form,
-    });
-  } else {
-    response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate-from-prompt?${params}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ prompts }),
-    });
   }
+  response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate-from-prompt`, {
+    method: 'POST',
+    headers: {
+      'Authorization': token ? `Bearer ${token}` : '',
+    },
+    body: form,
+  });
   if (!response.ok) {
     const err = await response.json();
     throw new Error(err.detail || 'Failed to generate base from prompt');
@@ -489,7 +523,7 @@ export async function selectCharacterBase(
 
 export async function fetchStructuredValidationReport(jobId: string, token?: string): Promise<StructuredValidationReport | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/validation-report?structured=true`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/validation/${jobId}/status?structured=true`, {
       headers: {
         'Authorization': token ? `Bearer ${token}` : '',
       },
@@ -511,7 +545,7 @@ export async function fetchStructuredValidationReport(jobId: string, token?: str
 
 export async function fetchStructuredPostEditLog(jobId: string, token?: string): Promise<StructuredPostEditLog | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/post-edit-log?structured=true`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/post-edit/${jobId}/status?structured=true`, {
       headers: {
         'Authorization': token ? `Bearer ${token}` : '',
       },

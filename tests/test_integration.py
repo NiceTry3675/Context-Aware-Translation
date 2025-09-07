@@ -12,8 +12,8 @@ from core.config.builder import DynamicConfigBuilder
 from core.translation.document import TranslationDocument
 from core.translation.translation_pipeline import TranslationPipeline
 from core.utils.file_parser import parse_document
-from backend.database import SessionLocal
-from backend import crud
+from backend.config.database import SessionLocal
+from backend.domains.translation import repository as crud
 
 class TestIntegrationTranslation(unittest.TestCase):
     """Integration test with actual Gemini API (requires API key)."""

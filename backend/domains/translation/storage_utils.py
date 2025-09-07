@@ -53,7 +53,7 @@ class TranslationStorageManager:
         # Save directly to logs/jobs directory (outside of storage abstraction)
         logs_output_dir = Path(f"logs/jobs/{job_id}/output")
         logs_output_dir.mkdir(parents=True, exist_ok=True)
-        logs_output_path = logs_output_dir / f"{base_name}_translated.txt"
+        logs_output_path = logs_output_dir / "translated.txt"
         
         try:
             # Save directly to logs/jobs directory
@@ -127,11 +127,7 @@ class TranslationStorageManager:
             Translation content as string, or None if not found
         """
         # Try job-specific directory first
-        if original_filename:
-            base_name = Path(original_filename).stem
-            job_path = Path(f"logs/jobs/{job_id}/output/{base_name}_translated.txt")
-        else:
-            job_path = Path(f"logs/jobs/{job_id}/output/translated.txt")
+        job_path = Path(f"logs/jobs/{job_id}/output/translated.txt")
         
         try:
             if job_path.exists():

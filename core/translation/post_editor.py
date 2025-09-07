@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 from tqdm import tqdm
 from core.prompts.manager import PromptManager
-from ..utils.logging import TranslationLogger, StructuredLogger
+from shared.utils.logging import TranslationLogger, StructuredLogger
 
 
 class PostEditEngine:

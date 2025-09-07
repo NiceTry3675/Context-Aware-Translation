@@ -58,11 +58,17 @@ backend/TODO.md
 error.txt
 log.txt
 
-# Uploaded files
+# Legacy directories (can be removed after migration)
 uploads/
+translated_novel/
+
+# Community files (kept separate from job files)
+community/images/
 
 # Database files
 database.db
+
+# Logs (most now in /logs/jobs/)
 /logs/validation_logs/
 /logs/postedit_logs/
 logs/prohibited_content_logs/
@@ -71,6 +77,8 @@ frontend/.next/
 frontend/node_modules/
 /TODO.md
 /node_modules/
-/illustrations/job_31/
 /logs/validation_task_logs/
 /logs/jobs/
+
+# Temporary files
+/tmp/translation_temp/

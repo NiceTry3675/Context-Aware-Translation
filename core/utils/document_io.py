@@ -117,7 +117,8 @@ class DocumentOutputManager:
         print(f"✓ Text saved to {output_path}")
     
     @staticmethod
-    def save_to_storage_sync(segments: List[str], job_id: int, original_filename: str):
+    def save_to_storage_sync(segments: List[str], job_id: int, original_filename: str,
+                            storage_handler=None):
         """
         Save translation using storage abstraction (synchronous wrapper).
         
@@ -125,43 +126,25 @@ class DocumentOutputManager:
             segments: List of translated text segments
             job_id: Job ID
             original_filename: Original filename
+            storage_handler: Optional storage handler injected from backend
             
         Returns:
             List of saved paths, or None if backend not available
         """
-        try:
-            # Try to use async storage if available
-            import asyncio
-            from backend.config.settings import get_settings
-            from backend.domains.shared.storage import create_storage
-            from backend.domains.translation.storage_utils import TranslationStorageManager
-            
-            settings = get_settings()
-            storage = create_storage(settings)
-            manager = TranslationStorageManager(storage)
-            
-            # Prepare content
-            content = '\n\n'.join(segments)
-            
-            # Run async save in sync context
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                saved_paths = loop.run_until_complete(
-                    manager.save_translation_output(
-                        job_id=job_id,
-                        content=content,
-                        original_filename=original_filename,
-                        save_to_legacy=True
-                    )
-                )
-                print(f"✓ Saved to storage: {saved_paths}")
-                return saved_paths
-            finally:
-                loop.close()
-        except ImportError:
-            # Backend not available (running in core-only mode)
+        # If no handler provided, just return None (core-only mode)
+        if storage_handler is None:
             return None
+            
+        try:
+            # Use the injected storage handler
+            content = '\n\n'.join(segments)
+            saved_paths = storage_handler(
+                job_id=job_id,
+                content=content,
+                original_filename=original_filename
+            )
+            print(f"✓ Saved to storage: {saved_paths}")
+            return saved_paths
         except Exception as e:
             print(f"Warning: Failed to save to storage: {e}")
             return None

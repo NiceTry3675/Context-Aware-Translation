@@ -8,6 +8,7 @@ and publishes domain events for the validation lifecycle.
 
 import os
 import json
+import traceback
 from typing import Optional, Callable, Dict, Any, Tuple
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -116,6 +117,10 @@ class ValidationDomainService(DomainServiceBase):
                 target_segment_size=job.segment_size
             )
             logger.info(f"[VALIDATION PREP] Validation document created with {len(validation_document.segments)} segments")
+            # Log the first segment for debugging
+            if validation_document.segments:
+                first_seg = validation_document.segments[0]
+                logger.debug(f"[VALIDATION PREP] First source segment preview: {first_seg.text[:100]}...")
         except Exception as e:
             logger.error(f"[VALIDATION PREP] Error creating validation document: {str(e)}")
             raise
@@ -124,20 +129,32 @@ class ValidationDomainService(DomainServiceBase):
         logger.info(f"[VALIDATION PREP] Loading translated segments from database")
         try:
             if job.translation_segments:
+                print(f"[DEBUG] translation_segments exists, type: {type(job.translation_segments)}")
                 # The translation_segments field stores both source and translated segments
                 segments_data = (
                     json.loads(job.translation_segments) 
                     if isinstance(job.translation_segments, str)
                     else job.translation_segments
                 )
+                print(f"[DEBUG] segments_data type: {type(segments_data)}, len: {len(segments_data) if hasattr(segments_data, '__len__') else 'N/A'}")
                 
                 # Extract just the translated segments
                 if isinstance(segments_data, list):
-                    # If it's a list of dict with 'source' and 'translated' keys
-                    validation_document.translated_segments = [
-                        seg.get('translated', '') for seg in segments_data
-                        if isinstance(seg, dict) and 'translated' in seg
-                    ]
+                    print(f"[DEBUG] segments_data is list with {len(segments_data)} items")
+                    if segments_data:
+                        print(f"[DEBUG] First segment keys: {segments_data[0].keys() if isinstance(segments_data[0], dict) else 'not a dict'}")
+                    # Each segment is a dict with 'segment_index', 'source_text', and 'translated_text'
+                    validation_document.translated_segments = []
+                    for seg in segments_data:
+                        if isinstance(seg, dict):
+                            # Look for 'translated_text' field (the actual field name)
+                            if 'translated_text' in seg:
+                                validation_document.translated_segments.append(seg['translated_text'])
+                            # Fallback to 'translated' if 'translated_text' not found
+                            elif 'translated' in seg:
+                                validation_document.translated_segments.append(seg['translated'])
+                            else:
+                                logger.warning(f"[VALIDATION PREP] Segment {seg.get('segment_index', '?')} has no translated_text field")
                 elif isinstance(segments_data, dict) and 'translated' in segments_data:
                     # If it's a dict with 'translated' key containing a list
                     validation_document.translated_segments = segments_data['translated']
@@ -145,7 +162,11 @@ class ValidationDomainService(DomainServiceBase):
                     # Fallback: assume it's a simple list of translated segments
                     validation_document.translated_segments = segments_data
                 
+                print(f"[DEBUG] Loaded {len(validation_document.translated_segments)} translated segments")
                 logger.info(f"[VALIDATION PREP] Loaded {len(validation_document.translated_segments)} segments from DB")
+                # Log the first translated segment for debugging
+                if validation_document.translated_segments:
+                    logger.debug(f"[VALIDATION PREP] First translated segment preview: {validation_document.translated_segments[0][:100]}...")
             else:
                 # Fallback to reading from file if DB segments not available
                 logger.warning(f"[VALIDATION PREP] No segments in DB, falling back to file reading")
@@ -156,6 +177,7 @@ class ValidationDomainService(DomainServiceBase):
                 logger.info(f"[VALIDATION PREP] Loaded {len(validation_document.translated_segments)} segments from file")
         except Exception as e:
             logger.error(f"[VALIDATION PREP] Error loading translated segments: {str(e)}")
+            logger.error(f"[VALIDATION PREP] Error traceback: {traceback.format_exc()}")
             raise
         
         # Verify segment count match
@@ -197,6 +219,7 @@ class ValidationDomainService(DomainServiceBase):
         Returns:
             Validation report dictionary
         """
+        print(f"[DEBUG] run_validation called - segments: {len(validation_document.segments)}, translated: {len(validation_document.translated_segments)}")
         results, summary = validator.validate_document(
             validation_document,
             sample_rate=sample_rate,
@@ -230,8 +253,17 @@ class ValidationDomainService(DomainServiceBase):
         Returns:
             Path to the saved report
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         # Use FileManager's standardized path for consistency
         report_path = self.file_manager.get_validation_report_path(job)
+        
+        # Log the report structure
+        logger.info(f"[VALIDATION SERVICE] Saving report for job {job.id}: "
+                   f"keys={list(report.keys())}, "
+                   f"summary_keys={list(report.get('summary', {}).keys()) if 'summary' in report else 'N/A'}, "
+                   f"detailed_results_count={len(report.get('detailed_results', []))}")
         
         # Ensure directory exists
         report_dir = os.path.dirname(report_path)
@@ -240,6 +272,8 @@ class ValidationDomainService(DomainServiceBase):
         # Save the report as JSON
         report_content = json.dumps(report, indent=2, ensure_ascii=False)
         self.file_manager.write_file(report_path, report_content)
+        
+        logger.info(f"[VALIDATION SERVICE] Report saved to: {report_path}")
         
         return report_path
     

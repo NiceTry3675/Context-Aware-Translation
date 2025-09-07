@@ -134,55 +134,11 @@ router.add_api_route(
     tags=["analysis"]
 )
 
-# Illustrations endpoints
-router.add_api_route(
-    "/illustrations/generate/{job_id}", 
-    illustrations.generate_illustrations, 
-    methods=["POST"],
-    tags=["illustrations"]
-)
-router.add_api_route(
-    "/illustrations/{job_id}", 
-    illustrations.get_job_illustrations, 
-    methods=["GET"],
-    tags=["illustrations"]
-)
+# Include illustrations router with all its routes
+router.include_router(illustrations.router)
 
-# Task monitoring endpoints
-router.add_api_route(
-    "/tasks", 
-    tasks.list_tasks, 
-    methods=["GET"],
-    response_model=TaskExecutionListResponse,
-    tags=["tasks"]
-)
-router.add_api_route(
-    "/tasks/stats/summary", 
-    tasks.get_task_stats, 
-    methods=["GET"],
-    response_model=TaskStatsSimple,
-    tags=["tasks"]
-)
-router.add_api_route(
-    "/tasks/{task_id}", 
-    tasks.get_task_status, 
-    methods=["GET"],
-    response_model=TaskExecutionResponse,
-    tags=["tasks"]
-)
-router.add_api_route(
-    "/tasks/{task_id}/cancel", 
-    tasks.cancel_task, 
-    methods=["POST"],
-    tags=["tasks"]
-)
-router.add_api_route(
-    "/tasks/job/{job_id}/tasks", 
-    tasks.get_job_tasks, 
-    methods=["GET"],
-    response_model=List[TaskExecutionResponse],
-    tags=["tasks"]
-)
+# Include tasks router with all its routes
+router.include_router(tasks.router)
 
 # Community endpoints
 router.add_api_route(

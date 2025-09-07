@@ -67,8 +67,8 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
     setError(null);
     try {
       const token = await getCachedClerkToken(getToken);
-      const response = await fetch(`${apiUrl}/api/v1/jobs/${jobId}/validation`, {
-        method: 'PUT',
+      const response = await fetch(`${apiUrl}/api/v1/validate/${jobId}`, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -103,8 +103,8 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
     setError(null);
     try {
       const token = await getCachedClerkToken(getToken);
-      const response = await fetch(`${apiUrl}/api/v1/jobs/${jobId}/post-edit`, {
-        method: 'PUT',
+      const response = await fetch(`${apiUrl}/api/v1/post-edit/${jobId}`, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -133,14 +133,14 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
 
   const handleDownloadValidationReport = useCallback(async (jobId: number) => {
     await handleDownload(
-      `${apiUrl}/api/v1/jobs/${jobId}/validation-report`,
+      `${apiUrl}/api/v1/validation/${jobId}/status`,
       `validation_report_job_${jobId}.json`
     );
   }, [apiUrl, handleDownload]);
 
   const handleDownloadPostEditLog = useCallback(async (jobId: number) => {
     await handleDownload(
-      `${apiUrl}/api/v1/jobs/${jobId}/post-edit-log`,
+      `${apiUrl}/api/v1/post-edit/${jobId}/status`,
       `post_edit_log_job_${jobId}.json`
     );
   }, [apiUrl, handleDownload]);

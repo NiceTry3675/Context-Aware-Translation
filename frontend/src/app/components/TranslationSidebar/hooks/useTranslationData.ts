@@ -8,10 +8,12 @@ import {
   PostEditLog,
   TranslationContent,
   TranslationSegments,
+  IllustrationStatus,
   fetchValidationReport,
   fetchPostEditLog,
   fetchTranslationContent,
   fetchTranslationSegments,
+  fetchIllustrationStatus,
 } from '../../../utils/api';
 
 interface UseTranslationDataProps {
@@ -28,11 +30,13 @@ export function useTranslationData({
   jobStatus,
   validationStatus,
   postEditStatus,
-}: UseTranslationDataProps) {
+  illustrationsStatus,
+}: UseTranslationDataProps & { illustrationsStatus?: string }) {
   const [validationReport, setValidationReport] = useState<ValidationReport | null>(null);
   const [postEditLog, setPostEditLog] = useState<PostEditLog | null>(null);
   const [translationContent, setTranslationContent] = useState<TranslationContent | null>(null);
   const [translationSegments, setTranslationSegments] = useState<TranslationSegments | null>(null);
+  const [illustrationStatus, setIllustrationStatus] = useState<IllustrationStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedIssues, setSelectedIssues] = useState<{
@@ -58,6 +62,7 @@ export function useTranslationData({
     setPostEditLog(null);
     setTranslationContent(null);
     setTranslationSegments(null);
+    setIllustrationStatus(null);
     
     try {
       const token = await getCachedClerkToken(getToken);
@@ -76,6 +81,13 @@ export function useTranslationData({
       }
       
       // Load validation report if available AND job is completed
+      console.log('[useTranslationData] Checking validation load conditions:', { 
+        jobId, 
+        jobStatus, 
+        validationStatus,
+        shouldLoad: jobStatus === 'COMPLETED' && validationStatus === 'COMPLETED'
+      });
+      
       if (jobStatus === 'COMPLETED' && validationStatus === 'COMPLETED') {
         console.log('Loading validation report for job:', jobId);
         const report = await fetchValidationReport(jobId, token || undefined);
@@ -84,6 +96,8 @@ export function useTranslationData({
         if (report) {
           // Store report; structured selection is managed elsewhere (selectedCases)
           setValidationReport(report);
+        } else {
+          console.log('[useTranslationData] Validation report was null for job:', jobId);
         }
       } else if (validationStatus === 'COMPLETED') {
         console.log('[useTranslationData] Skipping validation load - job not completed:', { jobId, jobStatus });
@@ -96,12 +110,21 @@ export function useTranslationData({
       } else if (postEditStatus === 'COMPLETED') {
         console.log('[useTranslationData] Skipping post-edit load - job not completed:', { jobId, jobStatus });
       }
+      
+      // Load illustration status if illustrations are enabled or in progress
+      if (jobStatus === 'COMPLETED' && (illustrationsStatus === 'IN_PROGRESS' || illustrationsStatus === 'COMPLETED')) {
+        console.log('[useTranslationData] Loading illustration status for job:', jobId);
+        const status = await fetchIllustrationStatus(jobId, token || undefined);
+        if (status) {
+          setIllustrationStatus(status);
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '데이터를 불러오는 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
-  }, [jobId, jobStatus, validationStatus, postEditStatus, getToken]);
+  }, [jobId, jobStatus, validationStatus, postEditStatus, illustrationsStatus, getToken]);
 
   // Function to load more segments with pagination
   const loadMoreSegments = useCallback(async (offset: number, limit: number) => {
@@ -173,6 +196,7 @@ export function useTranslationData({
     postEditLog,
     translationContent,
     translationSegments,
+    illustrationStatus,
     loading,
     error,
     selectedIssues,

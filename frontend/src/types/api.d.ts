@@ -165,7 +165,7 @@ export interface paths {
          *         job_id: Job ID
          *         request: Validation request parameters
          *         user: Current authenticated user
-         *         service: Validation domain service
+         *         db: Database session
          *
          *     Returns:
          *         Task information for the validation job
@@ -192,7 +192,7 @@ export interface paths {
          *         job_id: Job ID
          *         structured: Whether to return structured response
          *         user: Current authenticated user
-         *         service: Validation domain service
+         *         db: Database session
          *
          *     Returns:
          *         Validation report (structured or plain)
@@ -407,7 +407,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/illustrations/generate/{job_id}": {
+    "/api/v1/illustrations/{job_id}/generate": {
         parameters: {
             query?: never;
             header?: never;
@@ -423,15 +423,168 @@ export interface paths {
          *     This endpoint triggers generation of detailed illustration prompts for all or selected segments
          *     of a completed translation job. The prompts can then be used with image generation services
          *     like DALL-E, Midjourney, or Stable Diffusion to create actual illustrations.
+         *
+         *     Expects JSON body with:
+         *     - config: IllustrationConfig object
+         *     - api_key: API key for Gemini
+         *     - max_illustrations: Optional maximum number of illustrations
          */
-        post: operations["generate_illustrations_api_v1_illustrations_generate__job_id__post"];
+        post: operations["generate_illustrations_api_v1_illustrations__job_id__generate_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/illustrations/{job_id}": {
+    "/api/v1/illustrations/{job_id}/character/base/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Character Bases
+         * @description Generate base character images (3 variations) focusing only on appearance.
+         */
+        post: operations["generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/illustrations/{job_id}/character/appearance/analyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze Character Appearance
+         * @description Analyze early novel text to produce appearance-only prompt candidates for the protagonist.
+         *
+         *     Expects JSON body with:
+         *     - api_key: API key for model
+         *     - protagonist_name: Optional protagonist name
+         *     - model_name: Model name for analysis (default: gemini-2.5-flash)
+         */
+        post: operations["analyze_character_appearance_api_v1_illustrations__job_id__character_appearance_analyze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/illustrations/{job_id}/character/base/generate-from-prompt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Base From Prompt
+         * @description Generate base image(s) directly from provided prompt text(s).
+         *     Accepts either JSON body with { prompts: string[] } or multipart with prompts_json/prompt.
+         */
+        post: operations["generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/illustrations/{job_id}/character/base": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Character Bases
+         * @description Get generated base character images and current selection.
+         */
+        get: operations["get_character_bases_api_v1_illustrations__job_id__character_base_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/illustrations/{job_id}/character/base/{index}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Character Base Asset
+         * @description Get a specific base asset (image if available, otherwise prompt JSON).
+         */
+        get: operations["get_character_base_asset_api_v1_illustrations__job_id__character_base__index__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/illustrations/{job_id}/character/base/select": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Select Character Base
+         * @description Select one of the generated base images by index.
+         */
+        post: operations["select_character_base_api_v1_illustrations__job_id__character_base_select_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/illustrations/{job_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Illustrations Status
+         * @description Get the illustration generation status for a translation job.
+         *
+         *     Returns lightweight status information without loading all illustration data.
+         */
+        get: operations["get_illustrations_status_api_v1_illustrations__job_id__status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/illustrations/{job_id}/illustrations": {
         parameters: {
             query?: never;
             header?: never;
@@ -445,7 +598,7 @@ export interface paths {
          *     Returns metadata about all generated illustration prompts for the specified job.
          *     These prompts can be used with external image generation services.
          */
-        get: operations["get_job_illustrations_api_v1_illustrations__job_id__get"];
+        get: operations["get_job_illustrations_api_v1_illustrations__job_id__illustrations_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -454,7 +607,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/tasks": {
+    "/api/v1/illustrations/{job_id}/illustration/{segment_index}": {
         parameters: {
             query?: never;
             header?: never;
@@ -462,38 +615,46 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Tasks
-         * @description List tasks with optional filters.
+         * Get Illustration Prompt
+         * @description Get the illustration for a specific segment.
          *
-         *     - Users can see their own tasks
-         *     - Admins can see all tasks
-         *     - Anonymous users can't see any tasks
+         *     Returns the generated image if available, otherwise returns the prompt JSON file.
          */
-        get: operations["list_tasks_api_v1_tasks_get"];
+        get: operations["get_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Illustration Prompt
+         * @description Delete a specific illustration and its prompt.
+         *
+         *     Removes both the image file (if exists) and prompt file, and updates the job metadata.
+         */
+        delete: operations["delete_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__delete"];
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/tasks/stats/summary": {
+    "/api/v1/illustrations/{job_id}/regenerate/{segment_index}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /**
-         * Get Task Stats
-         * @description Get task execution statistics.
-         *
-         *     Admin only endpoint.
-         */
-        get: operations["get_task_stats_api_v1_tasks_stats_summary_get"];
+        get?: never;
         put?: never;
-        post?: never;
+        /**
+         * Regenerate Illustration Prompt
+         * @description Regenerate an illustration prompt for a specific segment.
+         *
+         *     This allows regenerating a single illustration prompt with optional new style hints.
+         *
+         *     Expects JSON body with:
+         *     - api_key: API key for Gemini
+         *     - style_hints: Optional style hints for regeneration
+         */
+        post: operations["regenerate_illustration_prompt_api_v1_illustrations__job_id__regenerate__segment_index__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -514,6 +675,30 @@ export interface paths {
          *     Returns both database tracking info and real-time Celery status.
          */
         get: operations["get_task_status_api_v1_tasks__task_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Tasks
+         * @description List tasks with optional filters.
+         *
+         *     - Users can see their own tasks
+         *     - Admins can see all tasks
+         *     - Anonymous users can't see any tasks
+         */
+        get: operations["list_tasks_api_v1_tasks__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -556,6 +741,28 @@ export interface paths {
          * @description Get all tasks associated with a specific job.
          */
         get: operations["get_job_tasks_api_v1_tasks_job__job_id__tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/stats/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Task Stats
+         * @description Get task execution statistics.
+         *
+         *     Admin only endpoint.
+         */
+        get: operations["get_task_stats_api_v1_tasks_stats_summary_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -928,6 +1135,38 @@ export interface components {
              */
             segment_size: number;
         };
+        /** Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post */
+        Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post: {
+            /**
+             * Api Key
+             * @description API key for Gemini
+             */
+            api_key: string;
+            /** Reference Image */
+            reference_image?: string | null;
+            /** Prompts Json */
+            prompts_json?: string | null;
+            /** Prompt */
+            prompt?: string | null;
+            /**
+             * Num Variations
+             * @description How many variants to generate when a single prompt is provided
+             * @default 3
+             */
+            num_variations: number;
+        };
+        /** Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post */
+        Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post: {
+            /**
+             * Api Key
+             * @description API key for Gemini
+             */
+            api_key: string;
+            /** Reference Image */
+            reference_image?: string | null;
+            /** Profile Json */
+            profile_json?: string | null;
+        };
         /**
          * CharacterAnalysisResponse
          * @description Response for character analysis
@@ -1052,179 +1291,6 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
-        /**
-         * IllustrationConfig
-         * @description Configuration for illustration generation.
-         *
-         *     This model defines the settings and preferences for generating
-         *     illustrations for translation segments.
-         */
-        IllustrationConfig: {
-            /**
-             * Enabled
-             * @description Whether illustration generation is enabled
-             * @default false
-             */
-            enabled: boolean;
-            /**
-             * @description The artistic style for generated illustrations
-             * @default digital_art
-             */
-            style: components["schemas"]["IllustrationStyle"];
-            /**
-             * Style Hints
-             * @description Additional style hints or preferences for illustration generation
-             * @default
-             */
-            style_hints: string;
-            /**
-             * Segments Per Illustration
-             * @description Number of segments to combine for each illustration
-             * @default 1
-             */
-            segments_per_illustration: number;
-            /**
-             * Max Illustrations
-             * @description Maximum number of illustrations to generate (None for unlimited)
-             */
-            max_illustrations?: number | null;
-            /**
-             * Skip Dialogue Heavy
-             * @description Skip illustration for segments that are mostly dialogue
-             * @default true
-             */
-            skip_dialogue_heavy: boolean;
-            /**
-             * Min Segment Length
-             * @description Minimum segment length (characters) to generate illustration
-             * @default 500
-             */
-            min_segment_length: number;
-            /**
-             * Cache Enabled
-             * @description Whether to cache generated illustrations
-             * @default true
-             */
-            cache_enabled: boolean;
-            /**
-             * Use Character Profile
-             * @description Use character profile for consistent appearance across scenes
-             * @default false
-             */
-            use_character_profile: boolean;
-            /**
-             * Profile Lock Enabled
-             * @description Lock character appearance using reference images for consistency
-             * @default false
-             */
-            profile_lock_enabled: boolean;
-            /**
-             * Base Image Generation Count
-             * @description Number of base character images to generate for selection
-             * @default 3
-             */
-            base_image_generation_count: number;
-            /**
-             * Allow Reference Images
-             * @description Allow using reference images for generation
-             * @default true
-             */
-            allow_reference_images: boolean;
-            /**
-             * Reference Image Source
-             * @description Source for reference images: 'base_selection', 'upload', 'none'
-             * @default base_selection
-             */
-            reference_image_source: string;
-            /**
-             * Allow Custom Prompts
-             * @description Allow custom prompt overrides for specific scenes
-             * @default true
-             */
-            allow_custom_prompts: boolean;
-            /**
-             * Prefer Custom Prompts
-             * @description Prefer custom prompts over automatic generation when available
-             * @default false
-             */
-            prefer_custom_prompts: boolean;
-            /**
-             * Model Name
-             * @description AI model to use for image generation
-             * @default gemini-2.5-flash-image-preview
-             */
-            model_name: string;
-            /**
-             * Image Quality
-             * @description Image quality setting: 'low', 'medium', 'high', 'ultra'
-             * @default high
-             */
-            image_quality: string;
-            /**
-             * Aspect Ratio
-             * @description Preferred aspect ratio for generated images
-             * @default 16:9
-             */
-            aspect_ratio: string;
-            /**
-             * Image Width
-             * @description Target image width in pixels (None for model default)
-             */
-            image_width?: number | null;
-            /**
-             * Image Height
-             * @description Target image height in pixels (None for model default)
-             */
-            image_height?: number | null;
-            /**
-             * Max Retries
-             * @description Maximum retry attempts for failed generations
-             * @default 3
-             */
-            max_retries: number;
-            /**
-             * Fallback To Prompt Only
-             * @description Save prompt as JSON when image generation fails
-             * @default true
-             */
-            fallback_to_prompt_only: boolean;
-            /**
-             * Safety Filter Level
-             * @description Safety filter level: 'low', 'medium', 'high'
-             * @default medium
-             */
-            safety_filter_level: string;
-            /**
-             * Retry On Safety Filter
-             * @description Retry with modified prompt when safety filter triggers
-             * @default true
-             */
-            retry_on_safety_filter: boolean;
-            /**
-             * Use World Atmosphere
-             * @description Use AI-analyzed world atmosphere data for richer prompts
-             * @default true
-             */
-            use_world_atmosphere: boolean;
-            /**
-             * Combine Segments Threshold
-             * @description Similarity threshold for combining adjacent segments (0.0-1.0)
-             * @default 0.8
-             */
-            combine_segments_threshold: number;
-            /**
-             * Illustration Density
-             * @description Illustration frequency: 'sparse', 'moderate', 'dense'
-             * @default moderate
-             */
-            illustration_density: string;
-        };
-        /**
-         * IllustrationStyle
-         * @description Enumeration of available illustration styles.
-         * @enum {string}
-         */
-        IllustrationStyle: "realistic" | "artistic" | "watercolor" | "digital_art" | "sketch" | "anime" | "vintage" | "minimalist";
         /**
          * NarrationStyle
          * @description Narration style details.
@@ -2166,47 +2232,7 @@ export interface operations {
             };
         };
     };
-    generate_illustrations_api_v1_illustrations_generate__job_id__post: {
-        parameters: {
-            query: {
-                /** @description API key for Gemini */
-                api_key: string;
-                /** @description Maximum number of illustration prompts to generate */
-                max_illustrations?: number | null;
-            };
-            header?: never;
-            path: {
-                job_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["IllustrationConfig"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_job_illustrations_api_v1_illustrations__job_id__get: {
+    generate_illustrations_api_v1_illustrations__job_id__generate_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -2237,20 +2263,20 @@ export interface operations {
             };
         };
     };
-    list_tasks_api_v1_tasks_get: {
+    generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post: {
         parameters: {
-            query?: {
-                kind?: components["schemas"]["TaskKind"] | null;
-                status?: components["schemas"]["TaskStatus"] | null;
-                job_id?: number | null;
-                limit?: number;
-                offset?: number;
-            };
+            query?: never;
             header?: never;
-            path?: never;
+            path: {
+                job_id: number;
+            };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -2258,7 +2284,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TaskExecutionListResponse"];
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -2272,14 +2298,13 @@ export interface operations {
             };
         };
     };
-    get_task_stats_api_v1_tasks_stats_summary_get: {
+    analyze_character_appearance_api_v1_illustrations__job_id__character_appearance_analyze_post: {
         parameters: {
-            query?: {
-                /** @description Number of hours to look back */
-                hours?: number;
-            };
+            query?: never;
             header?: never;
-            path?: never;
+            path: {
+                job_id: number;
+            };
             cookie?: never;
         };
         requestBody?: never;
@@ -2290,7 +2315,300 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TaskStatsSimple"];
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_character_bases_api_v1_illustrations__job_id__character_base_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_character_base_asset_api_v1_illustrations__job_id__character_base__index__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+                index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    select_character_base_api_v1_illustrations__job_id__character_base_select_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_illustrations_status_api_v1_illustrations__job_id__status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_job_illustrations_api_v1_illustrations__job_id__illustrations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+                segment_index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+                segment_index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regenerate_illustration_prompt_api_v1_illustrations__job_id__regenerate__segment_index__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+                segment_index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */
@@ -2322,6 +2640,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaskExecutionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tasks_api_v1_tasks__get: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["TaskKind"] | null;
+                status?: components["schemas"]["TaskStatus"] | null;
+                job_id?: number | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskExecutionListResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2384,6 +2737,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaskExecutionResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_task_stats_api_v1_tasks_stats_summary_get: {
+        parameters: {
+            query?: {
+                /** @description Number of hours to look back */
+                hours?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskStatsSimple"];
                 };
             };
             /** @description Validation Error */

@@ -100,10 +100,11 @@ def process_validation_task(
         
         logger.info(f"[VALIDATION TASK] Found job: id={job.id}, status={job.status}, filepath={job.filepath}")
         
-        # Update job status
+        # Update job status and validation_status
         repo.set_status(job_id, "VALIDATING")
+        repo.update_validation_status(job_id, "IN_PROGRESS", progress=0)
         db.commit()
-        logger.info(f"[VALIDATION TASK] Updated job status to VALIDATING")
+        logger.info(f"[VALIDATION TASK] Updated job status to VALIDATING and validation_status to IN_PROGRESS")
         logger.info(f"[VALIDATION TASK] Starting validation for Job ID: {job_id}, Mode: {validation_mode}, Sample Rate: {sample_rate}")
         
         # Update task progress
@@ -138,16 +139,23 @@ def process_validation_task(
         quick_mode = validation_mode == 'quick'
         logger.info(f"[VALIDATION TASK] Running validation with quick_mode={quick_mode}, sample_rate={sample_rate}")
         
+        def update_progress(p: int):
+            """Update both Celery task state and database progress."""
+            current_task.update_state(
+                state='PROCESSING',
+                meta={'current': p, 'total': 100, 'status': f'Validating... {p}%'}
+            )
+            # Also update database progress
+            repo.update_validation_status(job_id, "IN_PROGRESS", progress=p)
+            db.commit()
+        
         try:
             validation_result = validation_service.run_validation(
                 validator=validator,
                 validation_document=validation_document,
                 sample_rate=sample_rate,
                 quick_mode=quick_mode,
-                progress_callback=lambda p: current_task.update_state(
-                    state='PROCESSING',
-                    meta={'current': p, 'total': 100, 'status': f'Validating... {p}%'}
-                )
+                progress_callback=update_progress
             )
             logger.info(f"[VALIDATION TASK] Validation run completed, result: {validation_result is not None}")
         except Exception as e:
@@ -157,6 +165,11 @@ def process_validation_task(
         
         # Store validation results
         if validation_result:
+            logger.info(f"[VALIDATION TASK] Validation result structure: "
+                       f"keys={list(validation_result.keys())}, "
+                       f"summary={validation_result.get('summary', {})}, "
+                       f"detailed_results_count={len(validation_result.get('detailed_results', []))}")
+            
             # Save the validation report
             report_path = validation_service.save_validation_report(
                 job=job,
@@ -173,9 +186,12 @@ def process_validation_task(
                 progress=100,
                 report_path=report_path
             )
+            
+            # Restore the main job status back to COMPLETED
+            repo.set_status(job_id, "COMPLETED")
             db.commit()
             
-            logger.info(f"Validation completed for Job ID: {job_id}")
+            logger.info(f"[VALIDATION TASK] Validation completed for Job ID: {job_id}, report saved to: {report_path}")
             
             # Update final progress
             current_task.update_state(
@@ -186,10 +202,11 @@ def process_validation_task(
             return {
                 'job_id': job_id,
                 'status': 'completed',
-                'report_path': validation_result.get('report_path'),
-                'issues_found': validation_result.get('issues_found', 0)
+                'report_path': report_path,
+                'issues_found': len(validation_result.get('detailed_results', []))
             }
         else:
+            logger.error(f"[VALIDATION TASK] Validation failed to produce results for job {job_id}")
             raise ValueError("Validation failed to produce results")
             
     except SoftTimeLimitExceeded:
@@ -200,6 +217,7 @@ def process_validation_task(
                 job_id, "FAILED", 
                 error="Validation took too long and was terminated"
             )
+            repo.update_validation_status(job_id, "FAILED")
             db.commit()
         logger.error(f"Validation task {self.request.id} exceeded time limit")
         raise
@@ -211,6 +229,7 @@ def process_validation_task(
         if db and job_id:
             repo = SqlAlchemyTranslationJobRepository(db)
             repo.set_status(job_id, "FAILED", error=error_message)
+            repo.update_validation_status(job_id, "FAILED")
             db.commit()
         
         logger.error(f"Validation error for Job ID {job_id}: {e}")

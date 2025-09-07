@@ -70,18 +70,25 @@ def generate_illustrations_task(
             raise ValueError(f"Job {job_id} not found")
         
         print(f"[ILLUSTRATIONS TASK] Job found, initializing generator")
+        print(f"[ILLUSTRATIONS TASK] API key provided: {api_key[:10] if api_key else 'None'}...")
         
         # Reconstruct config from dict
         config = IllustrationConfig(**config_dict)
+        print(f"[ILLUSTRATIONS TASK] Config cache_enabled: {config.cache_enabled}")
         
         # Initialize illustration generator
-        generator = IllustrationGenerator(
-            api_key=api_key,
-            job_id=job_id,
-            enable_caching=config.cache_enabled
-        )
-        
-        print(f"[ILLUSTRATIONS TASK] Generator initialized")
+        try:
+            generator = IllustrationGenerator(
+                api_key=api_key,
+                job_id=job_id,
+                enable_caching=config.cache_enabled
+            )
+            print(f"[ILLUSTRATIONS TASK] Generator initialized successfully")
+        except Exception as e:
+            print(f"[ILLUSTRATIONS TASK] Error initializing generator: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
         
         # Get segments from the job
         segments = job.translation_segments
@@ -117,7 +124,16 @@ def generate_illustrations_task(
         # Determine if we have a base selection and profile
         selected_base_index = job.character_base_selected_index
         character_profile = job.character_profile
-        use_profile_lock = (selected_base_index is not None) and bool(character_profile)
+        
+        # Add a debug flag to disable profile lock for testing
+        DISABLE_PROFILE_LOCK = os.environ.get('DISABLE_ILLUSTRATION_PROFILE_LOCK', '').lower() == 'true'
+        if DISABLE_PROFILE_LOCK:
+            print(f"[ILLUSTRATIONS TASK] WARNING: Profile lock disabled by environment variable")
+            use_profile_lock = False
+        else:
+            use_profile_lock = (selected_base_index is not None) and bool(character_profile)
+        
+        print(f"[ILLUSTRATIONS TASK] Profile lock enabled: {use_profile_lock}")
         
         for idx, segment in enumerate(segments_to_illustrate):
             print(f"[ILLUSTRATIONS TASK] Processing segment {idx + 1}/{total_segments} (index: {segment['index']})")
@@ -137,40 +153,102 @@ def generate_illustrations_task(
             custom_prompt = None
             ref_tuple = None
             if use_profile_lock:
+                print(f"[ILLUSTRATIONS TASK] Using profile lock for segment {segment['index']}")
+                print(f"[ILLUSTRATIONS TASK] Selected base index: {selected_base_index}")
+                print(f"[ILLUSTRATIONS TASK] Character profile exists: {bool(character_profile)}")
+                
                 context_text = None
                 if segment['index'] > 0 and segment['index'] < len(segments):
                     prev = segments[segment['index'] - 1]
                     context_text = prev.get('source_text') or prev.get('text') or None
-                custom_prompt = generator.create_scene_prompt_with_profile(
-                    segment_text=segment['text'],
-                    context=context_text,
-                    profile=character_profile,
-                    style_hints=config.style_hints
-                )
+                
+                try:
+                    custom_prompt = generator.create_scene_prompt_with_profile(
+                        segment_text=segment['text'],
+                        context=context_text,
+                        profile=character_profile,
+                        style_hints=config.style_hints
+                    )
+                    print(f"[ILLUSTRATIONS TASK] Created custom prompt: {custom_prompt[:100]}...")
+                except Exception as e:
+                    print(f"[ILLUSTRATIONS TASK] Error creating custom prompt: {e}")
+                    custom_prompt = None
+                
                 # Attach selected base image as reference if available
                 try:
                     bases = job.character_base_images or []
+                    print(f"[ILLUSTRATIONS TASK] Number of base images available: {len(bases)}")
+                    
                     if 0 <= selected_base_index < len(bases):
                         base_path = bases[selected_base_index].get('illustration_path')
+                        print(f"[ILLUSTRATIONS TASK] Base path from DB: {base_path}")
+                        
                         # Resolve relative paths via directory
                         if base_path and not os.path.isabs(base_path) and job.character_base_directory:
                             base_path = str(Path(job.character_base_directory) / Path(base_path).name)
-                        if base_path and base_path.endswith('.png') and os.path.exists(base_path):
-                            with open(base_path, 'rb') as bf:
-                                ref_bytes = bf.read()
-                            ref_tuple = (ref_bytes, 'image/png')
+                            print(f"[ILLUSTRATIONS TASK] Resolved base path: {base_path}")
+                        
+                        if base_path and base_path.endswith('.png'):
+                            if os.path.exists(base_path):
+                                print(f"[ILLUSTRATIONS TASK] Loading reference image from: {base_path}")
+                                with open(base_path, 'rb') as bf:
+                                    ref_bytes = bf.read()
+                                ref_tuple = (ref_bytes, 'image/png')
+                                print(f"[ILLUSTRATIONS TASK] Reference image loaded, size: {len(ref_bytes)} bytes")
+                            else:
+                                print(f"[ILLUSTRATIONS TASK] Warning: base image file not found: {base_path}")
+                        else:
+                            print(f"[ILLUSTRATIONS TASK] Warning: base path is not a PNG file: {base_path}")
+                    else:
+                        print(f"[ILLUSTRATIONS TASK] Selected base index {selected_base_index} out of range")
                 except Exception as e:
-                    print(f"[ILLUSTRATIONS TASK] Warning: failed to load base reference image: {e}")
+                    print(f"[ILLUSTRATIONS TASK] Error loading base reference image: {e}")
+                    import traceback
+                    traceback.print_exc()
+            else:
+                print(f"[ILLUSTRATIONS TASK] Not using profile lock for segment {segment['index']}")
             
             # Generate illustration for this segment
-            illustration_path, prompt = generator.generate_illustration(
-                segment_text=segment['text'],
-                segment_index=segment['index'],
-                style_hints=config.style_hints,
-                glossary=job.final_glossary,
-                custom_prompt=custom_prompt,
-                reference_image=ref_tuple
-            )
+            print(f"[ILLUSTRATIONS TASK] Calling generator.generate_illustration for segment {segment['index']}")
+            print(f"[ILLUSTRATIONS TASK] Text length: {len(segment['text'])} chars")
+            print(f"[ILLUSTRATIONS TASK] Has custom prompt: {custom_prompt is not None}")
+            print(f"[ILLUSTRATIONS TASK] Has reference image: {ref_tuple is not None}")
+            
+            try:
+                illustration_path, prompt = generator.generate_illustration(
+                    segment_text=segment['text'],
+                    segment_index=segment['index'],
+                    style_hints=config.style_hints,
+                    glossary=job.final_glossary,
+                    custom_prompt=custom_prompt,
+                    reference_image=ref_tuple
+                )
+                
+                print(f"[ILLUSTRATIONS TASK] Completed generation for segment {segment['index']}")
+                print(f"[ILLUSTRATIONS TASK] Result path: {illustration_path}")
+            except Exception as e:
+                print(f"[ILLUSTRATIONS TASK] Error generating illustration for segment {segment['index']}: {e}")
+                
+                # Retry without reference image if it failed with one
+                if ref_tuple is not None:
+                    print(f"[ILLUSTRATIONS TASK] Retrying without reference image for segment {segment['index']}")
+                    try:
+                        illustration_path, prompt = generator.generate_illustration(
+                            segment_text=segment['text'],
+                            segment_index=segment['index'],
+                            style_hints=config.style_hints,
+                            glossary=job.final_glossary,
+                            custom_prompt=custom_prompt,
+                            reference_image=None  # No reference image this time
+                        )
+                        print(f"[ILLUSTRATIONS TASK] Retry successful for segment {segment['index']}")
+                    except Exception as e2:
+                        print(f"[ILLUSTRATIONS TASK] Retry also failed: {e2}")
+                        illustration_path = None
+                        prompt = None
+                else:
+                    illustration_path = None
+                    prompt = None
             
             # Determine if it's an image or prompt
             file_type = 'image' if illustration_path and illustration_path.endswith('.png') else 'prompt'

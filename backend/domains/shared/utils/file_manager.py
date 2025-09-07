@@ -23,15 +23,19 @@ class FileManager:
         """Initialize file manager with settings-based configuration."""
         # Use settings for directory paths
         settings = get_settings()
-        self.UPLOAD_DIR = settings.upload_directory or "uploads"
-        self.IMAGE_UPLOAD_DIR = os.path.join(self.UPLOAD_DIR, "images")
         
-        # New job-centric base directory
+        # Temporary directory for uploads without job ID
+        self.TEMP_DIR = settings.temp_directory or "/tmp/translation_temp"
+        
+        # Community images directory (separate from job files)
+        self.COMMUNITY_IMAGE_DIR = "community/images"
+        
+        # Job-centric base directory for all job-related files
         self.JOB_STORAGE_BASE = settings.job_storage_base or "logs/jobs"
     
     def save_uploaded_file(self, file: Any, filename: str) -> Tuple[str, str]:
         """
-        Save an uploaded file and return the path and unique filename.
+        Save an uploaded file temporarily (for analysis without job ID).
         
         Args:
             file: File object to save (with file attribute)
@@ -40,10 +44,10 @@ class FileManager:
         Returns:
             Tuple of (file_path, unique_id)
         """
-        os.makedirs(self.UPLOAD_DIR, exist_ok=True)
+        os.makedirs(self.TEMP_DIR, exist_ok=True)
         
         unique_id = str(uuid.uuid4())
-        temp_file_path = os.path.join(self.UPLOAD_DIR, f"temp_{unique_id}_{filename}")
+        temp_file_path = os.path.join(self.TEMP_DIR, f"temp_{unique_id}_{filename}")
         
         with open(temp_file_path, "wb") as buffer:
             # Handle different file object types
@@ -91,12 +95,12 @@ class FileManager:
         Returns:
             Saved file path
         """
-        os.makedirs(self.IMAGE_UPLOAD_DIR, exist_ok=True)
+        os.makedirs(self.COMMUNITY_IMAGE_DIR, exist_ok=True)
         
         unique_id = str(uuid.uuid4())
         file_extension = os.path.splitext(filename)[1]
         unique_filename = f"{unique_id}{file_extension}"
-        file_path = os.path.join(self.IMAGE_UPLOAD_DIR, unique_filename)
+        file_path = os.path.join(self.COMMUNITY_IMAGE_DIR, unique_filename)
         
         with open(file_path, "wb") as buffer:
             if hasattr(file, 'file'):
@@ -319,10 +323,10 @@ class FileManager:
         Clean up temporary files in the specified directory.
         
         Args:
-            temp_dir: Directory to clean. Defaults to UPLOAD_DIR.
+            temp_dir: Directory to clean. Defaults to TEMP_DIR.
         """
         if temp_dir is None:
-            temp_dir = self.UPLOAD_DIR
+            temp_dir = self.TEMP_DIR
             
         if os.path.exists(temp_dir):
             for filename in os.listdir(temp_dir):

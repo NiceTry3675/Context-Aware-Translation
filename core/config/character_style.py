@@ -2,8 +2,8 @@ import os
 from typing import Dict, Optional
 from ..translation.models.gemini import GeminiModel
 from ..prompts.manager import PromptManager
-from ..errors import ProhibitedException
-from ..errors import prohibited_content_logger
+from shared.errors import ProhibitedException
+from shared.errors import prohibited_content_logger
 from ..schemas.character_style import (
     DialogueAnalysisResult,
     make_dialogue_analysis_schema,

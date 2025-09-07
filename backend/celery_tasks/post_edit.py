@@ -2,6 +2,7 @@
 Celery tasks for post-edit processing.
 """
 import traceback
+import os
 from typing import Optional
 from celery import current_task
 from celery.exceptions import SoftTimeLimitExceeded
@@ -59,8 +60,9 @@ def process_post_edit_task(
             logger.error(f"Job ID {job_id} not found")
             raise ValueError(f"Job ID {job_id} not found")
         
-        # Update job status
+        # Update job status and post_edit_status
         repo.set_status(job_id, "POST_EDITING")
+        repo.update_post_edit_status(job_id, "IN_PROGRESS", progress=0)
         db.commit()
         logger.info(f"Starting post-edit for Job ID: {job_id}, Model: {model_name}")
         
@@ -85,7 +87,6 @@ def process_post_edit_task(
         validation_report_path = job.validation_report_path if hasattr(job, 'validation_report_path') else None
         if not validation_report_path or not os.path.exists(validation_report_path):
             # If not found in DB or file doesn't exist, try FileManager's standard path
-            import os
             from backend.domains.shared.utils import FileManager
             file_manager = FileManager()
             validation_report_path = file_manager.get_validation_report_path(job)
@@ -94,15 +95,22 @@ def process_post_edit_task(
                 validation_report_path = None
         
         # Run the post-editing
+        def update_progress(p: int):
+            """Update both Celery task state and database progress."""
+            current_task.update_state(
+                state='PROCESSING',
+                meta={'current': p, 'total': 100, 'status': f'Post-editing... {p}%'}
+            )
+            # Also update database progress
+            repo.update_post_edit_status(job_id, "IN_PROGRESS", progress=p)
+            db.commit()
+        
         edited_segments = post_edit_service.run_post_edit(
             post_editor=post_editor,
             translation_document=translation_document,
             translated_path=translated_path,
             validation_report_path=validation_report_path,
-            progress_callback=lambda p: current_task.update_state(
-                state='PROCESSING',
-                meta={'current': p, 'total': 100, 'status': f'Post-editing... {p}%'}
-            ),
+            progress_callback=update_progress,
             job_id=job_id
         )
         
@@ -116,8 +124,19 @@ def process_post_edit_task(
         if post_edit_result:
             # Update job with post-edit results
             job.post_edit_completed = True
-            job.post_edit_log = post_edit_result.get('log_path')
+            job.post_edit_log_path = post_edit_result.get('log_path')
             job.final_translation = post_edit_result.get('edited_path')
+            
+            # Update post-edit status using repository method
+            repo.update_post_edit_status(
+                job_id, 
+                "COMPLETED", 
+                progress=100,
+                log_path=post_edit_result.get('log_path')
+            )
+            
+            # Restore the main job status back to COMPLETED
+            repo.set_status(job_id, "COMPLETED")
             db.commit()
             
             logger.info(f"Post-edit completed for Job ID: {job_id}")
@@ -146,6 +165,7 @@ def process_post_edit_task(
                 job_id, "FAILED", 
                 error="Post-edit took too long and was terminated"
             )
+            repo.update_post_edit_status(job_id, "FAILED")
             db.commit()
         logger.error(f"Post-edit task {self.request.id} exceeded time limit")
         raise
@@ -157,6 +177,7 @@ def process_post_edit_task(
         if db and job_id:
             repo = SqlAlchemyTranslationJobRepository(db)
             repo.set_status(job_id, "FAILED", error=error_message)
+            repo.update_post_edit_status(job_id, "FAILED")
             db.commit()
         
         logger.error(f"Post-edit error for Job ID {job_id}: {e}")

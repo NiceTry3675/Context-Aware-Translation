@@ -10,11 +10,11 @@ from typing import Dict, Any, List, Union, Optional
 from ..prompts.manager import PromptManager
 from ..translation.models.gemini import GeminiModel
 from ..translation.models.openrouter import OpenRouterModel
-from ..errors import ProhibitedException, TranslationError
-from ..errors.error_logger import prohibited_content_logger
+from shared.errors import ProhibitedException, TranslationError
+from shared.errors.error_logger import prohibited_content_logger
 from ..utils.file_parser import parse_document
 from ..utils.text_segmentation import create_segments_from_plain_text
-from ..utils.logging import TranslationLogger
+from shared.utils.logging import TranslationLogger
 
 
 

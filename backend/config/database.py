@@ -10,7 +10,8 @@ load_dotenv()
 # 만약 환경 변수가 없다면, 로컬 개발을 위해 기본 SQLite 경로를 사용합니다.
 # Use absolute path to ensure consistency regardless of where the app is started
 import pathlib
-project_root = pathlib.Path(__file__).parent.parent
+# Go up from backend/config/database.py to the project root
+project_root = pathlib.Path(__file__).parent.parent.parent
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{project_root}/database.db")
 
 # 데이터베이스 엔진 생성

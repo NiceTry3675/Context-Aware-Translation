@@ -23,7 +23,8 @@ class TranslationDocument:
     """
     
     def __init__(self, filepath: str, original_filename: Optional[str] = None, 
-                 target_segment_size: int = 15000, job_id: Optional[int] = None):
+                 target_segment_size: int = 15000, job_id: Optional[int] = None,
+                 storage_handler=None):
         """
         Initialize a translation document.
         
@@ -32,9 +33,11 @@ class TranslationDocument:
             original_filename: Original filename for user-facing display
             target_segment_size: Target size for each segment in characters
             job_id: Optional job ID for saving to job-specific directory
+            storage_handler: Optional storage handler for backend integration
         """
-        # Store job_id for storage operations
+        # Store job_id and storage handler for storage operations
         self._job_id = job_id
+        self._storage_handler = storage_handler
         
         # Setup filenames
         user_base_filename, unique_base_filename, input_format = self._setup_filenames(
@@ -206,7 +209,8 @@ class TranslationDocument:
             saved_paths = DocumentOutputManager.save_to_storage_sync(
                 self._data.translated_segments,
                 self._job_id,
-                self._data.original_filename or self._data.user_base_filename
+                self._data.original_filename or self._data.user_base_filename,
+                self._storage_handler
             )
             if saved_paths:
                 # Storage save succeeded, we're done

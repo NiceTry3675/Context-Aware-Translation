@@ -51,6 +51,6 @@ else
     fi
 fi
 
-# Start uvicorn
+## Start uvicorn
 echo -e "${YELLOW}Starting FastAPI server on port 8000...${NC}"
 uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
