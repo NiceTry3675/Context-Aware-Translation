@@ -20,13 +20,13 @@ logger = logging.getLogger(__name__)
 class PostEditTask(TrackedTask):
     """Post-edit task with tracking."""
     task_kind = TaskKind.POST_EDIT
-    name = "backend.tasks.post_edit.process_post_edit_task"
+    name = "backend.celery_tasks.post_edit.process_post_edit_task"
 
 
 @celery_app.task(
     base=PostEditTask,
     bind=True,
-    name="backend.tasks.post_edit.process_post_edit_task",
+    name="backend.celery_tasks.post_edit.process_post_edit_task",
     max_retries=3,
     default_retry_delay=60
 )

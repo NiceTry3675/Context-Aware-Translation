@@ -20,9 +20,9 @@ sys.path.insert(0, str(project_root))
 
 # Import Base and all models to ensure they're registered
 # Using new domain-specific paths
-from backend.domains.shared.models.base import Base
+from backend.domains.shared.db_base import Base
 from backend.domains.tasks.models import TaskExecution
-from backend.domains.shared.models.outbox import OutboxEvent
+from backend.domains.shared.events.outbox_model import OutboxEvent
 from backend.domains.user.models import User
 from backend.domains.translation.models import TranslationJob, TranslationUsageLog
 from backend.domains.community.models import Announcement, PostCategory, Post, Comment

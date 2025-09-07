@@ -2,6 +2,7 @@
 API-related exceptions for the Context-Aware Translation system.
 """
 
+from typing import Optional, Dict, Any
 from .base import TranslationError
 
 
@@ -15,11 +16,11 @@ class ProhibitedException(TranslationError):
     
     def __init__(self, 
                  message: str,
-                 prompt: str = None,
-                 source_text: str = None,
-                 context: dict = None,
-                 api_response: str = None,
-                 api_call_type: str = None):
+                 prompt: Optional[str] = None,
+                 source_text: Optional[str] = None,
+                 context: Optional[Dict[Any, Any]] = None,
+                 api_response: Optional[str] = None,
+                 api_call_type: Optional[str] = None):
         """
         Initialize the ProhibitedException with detailed error information.
         

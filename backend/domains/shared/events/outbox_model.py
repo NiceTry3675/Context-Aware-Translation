@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, JSON, Text
 from sqlalchemy.sql import func
-from .base import Base
+from ..db_base import Base
 
 
 class OutboxEvent(Base):

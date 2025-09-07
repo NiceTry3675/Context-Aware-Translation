@@ -100,7 +100,7 @@ class ValidationDomainService:
         
         # Initialize validator with the model API
         try:
-            from backend.domains.shared.base.model_factory import ModelAPIFactory
+            from backend.domains.shared.model_factory import ModelAPIFactory
             model_factory = ModelAPIFactory()
             logger.info(f"[VALIDATION PREP] Creating model API with factory...")
             model_api = model_factory.create(api_key, model_name)
@@ -376,8 +376,6 @@ class ValidationDomainService:
     
     def _get_translated_file_path(self, job: TranslationJob) -> str:
         """Get the path to the translated file for a job."""
-        # The translated files are saved in the translated_novel directory
-        # with the pattern: {job_id}_{original_filename_without_ext}_translated.txt
-        base_filename = os.path.splitext(job.filename)[0]  # Remove extension
-        translated_filename = f"{job.id}_{base_filename}_translated.txt"
-        return os.path.join("translated_novel", translated_filename)
+        # Use FileManager's method to get the correct translated file path
+        file_path, _, _ = self._file_manager.get_translated_file_path(job)
+        return file_path

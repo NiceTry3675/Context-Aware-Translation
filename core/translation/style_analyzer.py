@@ -95,7 +95,7 @@ class StyleAnalyzer:
             style = self.model_api.generate_text(prompt)
             
             # Log successful style analysis
-            if self.logger:
+            if self.logger and self.logger.context_log_path:
                 with open(self.logger.context_log_path, 'a', encoding='utf-8') as f:
                     f.write(f"--- NARRATIVE STYLE ANALYSIS ---\n")
                     f.write(f"Sample text length: {len(sample_text)} chars\n")
@@ -136,7 +136,7 @@ class StyleAnalyzer:
         parsed_style = {}
         
         # Log parsing attempt
-        if self.logger:
+        if self.logger and self.logger.context_log_path:
             with open(self.logger.context_log_path, 'a', encoding='utf-8') as f:
                 f.write(f"--- PARSING STYLE ANALYSIS ---\n")
                 f.write(f"Input text length: {len(style_text)} chars\n")
@@ -160,7 +160,7 @@ class StyleAnalyzer:
                 parsed_style[json_key] = value
         
         # Log parsed results
-        if self.logger:
+        if self.logger and self.logger.context_log_path:
             with open(self.logger.context_log_path, 'a', encoding='utf-8') as f:
                 f.write(f"Parsed style components:\n")
                 for key, value in parsed_style.items():
@@ -210,7 +210,7 @@ class StyleAnalyzer:
             self.logger.initialize_session()
         
         # Log core style definition start
-        if self.logger:
+        if self.logger and self.logger.context_log_path:
             with open(self.logger.context_log_path, 'a', encoding='utf-8') as f:
                 f.write(f"\n{'='*60}\n")
                 f.write(f"CORE STYLE DEFINITION SESSION\n")

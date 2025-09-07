@@ -22,7 +22,7 @@ from core.schemas.illustration import IllustrationConfig
 @celery_app.task(
     bind=True,
     base=TrackedTask,
-    name="backend.tasks.illustrations.generate_illustrations",
+    name="backend.celery_tasks.illustrations.generate_illustrations",
     max_retries=3,
     default_retry_delay=60,
     retry_backoff=True,
@@ -265,7 +265,7 @@ def generate_illustrations_task(
 @celery_app.task(
     bind=True,
     base=TrackedTask,
-    name="backend.tasks.illustrations.regenerate_single",
+    name="backend.celery_tasks.illustrations.regenerate_single",
     max_retries=2,
     default_retry_delay=30,
     retry_backoff=True,

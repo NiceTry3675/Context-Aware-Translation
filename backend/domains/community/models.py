@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Text, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from backend.domains.shared.models.base import Base
+from backend.domains.shared.db_base import Base
 
 class Announcement(Base):
     __tablename__ = "announcements"

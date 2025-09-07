@@ -22,13 +22,13 @@ logger = logging.getLogger(__name__)
 class TranslationTask(TrackedTask):
     """Translation task with tracking."""
     task_kind = TaskKind.TRANSLATION
-    name = "backend.tasks.translation.process_translation_task"
+    name = "backend.celery_tasks.translation.process_translation_task"
 
 
 @celery_app.task(
     base=TranslationTask,
     bind=True,
-    name="backend.tasks.translation.process_translation_task",
+    name="backend.celery_tasks.translation.process_translation_task",
     max_retries=3,
     default_retry_delay=60
 )

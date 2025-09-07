@@ -15,7 +15,7 @@ from backend.domains.translation.models import TranslationJob
 from backend.domains.user.models import User
 from backend.domains.translation.repository import SqlAlchemyTranslationJobRepository
 from backend.auth import is_admin
-from backend.tasks.post_edit import process_post_edit_task
+from backend.celery_tasks.post_edit import process_post_edit_task
 from .service import PostEditDomainService
 from .schemas import PostEditRequest, StructuredPostEditLog
 

@@ -33,13 +33,13 @@ logger.setLevel(logging.DEBUG)
 class ValidationTask(TrackedTask):
     """Validation task with tracking."""
     task_kind = TaskKind.VALIDATION
-    name = "backend.tasks.validation.process_validation_task"
+    name = "backend.celery_tasks.validation.process_validation_task"
 
 
 @celery_app.task(
     base=ValidationTask,
     bind=True,
-    name="backend.tasks.validation.process_validation_task",
+    name="backend.celery_tasks.validation.process_validation_task",
     max_retries=3,
     default_retry_delay=60
 )

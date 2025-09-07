@@ -1,47 +1,49 @@
 """Translation job management API endpoints - thin router layer."""
 
-from typing import List
-
+from typing import List, Optional
 from fastapi import APIRouter, File, UploadFile, Depends, Form, Response
 from sqlalchemy.orm import Session
 
-from ...dependencies import get_db, get_required_user
+from backend.dependencies import get_db, get_required_user, is_admin
 from backend.domains.user.models import User
-from ...domains.translation.schemas import TranslationJob
-from ...domains.translation.routes import TranslationRoutes
+from backend.domains.translation.schemas import TranslationJob
+from backend.domains.translation.service import TranslationDomainService
 
 router = APIRouter(tags=["jobs"])
+
+
+def get_translation_service(db: Session = Depends(get_db)) -> TranslationDomainService:
+    """Dependency injection for TranslationDomainService."""
+    return TranslationDomainService(lambda: db)
 
 
 @router.get("/jobs", response_model=List[TranslationJob])
 async def list_jobs(
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_required_user)
+    current_user: User = Depends(get_required_user),
+    service: TranslationDomainService = Depends(get_translation_service)
 ):
     """List all translation jobs for the current user."""
-    return TranslationRoutes.list_jobs(db, current_user, skip, limit)
+    return service.list_jobs(current_user.id, skip=skip, limit=limit)
 
 
 @router.post("/jobs", response_model=TranslationJob)
-async def create_job(
+def create_job(
     file: UploadFile = File(...),
     api_key: str = Form(...),
     model_name: str = Form("gemini-2.5-flash-lite"),
-    # Optional per-task model overrides
-    translation_model_name: str | None = Form(None),
-    style_model_name: str | None = Form(None),
-    glossary_model_name: str | None = Form(None),
-    style_data: str = Form(None),
-    glossary_data: str = Form(None),
+    translation_model_name: Optional[str] = Form(None),
+    style_model_name: Optional[str] = Form(None),
+    glossary_model_name: Optional[str] = Form(None),
+    style_data: Optional[str] = Form(None),
+    glossary_data: Optional[str] = Form(None),
     segment_size: int = Form(15000),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_required_user)
+    current_user: User = Depends(get_required_user),
+    service: TranslationDomainService = Depends(get_translation_service)
 ):
     """Create a new translation job."""
-    return await TranslationRoutes.create_job(
-        db=db,
+    return service.create_job(
         user=current_user,
         file=file,
         api_key=api_key,
@@ -56,17 +58,21 @@ async def create_job(
 
 
 @router.get("/jobs/{job_id}", response_model=TranslationJob)
-def get_job(job_id: int, db: Session = Depends(get_db)):
+def get_job(
+    job_id: int,
+    service: TranslationDomainService = Depends(get_translation_service)
+):
     """Get a translation job."""
-    return TranslationRoutes.get_job(db, job_id)
+    return service.get_job(job_id)
 
 
 @router.delete("/jobs/{job_id}", status_code=204)
 async def delete_job(
     job_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_required_user)
+    current_user: User = Depends(get_required_user),
+    service: TranslationDomainService = Depends(get_translation_service)
 ):
     """Delete a translation job and its associated files."""
-    await TranslationRoutes.delete_job(db, current_user, job_id)
+    user_is_admin = await is_admin(current_user)
+    service.delete_job(current_user, job_id, is_admin=user_is_admin)
     return Response(status_code=204)

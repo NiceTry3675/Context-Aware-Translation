@@ -35,6 +35,7 @@ class TranslationLogger:
         self.job_id = job_id
         self.user_base_filename = user_base_filename
         self.start_time = time.time()
+        self.job_storage_base = "logs/jobs"
         
         # Initialize logging directories
         self._setup_logging_directories()
@@ -44,34 +45,32 @@ class TranslationLogger:
     
     def _setup_logging_directories(self):
         """Create all necessary logging directories."""
-        log_dirs = [
-            "logs/debug_prompts",
-            "logs/context_log", 
-            "logs/validation_logs",
-            "logs/postedit_logs",
-            "logs/prohibited_content_logs",
-            "logs/progress_logs"
-        ]
-        
-        for log_dir in log_dirs:
-            os.makedirs(log_dir, exist_ok=True)
+        # Only create job-specific directories if job_id is provided
+        if self.job_id:
+            job_dir = os.path.join(self.job_storage_base, str(self.job_id))
+            subdirs = ["prompts", "context", "validation", "postedit", "progress"]
+            for subdir in subdirs:
+                os.makedirs(os.path.join(job_dir, subdir), exist_ok=True)
     
     def _setup_log_paths(self):
         """Setup paths for various log files."""
-        if self.job_id and self.user_base_filename:
-            # Job-specific log paths
-            self.prompt_log_path = f"logs/debug_prompts/prompts_job_{self.job_id}_{self.user_base_filename}.txt"
-            self.context_log_path = f"logs/context_log/context_job_{self.job_id}_{self.user_base_filename}.txt"
-            self.progress_log_path = f"logs/progress_logs/progress_job_{self.job_id}_{self.user_base_filename}.txt"
+        if self.job_id:
+            # Use job-centric directory structure
+            job_dir = os.path.join(self.job_storage_base, str(self.job_id))
+            self.prompt_log_path = os.path.join(job_dir, "prompts", "debug_prompts.txt")
+            self.context_log_path = os.path.join(job_dir, "context", "context_log.txt")
+            self.progress_log_path = os.path.join(job_dir, "progress", "progress_log.txt")
         else:
-            # Generic log paths
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            self.prompt_log_path = f"logs/debug_prompts/prompts_{timestamp}.txt"
-            self.context_log_path = f"logs/context_log/context_{timestamp}.txt"
-            self.progress_log_path = f"logs/progress_logs/progress_{timestamp}.txt"
+            # No logging without job_id
+            self.prompt_log_path = None
+            self.context_log_path = None
+            self.progress_log_path = None
     
     def initialize_session(self):
         """Initialize a new translation session with log headers."""
+        if not self.job_id:
+            return  # Skip logging without job_id
+            
         filename = self.user_base_filename or "unknown_file"
         
         # Initialize prompt log
@@ -99,6 +98,9 @@ class TranslationLogger:
         Args:
             core_narrative_style: The core narrative style text
         """
+        if not self.context_log_path:
+            return  # Skip logging without job_id
+            
         with open(self.context_log_path, 'a', encoding='utf-8') as f:
             f.write("--- Core Narrative Style Defined ---\n")
             f.write(f"{core_narrative_style}\n")
@@ -112,6 +114,9 @@ class TranslationLogger:
             segment_index: Index of the segment being translated
             prompt: The full prompt sent to the AI model
         """
+        if not self.prompt_log_path:
+            return  # Skip logging without job_id
+            
         with open(self.prompt_log_path, 'a', encoding='utf-8') as f:
             f.write(f"--- PROMPT FOR SEGMENT {segment_index} ---\n\n")
             f.write(prompt)
@@ -125,6 +130,9 @@ class TranslationLogger:
             segment_index: Index of the segment
             context_data: Dictionary containing context information
         """
+        if not self.context_log_path:
+            return  # Skip logging without job_id
+            
         with open(self.context_log_path, 'a', encoding='utf-8') as f:
             f.write(f"--- CONTEXT FOR SEGMENT {segment_index} ---\n\n")
             
@@ -262,10 +270,11 @@ class StructuredLogger:
             filename: Source filename
             report_data: Validation report data
         """
-        os.makedirs("logs/validation_logs", exist_ok=True)
+        # Use job-centric directory structure
+        job_dir = os.path.join("logs/jobs", str(job_id), "validation")
+        os.makedirs(job_dir, exist_ok=True)
         
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_path = f"logs/validation_logs/validation_job_{job_id}_{timestamp}.json"
+        log_path = os.path.join(job_dir, "validation_report.json")
         
         import json
         with open(log_path, 'w', encoding='utf-8') as f:
@@ -286,10 +295,11 @@ class StructuredLogger:
             filename: Source filename
             edit_data: Post-edit data
         """
-        os.makedirs("logs/postedit_logs", exist_ok=True)
+        # Use job-centric directory structure
+        job_dir = os.path.join("logs/jobs", str(job_id), "postedit")
+        os.makedirs(job_dir, exist_ok=True)
         
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_path = f"logs/postedit_logs/postedit_job_{job_id}_{timestamp}.json"
+        log_path = os.path.join(job_dir, "postedit_log.json")
         
         import json
         with open(log_path, 'w', encoding='utf-8') as f:

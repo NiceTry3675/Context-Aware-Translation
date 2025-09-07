@@ -93,11 +93,11 @@ class ProhibitedContentLogger:
     def log_simple_prohibited_content(self,
                                     api_call_type: str,
                                     prompt: str,
-                                    source_text: str = None,
-                                    error_message: str = None,
+                                    source_text: Optional[str] = None,
+                                    error_message: Optional[str] = None,
                                     job_filename: str = "unknown",
                                     segment_index: Optional[int] = None,
-                                    context: Dict[str, Any] = None) -> str:
+                                    context: Optional[Dict[str, Any]] = None) -> str:
         """
         Convenience method to log prohibited content without creating an exception object.
         

@@ -126,10 +126,13 @@ class ExportDomainService:
         if log_type not in ["prompts", "context"]:
             raise ValueError("Invalid log type. Must be 'prompts' or 'context'.")
         
-        base, _ = os.path.splitext(db_job.filename)
-        log_dir = "logs/debug_prompts" if log_type == "prompts" else "logs/context_log"
-        log_filename = f"{log_type}_job_{job_id}_{base}.txt"
-        log_path = os.path.join(log_dir, log_filename)
+        file_manager = FileManager()
+        if log_type == "prompts":
+            log_path = file_manager.get_job_prompt_log_path(job_id)
+        else:  # context
+            log_path = file_manager.get_job_context_log_path(job_id)
+        
+        log_filename = f"job_{job_id}_{log_type}.json"
         
         if not os.path.exists(log_path):
             raise ValueError(f"{log_type.capitalize()} log file not found.")

@@ -8,6 +8,7 @@ import os
 
 from ..translation.models import TranslationJob
 from ..user.models import User
+from ..shared.utils import FileManager
 from core.translation.illustration_generator import IllustrationGenerator
 from core.schemas.illustration import (
     IllustrationConfig,
@@ -56,7 +57,8 @@ class IllustrationsService:
     
     def get_illustrations_path(self, job_id: int) -> Path:
         """Get the path to the illustrations file for a job."""
-        return Path(f"translated_novel/{job_id}/illustrations.json")
+        file_manager = FileManager()
+        return Path(file_manager.get_job_illustration_path(job_id))
     
     def load_illustrations(self, job_id: int) -> Optional[IllustrationBatch]:
         """Load illustrations from file."""
@@ -79,7 +81,8 @@ class IllustrationsService:
     
     def get_character_base_prompts_path(self, job_id: int) -> Path:
         """Get the path to the character base prompts file."""
-        return Path(f"translated_novel/{job_id}/character_base_prompts.json")
+        file_manager = FileManager()
+        return Path(file_manager.get_job_character_prompts_path(job_id))
     
     def load_character_base_prompts(self, job_id: int) -> Optional[List[Dict[str, Any]]]:
         """Load character base prompts from file."""

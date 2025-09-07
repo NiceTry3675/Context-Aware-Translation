@@ -37,7 +37,7 @@ This plan integrates the original TODO items with expert recommendations to crea
 **Implemented Components:**
 - Celery configuration with Redis broker (`backend/celery_app.py`)
 - Task execution tracking table (`backend/models/task_execution.py`)
-- Migrated all background tasks to Celery (`backend/tasks/`)
+- Migrated all background tasks to Celery (`backend/celery_tasks/`)
 - Task monitoring API endpoints (`/api/v1/tasks/`)
 - Automatic retry with exponential backoff
 - Real-time progress tracking
@@ -45,7 +45,7 @@ This plan integrates the original TODO items with expert recommendations to crea
 
 **Key Files:**
 - `backend/celery_app.py` - Celery configuration
-- `backend/tasks/` - All Celery tasks
+- `backend/celery_tasks/` - All Celery tasks
 - `backend/api/v1/tasks.py` - Task monitoring endpoints
 - Migration: `31c08441cdc2` - Task execution table
 
@@ -79,7 +79,7 @@ This plan integrates the original TODO items with expert recommendations to crea
 
 ### Fix Now (Low Effort, High Impact)
 1. **Create missing illustrations task**
-   - Implement as Celery task in `backend/tasks/illustrations.py`
+   - Implement as Celery task in `backend/celery_tasks/illustrations.py`
    - Add progress tracking and retry logic
 
 2. **Pydantic v2 consistency**
@@ -112,7 +112,7 @@ backend/domains/
 │   ├── service.py          ✅ Completed
 │   ├── schemas.py          # Use backend/schemas/translation.py
 │   ├── routes.py           # Refactor from api/v1/
-│   └── tasks.py            # Use backend/tasks/translation.py
+│   └── tasks.py            # Use backend/celery_tasks/translation.py
 ├── community/
 │   ├── __init__.py
 │   ├── models.py           # Use existing backend/models/community.py

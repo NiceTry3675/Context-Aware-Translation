@@ -11,7 +11,7 @@ import os
 import shutil
 import uuid
 from pathlib import Path
-from typing import Tuple, Optional, Any
+from typing import Tuple, Optional, Any, Dict
 
 from backend.config.settings import get_settings
 
@@ -24,10 +24,10 @@ class FileManager:
         # Use settings for directory paths
         settings = get_settings()
         self.UPLOAD_DIR = settings.upload_directory or "uploads"
-        self.TRANSLATED_DIR = "translated_novel"
-        self.VALIDATION_LOG_DIR = "logs/validation_logs"
-        self.POST_EDIT_LOG_DIR = "logs/postedit_logs"
         self.IMAGE_UPLOAD_DIR = os.path.join(self.UPLOAD_DIR, "images")
+        
+        # New job-centric base directory
+        self.JOB_STORAGE_BASE = settings.job_storage_base or "logs/jobs"
     
     def save_uploaded_file(self, file: Any, filename: str) -> Tuple[str, str]:
         """
@@ -66,7 +66,8 @@ class FileManager:
         Returns:
             Saved file path
         """
-        job_dir = os.path.join(self.UPLOAD_DIR, str(job_id))
+        # Use job-centric directory structure
+        job_dir = os.path.join(self.JOB_STORAGE_BASE, str(job_id), "input")
         os.makedirs(job_dir, exist_ok=True)
         
         file_path = os.path.join(job_dir, filename)
@@ -115,20 +116,17 @@ class FileManager:
         Returns:
             Tuple of (file_path, user_filename, media_type)
         """
-        # Extract the unique base from the job's filepath
-        unique_base = os.path.splitext(os.path.basename(job.filepath))[0]
         original_filename_base, original_ext = os.path.splitext(job.filename)
         
         # Use .txt for translated files regardless of original format
-        translated_unique_filename = f"{unique_base}_translated.txt"
+        translated_filename = "translated.txt"
         user_translated_filename = f"{original_filename_base}_translated.txt"
         
         # Set media type
         media_type = "text/plain"
         
-        # Look in the TRANSLATED_DIR, not UPLOAD_DIR
-        file_path = os.path.join(self.TRANSLATED_DIR, translated_unique_filename)
-        
+        # Use job-centric directory structure
+        file_path = os.path.join(self.JOB_STORAGE_BASE, str(job.id), "output", translated_filename)
         return file_path, user_translated_filename, media_type
     
     def get_validation_report_path(self, job) -> str:
@@ -141,23 +139,11 @@ class FileManager:
         Returns:
             Validation report file path
         """
-        # Use pattern: {job_id}_{original_filename_without_ext}_validation_report.json
-        base_filename = os.path.splitext(job.filename)[0]  # Remove extension from original filename
-        report_filename = f"{job.id}_{base_filename}_validation_report.json"
-        
-        # Check if report exists in translated_novel directory (new location)
-        new_path = os.path.join(self.TRANSLATED_DIR, report_filename)
-        if os.path.exists(new_path):
-            return new_path
-            
-        # Check legacy location for backward compatibility
-        legacy_path = os.path.join(self.VALIDATION_LOG_DIR, report_filename)
-        if os.path.exists(legacy_path):
-            return legacy_path
-        
-        # For new reports, save in translated_novel directory
-        os.makedirs(self.TRANSLATED_DIR, exist_ok=True)
-        return new_path
+        # Use job-centric directory structure
+        report_filename = "validation_report.json"
+        report_path = os.path.join(self.JOB_STORAGE_BASE, str(job.id), "validation", report_filename)
+        os.makedirs(os.path.dirname(report_path), exist_ok=True)
+        return report_path
     
     def get_post_edit_log_path(self, job) -> str:
         """
@@ -169,23 +155,11 @@ class FileManager:
         Returns:
             Post-edit log file path
         """
-        # Use pattern: {job_id}_{original_filename_without_ext}_postedit_log.json
-        base_filename = os.path.splitext(job.filename)[0]  # Remove extension from original filename
-        log_filename = f"{job.id}_{base_filename}_postedit_log.json"
-        
-        # Check if log exists in translated_novel directory (new location)
-        new_path = os.path.join(self.TRANSLATED_DIR, log_filename)
-        if os.path.exists(new_path):
-            return new_path
-            
-        # Check legacy location for backward compatibility
-        legacy_path = os.path.join(self.POST_EDIT_LOG_DIR, log_filename)
-        if os.path.exists(legacy_path):
-            return legacy_path
-        
-        # For new logs, save in translated_novel directory
-        os.makedirs(self.TRANSLATED_DIR, exist_ok=True)
-        return new_path
+        # Use job-centric directory structure
+        log_filename = "postedit_log.json"
+        log_path = os.path.join(self.JOB_STORAGE_BASE, str(job.id), "postedit", log_filename)
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        return log_path
     
     def delete_job_files(self, job) -> None:
         """
@@ -195,24 +169,9 @@ class FileManager:
             job: Translation job instance
         """
         # Delete entire job directory
-        job_dir = os.path.join(self.UPLOAD_DIR, str(job.id))
+        job_dir = os.path.join(self.JOB_STORAGE_BASE, str(job.id))
         if os.path.exists(job_dir):
             shutil.rmtree(job_dir)
-        
-        # Clean up legacy locations if they exist
-        if job.filepath and os.path.exists(job.filepath):
-            try:
-                os.remove(job.filepath)
-            except:
-                pass
-        
-        # Delete translated file in legacy location
-        translated_path = os.path.join(self.TRANSLATED_DIR, f"{self.get_unique_filename_base(job.filepath)}_translated.txt")
-        if os.path.exists(translated_path):
-            try:
-                os.remove(translated_path)
-            except:
-                pass
     
     def ensure_directory_exists(self, directory_path: str) -> None:
         """
@@ -257,7 +216,7 @@ class FileManager:
         Returns:
             True if file exists, False otherwise
         """
-        return filepath and os.path.exists(filepath)
+        return bool(filepath and os.path.exists(filepath))
     
     def get_file_extension(self, filename: str) -> str:
         """
@@ -284,6 +243,76 @@ class FileManager:
         if self.file_exists(filepath):
             return os.path.getsize(filepath)
         return 0
+    
+    def get_job_prompt_log_path(self, job_id: int) -> str:
+        """
+        Get the debug prompt log file path for a job.
+        
+        Args:
+            job_id: Translation job ID
+            
+        Returns:
+            Debug prompt log file path
+        """
+        log_path = os.path.join(self.JOB_STORAGE_BASE, str(job_id), "prompts", "debug_prompts.json")
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        return log_path
+    
+    def get_job_context_log_path(self, job_id: int) -> str:
+        """
+        Get the context log file path for a job.
+        
+        Args:
+            job_id: Translation job ID
+            
+        Returns:
+            Context log file path
+        """
+        log_path = os.path.join(self.JOB_STORAGE_BASE, str(job_id), "context", "context_log.json")
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        return log_path
+    
+    def get_job_illustration_path(self, job_id: int) -> str:
+        """
+        Get the illustrations file path for a job.
+        
+        Args:
+            job_id: Translation job ID
+            
+        Returns:
+            Illustrations file path
+        """
+        file_path = os.path.join(self.JOB_STORAGE_BASE, str(job_id), "illustrations", "illustrations.json")
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        return file_path
+    
+    def get_job_character_prompts_path(self, job_id: int) -> str:
+        """
+        Get the character base prompts file path for a job.
+        
+        Args:
+            job_id: Translation job ID
+            
+        Returns:
+            Character base prompts file path
+        """
+        file_path = os.path.join(self.JOB_STORAGE_BASE, str(job_id), "illustrations", "character_base_prompts.json")
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        return file_path
+    
+    def get_job_directory(self, job_id: int) -> str:
+        """
+        Get the base directory for a job.
+        
+        Args:
+            job_id: Translation job ID
+            
+        Returns:
+            Job base directory path
+        """
+        job_dir = os.path.join(self.JOB_STORAGE_BASE, str(job_id))
+        os.makedirs(job_dir, exist_ok=True)
+        return job_dir
     
     def cleanup_temp_files(self, temp_dir: Optional[str] = None) -> None:
         """
@@ -351,6 +380,86 @@ class FileManager:
         
         self.ensure_directory_exists(os.path.dirname(destination))
         shutil.copy2(source, destination)
+    
+    def migrate_job_files_to_new_structure(self, job_id: int) -> Dict[str, str]:
+        """
+        Migrate existing job files from legacy structure to new job-centric structure.
+        
+        Args:
+            job_id: Translation job ID
+            
+        Returns:
+            Dictionary of migrated file paths (old -> new)
+        """
+        migrated_files = {}
+        job_dir = os.path.join(self.JOB_STORAGE_BASE, str(job_id))
+        
+        # List of file patterns to migrate with their new locations
+        migration_map = [
+            # Input files
+            (f"uploads/{job_id}_*", os.path.join(job_dir, "input")),
+            (f"uploads/{job_id}/*", os.path.join(job_dir, "input")),
+            
+            # Output files
+            (f"translated_novel/*_{job_id}_*.txt", os.path.join(job_dir, "output")),
+            (f"translated_novel/{job_id}/*.txt", os.path.join(job_dir, "output")),
+            
+            # Validation reports
+            (f"logs/validation_logs/*job_{job_id}_*.json", os.path.join(job_dir, "validation")),
+            (f"translated_novel/{job_id}_*validation_report.json", os.path.join(job_dir, "validation")),
+            
+            # Post-edit logs
+            (f"logs/postedit_logs/*job_{job_id}_*.json", os.path.join(job_dir, "postedit")),
+            (f"translated_novel/{job_id}_*postedit_log.json", os.path.join(job_dir, "postedit")),
+            
+            # Debug prompts
+            (f"logs/debug_prompts/*job_{job_id}_*.txt", os.path.join(job_dir, "prompts")),
+            (f"logs/debug_prompts/*job_{job_id}_*.json", os.path.join(job_dir, "prompts")),
+            
+            # Context logs
+            (f"logs/context_log/*job_{job_id}_*.txt", os.path.join(job_dir, "context")),
+            (f"logs/context_logs/*job_{job_id}_*.json", os.path.join(job_dir, "context")),
+            
+            # Illustrations
+            (f"translated_novel/{job_id}/illustrations.json", os.path.join(job_dir, "illustrations")),
+            (f"translated_novel/{job_id}/character_base_prompts.json", os.path.join(job_dir, "illustrations")),
+        ]
+        
+        # Perform migration
+        import glob
+        for pattern, target_dir in migration_map:
+            for old_path in glob.glob(pattern):
+                if os.path.exists(old_path):
+                    # Create target directory if needed
+                    os.makedirs(target_dir, exist_ok=True)
+                    
+                    # Determine new filename
+                    basename = os.path.basename(old_path)
+                    # Simplify filename for new structure
+                    if "validation_report" in basename:
+                        new_name = "validation_report.json"
+                    elif "postedit_log" in basename:
+                        new_name = "postedit_log.json"
+                    elif "debug_prompts" in basename or "_prompts" in basename:
+                        new_name = "debug_prompts.json" if basename.endswith(".json") else "debug_prompts.txt"
+                    elif "context_log" in basename or "_context" in basename:
+                        new_name = "context_log.json" if basename.endswith(".json") else "context_log.txt"
+                    elif "translated" in basename:
+                        new_name = "translated.txt"
+                    else:
+                        new_name = basename
+                    
+                    new_path = os.path.join(target_dir, new_name)
+                    
+                    # Move file
+                    try:
+                        shutil.move(old_path, new_path)
+                        migrated_files[old_path] = new_path
+                        print(f"Migrated: {old_path} -> {new_path}")
+                    except Exception as e:
+                        print(f"Failed to migrate {old_path}: {e}")
+        
+        return migrated_files
     
     def move_file(self, source: str, destination: str) -> None:
         """

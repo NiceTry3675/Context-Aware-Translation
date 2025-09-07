@@ -15,9 +15,10 @@ import json
 from pathlib import Path
 
 from ...dependencies import get_db, get_required_user
+from ...database import SessionLocal
 from ..translation.models import TranslationJob
 from ..user.models import User
-from ...tasks.illustrations import generate_illustrations_task, regenerate_single_illustration
+from ...celery_tasks.illustrations import generate_illustrations_task, regenerate_single_illustration
 from core.translation.illustration_generator import IllustrationGenerator
 from core.schemas.illustration import (
     IllustrationConfig, 

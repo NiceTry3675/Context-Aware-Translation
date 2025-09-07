@@ -7,16 +7,23 @@ This service demonstrates how to use the new architecture with:
 - Domain events for decoupled communication
 """
 
+import os
+import re
+import shutil
 import json
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime
 from sqlalchemy.orm import Session
+from fastapi import HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
 from core.translation.document import TranslationDocument
 from core.translation.translation_pipeline import TranslationPipeline
 from core.config.builder import DynamicConfigBuilder
-from backend.domains.shared.base import ServiceBase
+from backend.domains.shared.service_base import ServiceBase
+from backend.domains.shared.model_factory import ModelAPIFactory
+from backend.domains.shared.utils import FileManager
 from backend.domains.analysis import StyleAnalysis, GlossaryAnalysis
 from backend.domains.shared import (
     SqlAlchemyUoW,
@@ -27,6 +34,8 @@ from backend.domains.shared import (
 )
 from backend.domains.translation import SqlAlchemyTranslationJobRepository
 from backend.domains.translation.models import TranslationJob
+from backend.domains.translation.schemas import TranslationJob as TranslationJobSchema
+from backend.domains.user.models import User
 
 logger = logging.getLogger(__name__)
 
@@ -472,3 +481,285 @@ class TranslationDomainService(ServiceBase):
         )
         
         pipeline.translate_document(translation_document)
+    
+    def list_jobs(
+        self,
+        user_id: int,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[TranslationJobSchema]:
+        """
+        List all translation jobs for a user with skip/limit pagination.
+        
+        Args:
+            user_id: ID of the user
+            skip: Number of jobs to skip
+            limit: Maximum number of jobs to return
+            
+        Returns:
+            List of translation jobs
+        """
+        with SqlAlchemyUoW(self.session_factory) as uow:
+            repo = SqlAlchemyTranslationJobRepository(uow.session)
+            
+            # Get jobs with limit
+            jobs = repo.list_by_user(user_id, limit=limit + skip)
+            
+            # Apply skip manually for now
+            if skip > 0:
+                jobs = jobs[skip:]
+            
+            # Limit to requested amount
+            if len(jobs) > limit:
+                jobs = jobs[:limit]
+            
+            # Convert SQLAlchemy models to Pydantic schemas while session is active
+            return [TranslationJobSchema.model_validate(job) for job in jobs]
+    
+    def create_job(
+        self,
+        user: User,
+        file: UploadFile,
+        api_key: str,
+        model_name: str = "gemini-2.5-flash-lite",
+        translation_model_name: Optional[str] = None,
+        style_model_name: Optional[str] = None,
+        glossary_model_name: Optional[str] = None,
+        style_data: Optional[str] = None,
+        glossary_data: Optional[str] = None,
+        segment_size: int = 15000
+    ) -> TranslationJobSchema:
+        """
+        Create a new translation job with file upload.
+        
+        Args:
+            user: Current user
+            file: Uploaded file
+            api_key: API key for translation service
+            model_name: Default model name
+            translation_model_name: Optional override for translation model
+            style_model_name: Optional override for style model
+            glossary_model_name: Optional override for glossary model
+            style_data: Optional style data
+            glossary_data: Optional glossary data
+            segment_size: Segment size for translation
+            
+        Returns:
+            Created translation job
+            
+        Raises:
+            HTTPException: If API key is invalid or file save fails
+        """
+        # Validate API key
+        if not ModelAPIFactory.validate_api_key(api_key, model_name):
+            raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
+        
+        # Create job
+        job_with_id = self.create_translation_job(
+            filename=file.filename,
+            owner_id=user.id,
+            segment_size=segment_size
+        )
+        
+        # Fetch the complete job using the ID
+        with SqlAlchemyUoW(self.session_factory) as uow:
+            repo = SqlAlchemyTranslationJobRepository(uow.session)
+            job = repo.get(job_with_id.id)
+            
+            # Save uploaded file using FileManager
+            file_manager = FileManager()
+            try:
+                file_path = file_manager.save_job_file(file, job.id, file.filename)
+            except Exception as e:
+                # Update job status to failed
+                repo.set_status(job.id, "FAILED", error=f"Failed to save file: {e}")
+                uow.commit()
+                raise HTTPException(status_code=500, detail=f"Failed to save file: {e}")
+            
+            # Update job with file path
+            job.filepath = file_path
+            uow.commit()
+        
+        # Start translation in background using Celery
+        # Import here to avoid circular dependency
+        from backend.celery_tasks.translation import process_translation_task
+        
+        process_translation_task.delay(
+            job_id=job.id,
+            api_key=api_key,
+            model_name=model_name,
+            style_data=style_data,
+            glossary_data=glossary_data,
+            translation_model_name=translation_model_name,
+            style_model_name=style_model_name,
+            glossary_model_name=glossary_model_name,
+            user_id=user.id
+        )
+        
+        # Fetch the job again and convert to Pydantic schema
+        with SqlAlchemyUoW(self.session_factory) as uow:
+            repo = SqlAlchemyTranslationJobRepository(uow.session)
+            job = repo.get(job.id)
+            
+            # Convert SQLAlchemy model to Pydantic schema while session is active
+            return TranslationJobSchema.model_validate(job)
+    
+    def get_job(self, job_id: int) -> TranslationJobSchema:
+        """
+        Get a translation job by ID.
+        
+        Args:
+            job_id: Job ID
+            
+        Returns:
+            Translation job
+            
+        Raises:
+            HTTPException: If job not found
+        """
+        with SqlAlchemyUoW(self.session_factory) as uow:
+            repo = SqlAlchemyTranslationJobRepository(uow.session)
+            job = repo.get(job_id)
+            
+            if job is None:
+                raise HTTPException(status_code=404, detail="Job not found")
+            
+            # Convert SQLAlchemy model to Pydantic schema while session is active
+            return TranslationJobSchema.model_validate(job)
+    
+    def delete_job(
+        self,
+        user: User,
+        job_id: int,
+        is_admin: bool = False
+    ) -> None:
+        """
+        Delete a translation job and its associated files.
+        
+        Args:
+            user: Current user
+            job_id: Job ID
+            is_admin: Whether the user is an admin
+            
+        Raises:
+            HTTPException: If job not found or user not authorized
+        """
+        with SqlAlchemyUoW(self.session_factory) as uow:
+            repo = SqlAlchemyTranslationJobRepository(uow.session)
+            job = repo.get(job_id)
+            
+            if job is None:
+                raise HTTPException(status_code=404, detail="Job not found")
+            
+            # Check ownership or admin role
+            if not job.owner or (job.owner.clerk_user_id != user.clerk_user_id and not is_admin):
+                raise HTTPException(status_code=403, detail="Not authorized to delete this job")
+            
+            # Delete associated files
+            try:
+                file_manager = FileManager()
+                file_manager.delete_job_files(job)
+            except Exception as e:
+                # Log the error but proceed with deleting the DB record
+                logger.error(f"Error deleting files for job {job_id}: {e}")
+            
+            # Delete the job from the database
+            repo.delete(job.id)
+            uow.commit()
+    
+    def download_job_output(
+        self,
+        user: User,
+        job_id: int,
+        is_admin: bool = False
+    ) -> FileResponse:
+        """
+        Download the output of a translation job.
+        
+        Args:
+            user: Current user
+            job_id: Job ID
+            is_admin: Whether the user is an admin
+            
+        Returns:
+            FileResponse with the translated file
+            
+        Raises:
+            HTTPException: If job not found, not authorized, or file not available
+        """
+        with SqlAlchemyUoW(self.session_factory) as uow:
+            repo = SqlAlchemyTranslationJobRepository(uow.session)
+            db_job = repo.get(job_id)
+            
+            if db_job is None:
+                raise HTTPException(status_code=404, detail="Job not found")
+            
+            # Check ownership
+            if not db_job.owner or db_job.owner.clerk_user_id != user.clerk_user_id:
+                if not is_admin:
+                    raise HTTPException(status_code=403, detail="Not authorized to download this file")
+            
+            if db_job.status not in ["COMPLETED", "FAILED"]:
+                raise HTTPException(status_code=400, detail=f"Translation is not completed yet. Current status: {db_job.status}")
+            
+            if not db_job.filepath:
+                raise HTTPException(status_code=404, detail="Filepath not found for this job.")
+            
+            file_manager = FileManager()
+            file_path, user_translated_filename, media_type = file_manager.get_translated_file_path(db_job)
+            
+            if not os.path.exists(file_path):
+                raise HTTPException(status_code=404, detail=f"Translated file not found at path: {file_path}")
+            
+            return FileResponse(path=file_path, filename=user_translated_filename, media_type=media_type)
+    
+    def download_job_log(
+        self,
+        user: User,
+        job_id: int,
+        log_type: str,
+        is_admin: bool = False
+    ) -> FileResponse:
+        """
+        Download log files for a translation job.
+        
+        Args:
+            user: Current user
+            job_id: Job ID
+            log_type: Type of log ('prompts' or 'context')
+            is_admin: Whether the user is an admin
+            
+        Returns:
+            FileResponse with the log file
+            
+        Raises:
+            HTTPException: If job not found, not authorized, or log not available
+        """
+        with SqlAlchemyUoW(self.session_factory) as uow:
+            repo = SqlAlchemyTranslationJobRepository(uow.session)
+            db_job = repo.get(job_id)
+            
+            if db_job is None:
+                raise HTTPException(status_code=404, detail="Job not found")
+            
+            # Check ownership
+            if not db_job.owner or db_job.owner.clerk_user_id != user.clerk_user_id:
+                if not is_admin:
+                    raise HTTPException(status_code=403, detail="Not authorized to download this log")
+            
+            file_manager = FileManager()
+            if log_type == "prompts":
+                log_path = file_manager.get_job_prompt_log_path(job_id)
+            elif log_type == "context":
+                log_path = file_manager.get_job_context_log_path(job_id)
+            else:
+                raise HTTPException(status_code=400, detail="Invalid log type. Must be 'prompts' or 'context'")
+            
+            if not os.path.exists(log_path):
+                raise HTTPException(status_code=404, detail=f"{log_type.capitalize()} log not found for this job")
+            
+            return FileResponse(
+                path=log_path,
+                filename=f"job_{job_id}_{log_type}.json",
+                media_type="application/json"
+            )

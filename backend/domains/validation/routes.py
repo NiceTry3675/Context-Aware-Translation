@@ -13,8 +13,8 @@ from fastapi import HTTPException
 from backend.domains.user.models import User
 from backend.domains.translation.models import TranslationJob
 from backend.domains.translation.repository import SqlAlchemyTranslationJobRepository
-from backend.domains.shared.base import ModelAPIFactory
-from backend.tasks.validation import process_validation_task
+from backend.domains.shared.model_factory import ModelAPIFactory
+from backend.celery_tasks.validation import process_validation_task
 from backend.auth import is_admin
 from .schemas import ValidationRequest, StructuredValidationReport, ValidationResponse
 

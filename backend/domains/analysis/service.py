@@ -4,8 +4,8 @@ import os
 from fastapi import HTTPException, UploadFile
 from typing import Dict, Any
 
-from core.model_api_factory import ModelAPIFactory
-from ..shared.interfaces.user_context import FileManager
+from ..shared.base.model_factory import ModelAPIFactory
+from ..shared.utils import FileManager
 from .style_analysis import StyleAnalysis
 from .glossary_analysis import GlossaryAnalysis
 from .character_analysis import CharacterAnalysis

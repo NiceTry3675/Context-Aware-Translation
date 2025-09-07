@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     # Storage
     storage_backend: str = "local"  # local, s3, gcs
     upload_directory: str = Field(default="uploads", env="UPLOAD_DIR")
+    job_storage_base: str = Field(default="logs/jobs", env="JOB_STORAGE_BASE")
     max_file_size: int = 100_000_000  # 100MB
     allowed_extensions: List[str] = Field(
         default_factory=lambda: [
@@ -117,6 +118,15 @@ class Settings(BaseSettings):
     @classmethod
     def ensure_temp_dir(cls, v):
         path = Path(v)
+        path.mkdir(parents=True, exist_ok=True)
+        return str(path)
+    
+    @field_validator("job_storage_base")
+    @classmethod
+    def ensure_job_storage_dir(cls, v):
+        path = Path(v)
+        if not path.is_absolute():
+            path = Path(os.getcwd()) / path
         path.mkdir(parents=True, exist_ok=True)
         return str(path)
     

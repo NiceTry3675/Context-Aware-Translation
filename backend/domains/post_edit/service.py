@@ -123,7 +123,7 @@ class PostEditDomainService:
             raise FileNotFoundError(f"Translated file not found: {translated_path}")
         
         # Initialize post-editor with the model API
-        from backend.domains.shared.base.model_factory import ModelAPIFactory
+        from backend.domains.shared.model_factory import ModelAPIFactory
         model_factory = ModelAPIFactory()
         model_api = model_factory.create(api_key, model_name)
         post_editor = PostEditEngine(model_api)

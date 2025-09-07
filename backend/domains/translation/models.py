@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from backend.domains.shared.models.base import Base
+from backend.domains.shared.db_base import Base
 
 class TranslationJob(Base):
     __tablename__ = "translation_jobs"

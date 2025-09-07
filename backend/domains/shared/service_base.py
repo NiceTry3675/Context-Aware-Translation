@@ -14,7 +14,7 @@ from pathlib import Path
 from core.config.loader import load_config
 from core.translation.models.gemini import GeminiModel
 from core.translation.models.openrouter import OpenRouterModel
-from .model_factory import ModelAPIFactory
+from backend.domains.shared.model_factory import ModelAPIFactory
 
 
 class ServiceBase:

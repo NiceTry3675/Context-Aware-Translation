@@ -15,11 +15,11 @@ celery_app = Celery(
     broker=settings.redis_url,
     backend=settings.redis_url,
     include=[
-        "backend.tasks.translation",
-        "backend.tasks.validation", 
-        "backend.tasks.post_edit",
-        "backend.tasks.illustrations",
-        "backend.tasks.event_processor"
+        "backend.celery_tasks.translation",
+        "backend.celery_tasks.validation", 
+        "backend.celery_tasks.post_edit",
+        "backend.celery_tasks.illustrations",
+        "backend.celery_tasks.event_processor"
     ]
 )
 
@@ -54,11 +54,11 @@ celery_app.conf.update(
     # Beat schedule for periodic tasks
     beat_schedule={
         'process-outbox-events': {
-            'task': 'backend.tasks.event_processor.process_outbox_events',
+            'task': 'backend.celery_tasks.event_processor.process_outbox_events',
             'schedule': 30.0,  # Every 30 seconds
         },
         'cleanup-temp-files': {
-            'task': 'backend.tasks.maintenance.cleanup_temp_files',
+            'task': 'backend.celery_tasks.maintenance.cleanup_temp_files',
             'schedule': 3600.0,  # Every hour
         },
     },
@@ -69,12 +69,12 @@ celery_app.conf.update(
     
     # Routing
     task_routes={
-        'backend.tasks.translation.*': {'queue': 'translation'},
-        'backend.tasks.validation.*': {'queue': 'validation'},
-        'backend.tasks.post_edit.*': {'queue': 'post_edit'},
-        'backend.tasks.illustrations.*': {'queue': 'illustrations'},
-        'backend.tasks.event_processor.*': {'queue': 'events'},
-        'backend.tasks.maintenance.*': {'queue': 'maintenance'},
+        'backend.celery_tasks.translation.*': {'queue': 'translation'},
+        'backend.celery_tasks.validation.*': {'queue': 'validation'},
+        'backend.celery_tasks.post_edit.*': {'queue': 'post_edit'},
+        'backend.celery_tasks.illustrations.*': {'queue': 'illustrations'},
+        'backend.celery_tasks.event_processor.*': {'queue': 'events'},
+        'backend.celery_tasks.maintenance.*': {'queue': 'maintenance'},
     },
     
     # Queue configuration

@@ -19,13 +19,13 @@ logger = logging.getLogger(__name__)
 class EventProcessorTask(DatabaseTask):
     """Event processor task."""
     task_kind = TaskKind.EVENT_PROCESSING
-    name = "backend.tasks.event_processor.process_outbox_events"
+    name = "backend.celery_tasks.event_processor.process_outbox_events"
 
 
 @celery_app.task(
     base=EventProcessorTask,
     bind=True,
-    name="backend.tasks.event_processor.process_outbox_events",
+    name="backend.celery_tasks.event_processor.process_outbox_events",
     max_retries=0  # Don't retry this task - it runs periodically
 )
 def process_outbox_events(self, batch_size: int = 100):
@@ -157,7 +157,7 @@ def handle_post_created(post_id: str, data: dict):
     # Could update search index, send notifications to followers, etc.
 
 
-@celery_app.task(name="backend.tasks.event_processor.cleanup_old_events")
+@celery_app.task(name="backend.celery_tasks.event_processor.cleanup_old_events")
 def cleanup_old_events(days: int = 30):
     """
     Clean up old processed events from the outbox.
