@@ -21,16 +21,13 @@ from fastapi.responses import FileResponse
 from core.translation.document import TranslationDocument
 from core.translation.translation_pipeline import TranslationPipeline
 from core.config.builder import DynamicConfigBuilder
-from backend.domains.shared.service_base import ServiceBase
-from backend.domains.shared.model_factory import ModelAPIFactory
-from backend.domains.shared.utils import FileManager
+from backend.domains.shared.service_base import DomainServiceBase
 from backend.domains.analysis import StyleAnalysis, GlossaryAnalysis
 from backend.domains.shared import (
-    SqlAlchemyUoW,
     OutboxRepository,
-    TranslationJobCreatedEvent,
-    TranslationJobCompletedEvent,
-    TranslationJobFailedEvent,
+    TranslationStartedEvent,
+    TranslationCompletedEvent,
+    TranslationFailedEvent,
 )
 from backend.domains.translation import SqlAlchemyTranslationJobRepository
 from backend.domains.translation.models import TranslationJob
@@ -40,7 +37,7 @@ from backend.domains.user.models import User
 logger = logging.getLogger(__name__)
 
 
-class TranslationDomainService(ServiceBase):
+class TranslationDomainService(DomainServiceBase):
     """
     Domain service for translation operations.
     
@@ -49,15 +46,14 @@ class TranslationDomainService(ServiceBase):
     execution functionality.
     """
     
-    def __init__(self, session_factory):
+    def __init__(self, session_factory=None):
         """
         Initialize the service with a session factory.
         
         Args:
             session_factory: Factory function that creates SQLAlchemy sessions
         """
-        super().__init__()
-        self.session_factory = session_factory
+        super().__init__(session_factory=session_factory)
     
     def create_translation_job(
         self,
@@ -78,7 +74,7 @@ class TranslationDomainService(ServiceBase):
         Returns:
             Created or existing TranslationJob instance
         """
-        with SqlAlchemyUoW(self.session_factory) as uow:
+        with self.unit_of_work() as uow:
             # Create repositories
             job_repo = SqlAlchemyTranslationJobRepository(uow.session)
             outbox_repo = OutboxRepository(uow.session)
@@ -111,7 +107,7 @@ class TranslationDomainService(ServiceBase):
                 job_repo.store_idempotency_key(owner_id, idempotency_key, job_id)
             
             # Create and publish domain event
-            event = TranslationJobCreatedEvent(
+            event = TranslationStartedEvent(
                 job_id=job_id,
                 user_id=owner_id,
                 filename=filename
@@ -139,7 +135,7 @@ class TranslationDomainService(ServiceBase):
         Returns:
             True if successful, False if job not found
         """
-        with SqlAlchemyUoW(self.session_factory) as uow:
+        with self.unit_of_work() as uow:
             job_repo = SqlAlchemyTranslationJobRepository(uow.session)
             
             # Update job status
@@ -168,7 +164,7 @@ class TranslationDomainService(ServiceBase):
         Returns:
             True if successful, False if job not found
         """
-        with SqlAlchemyUoW(self.session_factory) as uow:
+        with self.unit_of_work() as uow:
             job_repo = SqlAlchemyTranslationJobRepository(uow.session)
             outbox_repo = OutboxRepository(uow.session)
             
@@ -185,7 +181,7 @@ class TranslationDomainService(ServiceBase):
                 job.translation_segments = translation_segments
             
             # Create completion event
-            event = TranslationJobCompletedEvent(
+            event = TranslationCompletedEvent(
                 job_id=job_id,
                 duration_seconds=duration_seconds
             )
@@ -208,7 +204,7 @@ class TranslationDomainService(ServiceBase):
         Returns:
             True if successful, False if job not found
         """
-        with SqlAlchemyUoW(self.session_factory) as uow:
+        with self.unit_of_work() as uow:
             job_repo = SqlAlchemyTranslationJobRepository(uow.session)
             outbox_repo = OutboxRepository(uow.session)
             
@@ -216,7 +212,7 @@ class TranslationDomainService(ServiceBase):
             job_repo.set_status(job_id, "FAILED", error=error_message)
             
             # Create failure event
-            event = TranslationJobFailedEvent(
+            event = TranslationFailedEvent(
                 job_id=job_id,
                 error_message=error_message
             )
@@ -239,7 +235,7 @@ class TranslationDomainService(ServiceBase):
         Returns:
             True if successful, False if job not found
         """
-        with SqlAlchemyUoW(self.session_factory) as uow:
+        with self.unit_of_work() as uow:
             job_repo = SqlAlchemyTranslationJobRepository(uow.session)
             
             # Update progress
@@ -268,7 +264,7 @@ class TranslationDomainService(ServiceBase):
         Returns:
             List of TranslationJob instances
         """
-        with SqlAlchemyUoW(self.session_factory) as uow:
+        with self.unit_of_work() as uow:
             job_repo = SqlAlchemyTranslationJobRepository(uow.session)
             
             jobs = job_repo.list_by_user(user_id, limit=limit, cursor=cursor)
@@ -293,7 +289,7 @@ class TranslationDomainService(ServiceBase):
         Returns:
             True if validation started, False if job not found
         """
-        with SqlAlchemyUoW(self.session_factory) as uow:
+        with self.unit_of_work() as uow:
             job_repo = SqlAlchemyTranslationJobRepository(uow.session)
             
             # Get the job
@@ -329,7 +325,7 @@ class TranslationDomainService(ServiceBase):
         Returns:
             True if successful, False if job not found
         """
-        with SqlAlchemyUoW(self.session_factory) as uow:
+        with self.unit_of_work() as uow:
             job_repo = SqlAlchemyTranslationJobRepository(uow.session)
             
             # Update validation status
@@ -364,10 +360,10 @@ class TranslationDomainService(ServiceBase):
         style_model_name = style_model_name or model_name
         glossary_model_name = glossary_model_name or model_name
 
-        # Create per-task model APIs
-        model_api = self.create_model_api(api_key, translation_model_name)
-        style_model_api = self.create_model_api(api_key, style_model_name) if style_model_name else model_api
-        glossary_model_api = self.create_model_api(api_key, glossary_model_name) if glossary_model_name else model_api
+        # Create per-task model APIs using inherited method
+        model_api = self.validate_and_create_model(api_key, translation_model_name)
+        style_model_api = self.validate_and_create_model(api_key, style_model_name) if style_model_name else model_api
+        glossary_model_api = self.validate_and_create_model(api_key, glossary_model_name) if glossary_model_name else model_api
         
         translation_document = TranslationDocument(
             job.filepath,
@@ -382,7 +378,7 @@ class TranslationDomainService(ServiceBase):
         try:
             print(f"--- Analyzing style for Job ID: {job_id} ---")
             # Create model API for style analysis
-            style_model_api_for_analysis = self.create_model_api(api_key, style_model_name)
+            style_model_api_for_analysis = self.validate_and_create_model(api_key, style_model_name)
             
             # Create StyleAnalysis instance with model API
             style_service = StyleAnalysis()
@@ -417,7 +413,7 @@ class TranslationDomainService(ServiceBase):
                 print(f"--- Extracting automatic glossary for Job ID: {job_id} ---")
             
             # Create model API for glossary analysis
-            glossary_model_api_for_analysis = self.create_model_api(api_key, glossary_model_name)
+            glossary_model_api_for_analysis = self.validate_and_create_model(api_key, glossary_model_name)
             
             # Create GlossaryAnalysis instance with model API
             glossary_service = GlossaryAnalysis()
@@ -499,7 +495,7 @@ class TranslationDomainService(ServiceBase):
         Returns:
             List of translation jobs
         """
-        with SqlAlchemyUoW(self.session_factory) as uow:
+        with self.unit_of_work() as uow:
             repo = SqlAlchemyTranslationJobRepository(uow.session)
             
             # Get jobs with limit
@@ -550,9 +546,9 @@ class TranslationDomainService(ServiceBase):
         Raises:
             HTTPException: If API key is invalid or file save fails
         """
-        # Validate API key
-        if not ModelAPIFactory.validate_api_key(api_key, model_name):
-            raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
+        # Validate API key using inherited method
+        # This will raise HTTPException if invalid
+        self.validate_and_create_model(api_key, model_name)
         
         # Create job
         job_with_id = self.create_translation_job(
@@ -562,14 +558,14 @@ class TranslationDomainService(ServiceBase):
         )
         
         # Fetch the complete job using the ID
-        with SqlAlchemyUoW(self.session_factory) as uow:
+        with self.unit_of_work() as uow:
             repo = SqlAlchemyTranslationJobRepository(uow.session)
             job = repo.get(job_with_id.id)
             
             # Save uploaded file using FileManager
-            file_manager = FileManager()
+            # Use inherited file_manager property
             try:
-                file_path = file_manager.save_job_file(file, job.id, file.filename)
+                file_path = self.file_manager.save_job_file(file, job.id, file.filename)
             except Exception as e:
                 # Update job status to failed
                 repo.set_status(job.id, "FAILED", error=f"Failed to save file: {e}")
@@ -597,7 +593,7 @@ class TranslationDomainService(ServiceBase):
         )
         
         # Fetch the job again and convert to Pydantic schema
-        with SqlAlchemyUoW(self.session_factory) as uow:
+        with self.unit_of_work() as uow:
             repo = SqlAlchemyTranslationJobRepository(uow.session)
             job = repo.get(job.id)
             
@@ -617,7 +613,7 @@ class TranslationDomainService(ServiceBase):
         Raises:
             HTTPException: If job not found
         """
-        with SqlAlchemyUoW(self.session_factory) as uow:
+        with self.unit_of_work() as uow:
             repo = SqlAlchemyTranslationJobRepository(uow.session)
             job = repo.get(job_id)
             
@@ -644,7 +640,7 @@ class TranslationDomainService(ServiceBase):
         Raises:
             HTTPException: If job not found or user not authorized
         """
-        with SqlAlchemyUoW(self.session_factory) as uow:
+        with self.unit_of_work() as uow:
             repo = SqlAlchemyTranslationJobRepository(uow.session)
             job = repo.get(job_id)
             
@@ -657,8 +653,8 @@ class TranslationDomainService(ServiceBase):
             
             # Delete associated files
             try:
-                file_manager = FileManager()
-                file_manager.delete_job_files(job)
+                # Use inherited file_manager property
+                self.file_manager.delete_job_files(job)
             except Exception as e:
                 # Log the error but proceed with deleting the DB record
                 logger.error(f"Error deleting files for job {job_id}: {e}")
@@ -687,7 +683,7 @@ class TranslationDomainService(ServiceBase):
         Raises:
             HTTPException: If job not found, not authorized, or file not available
         """
-        with SqlAlchemyUoW(self.session_factory) as uow:
+        with self.unit_of_work() as uow:
             repo = SqlAlchemyTranslationJobRepository(uow.session)
             db_job = repo.get(job_id)
             
@@ -705,8 +701,8 @@ class TranslationDomainService(ServiceBase):
             if not db_job.filepath:
                 raise HTTPException(status_code=404, detail="Filepath not found for this job.")
             
-            file_manager = FileManager()
-            file_path, user_translated_filename, media_type = file_manager.get_translated_file_path(db_job)
+            # Use inherited file_manager property
+            file_path, user_translated_filename, media_type = self.file_manager.get_translated_file_path(db_job)
             
             if not os.path.exists(file_path):
                 raise HTTPException(status_code=404, detail=f"Translated file not found at path: {file_path}")
@@ -735,7 +731,7 @@ class TranslationDomainService(ServiceBase):
         Raises:
             HTTPException: If job not found, not authorized, or log not available
         """
-        with SqlAlchemyUoW(self.session_factory) as uow:
+        with self.unit_of_work() as uow:
             repo = SqlAlchemyTranslationJobRepository(uow.session)
             db_job = repo.get(job_id)
             
@@ -747,11 +743,11 @@ class TranslationDomainService(ServiceBase):
                 if not is_admin:
                     raise HTTPException(status_code=403, detail="Not authorized to download this log")
             
-            file_manager = FileManager()
+            # Use inherited file_manager property
             if log_type == "prompts":
-                log_path = file_manager.get_job_prompt_log_path(job_id)
+                log_path = self.file_manager.get_job_prompt_log_path(job_id)
             elif log_type == "context":
-                log_path = file_manager.get_job_context_log_path(job_id)
+                log_path = self.file_manager.get_job_context_log_path(job_id)
             else:
                 raise HTTPException(status_code=400, detail="Invalid log type. Must be 'prompts' or 'context'")
             

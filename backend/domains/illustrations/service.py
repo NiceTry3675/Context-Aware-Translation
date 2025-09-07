@@ -3,12 +3,11 @@
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from pathlib import Path
-import json
 import os
 
 from ..translation.models import TranslationJob
 from ..user.models import User
-from ..shared.utils import FileManager
+from ..shared.service_base import ServiceBase
 from core.translation.illustration_generator import IllustrationGenerator
 from core.schemas.illustration import (
     IllustrationConfig,
@@ -20,10 +19,11 @@ from core.schemas.illustration import (
 from ..analysis import StyleAnalysis, CharacterAnalysis
 
 
-class IllustrationsService:
+class IllustrationsService(ServiceBase):
     """Service for managing illustration generation and storage."""
     
     def __init__(self, db: Session):
+        super().__init__()
         self.db = db
     
     def get_job_for_user(self, job_id: int, user: User) -> TranslationJob:
@@ -34,14 +34,14 @@ class IllustrationsService:
         ).first()
         
         if not job:
-            raise ValueError("Translation job not found")
+            self.raise_not_found("Translation job")
         
         return job
     
     def validate_job_completed(self, job: TranslationJob):
         """Ensure job is completed before generating illustrations."""
         if job.status != "COMPLETED":
-            raise ValueError("Translation must be completed before generating illustrations")
+            self.raise_validation_error("Translation must be completed before generating illustrations")
     
     def start_illustration_generation(
         self,
@@ -57,8 +57,7 @@ class IllustrationsService:
     
     def get_illustrations_path(self, job_id: int) -> Path:
         """Get the path to the illustrations file for a job."""
-        file_manager = FileManager()
-        return Path(file_manager.get_job_illustration_path(job_id))
+        return Path(self.file_manager.get_job_illustration_path(job_id))
     
     def load_illustrations(self, job_id: int) -> Optional[IllustrationBatch]:
         """Load illustrations from file."""
@@ -67,22 +66,20 @@ class IllustrationsService:
         if not illustrations_path.exists():
             return None
         
-        with open(illustrations_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
+        try:
+            data = self.load_structured_data(str(illustrations_path))
             return IllustrationBatch(**data)
+        except FileNotFoundError:
+            return None
     
     def save_illustrations(self, job_id: int, batch: IllustrationBatch):
         """Save illustrations to file."""
         illustrations_path = self.get_illustrations_path(job_id)
-        illustrations_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        with open(illustrations_path, 'w', encoding='utf-8') as f:
-            json.dump(batch.dict(), f, ensure_ascii=False, indent=2)
+        self.save_structured_output(batch.dict(), str(illustrations_path))
     
     def get_character_base_prompts_path(self, job_id: int) -> Path:
         """Get the path to the character base prompts file."""
-        file_manager = FileManager()
-        return Path(file_manager.get_job_character_prompts_path(job_id))
+        return Path(self.file_manager.get_job_character_prompts_path(job_id))
     
     def load_character_base_prompts(self, job_id: int) -> Optional[List[Dict[str, Any]]]:
         """Load character base prompts from file."""
@@ -91,16 +88,15 @@ class IllustrationsService:
         if not prompts_path.exists():
             return None
         
-        with open(prompts_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        try:
+            return self.load_structured_data(str(prompts_path))
+        except FileNotFoundError:
+            return None
     
     def save_character_base_prompts(self, job_id: int, prompts: List[Dict[str, Any]]):
         """Save character base prompts to file."""
         prompts_path = self.get_character_base_prompts_path(job_id)
-        prompts_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        with open(prompts_path, 'w', encoding='utf-8') as f:
-            json.dump(prompts, f, ensure_ascii=False, indent=2)
+        self.save_structured_output(prompts, str(prompts_path))
     
     def delete_illustration(self, job_id: int, segment_index: int) -> bool:
         """Delete a specific illustration from the batch."""

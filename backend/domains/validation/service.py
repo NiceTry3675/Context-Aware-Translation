@@ -18,36 +18,34 @@ from backend.domains.translation.models import TranslationJob
 from backend.domains.translation.repository import TranslationJobRepository, SqlAlchemyTranslationJobRepository
 from backend.domains.shared.uow import SqlAlchemyUoW
 from backend.domains.shared.events import DomainEvent, EventType
-from backend.domains.shared.utils import FileManager
+from backend.domains.shared.service_base import DomainServiceBase
 from backend.config.settings import get_settings
 
 
-class ValidationDomainService:
+class ValidationDomainService(DomainServiceBase):
     """Service layer for translation validation operations using domain patterns."""
     
     def __init__(
         self,
+        session_factory=None,
         repository: Optional[TranslationJobRepository] = None,
         uow: Optional[SqlAlchemyUoW] = None,
-        file_manager: Optional[FileManager] = None
+        storage=None
     ):
         """
         Initialize validation service with dependencies.
         
         Args:
+            session_factory: Database session factory
             repository: TranslationJob repository (optional, creates default if not provided)
             uow: Unit of Work for transaction management (optional)
-            file_manager: File manager for file operations (optional, uses default if not provided)
+            storage: Storage abstraction for file operations (optional)
         """
-        self._repository = repository
-        self._uow = uow
-        self._file_manager = file_manager or FileManager()
+        super().__init__(session_factory, repository, uow, storage)
     
     def _get_repository(self, session: Session) -> TranslationJobRepository:
         """Get or create repository instance."""
-        if self._repository:
-            return self._repository
-        return SqlAlchemyTranslationJobRepository(session)
+        return self.get_or_create_repository(session, SqlAlchemyTranslationJobRepository)
     
     def prepare_validation(
         self,
@@ -84,7 +82,7 @@ class ValidationDomainService:
         
         if not job:
             logger.error(f"[VALIDATION PREP] Translation job {job_id} not found")
-            raise ValueError(f"Translation job {job_id} not found")
+            self.raise_not_found(f"Translation job {job_id}")
         
         logger.info(f"[VALIDATION PREP] Found job: status={job.status}, filepath={job.filepath}")
         
@@ -92,7 +90,7 @@ class ValidationDomainService:
         translated_path = self._get_translated_file_path(job)
         logger.info(f"[VALIDATION PREP] Translated file path: {translated_path}")
         
-        if not self._file_manager.file_exists(translated_path):
+        if not self.file_manager.file_exists(translated_path):
             logger.error(f"[VALIDATION PREP] Translated file not found: {translated_path}")
             raise FileNotFoundError(f"Translated file not found: {translated_path}")
         
@@ -100,10 +98,8 @@ class ValidationDomainService:
         
         # Initialize validator with the model API
         try:
-            from backend.domains.shared.model_factory import ModelAPIFactory
-            model_factory = ModelAPIFactory()
-            logger.info(f"[VALIDATION PREP] Creating model API with factory...")
-            model_api = model_factory.create(api_key, model_name)
+            logger.info(f"[VALIDATION PREP] Creating model API with validate_and_create_model...")
+            model_api = self.validate_and_create_model(api_key, model_name)
             logger.info(f"[VALIDATION PREP] Model API created: {type(model_api)}")
             validator = TranslationValidator(model_api)
             logger.info(f"[VALIDATION PREP] Validator initialized")
@@ -127,7 +123,7 @@ class ValidationDomainService:
         # Load the translated segments from the translated file
         logger.info(f"[VALIDATION PREP] Loading translated segments from {translated_path}")
         try:
-            translated_content = self._file_manager.read_file(translated_path)
+            translated_content = self.file_manager.read_file(translated_path)
             logger.info(f"[VALIDATION PREP] Read {len(translated_content)} characters from translated file")
             validation_document.translated_segments = translated_content.split('\n')
             logger.info(f"[VALIDATION PREP] Split into {len(validation_document.translated_segments)} segments")
@@ -223,7 +219,7 @@ class ValidationDomainService:
             Path to the saved report
         """
         # Use FileManager's standardized path for consistency
-        report_path = self._file_manager.get_validation_report_path(job)
+        report_path = self.file_manager.get_validation_report_path(job)
         
         # Ensure directory exists
         report_dir = os.path.dirname(report_path)
@@ -231,7 +227,7 @@ class ValidationDomainService:
         
         # Save the report as JSON
         report_content = json.dumps(report, indent=2, ensure_ascii=False)
-        self._file_manager.write_file(report_path, report_content)
+        self.file_manager.write_file(report_path, report_content)
         
         return report_path
     
@@ -266,39 +262,43 @@ class ValidationDomainService:
         )
         
         # Emit appropriate domain event
-        if self._uow:
-            if status == "PROCESSING":
-                event = DomainEvent(
-                    event_type=EventType.VALIDATION_STARTED,
-                    aggregate_id=job_id,
-                    aggregate_type="TranslationJob",
-                    payload={"job_id": job_id}
-                )
-                self._uow.collect_event(event)
-            
-            elif status == "COMPLETED":
-                event = DomainEvent(
-                    event_type=EventType.VALIDATION_COMPLETED,
-                    aggregate_id=job_id,
-                    aggregate_type="TranslationJob",
-                    payload={
-                        "job_id": job_id,
-                        "report_path": report_path
-                    }
-                )
-                self._uow.collect_event(event)
-            
-            elif status == "FAILED":
-                event = DomainEvent(
-                    event_type=EventType.VALIDATION_FAILED,
-                    aggregate_id=job_id,
-                    aggregate_type="TranslationJob",
-                    payload={
-                        "job_id": job_id,
-                        "error_message": error_message
-                    }
-                )
-                self._uow.collect_event(event)
+        try:
+            with self.unit_of_work() as uow:
+                if status == "PROCESSING":
+                    event = DomainEvent(
+                        event_type=EventType.VALIDATION_STARTED,
+                        aggregate_id=job_id,
+                        aggregate_type="TranslationJob",
+                        payload={"job_id": job_id}
+                    )
+                    uow.collect_event(event)
+                
+                elif status == "COMPLETED":
+                    event = DomainEvent(
+                        event_type=EventType.VALIDATION_COMPLETED,
+                        aggregate_id=job_id,
+                        aggregate_type="TranslationJob",
+                        payload={
+                            "job_id": job_id,
+                            "report_path": report_path
+                        }
+                    )
+                    uow.collect_event(event)
+                
+                elif status == "FAILED":
+                    event = DomainEvent(
+                        event_type=EventType.VALIDATION_FAILED,
+                        aggregate_id=job_id,
+                        aggregate_type="TranslationJob",
+                        payload={
+                            "job_id": job_id,
+                            "error_message": error_message
+                        }
+                    )
+                    uow.collect_event(event)
+        except ValueError:
+            # No UoW configured, skip event collection
+            pass
     
     async def validate_translation(
         self,
@@ -377,5 +377,5 @@ class ValidationDomainService:
     def _get_translated_file_path(self, job: TranslationJob) -> str:
         """Get the path to the translated file for a job."""
         # Use FileManager's method to get the correct translated file path
-        file_path, _, _ = self._file_manager.get_translated_file_path(job)
+        file_path, _, _ = self.file_manager.get_translated_file_path(job)
         return file_path

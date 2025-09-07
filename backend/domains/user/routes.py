@@ -1,22 +1,25 @@
-"""User domain API routes."""
+"""User domain API routes - thin routing layer."""
 
+import os
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Header, Request, Query
+from fastapi import Depends, HTTPException, Header, Request
 from sqlalchemy.orm import Session
+from svix import Webhook
 
-from backend.dependencies import get_db, get_required_user, get_optional_user
+from backend.dependencies import get_db, get_required_user
 from backend.domains.user.models import User
 from backend.domains.user.schemas import (
     User as UserSchema,
     Announcement as AnnouncementSchema,
-    AnnouncementCreate,
-    TranslationUsageLog as UsageLogSchema
+    UserCreate,
+    UserUpdate
 )
 from backend.domains.user.service import UserService
+from backend.domains.user.repository import SqlAlchemyUserRepository
 
 
-router = APIRouter(prefix="/users", tags=["users"])
+CLERK_WEBHOOK_SECRET = os.environ.get("CLERK_WEBHOOK_SECRET")
 
 
 def get_user_service(db: Session = Depends(get_db)) -> UserService:
@@ -24,310 +27,93 @@ def get_user_service(db: Session = Depends(get_db)) -> UserService:
     return UserService(db)
 
 
-# User profile endpoints
-
-@router.get("/me", response_model=UserSchema)
-def get_current_user_profile(
+async def get_current_user(
     current_user: User = Depends(get_required_user)
-):
+) -> UserSchema:
     """Get the current user's profile."""
     return UserSchema.from_orm(current_user)
 
 
-@router.get("/me/statistics")
-def get_current_user_statistics(
-    current_user: User = Depends(get_required_user),
+async def list_announcements(
     service: UserService = Depends(get_user_service)
-):
-    """Get statistics for the current user."""
-    return service.get_user_statistics(current_user.id)
-
-
-@router.get("/me/usage", response_model=List[UsageLogSchema])
-def get_current_user_usage(
-    limit: int = Query(100, ge=1, le=1000),
-    current_user: User = Depends(get_required_user),
-    service: UserService = Depends(get_user_service)
-):
-    """Get API usage logs for the current user."""
-    logs = service.get_user_usage_logs(current_user.id, limit)
-    return [UsageLogSchema.from_orm(log) for log in logs]
-
-
-@router.get("/me/usage-summary")
-def get_current_user_usage_summary(
-    days: int = Query(30, ge=1, le=365),
-    current_user: User = Depends(get_required_user),
-    service: UserService = Depends(get_user_service)
-):
-    """Get usage summary for the current user."""
-    return service.get_usage_summary(current_user.id, days)
-
-
-# Admin user management endpoints
-
-@router.get("/", response_model=List[UserSchema])
-async def list_users(
-    query: Optional[str] = Query(None, description="Search query"),
-    role: Optional[str] = Query(None, description="Filter by role"),
-    limit: int = Query(20, ge=1, le=100),
-    current_user: User = Depends(get_required_user),
-    service: UserService = Depends(get_user_service)
-):
-    """List users (admin only)."""
-    if not service.is_admin(current_user):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    users = service.search_users(query, role, limit)
-    return [UserSchema.from_orm(u) for u in users]
-
-
-@router.get("/{user_id}", response_model=UserSchema)
-def get_user(
-    user_id: int,
-    current_user: User = Depends(get_required_user),
-    service: UserService = Depends(get_user_service)
-):
-    """Get a specific user's profile (admin only or self)."""
-    # Users can view their own profile
-    if user_id == current_user.id:
-        return UserSchema.from_orm(current_user)
-    
-    # Otherwise must be admin
-    if not service.is_admin(current_user):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    user = service.get_user(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    return UserSchema.from_orm(user)
-
-
-@router.put("/{user_id}/role")
-async def update_user_role(
-    user_id: int,
-    new_role: str,
-    current_user: User = Depends(get_required_user),
-    service: UserService = Depends(get_user_service)
-):
-    """Update a user's role (admin only)."""
-    try:
-        user = await service.update_user_role(user_id, new_role, current_user)
-        return {
-            "message": f"User role updated to {new_role}",
-            "user": UserSchema.from_orm(user)
-        }
-    except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.get("/{user_id}/statistics")
-def get_user_statistics(
-    user_id: int,
-    current_user: User = Depends(get_required_user),
-    service: UserService = Depends(get_user_service)
-):
-    """Get statistics for a specific user (admin only)."""
-    if not service.is_admin(current_user):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    return service.get_user_statistics(user_id)
-
-
-# Announcement endpoints
-
-@router.get("/announcements/active", response_model=List[AnnouncementSchema])
-def get_active_announcements(
-    service: UserService = Depends(get_user_service)
-):
+) -> List[AnnouncementSchema]:
     """Get active announcements (public endpoint)."""
     announcements = service.get_announcements(active_only=True)
     return [AnnouncementSchema.from_orm(a) for a in announcements]
 
 
-@router.get("/announcements/all", response_model=List[AnnouncementSchema])
-def get_all_announcements(
-    limit: int = Query(20, ge=1, le=100),
-    current_user: User = Depends(get_required_user),
-    service: UserService = Depends(get_user_service)
-):
-    """Get all announcements including inactive (admin only)."""
-    if not service.is_admin(current_user):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    announcements = service.get_announcements(active_only=False, limit=limit)
-    return [AnnouncementSchema.from_orm(a) for a in announcements]
-
-
-@router.post("/announcements", response_model=AnnouncementSchema)
-async def create_announcement(
-    announcement_data: AnnouncementCreate,
-    current_user: User = Depends(get_required_user),
-    service: UserService = Depends(get_user_service)
-):
-    """Create a new announcement (admin only)."""
-    try:
-        announcement = await service.create_announcement(
-            message=announcement_data.message,
-            is_active=announcement_data.is_active,
-            admin_user=current_user
-        )
-        return AnnouncementSchema.from_orm(announcement)
-    except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
-
-
-@router.put("/announcements/{announcement_id}", response_model=AnnouncementSchema)
-async def update_announcement(
-    announcement_id: int,
-    message: Optional[str] = None,
-    is_active: Optional[bool] = None,
-    current_user: User = Depends(get_required_user),
-    service: UserService = Depends(get_user_service)
-):
-    """Update an announcement (admin only)."""
-    try:
-        announcement = await service.update_announcement(
-            announcement_id=announcement_id,
-            message=message,
-            is_active=is_active,
-            admin_user=current_user
-        )
-        return AnnouncementSchema.from_orm(announcement)
-    except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@router.delete("/announcements/{announcement_id}")
-async def delete_announcement(
-    announcement_id: int,
-    current_user: User = Depends(get_required_user),
-    service: UserService = Depends(get_user_service)
-):
-    """Delete an announcement (admin only)."""
-    try:
-        await service.delete_announcement(announcement_id, current_user)
-        return {"message": "Announcement deleted successfully"}
-    except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-# Clerk webhook endpoint
-
-@router.post("/clerk/webhook")
 async def handle_clerk_webhook(
     request: Request,
-    service: UserService = Depends(get_user_service)
+    svix_id: str = Header(None),
+    svix_timestamp: str = Header(None),
+    svix_signature: str = Header(None),
+    db: Session = Depends(get_db)
 ):
-    """Handle Clerk webhook events."""
-    # Get raw body for signature verification
-    body = await request.body()
-    headers = dict(request.headers)
+    """Handle Clerk webhook events for user management."""
+    if not CLERK_WEBHOOK_SECRET:
+        raise HTTPException(status_code=500, detail="Webhook secret is not configured.")
     
-    # Verify webhook signature
-    if not service.verify_webhook_signature(body, headers):
-        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+    headers = {
+        "svix-id": svix_id,
+        "svix-timestamp": svix_timestamp,
+        "svix-signature": svix_signature,
+    }
     
-    # Parse webhook data
     try:
-        import json
-        data = json.loads(body)
-        event_type = data.get("type")
+        payload_body = await request.body()
+        wh = Webhook(CLERK_WEBHOOK_SECRET)
+        evt = wh.verify(payload_body, headers)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error verifying webhook signature: {e}")
+    
+    event_type = evt["type"]
+    data = evt["data"]
+    
+    if event_type == "user.created":
+        user_name = f'{data.get("first_name", "")} {data.get("last_name", "")}'.strip()
+        email_addresses = data.get("email_addresses", [])
+        email_address = email_addresses[0].get("email_address") if email_addresses else None
         
-        # Handle the webhook event
-        result = await service.handle_clerk_webhook(event_type, data)
+        user_in = UserCreate(
+            clerk_user_id=data["id"],
+            email=email_address or None,
+            name=user_name or None
+        )
+        repo = SqlAlchemyUserRepository(db)
+        db_user = User(clerk_user_id=user_in.clerk_user_id, email=user_in.email, name=user_in.name)
+        db.add(db_user)
+        db.commit()
         
-        if result:
-            return {"message": f"Webhook {event_type} processed successfully"}
+    elif event_type == "user.updated":
+        clerk_user_id = data["id"]
+        repo = SqlAlchemyUserRepository(db)
+        db_user = repo.get_by_clerk_id(clerk_user_id)
+        
+        user_name = f'{data.get("first_name", "")} {data.get("last_name", "")}'.strip()
+        email_addresses = data.get("email_addresses", [])
+        email_address = email_addresses[0].get("email_address") if email_addresses else None
+        
+        if db_user:
+            user_update = UserUpdate(email=email_address or None, name=user_name or None)
+            for key, value in user_update.dict(exclude_unset=True).items():
+                setattr(db_user, key, value)
+            db.commit()
         else:
-            return {"message": f"Webhook {event_type} ignored"}
+            print(f"--- [INFO] Webhook received user.updated for non-existent user {clerk_user_id}. Creating them now. ---")
+            user_in = UserCreate(
+                clerk_user_id=clerk_user_id,
+                email=email_address or None,
+                name=user_name or None
+            )
+            db_user = User(clerk_user_id=user_in.clerk_user_id, email=user_in.email, name=user_in.name)
+            db.add(db_user)
+            db.commit()
             
-    except Exception as e:
-        # Log error but return success to prevent retries
-        print(f"Error processing webhook: {e}")
-        return {"message": "Webhook received"}
-
-
-# SSE streaming endpoint for announcements
-
-import asyncio
-from fastapi.responses import StreamingResponse
-from ...database import SessionLocal
-
-
-async def announcement_generator(request: Request):
-    """Generate Server-Sent Events for announcement updates."""
-    last_sent_announcement = None
-    client_id = id(request)
-    print(f"📡 새 클라이언트 연결: {client_id}")
+    elif event_type == "user.deleted":
+        repo = SqlAlchemyUserRepository(db)
+        db_user = repo.get_by_clerk_id(data["id"])
+        if db_user:
+            db.delete(db_user)
+            db.commit()
     
-    def get_announcement_from_db():
-        with SessionLocal() as db:
-            service = UserService(db)
-            return service.get_active_announcement()
-    
-    try:
-        # Send initial announcement if exists
-        current_announcement = get_announcement_from_db()
-        if current_announcement:
-            yield UserService.format_announcement_for_sse(current_announcement)
-            last_sent_announcement = current_announcement
-            print(f"📤 초기 공지 전송 (클라이언트 {client_id}): ID {current_announcement.id}")
-    except Exception as e:
-        print(f"❌ 초기 공지 전송 오류: {e}")
-    
-    # Main loop for streaming updates
-    while True:
-        if await request.is_disconnected():
-            print(f"🔌 클라이언트 연결 해제: {client_id}")
-            break
-        
-        try:
-            current_announcement = get_announcement_from_db()
-            
-            # Check if we should send an update
-            if UserService.should_send_announcement_update(current_announcement, last_sent_announcement):
-                # Determine if announcement was deactivated
-                if current_announcement is None and last_sent_announcement is not None:
-                    # Send deactivation message
-                    yield UserService.format_announcement_for_sse(last_sent_announcement, is_active=False)
-                    print(f"🔇 공지 비활성화 전송 (클라이언트 {client_id})")
-                    last_sent_announcement = None
-                elif current_announcement is not None:
-                    # Send new or updated announcement
-                    yield UserService.format_announcement_for_sse(current_announcement)
-                    print(f"📢 새 공지/변경 전송 (클라이언트 {client_id}): ID {current_announcement.id}")
-                    last_sent_announcement = current_announcement
-                    
-        except Exception as e:
-            print(f"❌ SSE 스트림 오류 (클라이언트 {client_id}): {e}")
-        
-        # Wait before checking for updates again
-        await asyncio.sleep(120)
-
-
-@router.get("/announcements/stream")
-async def stream_announcements(request: Request):
-    """Stream announcements via Server-Sent Events."""
-    return StreamingResponse(
-        announcement_generator(request),
-        media_type="text/event-stream; charset=utf-8"
-    )
-
-
-# Legacy compatibility endpoints (will be deprecated)
-
-@router.get("/api/v1/announcements", response_model=List[AnnouncementSchema])
-def get_announcements_legacy(
-    service: UserService = Depends(get_user_service)
-):
-    """Legacy endpoint for getting announcements."""
-    announcements = service.get_announcements(active_only=True)
-    return [AnnouncementSchema.from_orm(a) for a in announcements]
+    return {"status": "success"}

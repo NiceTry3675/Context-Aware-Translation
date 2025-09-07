@@ -6,7 +6,7 @@ delegating all business logic to the TranslationDomainService.
 """
 
 from typing import List, Optional
-from fastapi import Depends, HTTPException, UploadFile, File, Form, Query
+from fastapi import Depends, HTTPException, UploadFile, File, Form, Query, Response
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -110,7 +110,7 @@ async def delete_job(
     job_id: int,
     user: User = Depends(get_required_user),
     service: TranslationDomainService = Depends(get_translation_service)
-) -> dict:
+) -> Response:
     """
     Delete a translation job.
     
@@ -120,11 +120,11 @@ async def delete_job(
         service: Translation domain service
         
     Returns:
-        Success message
+        204 No Content response
     """
     user_is_admin = await is_admin(user)
     service.delete_job(user, job_id, is_admin=user_is_admin)
-    return {"message": "Job deleted successfully"}
+    return Response(status_code=204)
 
 
 async def download_job_output(

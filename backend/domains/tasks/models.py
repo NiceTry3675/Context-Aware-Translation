@@ -7,7 +7,7 @@ from sqlalchemy.sql import func
 from datetime import datetime
 import enum
 
-from ..shared.models.base import Base
+from ..shared.db_base import Base
 
 
 class TaskStatus(str, enum.Enum):

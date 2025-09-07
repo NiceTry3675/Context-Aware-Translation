@@ -1,19 +1,18 @@
 from .uow import UnitOfWork, SqlAlchemyUoW, create_uow
 from .repository import BaseRepository, SqlAlchemyRepository
-from .events_legacy import (
+from .events import (
     DomainEvent,
     EventType,
-    EventDispatcher,
     EventHandler,
     EventStore,
-    InMemoryEventStore,
-    TranslationJobCreatedEvent,
-    TranslationJobCompletedEvent,
-    TranslationJobFailedEvent,
+    EventPublisher,
+    TranslationStartedEvent,
+    TranslationCompletedEvent,
+    TranslationFailedEvent,
     UserCreatedEvent,
     UserRoleChangedEvent,
     PostCreatedEvent,
-    CommentCreatedEvent,
+    CommentAddedEvent,
 )
 from .outbox import OutboxRepository, OutboxEventProcessor
 
@@ -28,17 +27,16 @@ __all__ = [
     # Events
     "DomainEvent",
     "EventType",
-    "EventDispatcher",
     "EventHandler",
     "EventStore",
-    "InMemoryEventStore",
-    "TranslationJobCreatedEvent",
-    "TranslationJobCompletedEvent",
-    "TranslationJobFailedEvent",
+    "EventPublisher",
+    "TranslationStartedEvent",
+    "TranslationCompletedEvent",
+    "TranslationFailedEvent",
     "UserCreatedEvent",
     "UserRoleChangedEvent",
     "PostCreatedEvent",
-    "CommentCreatedEvent",
+    "CommentAddedEvent",
     # Outbox
     "OutboxRepository",
     "OutboxEventProcessor",

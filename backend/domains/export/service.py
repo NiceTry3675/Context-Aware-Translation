@@ -10,14 +10,13 @@ This service handles all export-related business logic including:
 """
 
 import os
-import logging
 from typing import Optional, Dict, Any, List, Tuple
 from sqlalchemy.orm import Session
 
 from backend.domains.translation.models import TranslationJob
 from backend.domains.translation.repository import SqlAlchemyTranslationJobRepository
 from backend.domains.user.models import User
-from backend.domains.shared.utils import FileManager
+from backend.domains.shared.service_base import DomainServiceBase
 from backend.auth import is_admin
 
 from .pdf_generator import generate_translation_pdf
@@ -34,10 +33,11 @@ from .schemas import (
 )
 
 
-class ExportDomainService:
+class ExportDomainService(DomainServiceBase):
     """Service for handling export operations."""
     
     def __init__(self, db: Session):
+        super().__init__()
         self.db = db
         self.repo = SqlAlchemyTranslationJobRepository(db)
     
@@ -57,13 +57,13 @@ class ExportDomainService:
         """
         db_job = self.repo.get(job_id)
         if db_job is None:
-            raise ValueError("Job not found")
+            self.raise_not_found("Job")
         
         # Check ownership
         if not db_job.owner or db_job.owner.clerk_user_id != user.clerk_user_id:
             user_is_admin = await is_admin(user)
             if not user_is_admin:
-                raise ValueError("Not authorized to access this job")
+                self.raise_forbidden("Not authorized to access this job")
         
         return db_job
     
@@ -88,16 +88,15 @@ class ExportDomainService:
         db_job = await self._check_job_access(job_id, user)
         
         if db_job.status not in ["COMPLETED", "FAILED"]:
-            raise ValueError(f"Translation is not completed yet. Current status: {db_job.status}")
+            self.raise_validation_error(f"Translation is not completed yet. Current status: {db_job.status}")
         
         if not db_job.filepath:
-            raise ValueError("Filepath not found for this job.")
+            self.raise_not_found("Filepath for this job")
         
-        file_manager = FileManager()
-        file_path, user_translated_filename, media_type = file_manager.get_translated_file_path(db_job)
+        file_path, user_translated_filename, media_type = self.file_manager.get_translated_file_path(db_job)
         
         if not os.path.exists(file_path):
-            raise ValueError(f"Translated file not found at path: {file_path}")
+            self.raise_not_found(f"Translated file at path: {file_path}")
         
         return file_path, user_translated_filename, media_type
     
@@ -124,18 +123,17 @@ class ExportDomainService:
         db_job = await self._check_job_access(job_id, user)
         
         if log_type not in ["prompts", "context"]:
-            raise ValueError("Invalid log type. Must be 'prompts' or 'context'.")
+            self.raise_validation_error("Invalid log type. Must be 'prompts' or 'context'.")
         
-        file_manager = FileManager()
         if log_type == "prompts":
-            log_path = file_manager.get_job_prompt_log_path(job_id)
+            log_path = self.file_manager.get_job_prompt_log_path(job_id)
         else:  # context
-            log_path = file_manager.get_job_context_log_path(job_id)
+            log_path = self.file_manager.get_job_context_log_path(job_id)
         
         log_filename = f"job_{job_id}_{log_type}.json"
         
         if not os.path.exists(log_path):
-            raise ValueError(f"{log_type.capitalize()} log file not found.")
+            self.raise_not_found(f"{log_type.capitalize()} log file")
         
         return log_path, log_filename
     
@@ -162,7 +160,7 @@ class ExportDomainService:
         db_job = await self._check_job_access(job_id, user)
         
         if db_job.status != "COMPLETED":
-            raise ValueError(f"Glossary is available only for completed jobs. Current status: {db_job.status}")
+            self.raise_validation_error(f"Glossary is available only for completed jobs. Current status: {db_job.status}")
         
         if not db_job.final_glossary:
             if structured:
@@ -231,7 +229,7 @@ class ExportDomainService:
         if db_job.status != "COMPLETED":
             # If translation not complete, check if validation is done (which also provides segments)
             if db_job.validation_status != "COMPLETED":
-                raise ValueError(f"Translation segments are available only for completed jobs or validated jobs. Job status: {db_job.status}, Validation status: {db_job.validation_status}")
+                self.raise_validation_error(f"Translation segments are available only for completed jobs or validated jobs. Job status: {db_job.status}, Validation status: {db_job.validation_status}")
         
         # Get segments from different sources based on availability
         segments = db_job.translation_segments
@@ -253,7 +251,7 @@ class ExportDomainService:
                     }
                     segments.append(segment_data)
             except Exception as e:
-                logging.warning(f"Error reading validation report for segments: {e}")
+                self.logger.warning(f"Error reading validation report for segments: {e}")
                 segments = []
         
         # Return empty segments if still not available
@@ -307,7 +305,7 @@ class ExportDomainService:
         if db_job.status != "COMPLETED":
             # If translation not complete, check if validation is done (which also provides content)
             if db_job.validation_status != "COMPLETED":
-                raise ValueError(f"Translation content is available only for completed jobs or validated jobs. Job status: {db_job.status}, Validation status: {db_job.validation_status}")
+                self.raise_validation_error(f"Translation content is available only for completed jobs or validated jobs. Job status: {db_job.status}, Validation status: {db_job.validation_status}")
         
         # Determine which file to return based on what's available
         file_path = None
@@ -315,18 +313,17 @@ class ExportDomainService:
         
         # Check if we have a translation file (post-edit overwrites the original, so we use the same path)
         if db_job.filepath:
-            file_manager = FileManager()
-            file_path, _, _ = file_manager.get_translated_file_path(db_job)
+            file_path, _, _ = self.file_manager.get_translated_file_path(db_job)
             if not os.path.exists(file_path):
                 # If translated file doesn't exist but validation is complete, we can extract from validation report
                 if db_job.validation_status != "COMPLETED" or not db_job.validation_report_path:
-                    raise ValueError(f"Translated file not found")
+                    self.raise_not_found("Translated file")
                 file_path = None  # Will extract from validation report
         elif db_job.validation_status == "COMPLETED" and db_job.validation_report_path:
             # For validation-only case, we need to extract content from validation report
             file_path = None  # Will handle below
         else:
-            raise ValueError("No content file found for this job.")
+            self.raise_not_found("Content file for this job")
         
         # Handle validation report case specially - extract translated content from report
         if file_path is None and db_job.validation_status == "COMPLETED" and db_job.validation_report_path:
@@ -344,17 +341,17 @@ class ExportDomainService:
                 
                 content = '\n'.join(translated_segments) if translated_segments else ""
                 if not content:
-                    raise ValueError("No translated content found in validation report")
+                    self.raise_not_found("Translated content in validation report")
             except Exception as e:
-                logging.error(f"Error reading validation report: {e}")
-                raise ValueError("Error extracting content from validation report")
+                self.logger.error(f"Error reading validation report: {e}")
+                self.raise_server_error("Error extracting content from validation report")
         else:
             # Regular file reading
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content = f.read()
             except Exception as e:
-                raise ValueError(f"Error reading file: {str(e)}")
+                self.raise_server_error(f"Error reading file: {str(e)}")
         
         # Try to read the original source file
         source_content = None
@@ -365,7 +362,7 @@ class ExportDomainService:
                 source_content = parse_document(db_job.filepath)
             except Exception as e:
                 # Log error but don't fail the whole request
-                logging.warning(f"Error reading source file: {e}")
+                self.logger.warning(f"Error reading source file: {e}")
         
         return ContentResponse(
             job_id=job_id,
@@ -397,7 +394,7 @@ class ExportDomainService:
         
         # Check if job is completed
         if db_job.status != "COMPLETED":
-            raise ValueError(f"PDF generation is available only for completed jobs. Current status: {db_job.status}")
+            self.raise_validation_error(f"PDF generation is available only for completed jobs. Current status: {db_job.status}")
         
         try:
             # Generate PDF
@@ -411,16 +408,16 @@ class ExportDomainService:
             return pdf_bytes
             
         except ValueError as e:
-            raise ValueError(str(e))
+            self.raise_validation_error(str(e))
         except Exception as e:
-            logging.error(f"Error generating PDF for job {request.job_id}: {e}")
-            raise ValueError(f"Error generating PDF: {str(e)}")
+            self.logger.error(f"Error generating PDF for job {request.job_id}: {e}")
+            self.raise_server_error(f"Error generating PDF: {str(e)}")
     
     def get_pdf_filename(self, job_id: int) -> str:
         """Get the PDF filename for a job."""
         db_job = self.repo.get(job_id)
         if not db_job:
-            raise ValueError("Job not found")
+            self.raise_not_found("Job")
         
         base_filename = db_job.filename.rsplit('.', 1)[0] if '.' in db_job.filename else db_job.filename
         return f"{base_filename}_translation.pdf"

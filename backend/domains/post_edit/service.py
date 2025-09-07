@@ -16,38 +16,36 @@ from core.translation.post_editor import PostEditEngine
 from core.translation.document import TranslationDocument
 from backend.domains.translation.models import TranslationJob
 from backend.domains.translation.repository import TranslationJobRepository, SqlAlchemyTranslationJobRepository
+from backend.domains.shared.service_base import DomainServiceBase
 from backend.domains.shared.uow import SqlAlchemyUoW
 from backend.domains.shared.events import DomainEvent, EventType
-from backend.domains.shared.utils import FileManager
 from backend.config.settings import get_settings
 
 
-class PostEditDomainService:
+class PostEditDomainService(DomainServiceBase):
     """Service layer for post-editing operations using domain patterns."""
     
     def __init__(
         self,
+        session_factory=None,
         repository: Optional[TranslationJobRepository] = None,
         uow: Optional[SqlAlchemyUoW] = None,
-        file_manager: Optional[FileManager] = None
+        storage=None
     ):
         """
         Initialize post-edit service with dependencies.
         
         Args:
+            session_factory: Database session factory for creating sessions
             repository: TranslationJob repository (optional, creates default if not provided)
             uow: Unit of Work for transaction management (optional)
-            file_manager: File manager for file operations (optional, uses default if not provided)
+            storage: Storage abstraction for file operations
         """
-        self._repository = repository
-        self._uow = uow
-        self._file_manager = file_manager or FileManager()
+        super().__init__(session_factory=session_factory, repository=repository, uow=uow, storage=storage)
     
     def _get_repository(self, session: Session) -> TranslationJobRepository:
         """Get or create repository instance."""
-        if self._repository:
-            return self._repository
-        return SqlAlchemyTranslationJobRepository(session)
+        return self.get_or_create_repository(session, SqlAlchemyTranslationJobRepository)
     
     def validate_prerequisites(
         self,
@@ -72,15 +70,15 @@ class PostEditDomainService:
         job = repository.get(job_id)
         
         if not job:
-            raise ValueError(f"Translation job {job_id} not found")
+            self.raise_not_found(f"Translation job {job_id}")
         
         if job.validation_status != "COMPLETED":
-            raise ValueError("Validation must be completed before post-editing")
+            self.raise_validation_error("Validation must be completed before post-editing")
         
         if not job.validation_report_path:
-            raise ValueError("Validation report not found")
+            self.raise_validation_error("Validation report not found")
         
-        if not self._file_manager.file_exists(job.validation_report_path):
+        if not self.file_manager.file_exists(job.validation_report_path):
             raise FileNotFoundError(
                 f"Validation report file not found: {job.validation_report_path}"
             )
@@ -114,18 +112,16 @@ class PostEditDomainService:
         job = repository.get(job_id)
         
         if not job:
-            raise ValueError(f"Translation job {job_id} not found")
+            self.raise_not_found(f"Translation job {job_id}")
         
         # Get the translated file path
         translated_path = self._get_translated_file_path(job)
         
-        if not self._file_manager.file_exists(translated_path):
+        if not self.file_manager.file_exists(translated_path):
             raise FileNotFoundError(f"Translated file not found: {translated_path}")
         
         # Initialize post-editor with the model API
-        from backend.domains.shared.model_factory import ModelAPIFactory
-        model_factory = ModelAPIFactory()
-        model_api = model_factory.create(api_key, model_name)
+        model_api = self.validate_and_create_model(api_key, model_name)
         post_editor = PostEditEngine(model_api)
         
         # Create translation document for post-editing
@@ -138,7 +134,7 @@ class PostEditDomainService:
         # Use stored translation segments from DB for exact alignment
         db_segments = getattr(job, 'translation_segments', None)
         if not db_segments or not isinstance(db_segments, list):
-            raise ValueError(
+            self.raise_validation_error(
                 "Translation segments not found for this job. "
                 "Post-editing requires saved segments."
             )
@@ -156,7 +152,7 @@ class PostEditDomainService:
         
         # Validate extracted list
         if not translated_list or any(t is None for t in translated_list):
-            raise ValueError(
+            self.raise_validation_error(
                 "Invalid translation segments schema. "
                 "Expected 'translated_text' per segment."
             )
@@ -165,7 +161,7 @@ class PostEditDomainService:
         
         # Strict count match with source segments
         if len(translation_document.translated_segments) != len(translation_document.segments):
-            raise ValueError(
+            self.raise_validation_error(
                 f"Translation segments count mismatch "
                 f"(source={len(translation_document.segments)}, "
                 f"translated={len(translation_document.translated_segments)})."
@@ -213,7 +209,7 @@ class PostEditDomainService:
         # Overwrite the translated file with the edited content
         try:
             edited_content = '\n'.join(edited_segments)
-            self._file_manager.write_file(translated_path, edited_content)
+            self.file_manager.write_file(translated_path, edited_content)
             print(f"--- [POST-EDIT] Successfully updated translated file: {translated_path} ---")
         except IOError as e:
             print(f"--- [POST-EDIT] Error writing to translated file: {e} ---")
@@ -232,7 +228,7 @@ class PostEditDomainService:
             Path to the post-edit log file
         """
         # Use FileManager's standardized path for consistency
-        return self._file_manager.get_post_edit_log_path(job)
+        return self.file_manager.get_post_edit_log_path(job)
     
     def update_job_post_edit_status(
         self,
@@ -381,5 +377,5 @@ class PostEditDomainService:
     def _get_translated_file_path(self, job: TranslationJob) -> str:
         """Get the path to the translated file for a job."""
         # Use FileManager's method to get the correct translated file path
-        file_path, _, _ = self._file_manager.get_translated_file_path(job)
+        file_path, _, _ = self.file_manager.get_translated_file_path(job)
         return file_path

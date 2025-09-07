@@ -4,19 +4,18 @@ import os
 from fastapi import HTTPException, UploadFile
 from typing import Dict, Any
 
-from ..shared.base.model_factory import ModelAPIFactory
-from ..shared.utils import FileManager
+from ..shared.service_base import ServiceBase
 from .style_analysis import StyleAnalysis
 from .glossary_analysis import GlossaryAnalysis
 from .character_analysis import CharacterAnalysis
 from .schemas import StyleAnalysisResponse, GlossaryAnalysisResponse, CharacterAnalysisResponse
 
 
-class AnalysisService:
+class AnalysisService(ServiceBase):
     """Service for document analysis operations."""
     
     def __init__(self):
-        self.file_manager = FileManager()
+        super().__init__()
     
     async def analyze_style(
         self,
@@ -38,17 +37,13 @@ class AnalysisService:
         Raises:
             HTTPException: If API key invalid or analysis fails
         """
-        if not ModelAPIFactory.validate_api_key(api_key, model_name):
-            raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
+        model_api = self.validate_and_create_model(api_key, model_name)
         
         try:
             # Save uploaded file temporarily
             temp_file_path, _ = self.file_manager.save_uploaded_file(file, file.filename)
             
             try:
-                # Create model API for style analysis
-                model_api = ModelAPIFactory.create(api_key, model_name, None)
-                
                 # Create StyleAnalysis instance with model API
                 style_service = StyleAnalysis()
                 style_service.set_model_api(model_api)
@@ -66,9 +61,9 @@ class AnalysisService:
                     os.remove(temp_file_path)
                     
         except ValueError as e:
-            raise HTTPException(status_code=500, detail=str(e))
+            self.raise_server_error(str(e))
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to analyze style: {e}")
+            self.raise_server_error(f"Failed to analyze style: {e}")
     
     async def analyze_glossary(
         self,
@@ -90,17 +85,13 @@ class AnalysisService:
         Raises:
             HTTPException: If API key invalid or extraction fails
         """
-        if not ModelAPIFactory.validate_api_key(api_key, model_name):
-            raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
+        model_api = self.validate_and_create_model(api_key, model_name)
         
         try:
             # Save uploaded file temporarily
             temp_file_path, _ = self.file_manager.save_uploaded_file(file, file.filename)
             
             try:
-                # Create model API for glossary analysis
-                model_api = ModelAPIFactory.create(api_key, model_name, None)
-                
                 # Create GlossaryAnalysis instance with model API
                 glossary_service = GlossaryAnalysis()
                 glossary_service.set_model_api(model_api)
@@ -122,7 +113,7 @@ class AnalysisService:
                     os.remove(temp_file_path)
                     
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to extract glossary: {e}")
+            self.raise_server_error(f"Failed to extract glossary: {e}")
     
     async def analyze_characters(
         self,
@@ -144,17 +135,13 @@ class AnalysisService:
         Raises:
             HTTPException: If API key invalid or analysis fails
         """
-        if not ModelAPIFactory.validate_api_key(api_key, model_name):
-            raise HTTPException(status_code=400, detail="Invalid API Key or unsupported model.")
+        model_api = self.validate_and_create_model(api_key, model_name)
         
         try:
             # Save uploaded file temporarily
             temp_file_path, _ = self.file_manager.save_uploaded_file(file, file.filename)
             
             try:
-                # Create model API for character analysis
-                model_api = ModelAPIFactory.create(api_key, model_name, None)
-                
                 # Create CharacterAnalysis instance with model API
                 character_service = CharacterAnalysis()
                 character_service.set_model_api(model_api)
@@ -168,4 +155,4 @@ class AnalysisService:
                     os.remove(temp_file_path)
                     
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to analyze characters: {e}")
+            self.raise_server_error(f"Failed to analyze characters: {e}")
