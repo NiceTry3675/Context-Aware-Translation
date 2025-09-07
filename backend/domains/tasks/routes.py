@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from ...dependencies import get_db, get_optional_user, get_required_user
+from ...config.dependencies import get_db, get_optional_user, get_required_user
 from ..user.models import User
 from .models import TaskKind, TaskStatus
 from .schemas import (

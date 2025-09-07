@@ -10,7 +10,7 @@ from fastapi import Depends, HTTPException, UploadFile, File, Form, Query, Respo
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from backend.dependencies import get_db, get_required_user, is_admin
+from backend.config.dependencies import get_db, get_required_user, is_admin
 from backend.domains.user.models import User
 from backend.domains.translation.models import TranslationJob as TranslationJobModel
 from backend.domains.translation.schemas import TranslationJob

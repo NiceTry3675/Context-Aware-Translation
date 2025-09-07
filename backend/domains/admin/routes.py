@@ -5,7 +5,7 @@ from typing import List, Optional
 from fastapi import Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 
-from backend.dependencies import get_db, get_required_user
+from backend.config.dependencies import get_db, get_required_user
 from backend.domains.user.models import User
 from backend.domains.community.models import Announcement
 from backend.domains.user.schemas import AnnouncementCreate

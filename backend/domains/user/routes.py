@@ -7,7 +7,7 @@ from fastapi import Depends, HTTPException, Header, Request
 from sqlalchemy.orm import Session
 from svix import Webhook
 
-from backend.dependencies import get_db, get_required_user
+from backend.config.dependencies import get_db, get_required_user
 from backend.domains.user.models import User
 from backend.domains.user.schemas import (
     User as UserSchema,

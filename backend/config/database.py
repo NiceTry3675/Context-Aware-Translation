@@ -27,4 +27,4 @@ else:
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Import Base from the shared domain models
-from .domains.shared.db_base import Base
+from ..domains.shared.db_base import Base

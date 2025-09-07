@@ -13,7 +13,7 @@ import traceback
 
 from ..celery_app import celery_app
 from .base import TrackedTask
-from ..database import SessionLocal
+from ..config.database import SessionLocal
 from backend.domains.translation.models import TranslationJob
 from core.translation.illustration_generator import IllustrationGenerator
 from core.schemas.illustration import IllustrationConfig

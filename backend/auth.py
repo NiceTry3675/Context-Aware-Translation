@@ -10,7 +10,7 @@ from typing import Optional
 # Internal imports
 from .domains.shared import schemas
 from .domains.user.models import User
-from .database import SessionLocal
+from .config.database import SessionLocal
 from .domains.user.repository import SqlAlchemyUserRepository
 
 # Initialize the Clerk client with proper API key.

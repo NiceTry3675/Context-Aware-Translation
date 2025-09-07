@@ -4,8 +4,8 @@ Storage dependency injection for FastAPI.
 from typing import Generator
 from fastapi import Depends
 
-from .config import Settings, get_settings
-from .domains.shared.storage import Storage, create_storage
+from .settings import Settings, get_settings
+from ..domains.shared.storage import Storage, create_storage
 
 # Cache storage instance
 _storage_instance = None

@@ -8,7 +8,7 @@ delegating all business logic to the PostEditDomainService.
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from backend.dependencies import get_db, get_required_user
+from backend.config.dependencies import get_db, get_required_user
 from backend.domains.user.models import User
 from backend.domains.post_edit.schemas import PostEditRequest
 from backend.domains.post_edit.service import PostEditDomainService

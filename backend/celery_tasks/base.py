@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 import logging
 import uuid
 
-from ..database import SessionLocal
+from ..config.database import SessionLocal
 from ..domains.tasks.models import TaskExecution, TaskStatus, TaskKind
 from sqlalchemy.exc import IntegrityError
 

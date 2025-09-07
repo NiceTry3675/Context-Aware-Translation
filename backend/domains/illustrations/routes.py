@@ -14,8 +14,8 @@ import os
 import json
 from pathlib import Path
 
-from ...dependencies import get_db, get_required_user
-from ...database import SessionLocal
+from ...config.dependencies import get_db, get_required_user
+from ...config.database import SessionLocal
 from ..translation.models import TranslationJob
 from ..user.models import User
 from ...celery_tasks.illustrations import generate_illustrations_task, regenerate_single_illustration

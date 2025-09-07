@@ -5,7 +5,7 @@ Railway 배포 시 필요한 초기 설정을 자동으로 수행합니다.
 import logging
 from sqlalchemy.orm import Session
 from .domains.community.models import PostCategory
-from .database import engine
+from .config.database import engine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

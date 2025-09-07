@@ -11,7 +11,7 @@ from datetime import datetime
 
 from ..celery_app import celery_app
 from .base import TrackedTask
-from ..database import SessionLocal
+from ..config.database import SessionLocal
 from ..domains.validation.service import ValidationDomainService
 from ..domains.tasks.models import TaskKind
 from ..domains.translation.repository import SqlAlchemyTranslationJobRepository

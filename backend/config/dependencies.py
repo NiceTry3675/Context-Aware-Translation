@@ -5,7 +5,7 @@ from fastapi import Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from .database import SessionLocal
-from . import auth
+from .. import auth
 
 
 def get_db():

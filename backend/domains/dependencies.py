@@ -10,7 +10,7 @@ from typing import Generator
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
-from backend.database import SessionLocal
+from backend.config.database import SessionLocal
 from backend.domains.shared import SqlAlchemyUoW
 from backend.domains.translation import (
     SqlAlchemyTranslationJobRepository,

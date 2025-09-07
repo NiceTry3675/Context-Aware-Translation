@@ -18,9 +18,9 @@ load_dotenv()
 # Import configuration
 from .config import get_settings
 
-# Import main API router
-from .api.v1 import router as api_v1_router
-from .api.v1 import schemas  # Keep schemas separate for special handling
+# Import consolidated API router
+from .routes import router as api_router
+from . import schemas_export  # Schema export endpoints
 
 # Get settings instance
 settings = get_settings()
@@ -62,8 +62,8 @@ if upload_path.exists():
     app.mount("/static", StaticFiles(directory=str(upload_path)), name="static")
 
 # Include routers
-app.include_router(api_v1_router)  # All v1 API routes
-app.include_router(schemas.router)  # Schema endpoint (for OpenAPI schema export)
+app.include_router(api_router)  # All API routes from consolidated router
+app.include_router(schemas_export.router)  # Schema endpoint (for OpenAPI schema export)
 
 # Root endpoint
 @app.get("/")

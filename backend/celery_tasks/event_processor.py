@@ -8,7 +8,7 @@ import logging
 
 from ..celery_app import celery_app
 from .base import DatabaseTask
-from ..database import SessionLocal
+from ..config.database import SessionLocal
 from ..domains.shared.events.outbox_model import OutboxEvent
 from ..domains.tasks.models import TaskKind
 from sqlalchemy import and_
