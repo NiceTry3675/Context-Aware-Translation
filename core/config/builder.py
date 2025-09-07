@@ -4,7 +4,7 @@ from .glossary import GlossaryManager
 from .character_style import CharacterStyleManager
 from ..errors import ProhibitedException
 from ..errors import prohibited_content_logger
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 from ..schemas.narrative_style import (
     StyleDeviation,
     make_style_deviation_schema,
@@ -24,7 +24,7 @@ class DynamicConfigBuilder:
         self, 
         model: GeminiModel, 
         protagonist_name: str, 
-        initial_glossary: Optional[List[Dict[str, str]]] = None
+        initial_glossary: Optional[Union[List[Dict[str, str]], Dict[str, str]]] = None
     ):
         """
         Initializes the builder with the shared Gemini model and managers.
@@ -32,16 +32,22 @@ class DynamicConfigBuilder:
         Args:
             model: The shared GeminiModel instance.
             protagonist_name: The name of the protagonist.
-            initial_glossary: An optional list of dictionaries to pre-populate the glossary.
+            initial_glossary: An optional dictionary or list of dictionaries to pre-populate the glossary.
         """
         self.model = model
         self.character_style_manager = CharacterStyleManager(model, protagonist_name)
         
         self.initial_glossary_dict = {}
         if initial_glossary:
-            for item in initial_glossary:
-                if isinstance(item, dict) and 'term' in item and 'translation' in item:
-                    self.initial_glossary_dict[item['term']] = item['translation']
+            # Accept either a dict { term: translation } or a list of { term, translation }
+            if isinstance(initial_glossary, dict):
+                self.initial_glossary_dict = {
+                    str(k): str(v) for k, v in initial_glossary.items()
+                }
+            elif isinstance(initial_glossary, list):
+                for item in initial_glossary:
+                    if isinstance(item, dict) and 'term' in item and 'translation' in item:
+                        self.initial_glossary_dict[str(item['term'])] = str(item['translation'])
         
         print(f"DynamicConfigBuilder initialized with protagonist '{protagonist_name}'.")
         if self.initial_glossary_dict:

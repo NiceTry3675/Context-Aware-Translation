@@ -73,6 +73,11 @@ class GlossaryAnalysis:
     def _process_user_glossary(self, user_glossary_data: str) -> Dict[str, str]:
         """
         Process user-provided glossary data.
+        Supports multiple formats:
+        1. Dictionary: {"term": "translation", ...}
+        2. Array of objects with source/korean: [{"source": "term", "korean": "translation"}, ...]
+        3. Array of objects with term/translation: [{"term": "term", "translation": "translation"}, ...]
+        4. Array of single-key objects: [{"term": "translation"}, ...]
         
         Args:
             user_glossary_data: JSON string containing glossary
@@ -82,18 +87,56 @@ class GlossaryAnalysis:
         """
         try:
             glossary = json.loads(user_glossary_data)
-            
-            # Validate glossary format
-            if not isinstance(glossary, dict):
-                raise ValueError("Glossary must be a dictionary mapping terms to translations")
-            
-            # Ensure all values are strings
             validated_glossary = {}
-            for key, value in glossary.items():
-                if not isinstance(key, str) or not isinstance(value, str):
-                    print(f"Warning: Skipping invalid glossary entry: {key} -> {value}")
-                    continue
-                validated_glossary[key] = value
+            
+            # Handle dictionary format
+            if isinstance(glossary, dict):
+                # Standard dictionary format {"term": "translation"}
+                for key, value in glossary.items():
+                    if not isinstance(key, str) or not isinstance(value, str):
+                        print(f"Warning: Skipping invalid glossary entry: {key} -> {value}")
+                        continue
+                    validated_glossary[key] = value
+            
+            # Handle array formats
+            elif isinstance(glossary, list):
+                for item in glossary:
+                    if not isinstance(item, dict):
+                        print(f"Warning: Skipping non-dict item in glossary array: {item}")
+                        continue
+                    
+                    # Format 1: {"source": "term", "korean": "translation"}
+                    if "source" in item and "korean" in item:
+                        term = item["source"]
+                        translation = item["korean"]
+                        if isinstance(term, str) and isinstance(translation, str):
+                            validated_glossary[term] = translation
+                        else:
+                            print(f"Warning: Skipping invalid glossary entry: {term} -> {translation}")
+                    
+                    # Format 2: {"term": "term", "translation": "translation"}
+                    elif "term" in item and "translation" in item:
+                        term = item["term"]
+                        translation = item["translation"]
+                        if isinstance(term, str) and isinstance(translation, str):
+                            validated_glossary[term] = translation
+                        else:
+                            print(f"Warning: Skipping invalid glossary entry: {term} -> {translation}")
+                    
+                    # Format 3: Single-key object {"term": "translation"}
+                    elif len(item) == 1:
+                        # Get the single key-value pair
+                        term, translation = next(iter(item.items()))
+                        if isinstance(term, str) and isinstance(translation, str):
+                            validated_glossary[term] = translation
+                        else:
+                            print(f"Warning: Skipping invalid glossary entry: {term} -> {translation}")
+                    
+                    else:
+                        print(f"Warning: Skipping glossary item with unrecognized format: {item}")
+            
+            else:
+                raise ValueError(f"Glossary must be a dictionary or array, got {type(glossary).__name__}")
             
             print(f"Loaded user glossary with {len(validated_glossary)} terms")
             return validated_glossary

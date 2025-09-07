@@ -13,7 +13,7 @@ stable for direct frontend consumption and post-edit automation.
 from __future__ import annotations
 
 from typing import Dict, List, Any, Optional, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # --------------------
@@ -46,15 +46,28 @@ class ValidationCase(BaseModel):
     """Individual validation issue found in translation."""
     
     # Core fields (required)
-    current_korean_sentence: str = Field(..., description="문제가 되는 현재 한국어 문장 (최대 3~4문장)")
-    problematic_source_sentence: str = Field(..., description="대응하는 원문 문장 (최대 3~4문장)")
+    current_korean_sentence: str = Field(..., description="문제가 되는 현재 한국어 문장 (최대 1~2문장)")
+    problematic_source_sentence: str = Field(..., description="대응하는 원문 문장 (최대 1~2문장)")
     reason: str = Field(..., description="왜 문제인지")
     dimension: Literal["completeness", "accuracy", "addition", "name_consistency", "dialogue_style", "flow", "other"] = Field(..., description="이슈 차원(카테고리)")
     severity: Literal["1", "2", "3"] = Field(..., description="이슈의 심각도. 1(사소함), 2(중대함), 3(치명적) 중 하나의 숫자로 표기.")
+    recommend_korean_sentence: str = Field(..., description="권장 수정 번역문")
     
     # Optional fields
-    corrected_korean_sentence: Optional[str] = Field(None, description="권장 수정 번역문")
     tags: List[str] = Field(default_factory=list, description="보조 라벨(예: terminology, formality, punctuation)")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _upgrade_legacy_keys(cls, data: Any):
+        """Accept legacy 'corrected_korean_sentence' as 'recommend_korean_sentence'."""
+        if isinstance(data, dict):
+            if (
+                'recommend_korean_sentence' not in data
+                and 'corrected_korean_sentence' in data
+            ):
+                data = dict(data)
+                data['recommend_korean_sentence'] = data.pop('corrected_korean_sentence')
+        return data
 
 
 class ValidationResponse(BaseModel):
@@ -100,17 +113,17 @@ def make_validation_response_schema() -> Dict[str, Any]:
                         # 핵심 필드(필수)
                         "current_korean_sentence": {
                             "type": "string",
-                            "description": "문제가 되는 현재 한국어 문장 (최대 3~4문장)",
+                            "description": "문제가 되는 현재 한국어 문장 (최대 1~2문장)",
                         },
                         "problematic_source_sentence": {
                             "type": "string",
-                            "description": "대응하는 원문 문장 (최대 3~4문장)",
+                            "description": "대응하는 원문 문장 (최대 1~2문장)",
                         },
                         "reason": {
                             "type": "string",
                             "description": "왜 문제인지",
                         },
-                        "corrected_korean_sentence": {
+                        "recommend_korean_sentence": {
                             "type": "string",
                             "description": "권장 수정 번역문",
                         },
@@ -142,6 +155,7 @@ def make_validation_response_schema() -> Dict[str, Any]:
                     "required": [
                         "current_korean_sentence",
                         "problematic_source_sentence",
+                        "recommend_korean_sentence",
                         "reason",
                         "dimension",
                         "severity",

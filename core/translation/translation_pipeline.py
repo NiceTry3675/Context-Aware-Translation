@@ -216,7 +216,12 @@ class TranslationPipeline:
             
             document.save_partial_output()
         
-        # Save final output
+        # Persist segments to DB before final file save to avoid DB omissions
+        self.progress_tracker.finalize_translation(
+            document.segments, document.translated_segments, document.glossary
+        )
+
+        # Save final output (file I/O after DB write)
         document.save_final_output()
         
         # Generate illustration batch report if illustrations were created
@@ -224,10 +229,7 @@ class TranslationPipeline:
             illustration_metadata = self.illustration_generator.get_illustration_metadata()
             self.logger.log_debug(f"Illustration generation complete: {illustration_metadata}")
         
-        # Update database with final data
-        self.progress_tracker.finalize_translation(
-            document.segments, document.translated_segments, document.glossary
-        )
+        # Finalization already performed above to prevent omissions
         
         print(f"\n--- Translation Complete! ---")
         print(f"Output: {document.output_filename}")

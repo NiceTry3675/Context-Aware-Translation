@@ -177,10 +177,13 @@ export function useTranslationService({
     formData.append("style_data", JSON.stringify(apiStyleData));
     
     if (glossaryData.length > 0) {
-      // Convert UI GlossaryTerm format to API format
-      const apiGlossaryData = glossaryData.map(term => ({
-        [term.source]: term.korean
-      }));
+      // Convert UI GlossaryTerm format to API format - single dictionary
+      const apiGlossaryData: Record<string, string> = {};
+      glossaryData.forEach(term => {
+        if (term.source && term.korean) {
+          apiGlossaryData[term.source] = term.korean;
+        }
+      });
       formData.append("glossary_data", JSON.stringify(apiGlossaryData));
     }
     

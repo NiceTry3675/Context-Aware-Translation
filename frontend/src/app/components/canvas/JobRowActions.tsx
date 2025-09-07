@@ -73,7 +73,7 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
   const { getToken } = useAuth();
 
   const canRunValidation = job.status === 'COMPLETED' && 
-    (!job.validation_status || job.validation_status === 'FAILED');
+    job.validation_status !== 'IN_PROGRESS';
   const canRunPostEdit = job.validation_status === 'COMPLETED' && 
     (!job.post_edit_status || job.post_edit_status === 'FAILED');
 

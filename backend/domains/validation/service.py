@@ -120,39 +120,51 @@ class ValidationDomainService(DomainServiceBase):
             logger.error(f"[VALIDATION PREP] Error creating validation document: {str(e)}")
             raise
         
-        # Load the translated segments from the translated file
-        logger.info(f"[VALIDATION PREP] Loading translated segments from {translated_path}")
+        # Load the translated segments from the database
+        logger.info(f"[VALIDATION PREP] Loading translated segments from database")
         try:
-            translated_content = self.file_manager.read_file(translated_path)
-            logger.info(f"[VALIDATION PREP] Read {len(translated_content)} characters from translated file")
-            validation_document.translated_segments = translated_content.split('\n')
-            logger.info(f"[VALIDATION PREP] Split into {len(validation_document.translated_segments)} segments")
+            if job.translation_segments:
+                # The translation_segments field stores both source and translated segments
+                segments_data = (
+                    json.loads(job.translation_segments) 
+                    if isinstance(job.translation_segments, str)
+                    else job.translation_segments
+                )
+                
+                # Extract just the translated segments
+                if isinstance(segments_data, list):
+                    # If it's a list of dict with 'source' and 'translated' keys
+                    validation_document.translated_segments = [
+                        seg.get('translated', '') for seg in segments_data
+                        if isinstance(seg, dict) and 'translated' in seg
+                    ]
+                elif isinstance(segments_data, dict) and 'translated' in segments_data:
+                    # If it's a dict with 'translated' key containing a list
+                    validation_document.translated_segments = segments_data['translated']
+                else:
+                    # Fallback: assume it's a simple list of translated segments
+                    validation_document.translated_segments = segments_data
+                
+                logger.info(f"[VALIDATION PREP] Loaded {len(validation_document.translated_segments)} segments from DB")
+            else:
+                # Fallback to reading from file if DB segments not available
+                logger.warning(f"[VALIDATION PREP] No segments in DB, falling back to file reading")
+                translated_content = self.file_manager.read_file(translated_path)
+                validation_document.translated_segments = [
+                    s for s in translated_content.split('\n') if s.strip()
+                ]
+                logger.info(f"[VALIDATION PREP] Loaded {len(validation_document.translated_segments)} segments from file")
         except Exception as e:
             logger.error(f"[VALIDATION PREP] Error loading translated segments: {str(e)}")
             raise
-        # Filter out empty strings from the list
-        validation_document.translated_segments = [
-            s for s in validation_document.translated_segments if s.strip()
-        ]
         
-        # Handle segment count mismatch
+        # Verify segment count match
         if len(validation_document.segments) != len(validation_document.translated_segments):
-            print(f"Warning: Segment count mismatch - "
-                  f"Source: {len(validation_document.segments)}, "
-                  f"Translated: {len(validation_document.translated_segments)}")
-            
-            if len(validation_document.translated_segments) > len(validation_document.segments):
-                # Too many translated segments, might be due to line breaks
-                combined_segments = []
-                lines_per_segment = (
-                    len(validation_document.translated_segments) // 
-                    len(validation_document.segments)
-                )
-                for i in range(0, len(validation_document.translated_segments), lines_per_segment):
-                    combined_segments.append(
-                        '\n'.join(validation_document.translated_segments[i:i+lines_per_segment])
-                    )
-                validation_document.translated_segments = combined_segments[:len(validation_document.segments)]
+            logger.warning(f"[VALIDATION PREP] Segment count mismatch - "
+                          f"Source: {len(validation_document.segments)}, "
+                          f"Translated: {len(validation_document.translated_segments)}")
+            # Since we're reading from DB, this shouldn't happen unless there's a data issue
+            # We'll just log and continue rather than trying to fix it
         
         # Load the glossary from the job if available
         if job.final_glossary:
