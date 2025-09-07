@@ -184,6 +184,119 @@
         }
       }
     },
+    "/api/v1/jobs/{job_id}/content": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get Job Content",
+        "description": "Get the complete content of a translation job.\n\nArgs:\n    job_id: Job ID\n    service: Translation domain service\n    \nReturns:\n    Dict containing the job content and segments",
+        "operationId": "get_job_content_api_v1_jobs__job_id__content_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Job Content Api V1 Jobs  Job Id  Content Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{job_id}/segments": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get Job Segments",
+        "description": "Get segments from a translation job with pagination.\n\nArgs:\n    job_id: Job ID\n    offset: Number of segments to skip\n    limit: Maximum number of segments to return\n    service: Translation domain service\n    \nReturns:\n    Dict containing paginated segments",
+        "operationId": "get_job_segments_api_v1_jobs__job_id__segments_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Job Segments Api V1 Jobs  Job Id  Segments Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/validate/{job_id}": {
       "post": {
         "tags": [
@@ -508,36 +621,15 @@
         "summary": "Analyze Style",
         "description": "Analyze the narrative style of a document.\n\nArgs:\n    file: Uploaded file to analyze\n    api_key: API key for the AI model\n    model_name: Model to use for analysis\n    \nReturns:\n    StyleAnalysisResponse with analysis results",
         "operationId": "analyze_style_api_v1_analysis_style_post",
-        "parameters": [
-          {
-            "name": "api_key",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Api Key"
-            }
-          },
-          {
-            "name": "model_name",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "gemini-2.5-flash-lite",
-              "title": "Model Name"
-            }
-          }
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "multipart/form-data": {
               "schema": {
                 "$ref": "#/components/schemas/Body_analyze_style_api_v1_analysis_style_post"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -571,36 +663,15 @@
         "summary": "Analyze Glossary",
         "description": "Extract glossary terms from a document.\n\nArgs:\n    file: Uploaded file to analyze\n    api_key: API key for the AI model\n    model_name: Model to use for analysis\n    \nReturns:\n    GlossaryAnalysisResponse with extracted terms",
         "operationId": "analyze_glossary_api_v1_analysis_glossary_post",
-        "parameters": [
-          {
-            "name": "api_key",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Api Key"
-            }
-          },
-          {
-            "name": "model_name",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "gemini-2.5-flash-lite",
-              "title": "Model Name"
-            }
-          }
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "multipart/form-data": {
               "schema": {
                 "$ref": "#/components/schemas/Body_analyze_glossary_api_v1_analysis_glossary_post"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -634,36 +705,15 @@
         "summary": "Analyze Characters",
         "description": "Analyze characters in a document.\n\nArgs:\n    file: Uploaded file to analyze\n    api_key: API key for the AI model\n    model_name: Model to use for analysis\n    \nReturns:\n    CharacterAnalysisResponse with character analysis results",
         "operationId": "analyze_characters_api_v1_analysis_characters_post",
-        "parameters": [
-          {
-            "name": "api_key",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Api Key"
-            }
-          },
-          {
-            "name": "model_name",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "default": "gemini-2.5-flash-lite",
-              "title": "Model Name"
-            }
-          }
-        ],
         "requestBody": {
-          "required": true,
           "content": {
             "multipart/form-data": {
               "schema": {
                 "$ref": "#/components/schemas/Body_analyze_characters_api_v1_analysis_characters_post"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -1653,11 +1703,21 @@
             "type": "string",
             "format": "binary",
             "title": "File"
+          },
+          "api_key": {
+            "type": "string",
+            "title": "Api Key"
+          },
+          "model_name": {
+            "type": "string",
+            "title": "Model Name",
+            "default": "gemini-2.5-flash-lite"
           }
         },
         "type": "object",
         "required": [
-          "file"
+          "file",
+          "api_key"
         ],
         "title": "Body_analyze_characters_api_v1_analysis_characters_post"
       },
@@ -1667,11 +1727,21 @@
             "type": "string",
             "format": "binary",
             "title": "File"
+          },
+          "api_key": {
+            "type": "string",
+            "title": "Api Key"
+          },
+          "model_name": {
+            "type": "string",
+            "title": "Model Name",
+            "default": "gemini-2.5-flash-lite"
           }
         },
         "type": "object",
         "required": [
-          "file"
+          "file",
+          "api_key"
         ],
         "title": "Body_analyze_glossary_api_v1_analysis_glossary_post"
       },
@@ -1681,11 +1751,21 @@
             "type": "string",
             "format": "binary",
             "title": "File"
+          },
+          "api_key": {
+            "type": "string",
+            "title": "Api Key"
+          },
+          "model_name": {
+            "type": "string",
+            "title": "Model Name",
+            "default": "gemini-2.5-flash-lite"
           }
         },
         "type": "object",
         "required": [
-          "file"
+          "file",
+          "api_key"
         ],
         "title": "Body_analyze_style_api_v1_analysis_style_post"
       },

@@ -73,3 +73,4 @@ frontend/node_modules/
 /node_modules/
 /illustrations/job_31/
 /logs/validation_task_logs/
+/logs/jobs/

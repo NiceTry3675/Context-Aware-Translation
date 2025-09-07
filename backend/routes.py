@@ -56,6 +56,18 @@ router.add_api_route(
     status_code=204,
     tags=["jobs"]
 )
+router.add_api_route(
+    "/jobs/{job_id}/content", 
+    translation.get_job_content, 
+    methods=["GET"],
+    tags=["jobs"]
+)
+router.add_api_route(
+    "/jobs/{job_id}/segments", 
+    translation.get_job_segments, 
+    methods=["GET"],
+    tags=["jobs"]
+)
 
 # Validation endpoints
 router.add_api_route(

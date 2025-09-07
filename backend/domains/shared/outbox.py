@@ -23,17 +23,28 @@ class OutboxRepository:
         """
         from backend.domains.shared.events.outbox_model import OutboxEvent
         
+        # Convert event to dict and extract payload
+        if hasattr(event, 'model_dump'):
+            event_dict = event.model_dump()
+        elif hasattr(event, 'dict'):
+            event_dict = event.dict()
+        else:
+            event_dict = event.__dict__
+        # Remove base event fields to create payload
+        base_fields = {'event_id', 'event_type', 'aggregate_id', 'aggregate_type', 'occurred_at', 'metadata'}
+        payload = {k: v for k, v in event_dict.items() if k not in base_fields}
+        
         outbox_entry = OutboxEvent(
             event_id=event.event_id,
             aggregate_id=str(event.aggregate_id),  # Convert to string for compatibility
             aggregate_type=event.aggregate_type,
-            event_type=event.event_type.value if event.event_type else None,
-            payload=event.payload,
-            event_metadata=event.metadata,  # Updated field name
+            event_type=event.event_type.value if hasattr(event.event_type, 'value') else str(event.event_type),
+            payload=payload,
+            event_metadata=event.metadata if hasattr(event, 'metadata') else {},  # Updated field name
             status='pending',  # Add status field
             processed=False,
-            occurred_at=event.created_at or datetime.utcnow(),  # Add occurred_at field
-            created_at=event.created_at
+            occurred_at=event.occurred_at if hasattr(event, 'occurred_at') else datetime.utcnow(),  # Add occurred_at field
+            created_at=datetime.utcnow()
         )
         
         self.session.add(outbox_entry)

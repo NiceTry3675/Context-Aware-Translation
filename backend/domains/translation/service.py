@@ -12,6 +12,7 @@ import re
 import shutil
 import json
 import logging
+import uuid
 from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -107,10 +108,17 @@ class TranslationDomainService(DomainServiceBase):
                 job_repo.store_idempotency_key(owner_id, idempotency_key, job_id)
             
             # Create and publish domain event
+            # Extract segment_size from kwargs with default value
+            segment_size = kwargs.get('segment_size', 500)
             event = TranslationStartedEvent(
+                event_id=str(uuid.uuid4()),
+                aggregate_id=str(job_id),
                 job_id=job_id,
                 user_id=owner_id,
-                filename=filename
+                filename=filename,
+                segment_size=segment_size,
+                validation_enabled=False,
+                post_edit_enabled=False
             )
             outbox_repo.add_event(event)
             
@@ -182,8 +190,15 @@ class TranslationDomainService(DomainServiceBase):
             
             # Create completion event
             event = TranslationCompletedEvent(
+                event_id=str(uuid.uuid4()),
+                aggregate_id=str(job_id),
                 job_id=job_id,
-                duration_seconds=duration_seconds
+                user_id=job.owner_id,
+                filename=job.filename,
+                duration_seconds=duration_seconds,
+                output_path=job.output_path or "",
+                segment_count=len(translation_segments) if translation_segments else 0,
+                total_characters=sum(len(str(seg)) for seg in (translation_segments or {}).values())
             )
             outbox_repo.add_event(event)
             
@@ -213,8 +228,13 @@ class TranslationDomainService(DomainServiceBase):
             
             # Create failure event
             event = TranslationFailedEvent(
+                event_id=str(uuid.uuid4()),
+                aggregate_id=str(job_id),
                 job_id=job_id,
-                error_message=error_message
+                user_id=None,  # May not have user context when failing
+                error_message=error_message,
+                error_type="TranslationError",
+                failed_at_segment=None
             )
             outbox_repo.add_event(event)
             
@@ -368,7 +388,8 @@ class TranslationDomainService(DomainServiceBase):
         translation_document = TranslationDocument(
             job.filepath,
             original_filename=job.filename,
-            target_segment_size=job.segment_size
+            target_segment_size=job.segment_size,
+            job_id=job_id
         )
         
         # Process style data using StyleAnalysisService
@@ -575,13 +596,17 @@ class TranslationDomainService(DomainServiceBase):
             # Update job with file path
             job.filepath = file_path
             uow.commit()
+            
+            # Store job and user IDs before session closes
+            job_id = job.id
+            user_id = user.id
         
         # Start translation in background using Celery
         # Import here to avoid circular dependency
         from backend.celery_tasks.translation import process_translation_task
         
         process_translation_task.delay(
-            job_id=job.id,
+            job_id=job_id,
             api_key=api_key,
             model_name=model_name,
             style_data=style_data,
@@ -589,13 +614,13 @@ class TranslationDomainService(DomainServiceBase):
             translation_model_name=translation_model_name,
             style_model_name=style_model_name,
             glossary_model_name=glossary_model_name,
-            user_id=user.id
+            user_id=user_id
         )
         
         # Fetch the job again and convert to Pydantic schema
         with self.unit_of_work() as uow:
             repo = SqlAlchemyTranslationJobRepository(uow.session)
-            job = repo.get(job.id)
+            job = repo.get(job_id)
             
             # Convert SQLAlchemy model to Pydantic schema while session is active
             return TranslationJobSchema.model_validate(job)
@@ -759,3 +784,115 @@ class TranslationDomainService(DomainServiceBase):
                 filename=f"job_{job_id}_{log_type}.json",
                 media_type="application/json"
             )
+    
+    def get_job_content(
+        self,
+        job_id: int
+    ) -> dict:
+        """
+        Get the complete content of a translation job.
+        
+        Args:
+            job_id: Job ID
+            
+        Returns:
+            Dict containing the job content and segments
+            
+        Raises:
+            HTTPException: If job not found or content not available
+        """
+        with self.unit_of_work() as uow:
+            repo = SqlAlchemyTranslationJobRepository(uow.session)
+            job = repo.get(job_id)
+            
+            if job is None:
+                raise HTTPException(status_code=404, detail="Job not found")
+            
+            if job.status != "COMPLETED":
+                raise HTTPException(status_code=400, detail="Job not completed yet")
+            
+            # Try to get segments from database first
+            segments = job.translation_segments or []
+            
+            # If no segments in DB, try to read from file
+            if not segments:
+                import json
+                from pathlib import Path
+                
+                segments_path = Path(f"logs/jobs/{job_id}/output/segments.json")
+                if segments_path.exists():
+                    try:
+                        with open(segments_path, 'r', encoding='utf-8') as f:
+                            segments = json.load(f)
+                    except Exception as e:
+                        logger.error(f"Failed to read segments from file: {e}")
+            
+            # Return the translation segments data
+            return {
+                "job_id": job.id,
+                "status": job.status,
+                "segments": segments
+            }
+    
+    def get_job_segments(
+        self,
+        job_id: int,
+        offset: int = 0,
+        limit: int = 200
+    ) -> dict:
+        """
+        Get segments from a translation job with pagination.
+        
+        Args:
+            job_id: Job ID
+            offset: Number of segments to skip
+            limit: Maximum number of segments to return
+            
+        Returns:
+            Dict containing paginated segments
+            
+        Raises:
+            HTTPException: If job not found or segments not available
+        """
+        with self.unit_of_work() as uow:
+            repo = SqlAlchemyTranslationJobRepository(uow.session)
+            job = repo.get(job_id)
+            
+            if job is None:
+                raise HTTPException(status_code=404, detail="Job not found")
+            
+            # Allow fetching segments for completed or failed jobs that have segments
+            if job.status not in ["COMPLETED", "FAILED"]:
+                raise HTTPException(status_code=400, detail="Job not completed yet")
+            
+            segments = job.translation_segments or []
+            
+            # If no segments in DB, try to read from file
+            if not segments:
+                import json
+                from pathlib import Path
+                
+                segments_path = Path(f"logs/jobs/{job_id}/output/segments.json")
+                if segments_path.exists():
+                    try:
+                        with open(segments_path, 'r', encoding='utf-8') as f:
+                            segments = json.load(f)
+                    except Exception as e:
+                        logger.error(f"Failed to read segments from file: {e}")
+            
+            # If no segments available, return appropriate message
+            if not segments and job.status == "FAILED":
+                raise HTTPException(status_code=404, detail="No segments available - job failed during processing")
+            total = len(segments)
+            
+            # Apply pagination
+            paginated_segments = segments[offset:offset + limit]
+            
+            return {
+                "job_id": job.id,
+                "status": job.status,
+                "segments": paginated_segments,
+                "total": total,
+                "offset": offset,
+                "limit": limit
+            }

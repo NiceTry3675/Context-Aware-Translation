@@ -92,6 +92,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/{job_id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Job Content
+         * @description Get the complete content of a translation job.
+         *
+         *     Args:
+         *         job_id: Job ID
+         *         service: Translation domain service
+         *
+         *     Returns:
+         *         Dict containing the job content and segments
+         */
+        get: operations["get_job_content_api_v1_jobs__job_id__content_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/jobs/{job_id}/segments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Job Segments
+         * @description Get segments from a translation job with pagination.
+         *
+         *     Args:
+         *         job_id: Job ID
+         *         offset: Number of segments to skip
+         *         limit: Maximum number of segments to return
+         *         service: Translation domain service
+         *
+         *     Returns:
+         *         Dict containing paginated segments
+         */
+        get: operations["get_job_segments_api_v1_jobs__job_id__segments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/validate/{job_id}": {
         parameters: {
             query?: never;
@@ -804,6 +860,13 @@ export interface components {
              * Format: binary
              */
             file: string;
+            /** Api Key */
+            api_key: string;
+            /**
+             * Model Name
+             * @default gemini-2.5-flash-lite
+             */
+            model_name: string;
         };
         /** Body_analyze_glossary_api_v1_analysis_glossary_post */
         Body_analyze_glossary_api_v1_analysis_glossary_post: {
@@ -812,6 +875,13 @@ export interface components {
              * Format: binary
              */
             file: string;
+            /** Api Key */
+            api_key: string;
+            /**
+             * Model Name
+             * @default gemini-2.5-flash-lite
+             */
+            model_name: string;
         };
         /** Body_analyze_style_api_v1_analysis_style_post */
         Body_analyze_style_api_v1_analysis_style_post: {
@@ -820,6 +890,13 @@ export interface components {
              * Format: binary
              */
             file: string;
+            /** Api Key */
+            api_key: string;
+            /**
+             * Model Name
+             * @default gemini-2.5-flash-lite
+             */
+            model_name: string;
         };
         /** Body_create_job_api_v1_jobs_post */
         Body_create_job_api_v1_jobs_post: {
@@ -1720,6 +1797,75 @@ export interface operations {
             };
         };
     };
+    get_job_content_api_v1_jobs__job_id__content_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_job_segments_api_v1_jobs__job_id__segments_get: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     validate_job_api_v1_validate__job_id__post: {
         parameters: {
             query?: never;
@@ -1923,10 +2069,7 @@ export interface operations {
     };
     analyze_style_api_v1_analysis_style_post: {
         parameters: {
-            query: {
-                api_key: string;
-                model_name?: string;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -1959,10 +2102,7 @@ export interface operations {
     };
     analyze_glossary_api_v1_analysis_glossary_post: {
         parameters: {
-            query: {
-                api_key: string;
-                model_name?: string;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -1995,10 +2135,7 @@ export interface operations {
     };
     analyze_characters_api_v1_analysis_characters_post: {
         parameters: {
-            query: {
-                api_key: string;
-                model_name?: string;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;

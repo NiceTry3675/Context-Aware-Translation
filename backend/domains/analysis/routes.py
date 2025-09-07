@@ -1,6 +1,6 @@
 """Analysis domain routes - plain async functions for business logic."""
 
-from fastapi import UploadFile
+from fastapi import UploadFile, Form
 
 from .service import AnalysisService
 from .schemas import StyleAnalysisResponse, GlossaryAnalysisResponse, CharacterAnalysisResponse
@@ -8,8 +8,8 @@ from .schemas import StyleAnalysisResponse, GlossaryAnalysisResponse, CharacterA
 
 async def analyze_style(
     file: UploadFile,
-    api_key: str,
-    model_name: str = "gemini-2.5-flash-lite"
+    api_key: str = Form(...),
+    model_name: str = Form("gemini-2.5-flash-lite")
 ) -> StyleAnalysisResponse:
     """
     Analyze the narrative style of a document.
@@ -28,8 +28,8 @@ async def analyze_style(
 
 async def analyze_glossary(
     file: UploadFile,
-    api_key: str,
-    model_name: str = "gemini-2.5-flash-lite"
+    api_key: str = Form(...),
+    model_name: str = Form("gemini-2.5-flash-lite")
 ) -> GlossaryAnalysisResponse:
     """
     Extract glossary terms from a document.
@@ -48,8 +48,8 @@ async def analyze_glossary(
 
 async def analyze_characters(
     file: UploadFile,
-    api_key: str,
-    model_name: str = "gemini-2.5-flash-lite"
+    api_key: str = Form(...),
+    model_name: str = Form("gemini-2.5-flash-lite")
 ) -> CharacterAnalysisResponse:
     """
     Analyze characters in a document.

@@ -60,6 +60,40 @@ class DocumentOutputManager:
         return output_filename
     
     @staticmethod
+    def setup_job_output_path(job_id: int, original_filename: Optional[str], 
+                             input_format: str) -> str:
+        """
+        Setup job-specific output file path in logs/jobs/{job_id}/output/.
+        
+        Args:
+            job_id: Job ID for the translation
+            original_filename: Original filename
+            input_format: Input file format
+            
+        Returns:
+            Full path to job-specific output file
+        """
+        # Determine base filename
+        if original_filename:
+            base_name = os.path.splitext(original_filename)[0]
+        else:
+            base_name = f"job_{job_id}"
+        
+        # Setup output directory
+        output_dir = os.path.join("logs", "jobs", str(job_id), "output")
+        
+        # Determine output filename based on format
+        if input_format == '.epub':
+            output_filename = os.path.join(output_dir, f"{base_name}_translated.epub")
+        else:
+            output_filename = os.path.join(output_dir, f"{base_name}_translated.txt")
+        
+        # Ensure output directory exists
+        os.makedirs(output_dir, exist_ok=True)
+        
+        return output_filename
+    
+    @staticmethod
     def save_text_output(segments: List[str], output_path: str):
         """
         Save translated segments as a text file.
@@ -81,6 +115,56 @@ class DocumentOutputManager:
             f.write(full_text)
         
         print(f"✓ Text saved to {output_path}")
+    
+    @staticmethod
+    def save_to_storage_sync(segments: List[str], job_id: int, original_filename: str):
+        """
+        Save translation using storage abstraction (synchronous wrapper).
+        
+        Args:
+            segments: List of translated text segments
+            job_id: Job ID
+            original_filename: Original filename
+            
+        Returns:
+            List of saved paths, or None if backend not available
+        """
+        try:
+            # Try to use async storage if available
+            import asyncio
+            from backend.config.settings import get_settings
+            from backend.domains.shared.storage import create_storage
+            from backend.domains.translation.storage_utils import TranslationStorageManager
+            
+            settings = get_settings()
+            storage = create_storage(settings)
+            manager = TranslationStorageManager(storage)
+            
+            # Prepare content
+            content = '\n\n'.join(segments)
+            
+            # Run async save in sync context
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                saved_paths = loop.run_until_complete(
+                    manager.save_translation_output(
+                        job_id=job_id,
+                        content=content,
+                        original_filename=original_filename,
+                        save_to_legacy=True
+                    )
+                )
+                print(f"✓ Saved to storage: {saved_paths}")
+                return saved_paths
+            finally:
+                loop.close()
+        except ImportError:
+            # Backend not available (running in core-only mode)
+            return None
+        except Exception as e:
+            print(f"Warning: Failed to save to storage: {e}")
+            return None
     
     @staticmethod
     def save_epub_output(original_filepath: str, segments: List[str], 

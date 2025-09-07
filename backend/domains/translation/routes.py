@@ -167,3 +167,41 @@ async def download_job_log(
     """
     user_is_admin = await is_admin(user)
     return service.download_job_log(user, job_id, log_type, is_admin=user_is_admin)
+
+
+async def get_job_content(
+    job_id: int,
+    service: TranslationDomainService = Depends(get_translation_service)
+) -> dict:
+    """
+    Get the complete content of a translation job.
+    
+    Args:
+        job_id: Job ID
+        service: Translation domain service
+        
+    Returns:
+        Dict containing the job content and segments
+    """
+    return service.get_job_content(job_id)
+
+
+async def get_job_segments(
+    job_id: int,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(200, ge=1, le=1000),
+    service: TranslationDomainService = Depends(get_translation_service)
+) -> dict:
+    """
+    Get segments from a translation job with pagination.
+    
+    Args:
+        job_id: Job ID
+        offset: Number of segments to skip
+        limit: Maximum number of segments to return
+        service: Translation domain service
+        
+    Returns:
+        Dict containing paginated segments
+    """
+    return service.get_job_segments(job_id, offset=offset, limit=limit)
