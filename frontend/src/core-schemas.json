@@ -280,18 +280,10 @@
             "title": "Severity",
             "type": "string"
           },
-          "corrected_korean_sentence": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
+          "recommend_korean_sentence": {
             "description": "권장 수정 번역문",
-            "title": "Corrected Korean Sentence"
+            "title": "Recommend Korean Sentence",
+            "type": "string"
           },
           "tags": {
             "description": "보조 라벨(예: terminology, formality, punctuation)",
@@ -307,7 +299,8 @@
           "problematic_source_sentence",
           "reason",
           "dimension",
-          "severity"
+          "severity",
+          "recommend_korean_sentence"
         ],
         "title": "ValidationCase",
         "type": "object"
@@ -369,18 +362,10 @@
         "title": "Severity",
         "type": "string"
       },
-      "corrected_korean_sentence": {
-        "anyOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "null"
-          }
-        ],
-        "default": null,
+      "recommend_korean_sentence": {
         "description": "권장 수정 번역문",
-        "title": "Corrected Korean Sentence"
+        "title": "Recommend Korean Sentence",
+        "type": "string"
       },
       "tags": {
         "description": "보조 라벨(예: terminology, formality, punctuation)",
@@ -396,7 +381,8 @@
       "problematic_source_sentence",
       "reason",
       "dimension",
-      "severity"
+      "severity",
+      "recommend_korean_sentence"
     ],
     "title": "ValidationCase",
     "type": "object"

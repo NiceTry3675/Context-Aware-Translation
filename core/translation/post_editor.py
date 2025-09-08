@@ -132,7 +132,7 @@ class PostEditEngine:
             cur = case.get('current_korean_sentence')
             src = case.get('problematic_source_sentence')
             why = case.get('reason')
-            fix = case.get('corrected_korean_sentence')
+            fix = case.get('recommend_korean_sentence')
             issues_text += f"- 현재: {cur}\n  원문: {src}\n  이유: {why}\n"
             if fix:
                 issues_text += f"  수정안: {fix}\n"
