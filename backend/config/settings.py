@@ -18,7 +18,11 @@ class Settings(BaseSettings):
     environment: str = Field(default="development", env="APP_ENV")
     
     # Database
-    database_url: str = Field(..., env="DATABASE_URL")
+    # Default to a local SQLite DB for development if DATABASE_URL is not provided
+    database_url: str = Field(
+        default=f"sqlite:///{Path(__file__).resolve().parent.parent.parent}/database.db",
+        env="DATABASE_URL",
+    )
     pool_size: int = 5
     max_overflow: int = 10
     pool_pre_ping: bool = True
@@ -46,9 +50,11 @@ class Settings(BaseSettings):
     
     # API Keys
     gemini_api_key: str = Field(..., env="GEMINI_API_KEY")
-    openrouter_api_key: str = Field(..., env="OPENROUTER_API_KEY")
+    # Optional in development; required only if using OpenRouter
+    openrouter_api_key: Optional[str] = Field(default=None, env="OPENROUTER_API_KEY")
     clerk_secret_key: str = Field(..., env="CLERK_SECRET_KEY")
-    clerk_publishable_key: str = Field(..., env="CLERK_PUBLISHABLE_KEY")
+    # Frontend-only; make optional for backend startup
+    clerk_publishable_key: Optional[str] = Field(default=None, env="CLERK_PUBLISHABLE_KEY")
     admin_secret_key: str = Field(..., env="ADMIN_SECRET_KEY")
     
     # Redis (for Celery and Caching)
@@ -57,7 +63,8 @@ class Settings(BaseSettings):
     cache_ttl: int = 3600  # 1 hour default cache TTL
     
     # Security
-    secret_key: str = Field(..., env="SECRET_KEY")
+    # Provide a sensible default for local development
+    secret_key: str = Field(default="dev-secret-key", env="SECRET_KEY")
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     

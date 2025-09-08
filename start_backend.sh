@@ -28,9 +28,21 @@ source .venv/bin/activate
 echo -e "${YELLOW}Stopping any existing Celery workers...${NC}"
 pkill -f "celery.*backend.celery_app" 2>/dev/null
 
-# Set environment variables from backend/.env
+# Load environment variables
 echo -e "${YELLOW}Loading environment variables...${NC}"
-export $(cat backend/.env | grep -v '^#' | xargs)
+if [ -f backend/.env ]; then
+  set -a
+  . backend/.env
+  set +a
+  echo -e "${GREEN}✓ Loaded backend/.env${NC}"
+elif [ -f .env ]; then
+  set -a
+  . .env
+  set +a
+  echo -e "${GREEN}✓ Loaded .env${NC}"
+else
+  echo -e "${YELLOW}No .env file found. Using environment defaults.${NC}"
+fi
 
 # Start Celery worker from project root with full module path
 echo -e "${YELLOW}Starting Celery worker...${NC}"

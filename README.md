@@ -218,14 +218,22 @@ python init_categories.py
     **참고**: 백엔드 모델을 수정한 경우 반드시 `make codegen`을 실행하여 프론트엔드 타입을 동기화해야 합니다.
 
 5.  **환경 변수 설정**:
-    -   프로젝트 루트 디렉토리에 `.env` 파일을 생성합니다.
-    -   **웹 UI 사용 시**: Gemini API 키는 웹 화면에서 직접 입력하므로 `.env` 파일에 추가할 필요가 없습니다.
+    -   프로젝트 루트 디렉토리에 `.env` 파일을 생성합니다. `start_backend.sh`는 `backend/.env`가 없으면 루트 `.env`를 자동 로드합니다.
+    -   필수(백엔드):
+        - `GEMINI_API_KEY` — 웹 UI에서 직접 입력하지 않고 서버가 호출할 경우 필요
+        - `ADMIN_SECRET_KEY` — 관리자 엔드포인트 보호용
+    -   선택(개발 편의):
+        - `DATABASE_URL` — 미설정 시 자동으로 로컬 SQLite(`database.db`) 사용
+        - `SECRET_KEY` — 미설정 시 개발 기본값(`dev-secret-key`) 사용
+        - `OPENROUTER_API_KEY` — OpenRouter 모델을 사용할 때만 필요
+        - `CLERK_PUBLISHABLE_KEY` — 프론트엔드용(백엔드 기동에는 불필요)
+    -   **웹 UI 사용 시**: Gemini API 키는 웹 화면에서 직접 입력 가능하므로 `.env`에 추가하지 않아도 됩니다.
     -   **CLI 사용 시**: 아래와 같이 Gemini API 키를 추가합니다.
         ```.env
         GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
         USE_STRUCTURED_OUTPUT="true"  # Gemini Structured Output 사용 (기본값: true)
         ```
-    -   **데이터베이스 설정**: 로컬 개발 시 PostgreSQL 대신 SQLite(`database.db`)를 사용하려면, `.env` 파일에 `DATABASE_URL`을 추가하지 않거나 주석 처리하세요.
+    -   **데이터베이스 설정**: 로컬 개발에서는 `.env`에 `DATABASE_URL`을 생략하면 자동으로 SQLite(`database.db`)를 사용합니다.
 
 6.  **스크립트 실행 권한 설정** (Linux/Mac):
     ```bash
