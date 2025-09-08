@@ -9,33 +9,33 @@ Translate novels from various source languages into Korean, focusing on contextu
 ## Tech Stack
 
 - **Backend**: Python, FastAPI, SQLAlchemy  
-- **Frontend**: Next.js, TypeScript, Tailwind CSS
-- **Database**: PostgreSQL
-- **AI Model**: Google Gemini (user-selectable model)
+- **Frontend**: Next.js, TypeScript, Material-UI (MUI)
+- **Database**: SQLite (local), PostgreSQL (production)
+- **AI Model**: Google Gemini (default; also supports OpenRouter models)
 - **Deployment**: Backend on **Railway**, Frontend on **Vercel**
 
 ## Core Architecture
 
 - **`frontend/`**: Next.js UI for file upload, progress monitoring, and download
-- **`backend/`**: FastAPI server for API endpoints, job management (PostgreSQL), and background tasks
+- **`backend/`**: FastAPI server for API endpoints, job management (SQLite local / PostgreSQL prod), and background tasks
 - **`core/`**: The translation brain
-  - **`translation/engine.py`**: Orchestrates the translation process
+  - **`translation/translation_pipeline.py`**: Orchestrates the translation process
   - **`config/builder.py`**: Dynamically builds and manages **Glossary** and **Character Styles** for context
-  - **`prompts/builder.py`**: Assembles context-rich prompts for the Gemini API
+  - **`prompts/builder.py`**: Assembles context-rich prompts for the selected AI model API
 
 ## Key Workflow
 
-1. **Upload & Analyze**: User uploads a file. Backend's `/api/v1/analyze-style` endpoint is called. AI analyzes initial text to determine **protagonist's name** and **core narrative style**
+1. **Upload & Analyze**: User uploads a file. Backend's `/api/v1/analysis/style` endpoint is called. AI analyzes initial text to determine **protagonist's name** and **core narrative style**
 2. **User Confirmation**: Analysis result sent to frontend. User reviews and can modify protagonist's name and detailed style guide
 3. **Job Creation**: User starts translation. Backend receives file and (potentially modified) style data, creates a `TranslationJob`, and starts background task
 4. **Translation Loop (Segment by Segment)**:
    - Core engine uses user-confirmed protagonist name and style guide
    - Analyzes each text segment to build dynamic context (glossary, character dialogue styles)
-   - Comprehensive prompt assembled and sent to Gemini API
+   - Comprehensive prompt assembled and sent to the selected AI model API
    - Result saved and progress updated in database
-5.  **Validation (Optional)**: After the translation is complete, if the user enabled it, the `validator.py` module runs an AI-based quality check on the translated text, looking for issues like missing content, name inconsistencies, and style deviations. A validation report is generated.
-6.  **Post-Editing (Optional)**: If validation finds issues and the user enabled post-editing, the `post_editor.py` module attempts to automatically fix the identified errors.
-5. **Completion**: Job status updated to `COMPLETED`. The user can then download the final translated file, as well as any validation or post-editing logs.
+5. **Validation (Optional)**: After the translation is complete, if the user enabled it, the `validator.py` module runs an AI-based quality check on the translated text, looking for issues like missing content, name inconsistencies, and style deviations. A validation report is generated.
+6. **Post-Editing (Optional)**: If validation finds issues and the user enabled post-editing, the `post_editor.py` module attempts to automatically fix the identified errors.
+7. **Completion**: Job status updated to `COMPLETED`. The user can then download the final translated file, as well as any validation or post-editing logs.
 
 ## Development Workflow
 

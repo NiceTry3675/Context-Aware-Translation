@@ -8,7 +8,7 @@ from clerk_backend_api.security import AuthenticateRequestOptions
 from typing import Optional
 
 # Internal imports
-from .domains.shared import schemas
+from .domains.user import schemas as user_schemas
 from .domains.user.models import User
 from .config.database import SessionLocal
 from .domains.user.repository import SqlAlchemyUserRepository
@@ -151,7 +151,7 @@ async def get_required_user(
         print(f"--- [INFO] User with Clerk ID {clerk_user_id} not found in DB. Creating from JWT claims. ---")
         try:
             name, email_address = _name_email_from_claims(claims)
-            new_user_data = schemas.UserCreate(
+            new_user_data = user_schemas.UserCreate(
                 clerk_user_id=clerk_user_id,
                 email=email_address,
                 name=name
@@ -178,7 +178,7 @@ async def get_required_user(
             if not db_user.email and email_address:
                 update_data['email'] = email_address
         if update_data:
-            user_update = schemas.UserUpdate(**update_data)
+            user_update = user_schemas.UserUpdate(**update_data)
             if db_user:
                 for key, value in user_update.dict(exclude_unset=True).items():
                     setattr(db_user, key, value)
@@ -221,7 +221,7 @@ async def get_optional_user(
                 f"{claims.get('first_name', '')} {claims.get('last_name', '')}".strip() or
                 (email_address.split('@')[0] if email_address else None)
             )
-            new_user_data = schemas.UserCreate(
+            new_user_data = user_schemas.UserCreate(
                 clerk_user_id=clerk_user_id,
                 email=email_address,
                 name=name
