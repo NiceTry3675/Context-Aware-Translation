@@ -15,6 +15,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip uv \
     && uv pip install --system -r requirements.txt
 
+# 4.1 Runtime packages (redis-server for local dev, curl for health checks)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends redis-server redis-tools ca-certificates curl \
+    && rm -rf /var/lib/apt/lists/*
+
 # 5. Create necessary directories
 # Create directories for file uploads and translated outputs.
 RUN mkdir -p uploads translated_novel
