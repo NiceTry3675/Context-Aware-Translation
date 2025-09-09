@@ -26,11 +26,7 @@ def upgrade() -> None:
     # Update existing rows with current timestamp
     op.execute("UPDATE outbox_events SET occurred_at = CURRENT_TIMESTAMP WHERE occurred_at IS NULL")
     
-    # Create index for status column if it doesn't exist
-    try:
-        op.create_index(op.f('ix_outbox_events_status'), 'outbox_events', ['status'], unique=False)
-    except:
-        pass
+    # Note: status index is created in a later migration where the column is added
     
     # Note: We can't easily change aggregate_id from INTEGER to String in SQLite
     # This would require recreating the table. For now, we'll leave it as INTEGER.

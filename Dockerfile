@@ -25,5 +25,9 @@ COPY . .
 # 7. 포트 노출
 EXPOSE 8000
 
-# 8. 애플리케이션 실행
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# 8. 엔트리포인트 스크립트 복사 및 실행 권한 부여
+COPY docker-entry.sh ./
+RUN chmod +x ./docker-entry.sh
+
+# 9. 애플리케이션 실행 (마이그레이션 후 서버 시작)
+CMD ["./docker-entry.sh"]
