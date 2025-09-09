@@ -15,12 +15,12 @@ help:
 .PHONY: openapi
 openapi:
 	@echo "Exporting OpenAPI schema..."
-	@python backend/scripts/export_openapi.py
+	@.venv/bin/python backend/scripts/export_openapi.py
 
 .PHONY: schemas
 schemas:
 	@echo "Exporting JSON schemas from Pydantic models..."
-	@python -m core.schemas.export_jsonschema
+	@.venv/bin/python -m core.schemas.export_jsonschema
 
 .PHONY: fe-types
 fe-types:
