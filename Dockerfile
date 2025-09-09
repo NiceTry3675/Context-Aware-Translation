@@ -11,7 +11,9 @@ ENV PYTHONUNBUFFERED=1
 # 4. 의존성 설치
 # 먼저 의존성 정의 파일만 복사하여 Docker의 레이어 캐싱을 활용합니다.
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir -r requirements.txt
+# Faster installs using uv (parallel + compiled wheels)
+RUN pip install --no-cache-dir --upgrade pip uv \
+    && uv pip install --system -r requirements.txt
 
 # 5. Create necessary directories
 # Create directories for file uploads and translated outputs.

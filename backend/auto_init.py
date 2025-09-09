@@ -3,16 +3,37 @@
 Railway 배포 시 필요한 초기 설정을 자동으로 수행합니다.
 """
 import logging
+import time
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from .domains.community.models import PostCategory
 from .config.database import engine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def _wait_for_db(max_attempts: int = 10, delay_seconds: int = 3) -> bool:
+    """Wait for DB to accept connections with simple retry/backoff."""
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+                logger.info("✅ Database is reachable.")
+                return True
+        except Exception as e:
+            logger.warning(
+                f"⏳ DB not ready (attempt {attempt}/{max_attempts}): {e}. Retrying in {delay_seconds}s..."
+            )
+            time.sleep(delay_seconds)
+    logger.error("❌ Database is not reachable after retries. Skipping auto initialization.")
+    return False
+
+
 def init_categories():
     """기본 커뮤니티 카테고리 초기화"""
     try:
+        if not _wait_for_db():
+            return []
         with Session(engine) as db:
             # 기존 카테고리가 있는지 확인
             try:
