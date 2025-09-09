@@ -1,0 +1,27 @@
+{
+  "description": "Lighting information for a scene.",
+  "properties": {
+    "source": {
+      "description": "Specific light source",
+      "title": "Source",
+      "type": "string"
+    },
+    "quality": {
+      "description": "Light quality (harsh/soft/filtered/etc)",
+      "title": "Quality",
+      "type": "string"
+    },
+    "direction": {
+      "description": "Light direction (from above/side/behind/etc)",
+      "title": "Direction",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source",
+    "quality",
+    "direction"
+  ],
+  "title": "LightingInfo",
+  "type": "object"
+}

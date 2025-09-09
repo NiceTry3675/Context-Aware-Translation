@@ -1,102 +1,18 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Context-Aware Translation API",
+    "title": "Context-Aware Translation System",
     "description": "AI-powered literary translation service with context awareness",
     "version": "1.0.0"
   },
   "paths": {
-    "/api/v1/analyze-style": {
-      "post": {
-        "tags": [
-          "analysis"
-        ],
-        "summary": "Analyze Style",
-        "description": "Analyze the narrative style of a document.",
-        "operationId": "analyze_style_api_v1_analyze_style_post",
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_analyze_style_api_v1_analyze_style_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StyleAnalysisResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/analyze-glossary": {
-      "post": {
-        "tags": [
-          "analysis"
-        ],
-        "summary": "Analyze Glossary",
-        "description": "Extract glossary terms from a document.",
-        "operationId": "analyze_glossary_api_v1_analyze_glossary_post",
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_analyze_glossary_api_v1_analyze_glossary_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GlossaryAnalysisResponse"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/jobs": {
       "get": {
         "tags": [
           "jobs"
         ],
         "summary": "List Jobs",
-        "description": "List all translation jobs for the current user.",
+        "description": "List all translation jobs for the current user.\n\nArgs:\n    skip: Number of jobs to skip for pagination\n    limit: Maximum number of jobs to return\n    user: Current authenticated user\n    service: Translation domain service\n    \nReturns:\n    List of translation jobs",
         "operationId": "list_jobs_api_v1_jobs_get",
         "parameters": [
           {
@@ -105,6 +21,7 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "minimum": 0,
               "default": 0,
               "title": "Skip"
             }
@@ -115,6 +32,8 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
               "default": 100,
               "title": "Limit"
             }
@@ -152,7 +71,7 @@
           "jobs"
         ],
         "summary": "Create Job",
-        "description": "Create a new translation job.",
+        "description": "Create a new translation job.\n\nArgs:\n    file: File to translate\n    api_key: API key for translation service\n    model_name: Default model name\n    translation_model_name: Optional override for translation model\n    style_model_name: Optional override for style model\n    glossary_model_name: Optional override for glossary model\n    style_data: Optional style data\n    glossary_data: Optional glossary data\n    segment_size: Segment size for translation\n    user: Current authenticated user\n    service: Translation domain service\n    \nReturns:\n    Created translation job",
         "operationId": "create_job_api_v1_jobs_post",
         "requestBody": {
           "required": true,
@@ -194,7 +113,7 @@
           "jobs"
         ],
         "summary": "Get Job",
-        "description": "Get a translation job.",
+        "description": "Get a translation job by ID.\n\nArgs:\n    job_id: Job ID\n    service: Translation domain service\n    \nReturns:\n    Translation job",
         "operationId": "get_job_api_v1_jobs__job_id__get",
         "parameters": [
           {
@@ -235,7 +154,7 @@
           "jobs"
         ],
         "summary": "Delete Job",
-        "description": "Delete a translation job and its associated files.",
+        "description": "Delete a translation job.\n\nArgs:\n    job_id: Job ID to delete\n    user: Current authenticated user\n    service: Translation domain service\n    \nReturns:\n    204 No Content response",
         "operationId": "delete_job_api_v1_jobs__job_id__delete",
         "parameters": [
           {
@@ -265,14 +184,14 @@
         }
       }
     },
-    "/api/v1/download/{job_id}": {
+    "/api/v1/jobs/{job_id}/content": {
       "get": {
         "tags": [
-          "downloads"
+          "jobs"
         ],
-        "summary": "Download Job Output Legacy",
-        "description": "Legacy download endpoint for backward compatibility.",
-        "operationId": "download_job_output_legacy_api_v1_download__job_id__get",
+        "summary": "Get Job Content",
+        "description": "Get the complete content of a translation job.\n\nArgs:\n    job_id: Job ID\n    service: Translation domain service\n    \nReturns:\n    Dict containing the job content and segments",
+        "operationId": "get_job_content_api_v1_jobs__job_id__content_get",
         "parameters": [
           {
             "name": "job_id",
@@ -287,151 +206,13 @@
         "responses": {
           "200": {
             "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Job Content Api V1 Jobs  Job Id  Content Get"
                 }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/jobs/{job_id}/output": {
-      "get": {
-        "tags": [
-          "downloads"
-        ],
-        "summary": "Download Job Output",
-        "description": "Download the output of a translation job.",
-        "operationId": "download_job_output_api_v1_jobs__job_id__output_get",
-        "parameters": [
-          {
-            "name": "job_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Job Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/jobs/{job_id}/logs/{log_type}": {
-      "get": {
-        "tags": [
-          "downloads"
-        ],
-        "summary": "Download Job Log",
-        "description": "Download log files for a translation job.",
-        "operationId": "download_job_log_api_v1_jobs__job_id__logs__log_type__get",
-        "parameters": [
-          {
-            "name": "job_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Job Id"
-            }
-          },
-          {
-            "name": "log_type",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Log Type"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/jobs/{job_id}/glossary": {
-      "get": {
-        "tags": [
-          "downloads"
-        ],
-        "summary": "Get Job Glossary",
-        "description": "Get the final glossary for a completed translation job.\n\nArgs:\n    job_id: The job ID\n    structured: If True, returns a GlossaryAnalysisResponse with structured data\n\nReturns:\n    Either raw glossary dict or GlossaryAnalysisResponse depending on 'structured' param",
-        "operationId": "get_job_glossary_api_v1_jobs__job_id__glossary_get",
-        "parameters": [
-          {
-            "name": "job_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Job Id"
-            }
-          },
-          {
-            "name": "structured",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "default": false,
-              "title": "Structured"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
               }
             }
           },
@@ -451,10 +232,10 @@
     "/api/v1/jobs/{job_id}/segments": {
       "get": {
         "tags": [
-          "downloads"
+          "jobs"
         ],
         "summary": "Get Job Segments",
-        "description": "Get the segmented translation data for a completed translation job with pagination support.",
+        "description": "Get segments from a translation job with pagination.\n\nArgs:\n    job_id: Job ID\n    offset: Number of segments to skip\n    limit: Maximum number of segments to return\n    service: Translation domain service\n    \nReturns:\n    Dict containing paginated segments",
         "operationId": "get_job_segments_api_v1_jobs__job_id__segments_get",
         "parameters": [
           {
@@ -473,11 +254,9 @@
             "schema": {
               "type": "integer",
               "minimum": 0,
-              "description": "Starting segment index",
               "default": 0,
               "title": "Offset"
-            },
-            "description": "Starting segment index"
+            }
           },
           {
             "name": "limit",
@@ -485,13 +264,11 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "maximum": 200,
+              "maximum": 1000,
               "minimum": 1,
-              "description": "Number of segments to return",
-              "default": 3,
+              "default": 200,
               "title": "Limit"
-            },
-            "description": "Number of segments to return"
+            }
           }
         ],
         "responses": {
@@ -499,7 +276,11 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Job Segments Api V1 Jobs  Job Id  Segments Get"
+                }
               }
             }
           },
@@ -516,132 +297,14 @@
         }
       }
     },
-    "/api/v1/jobs/{job_id}/content": {
-      "get": {
-        "tags": [
-          "downloads"
-        ],
-        "summary": "Get Job Content",
-        "description": "Get the translated content as text for a completed translation job.",
-        "operationId": "get_job_content_api_v1_jobs__job_id__content_get",
-        "parameters": [
-          {
-            "name": "job_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Job Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/jobs/{job_id}/pdf": {
-      "get": {
-        "tags": [
-          "downloads"
-        ],
-        "summary": "Download Job Pdf",
-        "description": "Download the translation as a PDF document with optional illustrations.\n\nThis endpoint generates a professional PDF document containing:\n- Translated text segments\n- Source text (optional)\n- Illustrations for each segment where available\n- Proper formatting and pagination\n\nArgs:\n    job_id: ID of the translation job\n    include_source: Whether to include source text alongside translations\n    include_illustrations: Whether to embed generated illustrations\n    page_size: Page size format (A4 or Letter)\n\nReturns:\n    PDF file response",
-        "operationId": "download_job_pdf_api_v1_jobs__job_id__pdf_get",
-        "parameters": [
-          {
-            "name": "job_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Job Id"
-            }
-          },
-          {
-            "name": "include_source",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "description": "Include source text in PDF",
-              "default": true,
-              "title": "Include Source"
-            },
-            "description": "Include source text in PDF"
-          },
-          {
-            "name": "include_illustrations",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "boolean",
-              "description": "Include illustrations in PDF",
-              "default": true,
-              "title": "Include Illustrations"
-            },
-            "description": "Include illustrations in PDF"
-          },
-          {
-            "name": "page_size",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "description": "Page size (A4 or Letter)",
-              "default": "A4",
-              "title": "Page Size"
-            },
-            "description": "Page size (A4 or Letter)"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/jobs/{job_id}/validation": {
-      "put": {
+    "/api/v1/validate/{job_id}": {
+      "post": {
         "tags": [
           "validation"
         ],
-        "summary": "Trigger Validation",
-        "description": "Trigger validation on a completed translation job.",
-        "operationId": "trigger_validation_api_v1_jobs__job_id__validation_put",
+        "summary": "Validate Job",
+        "description": "Trigger validation on a completed translation job.\n\nArgs:\n    job_id: Job ID\n    request: Validation request parameters\n    user: Current authenticated user\n    db: Database session\n    \nReturns:\n    Task information for the validation job",
+        "operationId": "validate_job_api_v1_validate__job_id__post",
         "parameters": [
           {
             "name": "job_id",
@@ -685,14 +348,14 @@
         }
       }
     },
-    "/api/v1/jobs/{job_id}/validation-report": {
+    "/api/v1/validation/{job_id}/status": {
       "get": {
         "tags": [
           "validation"
         ],
-        "summary": "Get Validation Report",
-        "description": "Get the validation report for a job.\n\nArgs:\n    job_id: The job ID\n    structured: If True, returns a StructuredValidationReport with core ValidationResponse\n\nReturns:\n    Either raw JSON report or StructuredValidationReport depending on 'structured' param",
-        "operationId": "get_validation_report_api_v1_jobs__job_id__validation_report_get",
+        "summary": "Get Validation Status",
+        "description": "Get the validation report for a job.\n\nArgs:\n    job_id: Job ID\n    structured: Whether to return structured response\n    user: Current authenticated user\n    db: Database session\n    \nReturns:\n    Validation report (structured or plain)",
+        "operationId": "get_validation_status_api_v1_validation__job_id__status_get",
         "parameters": [
           {
             "name": "job_id",
@@ -736,14 +399,14 @@
         }
       }
     },
-    "/api/v1/jobs/{job_id}/post-edit": {
-      "put": {
+    "/api/v1/post-edit/{job_id}": {
+      "post": {
         "tags": [
           "post-edit"
         ],
-        "summary": "Trigger Post Edit",
-        "description": "Trigger post-editing on a validated translation job.",
-        "operationId": "trigger_post_edit_api_v1_jobs__job_id__post_edit_put",
+        "summary": "Post Edit Job",
+        "description": "Trigger post-editing on a validated translation job.\n\nArgs:\n    job_id: Job ID\n    request: Post-edit request parameters\n    user: Current authenticated user\n    service: Post-edit domain service\n    \nReturns:\n    Task information for the post-edit job",
+        "operationId": "post_edit_job_api_v1_post_edit__job_id__post",
         "parameters": [
           {
             "name": "job_id",
@@ -787,14 +450,96 @@
         }
       }
     },
-    "/api/v1/jobs/{job_id}/post-edit-log": {
+    "/api/v1/post-edit/{job_id}/status": {
       "get": {
         "tags": [
           "post-edit"
         ],
-        "summary": "Get Post Edit Log",
-        "description": "Get the post-edit log for a job.\n\nArgs:\n    job_id: The job ID\n    structured: If True, returns a StructuredPostEditLog with ValidationCase objects\n\nReturns:\n    Either raw JSON log or StructuredPostEditLog depending on 'structured' param",
-        "operationId": "get_post_edit_log_api_v1_jobs__job_id__post_edit_log_get",
+        "summary": "Get Post Edit Status",
+        "description": "Get the post-edit report for a job.\n\nArgs:\n    job_id: Job ID\n    user: Current authenticated user\n    service: Post-edit domain service\n    \nReturns:\n    Post-edit report with changes and statistics",
+        "operationId": "get_post_edit_status_api_v1_post_edit__job_id__status_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/download/{job_id}": {
+      "get": {
+        "tags": [
+          "export"
+        ],
+        "summary": "Download File",
+        "description": "Download the output of a translation job.\n\nArgs:\n    job_id: Job ID\n    user: Current authenticated user (from dependency)\n    db: Database session (from dependency)\n    \nReturns:\n    FileResponse with the translated file",
+        "operationId": "download_file_api_v1_download__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/export/{job_id}": {
+      "post": {
+        "tags": [
+          "export"
+        ],
+        "summary": "Export Job",
+        "description": "Export translation job in different formats.\n\nArgs:\n    job_id: Job ID\n    format: Export format (pdf, etc.)\n    include_source: Whether to include source text\n    include_illustrations: Whether to include illustrations\n    page_size: Page size format\n    user: Current authenticated user (from dependency)\n    db: Database session (from dependency)\n    \nReturns:\n    Response with exported file",
+        "operationId": "export_job_api_v1_export__job_id__post",
         "parameters": [
           {
             "name": "job_id",
@@ -806,13 +551,43 @@
             }
           },
           {
-            "name": "structured",
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "pdf",
+              "title": "Format"
+            }
+          },
+          {
+            "name": "include_source",
             "in": "query",
             "required": false,
             "schema": {
               "type": "boolean",
-              "default": false,
-              "title": "Structured"
+              "default": true,
+              "title": "Include Source"
+            }
+          },
+          {
+            "name": "include_illustrations",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Include Illustrations"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "A4",
+              "title": "Page Size"
             }
           }
         ],
@@ -838,19 +613,19 @@
         }
       }
     },
-    "/api/v1/community/upload-image": {
+    "/api/v1/analysis/style": {
       "post": {
         "tags": [
-          "community"
+          "analysis"
         ],
-        "summary": "Upload Image",
-        "description": "Upload an image for posts.",
-        "operationId": "upload_image_api_v1_community_upload_image_post",
+        "summary": "Analyze Style",
+        "description": "Analyze the narrative style of a document.\n\nArgs:\n    file: Uploaded file to analyze\n    api_key: API key for the AI model\n    model_name: Model to use for analysis\n    \nReturns:\n    StyleAnalysisResponse with analysis results",
+        "operationId": "analyze_style_api_v1_analysis_style_post",
         "requestBody": {
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/Body_upload_image_api_v1_community_upload_image_post"
+                "$ref": "#/components/schemas/Body_analyze_style_api_v1_analysis_style_post"
               }
             }
           },
@@ -861,7 +636,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/StyleAnalysisResponse"
+                }
               }
             }
           },
@@ -878,157 +655,23 @@
         }
       }
     },
-    "/api/v1/community/categories": {
-      "get": {
-        "tags": [
-          "community"
-        ],
-        "summary": "Get Categories",
-        "description": "Get all post categories.",
-        "operationId": "get_categories_api_v1_community_categories_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/PostCategory"
-                  },
-                  "type": "array",
-                  "title": "Response Get Categories Api V1 Community Categories Get"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/community/categories/overview": {
-      "get": {
-        "tags": [
-          "community"
-        ],
-        "summary": "Get Categories With Recent Posts",
-        "description": "Get categories with their recent posts for community overview.",
-        "operationId": "get_categories_with_recent_posts_api_v1_community_categories_overview_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/community/posts": {
-      "get": {
-        "tags": [
-          "community"
-        ],
-        "summary": "Get Posts",
-        "description": "Get posts, masking private ones based on user permissions.",
-        "operationId": "get_posts_api_v1_community_posts_get",
-        "parameters": [
-          {
-            "name": "category",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Category"
-            }
-          },
-          {
-            "name": "skip",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 0,
-              "title": "Skip"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "default": 20,
-              "title": "Limit"
-            }
-          },
-          {
-            "name": "search",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Search"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/PostList"
-                  },
-                  "title": "Response Get Posts Api V1 Community Posts Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
+    "/api/v1/analysis/glossary": {
       "post": {
         "tags": [
-          "community"
+          "analysis"
         ],
-        "summary": "Create Post",
-        "description": "Create a new post.",
-        "operationId": "create_post_api_v1_community_posts_post",
+        "summary": "Analyze Glossary",
+        "description": "Extract glossary terms from a document.\n\nArgs:\n    file: Uploaded file to analyze\n    api_key: API key for the AI model\n    model_name: Model to use for analysis\n    \nReturns:\n    GlossaryAnalysisResponse with extracted terms",
+        "operationId": "analyze_glossary_api_v1_analysis_glossary_post",
         "requestBody": {
-          "required": true,
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/PostCreate"
+                "$ref": "#/components/schemas/Body_analyze_glossary_api_v1_analysis_glossary_post"
               }
             }
-          }
+          },
+          "required": true
         },
         "responses": {
           "200": {
@@ -1036,7 +679,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Post"
+                  "$ref": "#/components/schemas/GlossaryAnalysisResponse"
                 }
               }
             }
@@ -1054,75 +697,23 @@
         }
       }
     },
-    "/api/v1/community/posts/{post_id}": {
-      "get": {
+    "/api/v1/analysis/characters": {
+      "post": {
         "tags": [
-          "community"
+          "analysis"
         ],
-        "summary": "Get Post",
-        "description": "Get a specific post, masking private comments based on user permissions.",
-        "operationId": "get_post_api_v1_community_posts__post_id__get",
-        "parameters": [
-          {
-            "name": "post_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Post Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Post"
-                }
+        "summary": "Analyze Characters",
+        "description": "Analyze characters in a document.\n\nArgs:\n    file: Uploaded file to analyze\n    api_key: API key for the AI model\n    model_name: Model to use for analysis\n    \nReturns:\n    CharacterAnalysisResponse with character analysis results",
+        "operationId": "analyze_characters_api_v1_analysis_characters_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_analyze_characters_api_v1_analysis_characters_post"
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "community"
-        ],
-        "summary": "Update Post",
-        "description": "Update a post.",
-        "operationId": "update_post_api_v1_community_posts__post_id__put",
-        "parameters": [
-          {
-            "name": "post_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Post Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PostUpdate"
-              }
-            }
-          }
+          "required": true
         },
         "responses": {
           "200": {
@@ -1130,7 +721,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Post"
+                  "$ref": "#/components/schemas/CharacterAnalysisResponse"
                 }
               }
             }
@@ -1141,631 +732,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "community"
-        ],
-        "summary": "Delete Post",
-        "description": "Delete a post.",
-        "operationId": "delete_post_api_v1_community_posts__post_id__delete",
-        "parameters": [
-          {
-            "name": "post_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Post Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/community/posts/{post_id}/view": {
-      "post": {
-        "tags": [
-          "community"
-        ],
-        "summary": "Increment Post View",
-        "description": "Increment post view count (separate endpoint).",
-        "operationId": "increment_post_view_api_v1_community_posts__post_id__view_post",
-        "parameters": [
-          {
-            "name": "post_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Post Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/community/posts/{post_id}/comments": {
-      "get": {
-        "tags": [
-          "community"
-        ],
-        "summary": "Get Comments",
-        "description": "Get comments for a post, masking private ones based on user permissions.",
-        "operationId": "get_comments_api_v1_community_posts__post_id__comments_get",
-        "parameters": [
-          {
-            "name": "post_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Post Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Comment"
-                  },
-                  "title": "Response Get Comments Api V1 Community Posts  Post Id  Comments Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "community"
-        ],
-        "summary": "Create Comment",
-        "description": "Create a comment on a post.",
-        "operationId": "create_comment_api_v1_community_posts__post_id__comments_post",
-        "parameters": [
-          {
-            "name": "post_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Post Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CommentCreate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Comment"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/community/comments/{comment_id}": {
-      "put": {
-        "tags": [
-          "community"
-        ],
-        "summary": "Update Comment",
-        "description": "Update a comment.",
-        "operationId": "update_comment_api_v1_community_comments__comment_id__put",
-        "parameters": [
-          {
-            "name": "comment_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Comment Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CommentUpdate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Comment"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "community"
-        ],
-        "summary": "Delete Comment",
-        "description": "Delete a comment.",
-        "operationId": "delete_comment_api_v1_community_comments__comment_id__delete",
-        "parameters": [
-          {
-            "name": "comment_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Comment Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/admin/announcements": {
-      "post": {
-        "tags": [
-          "admin"
-        ],
-        "summary": "Create New Announcement",
-        "description": "Create a new announcement.",
-        "operationId": "create_new_announcement_api_v1_admin_announcements_post",
-        "parameters": [
-          {
-            "name": "x-admin-secret",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "X-Admin-Secret"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AnnouncementCreate"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/admin/announcements/{announcement_id}/deactivate": {
-      "put": {
-        "tags": [
-          "admin"
-        ],
-        "summary": "Deactivate Existing Announcement",
-        "description": "Deactivate a specific announcement.",
-        "operationId": "deactivate_existing_announcement_api_v1_admin_announcements__announcement_id__deactivate_put",
-        "parameters": [
-          {
-            "name": "announcement_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Announcement Id"
-            }
-          },
-          {
-            "name": "x-admin-secret",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "X-Admin-Secret"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/admin/announcements/deactivate-all": {
-      "put": {
-        "tags": [
-          "admin"
-        ],
-        "summary": "Deactivate All Announcements",
-        "description": "Deactivate all active announcements.",
-        "operationId": "deactivate_all_announcements_api_v1_admin_announcements_deactivate_all_put",
-        "parameters": [
-          {
-            "name": "x-admin-secret",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "X-Admin-Secret"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/admin/community/init-categories": {
-      "post": {
-        "tags": [
-          "admin"
-        ],
-        "summary": "Initialize Categories",
-        "description": "Initialize default post categories.",
-        "operationId": "initialize_categories_api_v1_admin_community_init_categories_post",
-        "parameters": [
-          {
-            "name": "x-admin-secret",
-            "in": "header",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "X-Admin-Secret"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/webhooks/clerk": {
-      "post": {
-        "tags": [
-          "webhooks"
-        ],
-        "summary": "Handle Clerk Webhook",
-        "description": "Handle Clerk webhook events for user management.",
-        "operationId": "handle_clerk_webhook_api_v1_webhooks_clerk_post",
-        "parameters": [
-          {
-            "name": "svix-id",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "title": "Svix-Id"
-            }
-          },
-          {
-            "name": "svix-timestamp",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "title": "Svix-Timestamp"
-            }
-          },
-          {
-            "name": "svix-signature",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "title": "Svix-Signature"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/announcements/stream": {
-      "get": {
-        "tags": [
-          "announcements"
-        ],
-        "summary": "Stream Announcements",
-        "description": "Stream announcements via Server-Sent Events.",
-        "operationId": "stream_announcements_api_v1_announcements_stream_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/schemas/core": {
-      "get": {
-        "tags": [
-          "schemas"
-        ],
-        "summary": "Get Core Schemas",
-        "description": "Get all core JSON schemas used in structured output.\n\nReturns a dictionary mapping schema names to their JSON schema definitions.\nThese schemas are used by Gemini's structured output feature.",
-        "operationId": "get_core_schemas_api_v1_schemas_core_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Get Core Schemas Api V1 Schemas Core Get"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/schemas/core/{schema_name}": {
-      "get": {
-        "tags": [
-          "schemas"
-        ],
-        "summary": "Get Core Schema",
-        "description": "Get a specific core JSON schema by name.\n\nArgs:\n    schema_name: Name of the schema to retrieve\n    \nReturns:\n    The JSON schema definition for the specified schema\n    \nRaises:\n    404 if schema not found",
-        "operationId": "get_core_schema_api_v1_schemas_core__schema_name__get",
-        "parameters": [
-          {
-            "name": "schema_name",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Schema Name"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Get Core Schema Api V1 Schemas Core  Schema Name  Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/schemas/backend": {
-      "get": {
-        "tags": [
-          "schemas"
-        ],
-        "summary": "Get Backend Schemas",
-        "description": "Get all backend API schemas (DTOs).\n\nReturns schemas used in FastAPI endpoints for request/response models.",
-        "operationId": "get_backend_schemas_api_v1_schemas_backend_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Get Backend Schemas Api V1 Schemas Backend Get"
                 }
               }
             }
@@ -1779,7 +745,7 @@
           "illustrations"
         ],
         "summary": "Generate Illustrations",
-        "description": "Generate illustration prompts for a translation job.\n\nThis endpoint triggers generation of detailed illustration prompts for all or selected segments\nof a completed translation job. The prompts can then be used with image generation services\nlike DALL-E, Midjourney, or Stable Diffusion to create actual illustrations.",
+        "description": "Generate illustration prompts for a translation job.\n\nThis endpoint triggers generation of detailed illustration prompts for all or selected segments\nof a completed translation job. The prompts can then be used with image generation services\nlike DALL-E, Midjourney, or Stable Diffusion to create actual illustrations.\n\nExpects JSON body with:\n- config: IllustrationConfig object\n- api_key: API key for Gemini\n- max_illustrations: Optional maximum number of illustrations",
         "operationId": "generate_illustrations_api_v1_illustrations__job_id__generate_post",
         "parameters": [
           {
@@ -1790,47 +756,8 @@
               "type": "integer",
               "title": "Job Id"
             }
-          },
-          {
-            "name": "api_key",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "API key for Gemini",
-              "title": "Api Key"
-            },
-            "description": "API key for Gemini"
-          },
-          {
-            "name": "max_illustrations",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Maximum number of illustration prompts to generate",
-              "title": "Max Illustrations"
-            },
-            "description": "Maximum number of illustration prompts to generate"
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/IllustrationConfig"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1870,20 +797,10 @@
               "type": "integer",
               "title": "Job Id"
             }
-          },
-          {
-            "name": "api_key",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "API key for Gemini",
-              "title": "Api Key"
-            },
-            "description": "API key for Gemini"
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "multipart/form-data": {
               "schema": {
@@ -1920,7 +837,7 @@
           "illustrations"
         ],
         "summary": "Analyze Character Appearance",
-        "description": "Analyze early novel text to produce appearance-only prompt candidates for the protagonist.",
+        "description": "Analyze early novel text to produce appearance-only prompt candidates for the protagonist.\n\nExpects JSON body with:\n- api_key: API key for model\n- protagonist_name: Optional protagonist name\n- model_name: Model name for analysis (default: gemini-2.5-flash)",
         "operationId": "analyze_character_appearance_api_v1_illustrations__job_id__character_appearance_analyze_post",
         "parameters": [
           {
@@ -1931,47 +848,6 @@
               "type": "integer",
               "title": "Job Id"
             }
-          },
-          {
-            "name": "api_key",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "API key for model",
-              "title": "Api Key"
-            },
-            "description": "API key for model"
-          },
-          {
-            "name": "protagonist_name",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Optional protagonist name",
-              "title": "Protagonist Name"
-            },
-            "description": "Optional protagonist name"
-          },
-          {
-            "name": "model_name",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "description": "Model name for analysis",
-              "default": "gemini-2.5-flash",
-              "title": "Model Name"
-            },
-            "description": "Model name for analysis"
           }
         ],
         "responses": {
@@ -2013,34 +889,10 @@
               "type": "integer",
               "title": "Job Id"
             }
-          },
-          {
-            "name": "api_key",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "API key for Gemini",
-              "title": "Api Key"
-            },
-            "description": "API key for Gemini"
-          },
-          {
-            "name": "num_variations",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 10,
-              "minimum": 1,
-              "description": "How many variants to generate when a single prompt is provided",
-              "default": 3,
-              "title": "Num Variations"
-            },
-            "description": "How many variants to generate when a single prompt is provided"
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "multipart/form-data": {
               "schema": {
@@ -2217,6 +1069,47 @@
         }
       }
     },
+    "/api/v1/illustrations/{job_id}/status": {
+      "get": {
+        "tags": [
+          "illustrations"
+        ],
+        "summary": "Get Illustrations Status",
+        "description": "Get the illustration generation status for a translation job.\n\nReturns lightweight status information without loading all illustration data.",
+        "operationId": "get_illustrations_status_api_v1_illustrations__job_id__status_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/illustrations/{job_id}/illustrations": {
       "get": {
         "tags": [
@@ -2362,7 +1255,7 @@
           "illustrations"
         ],
         "summary": "Regenerate Illustration Prompt",
-        "description": "Regenerate an illustration prompt for a specific segment.\n\nThis allows regenerating a single illustration prompt with optional new style hints.",
+        "description": "Regenerate an illustration prompt for a specific segment.\n\nThis allows regenerating a single illustration prompt with optional new style hints.\n\nExpects JSON body with:\n- api_key: API key for Gemini\n- style_hints: Optional style hints for regeneration",
         "operationId": "regenerate_illustration_prompt_api_v1_illustrations__job_id__regenerate__segment_index__post",
         "parameters": [
           {
@@ -2382,35 +1275,6 @@
               "type": "integer",
               "title": "Segment Index"
             }
-          },
-          {
-            "name": "style_hints",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Optional style hints for regeneration",
-              "title": "Style Hints"
-            },
-            "description": "Optional style hints for regeneration"
-          },
-          {
-            "name": "api_key",
-            "in": "query",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "API key for Gemini",
-              "title": "Api Key"
-            },
-            "description": "API key for Gemini"
           }
         ],
         "responses": {
@@ -2428,6 +1292,776 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Get Task Status",
+        "description": "Get the status of a specific task.\n\nReturns both database tracking info and real-time Celery status.",
+        "operationId": "get_task_status_api_v1_tasks__task_id__get",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskExecutionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "List Tasks",
+        "description": "List tasks with optional filters.\n\n- Users can see their own tasks\n- Admins can see all tasks\n- Anonymous users can't see any tasks",
+        "operationId": "list_tasks_api_v1_tasks__get",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TaskKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TaskStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "job_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskExecutionListResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/{task_id}/cancel": {
+      "post": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Cancel Task",
+        "description": "Cancel a running task.\n\nOnly the task owner or an admin can cancel a task.",
+        "operationId": "cancel_task_api_v1_tasks__task_id__cancel_post",
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/job/{job_id}/tasks": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Get Job Tasks",
+        "description": "Get all tasks associated with a specific job.",
+        "operationId": "get_job_tasks_api_v1_tasks_job__job_id__tasks_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TaskExecutionResponse"
+                  },
+                  "title": "Response Get Job Tasks Api V1 Tasks Job  Job Id  Tasks Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tasks/stats/summary": {
+      "get": {
+        "tags": [
+          "tasks"
+        ],
+        "summary": "Get Task Stats",
+        "description": "Get task execution statistics.\n\nAdmin only endpoint.",
+        "operationId": "get_task_stats_api_v1_tasks_stats_summary_get",
+        "parameters": [
+          {
+            "name": "hours",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Number of hours to look back",
+              "default": 24,
+              "title": "Hours"
+            },
+            "description": "Number of hours to look back"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskStatsSimple"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/posts": {
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "List Posts",
+        "description": "Get posts with filtering and pagination.",
+        "operationId": "list_posts_api_v1_posts_get",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Category name to filter by",
+              "title": "Category"
+            },
+            "description": "Category name to filter by"
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Category ID to filter by",
+              "title": "Category Id"
+            },
+            "description": "Category ID to filter by"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Search query",
+              "title": "Search"
+            },
+            "description": "Search query"
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Skip"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Post"
+                  },
+                  "title": "Response List Posts Api V1 Posts Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Create Post",
+        "description": "Create a new post.",
+        "operationId": "create_post_api_v1_posts_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/posts/{post_id}": {
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Get Post",
+        "description": "Get a specific post with comments.",
+        "operationId": "get_post_api_v1_posts__post_id__get",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Post Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/comments": {
+      "post": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Create Comment",
+        "description": "Create a comment on a post.",
+        "operationId": "create_comment_api_v1_comments_post",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Post Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comment"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/me": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Get Current User",
+        "description": "Get the current user's profile.",
+        "operationId": "get_current_user_api_v1_users_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/announcements": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "List Announcements",
+        "description": "Get active announcements (public endpoint).",
+        "operationId": "list_announcements_api_v1_announcements_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Announcement"
+                  },
+                  "type": "array",
+                  "title": "Response List Announcements Api V1 Announcements Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/announcements/stream": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Stream Announcements",
+        "description": "Stream announcements via Server-Sent Events (SSE).",
+        "operationId": "stream_announcements_api_v1_announcements_stream_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/posts/{post_id}": {
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Delete Any Post",
+        "description": "Delete any post (requires POST_DELETE_ANY permission).",
+        "operationId": "delete_any_post_api_v1_admin_posts__post_id__delete",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Post Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/announcements": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Create Announcement",
+        "description": "Create a new announcement (requires ANNOUNCEMENT_CREATE permission).",
+        "operationId": "create_announcement_api_v1_admin_announcements_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnouncementCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Announcement"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schemas/core": {
+      "get": {
+        "tags": [
+          "schemas"
+        ],
+        "summary": "Get Core Schemas",
+        "description": "Get all core JSON schemas used in structured output.\n\nReturns a dictionary mapping schema names to their JSON schema definitions.\nThese schemas are used by Gemini's structured output feature.",
+        "operationId": "get_core_schemas_api_v1_schemas_core_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Core Schemas Api V1 Schemas Core Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schemas/core/{schema_name}": {
+      "get": {
+        "tags": [
+          "schemas"
+        ],
+        "summary": "Get Core Schema",
+        "description": "Get a specific core JSON schema by name.\n\nArgs:\n    schema_name: Name of the schema to retrieve\n    \nReturns:\n    The JSON schema definition for the specified schema\n    \nRaises:\n    404 if schema not found",
+        "operationId": "get_core_schema_api_v1_schemas_core__schema_name__get",
+        "parameters": [
+          {
+            "name": "schema_name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Schema Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Core Schema Api V1 Schemas Core  Schema Name  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schemas/backend": {
+      "get": {
+        "tags": [
+          "schemas"
+        ],
+        "summary": "Get Backend Schemas",
+        "description": "Get all backend API schemas (DTOs).\n\nReturns schemas used in FastAPI endpoints for request/response models.",
+        "operationId": "get_backend_schemas_api_v1_schemas_backend_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Get Backend Schemas Api V1 Schemas Backend Get"
                 }
               }
             }
@@ -2455,6 +2089,35 @@
   },
   "components": {
     "schemas": {
+      "Announcement": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active",
+            "default": true
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "message",
+          "id",
+          "created_at"
+        ],
+        "title": "Announcement"
+      },
       "AnnouncementCreate": {
         "properties": {
           "message": {
@@ -2473,7 +2136,7 @@
         ],
         "title": "AnnouncementCreate"
       },
-      "Body_analyze_glossary_api_v1_analyze_glossary_post": {
+      "Body_analyze_characters_api_v1_analysis_characters_post": {
         "properties": {
           "file": {
             "type": "string",
@@ -2495,9 +2158,9 @@
           "file",
           "api_key"
         ],
-        "title": "Body_analyze_glossary_api_v1_analyze_glossary_post"
+        "title": "Body_analyze_characters_api_v1_analysis_characters_post"
       },
-      "Body_analyze_style_api_v1_analyze_style_post": {
+      "Body_analyze_glossary_api_v1_analysis_glossary_post": {
         "properties": {
           "file": {
             "type": "string",
@@ -2519,7 +2182,31 @@
           "file",
           "api_key"
         ],
-        "title": "Body_analyze_style_api_v1_analyze_style_post"
+        "title": "Body_analyze_glossary_api_v1_analysis_glossary_post"
+      },
+      "Body_analyze_style_api_v1_analysis_style_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          },
+          "api_key": {
+            "type": "string",
+            "title": "Api Key"
+          },
+          "model_name": {
+            "type": "string",
+            "title": "Model Name",
+            "default": "gemini-2.5-flash-lite"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file",
+          "api_key"
+        ],
+        "title": "Body_analyze_style_api_v1_analysis_style_post"
       },
       "Body_create_job_api_v1_jobs_post": {
         "properties": {
@@ -2571,11 +2258,25 @@
             "title": "Glossary Model Name"
           },
           "style_data": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Style Data"
           },
           "glossary_data": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Glossary Data"
           },
           "segment_size": {
@@ -2593,6 +2294,11 @@
       },
       "Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post": {
         "properties": {
+          "api_key": {
+            "type": "string",
+            "title": "Api Key",
+            "description": "API key for Gemini"
+          },
           "reference_image": {
             "anyOf": [
               {
@@ -2626,13 +2332,29 @@
               }
             ],
             "title": "Prompt"
+          },
+          "num_variations": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Num Variations",
+            "description": "How many variants to generate when a single prompt is provided",
+            "default": 3
           }
         },
         "type": "object",
+        "required": [
+          "api_key"
+        ],
         "title": "Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post"
       },
       "Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post": {
         "properties": {
+          "api_key": {
+            "type": "string",
+            "title": "Api Key",
+            "description": "API key for Gemini"
+          },
           "reference_image": {
             "anyOf": [
               {
@@ -2658,21 +2380,56 @@
           }
         },
         "type": "object",
+        "required": [
+          "api_key"
+        ],
         "title": "Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post"
       },
-      "Body_upload_image_api_v1_community_upload_image_post": {
+      "CharacterAnalysisResponse": {
         "properties": {
-          "file": {
-            "type": "string",
-            "format": "binary",
-            "title": "File"
+          "characters": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Characters"
+          },
+          "interactions": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/CharacterInteraction"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interactions"
+          },
+          "dialogue_analysis": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DialogueAnalysisResult"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dialogue Analysis"
           }
         },
         "type": "object",
         "required": [
-          "file"
+          "characters"
         ],
-        "title": "Body_upload_image_api_v1_community_upload_image_post"
+        "title": "CharacterAnalysisResponse",
+        "description": "Response for character analysis"
       },
       "CharacterInteraction": {
         "properties": {
@@ -2803,19 +2560,6 @@
         ],
         "title": "CommentCreate"
       },
-      "CommentUpdate": {
-        "properties": {
-          "content": {
-            "type": "string",
-            "title": "Content"
-          }
-        },
-        "type": "object",
-        "required": [
-          "content"
-        ],
-        "title": "CommentUpdate"
-      },
       "DialogueAnalysisResult": {
         "properties": {
           "protagonist_name": {
@@ -2912,81 +2656,6 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
-      },
-      "IllustrationConfig": {
-        "properties": {
-          "enabled": {
-            "type": "boolean",
-            "title": "Enabled",
-            "description": "Whether illustration generation is enabled",
-            "default": false
-          },
-          "style": {
-            "$ref": "#/components/schemas/IllustrationStyle",
-            "description": "The artistic style for generated illustrations",
-            "default": "digital_art"
-          },
-          "style_hints": {
-            "type": "string",
-            "title": "Style Hints",
-            "description": "Additional style hints or preferences for illustration generation",
-            "default": ""
-          },
-          "segments_per_illustration": {
-            "type": "integer",
-            "title": "Segments Per Illustration",
-            "description": "Number of segments to combine for each illustration",
-            "default": 1
-          },
-          "max_illustrations": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Max Illustrations",
-            "description": "Maximum number of illustrations to generate (None for unlimited)"
-          },
-          "skip_dialogue_heavy": {
-            "type": "boolean",
-            "title": "Skip Dialogue Heavy",
-            "description": "Skip illustration for segments that are mostly dialogue",
-            "default": true
-          },
-          "min_segment_length": {
-            "type": "integer",
-            "title": "Min Segment Length",
-            "description": "Minimum segment length (characters) to generate illustration",
-            "default": 500
-          },
-          "cache_enabled": {
-            "type": "boolean",
-            "title": "Cache Enabled",
-            "description": "Whether to cache generated illustrations",
-            "default": true
-          }
-        },
-        "type": "object",
-        "title": "IllustrationConfig",
-        "description": "Configuration for illustration generation.\n\nThis model defines the settings and preferences for generating\nillustrations for translation segments."
-      },
-      "IllustrationStyle": {
-        "type": "string",
-        "enum": [
-          "realistic",
-          "artistic",
-          "watercolor",
-          "digital_art",
-          "sketch",
-          "anime",
-          "vintage",
-          "minimalist"
-        ],
-        "title": "IllustrationStyle",
-        "description": "Enumeration of available illustration styles."
       },
       "NarrationStyle": {
         "properties": {
@@ -3260,132 +2929,8 @@
           }
         },
         "type": "object",
-        "title": "PostEditRequest"
-      },
-      "PostList": {
-        "properties": {
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Updated At"
-          },
-          "id": {
-            "type": "integer",
-            "title": "Id"
-          },
-          "title": {
-            "type": "string",
-            "title": "Title"
-          },
-          "author": {
-            "$ref": "#/components/schemas/User"
-          },
-          "category": {
-            "$ref": "#/components/schemas/PostCategory"
-          },
-          "is_pinned": {
-            "type": "boolean",
-            "title": "Is Pinned"
-          },
-          "is_private": {
-            "type": "boolean",
-            "title": "Is Private"
-          },
-          "view_count": {
-            "type": "integer",
-            "title": "View Count"
-          },
-          "images": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Images",
-            "default": []
-          },
-          "comment_count": {
-            "type": "integer",
-            "title": "Comment Count",
-            "default": 0
-          }
-        },
-        "type": "object",
-        "required": [
-          "created_at",
-          "id",
-          "title",
-          "author",
-          "category",
-          "is_pinned",
-          "is_private",
-          "view_count"
-        ],
-        "title": "PostList"
-      },
-      "PostUpdate": {
-        "properties": {
-          "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Title"
-          },
-          "content": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Content"
-          },
-          "is_pinned": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Is Pinned"
-          },
-          "images": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Images"
-          }
-        },
-        "type": "object",
-        "title": "PostUpdate"
+        "title": "PostEditRequest",
+        "description": "Request schema for post-editing operations."
       },
       "StyleAnalysisResponse": {
         "properties": {
@@ -3439,6 +2984,367 @@
         ],
         "title": "StyleAnalysisResponse",
         "description": "Response for style analysis - extends core NarrativeStyleDefinition"
+      },
+      "TaskExecutionListResponse": {
+        "properties": {
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/TaskExecutionResponse"
+            },
+            "type": "array",
+            "title": "Tasks"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset",
+            "default": 0
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit",
+            "default": 20
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "page_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Size"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tasks",
+          "total"
+        ],
+        "title": "TaskExecutionListResponse",
+        "description": "Response for list of task executions."
+      },
+      "TaskExecutionResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/TaskKind"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "attempts": {
+            "type": "integer",
+            "title": "Attempts",
+            "default": 0
+          },
+          "max_retries": {
+            "type": "integer",
+            "title": "Max Retries",
+            "default": 3
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "next_retry_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Retry At"
+          },
+          "queue_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Time"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Time"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration"
+          },
+          "queue_duration": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Duration"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "celery_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Celery State"
+          },
+          "celery_info": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Celery Info"
+          },
+          "args": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Args"
+          },
+          "kwargs": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kwargs"
+          },
+          "result": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "status",
+          "created_at"
+        ],
+        "title": "TaskExecutionResponse",
+        "description": "Response model for task execution status."
+      },
+      "TaskKind": {
+        "type": "string",
+        "enum": [
+          "translation",
+          "validation",
+          "post_edit",
+          "illustration",
+          "event_processing",
+          "maintenance",
+          "other"
+        ],
+        "title": "TaskKind",
+        "description": "Types of background tasks."
+      },
+      "TaskStatsSimple": {
+        "properties": {
+          "period_hours": {
+            "type": "integer",
+            "title": "Period Hours"
+          },
+          "status_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Status Counts"
+          },
+          "kind_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Kind Counts"
+          },
+          "average_durations": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Average Durations"
+          },
+          "total_tasks": {
+            "type": "integer",
+            "title": "Total Tasks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "period_hours",
+          "status_counts",
+          "kind_counts",
+          "average_durations",
+          "total_tasks"
+        ],
+        "title": "TaskStatsSimple",
+        "description": "Simple task statistics."
+      },
+      "TaskStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "started",
+          "retry",
+          "success",
+          "failure",
+          "revoked",
+          "running"
+        ],
+        "title": "TaskStatus",
+        "description": "Task execution status."
       },
       "TranslatedTerm": {
         "properties": {
@@ -3923,7 +3829,8 @@
           }
         },
         "type": "object",
-        "title": "ValidationRequest"
+        "title": "ValidationRequest",
+        "description": "Request schema for validation operations."
       }
     }
   }

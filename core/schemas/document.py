@@ -30,6 +30,10 @@ class TranslationDocumentData(BaseModel):
     unique_base_filename: str = Field(..., description="Unique base filename for internal use")
     input_format: str = Field(..., description="Input file format (e.g., '.txt', '.epub')")
     output_filename: str = Field(..., description="Full path to output file")
+    job_output_filename: Optional[str] = Field(
+        default=None,
+        description="Job-specific output path in logs/jobs/{job_id}/output/"
+    )
     
     # Processing parameters
     target_segment_size: int = Field(

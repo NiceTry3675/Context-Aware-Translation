@@ -74,7 +74,7 @@ export function useTranslationService({
       styleFormData.append('api_key', apiKey);
       styleFormData.append('model_name', selectedStyleModel || selectedModel);
 
-      const styleResponse = await fetch(`${apiUrl}/api/v1/analyze-style`, {
+      const styleResponse = await fetch(`${apiUrl}/api/v1/analysis/style`, {
         method: 'POST',
         body: styleFormData,
       });
@@ -105,7 +105,7 @@ export function useTranslationService({
         glossaryFormData.append('model_name', selectedGlossaryModel || selectedModel);
 
         try {
-          const glossaryResponse = await fetch(`${apiUrl}/api/v1/analyze-glossary`, {
+          const glossaryResponse = await fetch(`${apiUrl}/api/v1/analysis/glossary`, {
             method: 'POST',
             body: glossaryFormData,
           });
@@ -177,14 +177,13 @@ export function useTranslationService({
     formData.append("style_data", JSON.stringify(apiStyleData));
     
     if (glossaryData.length > 0) {
-      // Convert UI GlossaryTerm[] to a single dictionary expected by backend
+      // Convert UI GlossaryTerm format to API format - single dictionary
       const apiGlossaryData: Record<string, string> = {};
-      for (const term of glossaryData) {
-        const source = (term.source || '').trim();
-        const korean = (term.korean || '').trim();
-        if (!source) continue; // Skip empty source terms
-        apiGlossaryData[source] = korean;
-      }
+      glossaryData.forEach(term => {
+        if (term.source && term.korean) {
+          apiGlossaryData[term.source] = term.korean;
+        }
+      });
       formData.append("glossary_data", JSON.stringify(apiGlossaryData));
     }
     

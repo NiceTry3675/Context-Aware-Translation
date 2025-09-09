@@ -72,8 +72,8 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
 
   const { getToken } = useAuth();
 
-  // Allow re-running validation when translation is completed and validation is not currently running
-  const canRunValidation = job.status === 'COMPLETED' && job.validation_status !== 'IN_PROGRESS';
+  const canRunValidation = job.status === 'COMPLETED' && 
+    job.validation_status !== 'IN_PROGRESS';
   const canRunPostEdit = job.validation_status === 'COMPLETED' && 
     (!job.post_edit_status || job.post_edit_status === 'FAILED');
 

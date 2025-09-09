@@ -1,0 +1,397 @@
+{
+  "$defs": {
+    "IllustrationConfig": {
+      "description": "Configuration for illustration generation.\n\nThis model defines the settings and preferences for generating\nillustrations for translation segments.",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "description": "Whether illustration generation is enabled",
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "style": {
+          "$ref": "#/$defs/IllustrationStyle",
+          "default": "digital_art",
+          "description": "The artistic style for generated illustrations"
+        },
+        "style_hints": {
+          "default": "",
+          "description": "Additional style hints or preferences for illustration generation",
+          "title": "Style Hints",
+          "type": "string"
+        },
+        "segments_per_illustration": {
+          "default": 1,
+          "description": "Number of segments to combine for each illustration",
+          "title": "Segments Per Illustration",
+          "type": "integer"
+        },
+        "max_illustrations": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Maximum number of illustrations to generate (None for unlimited)",
+          "title": "Max Illustrations"
+        },
+        "skip_dialogue_heavy": {
+          "default": true,
+          "description": "Skip illustration for segments that are mostly dialogue",
+          "title": "Skip Dialogue Heavy",
+          "type": "boolean"
+        },
+        "min_segment_length": {
+          "default": 500,
+          "description": "Minimum segment length (characters) to generate illustration",
+          "title": "Min Segment Length",
+          "type": "integer"
+        },
+        "cache_enabled": {
+          "default": true,
+          "description": "Whether to cache generated illustrations",
+          "title": "Cache Enabled",
+          "type": "boolean"
+        },
+        "use_character_profile": {
+          "default": false,
+          "description": "Use character profile for consistent appearance across scenes",
+          "title": "Use Character Profile",
+          "type": "boolean"
+        },
+        "profile_lock_enabled": {
+          "default": false,
+          "description": "Lock character appearance using reference images for consistency",
+          "title": "Profile Lock Enabled",
+          "type": "boolean"
+        },
+        "base_image_generation_count": {
+          "default": 3,
+          "description": "Number of base character images to generate for selection",
+          "title": "Base Image Generation Count",
+          "type": "integer"
+        },
+        "allow_reference_images": {
+          "default": true,
+          "description": "Allow using reference images for generation",
+          "title": "Allow Reference Images",
+          "type": "boolean"
+        },
+        "reference_image_source": {
+          "default": "base_selection",
+          "description": "Source for reference images: 'base_selection', 'upload', 'none'",
+          "title": "Reference Image Source",
+          "type": "string"
+        },
+        "allow_custom_prompts": {
+          "default": true,
+          "description": "Allow custom prompt overrides for specific scenes",
+          "title": "Allow Custom Prompts",
+          "type": "boolean"
+        },
+        "prefer_custom_prompts": {
+          "default": false,
+          "description": "Prefer custom prompts over automatic generation when available",
+          "title": "Prefer Custom Prompts",
+          "type": "boolean"
+        },
+        "model_name": {
+          "default": "gemini-2.5-flash-image-preview",
+          "description": "AI model to use for image generation",
+          "title": "Model Name",
+          "type": "string"
+        },
+        "image_quality": {
+          "default": "high",
+          "description": "Image quality setting: 'low', 'medium', 'high', 'ultra'",
+          "title": "Image Quality",
+          "type": "string"
+        },
+        "aspect_ratio": {
+          "default": "16:9",
+          "description": "Preferred aspect ratio for generated images",
+          "title": "Aspect Ratio",
+          "type": "string"
+        },
+        "image_width": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Target image width in pixels (None for model default)",
+          "title": "Image Width"
+        },
+        "image_height": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Target image height in pixels (None for model default)",
+          "title": "Image Height"
+        },
+        "max_retries": {
+          "default": 3,
+          "description": "Maximum retry attempts for failed generations",
+          "title": "Max Retries",
+          "type": "integer"
+        },
+        "fallback_to_prompt_only": {
+          "default": true,
+          "description": "Save prompt as JSON when image generation fails",
+          "title": "Fallback To Prompt Only",
+          "type": "boolean"
+        },
+        "safety_filter_level": {
+          "default": "medium",
+          "description": "Safety filter level: 'low', 'medium', 'high'",
+          "title": "Safety Filter Level",
+          "type": "string"
+        },
+        "retry_on_safety_filter": {
+          "default": true,
+          "description": "Retry with modified prompt when safety filter triggers",
+          "title": "Retry On Safety Filter",
+          "type": "boolean"
+        },
+        "use_world_atmosphere": {
+          "default": true,
+          "description": "Use AI-analyzed world atmosphere data for richer prompts",
+          "title": "Use World Atmosphere",
+          "type": "boolean"
+        },
+        "combine_segments_threshold": {
+          "default": 0.8,
+          "description": "Similarity threshold for combining adjacent segments (0.0-1.0)",
+          "title": "Combine Segments Threshold",
+          "type": "number"
+        },
+        "illustration_density": {
+          "default": "moderate",
+          "description": "Illustration frequency: 'sparse', 'moderate', 'dense'",
+          "title": "Illustration Density",
+          "type": "string"
+        }
+      },
+      "title": "IllustrationConfig",
+      "type": "object"
+    },
+    "IllustrationData": {
+      "description": "Data model for a generated illustration.\n\nThis model contains all the information about a single generated\nillustration, including its location, metadata, and generation details.",
+      "properties": {
+        "segment_index": {
+          "description": "Index of the segment this illustration belongs to",
+          "title": "Segment Index",
+          "type": "integer"
+        },
+        "file_path": {
+          "description": "File path to the generated illustration",
+          "title": "File Path",
+          "type": "string"
+        },
+        "prompt": {
+          "description": "The prompt used to generate this illustration",
+          "title": "Prompt",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/IllustrationStatus",
+          "description": "Current status of the illustration"
+        },
+        "style": {
+          "$ref": "#/$defs/IllustrationStyle",
+          "description": "The style used for this illustration"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Width of the illustration in pixels",
+          "title": "Width"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Height of the illustration in pixels",
+          "title": "Height"
+        },
+        "file_size": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "File size in bytes",
+          "title": "File Size"
+        },
+        "generation_time": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Time taken to generate the illustration in seconds",
+          "title": "Generation Time"
+        },
+        "error_message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Error message if generation failed",
+          "title": "Error Message"
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "description": "Additional metadata about the illustration",
+          "title": "Metadata",
+          "type": "object"
+        }
+      },
+      "required": [
+        "segment_index",
+        "file_path",
+        "prompt",
+        "status",
+        "style"
+      ],
+      "title": "IllustrationData",
+      "type": "object"
+    },
+    "IllustrationStatus": {
+      "description": "Status of illustration generation.",
+      "enum": [
+        "pending",
+        "in_progress",
+        "generated",
+        "failed",
+        "skipped"
+      ],
+      "title": "IllustrationStatus",
+      "type": "string"
+    },
+    "IllustrationStyle": {
+      "description": "Enumeration of available illustration styles.",
+      "enum": [
+        "realistic",
+        "artistic",
+        "watercolor",
+        "digital_art",
+        "sketch",
+        "anime",
+        "vintage",
+        "minimalist"
+      ],
+      "title": "IllustrationStyle",
+      "type": "string"
+    }
+  },
+  "description": "Container for batch illustration generation results.\n\nThis model holds the results of generating illustrations for\nmultiple segments in a batch operation.",
+  "properties": {
+    "job_id": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Translation job ID this batch belongs to",
+      "title": "Job Id"
+    },
+    "total_segments": {
+      "description": "Total number of segments processed",
+      "title": "Total Segments",
+      "type": "integer"
+    },
+    "successful_generations": {
+      "default": 0,
+      "description": "Number of successfully generated illustrations",
+      "title": "Successful Generations",
+      "type": "integer"
+    },
+    "failed_generations": {
+      "default": 0,
+      "description": "Number of failed illustration generations",
+      "title": "Failed Generations",
+      "type": "integer"
+    },
+    "skipped_segments": {
+      "default": 0,
+      "description": "Number of segments skipped for illustration",
+      "title": "Skipped Segments",
+      "type": "integer"
+    },
+    "illustrations": {
+      "description": "List of generated illustrations",
+      "items": {
+        "$ref": "#/$defs/IllustrationData"
+      },
+      "title": "Illustrations",
+      "type": "array"
+    },
+    "config": {
+      "$ref": "#/$defs/IllustrationConfig",
+      "description": "Configuration used for this batch"
+    },
+    "total_generation_time": {
+      "default": 0.0,
+      "description": "Total time taken for batch generation in seconds",
+      "title": "Total Generation Time",
+      "type": "number"
+    },
+    "output_directory": {
+      "description": "Directory where illustrations are stored",
+      "title": "Output Directory",
+      "type": "string"
+    }
+  },
+  "required": [
+    "total_segments",
+    "config",
+    "output_directory"
+  ],
+  "title": "IllustrationBatch",
+  "type": "object"
+}

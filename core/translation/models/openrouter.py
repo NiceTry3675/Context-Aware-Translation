@@ -4,7 +4,7 @@ import json
 import time
 from typing import Dict, Any, List
 from ...utils.retry import retry_with_softer_prompt
-from ...errors import ProhibitedException
+from shared.errors import ProhibitedException
 
 class OpenRouterModel:
     """

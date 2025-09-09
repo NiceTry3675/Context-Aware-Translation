@@ -5,7 +5,7 @@ Retry decorator for handling ProhibitedException with progressively softer promp
 import functools
 import time
 from typing import Callable, Any, Optional
-from ..errors import ProhibitedException
+from shared.errors import ProhibitedException
 from ..prompts.sanitizer import PromptSanitizer
 
 

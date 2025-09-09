@@ -23,7 +23,8 @@ class TranslationDocument:
     """
     
     def __init__(self, filepath: str, original_filename: Optional[str] = None, 
-                 target_segment_size: int = 15000):
+                 target_segment_size: int = 15000, job_id: Optional[int] = None,
+                 storage_handler=None):
         """
         Initialize a translation document.
         
@@ -31,7 +32,13 @@ class TranslationDocument:
             filepath: Path to the source document
             original_filename: Original filename for user-facing display
             target_segment_size: Target size for each segment in characters
+            job_id: Optional job ID for saving to job-specific directory
+            storage_handler: Optional storage handler for backend integration
         """
+        # Store job_id and storage handler for storage operations
+        self._job_id = job_id
+        self._storage_handler = storage_handler
+        
         # Setup filenames
         user_base_filename, unique_base_filename, input_format = self._setup_filenames(
             filepath, original_filename
@@ -42,6 +49,13 @@ class TranslationDocument:
             filepath, original_filename
         )
         
+        # Setup job-specific output path if job_id is provided
+        job_output_filename = None
+        if job_id:
+            job_output_filename = DocumentOutputManager.setup_job_output_path(
+                job_id, original_filename, input_format
+            )
+        
         # Initialize the data model
         self._data = TranslationDocumentData(
             filepath=filepath,
@@ -50,6 +64,7 @@ class TranslationDocument:
             unique_base_filename=unique_base_filename,
             input_format=input_format,
             output_filename=output_filename,
+            job_output_filename=job_output_filename,
             target_segment_size=target_segment_size
         )
         
@@ -189,22 +204,53 @@ class TranslationDocument:
     # Output operations using centralized utilities
     def save_partial_output(self):
         """Save the currently translated segments to the output file."""
+        # Try to save using storage abstraction if job_id available
+        if hasattr(self, '_job_id') and self._job_id:
+            saved_paths = DocumentOutputManager.save_to_storage_sync(
+                self._data.translated_segments,
+                self._job_id,
+                self._data.original_filename or self._data.user_base_filename,
+                self._storage_handler
+            )
+            if saved_paths:
+                # Storage save succeeded, we're done
+                return
+        
+        # Fallback to traditional file saving
         if self._data.input_format == '.epub':
+            # Save to main output location
             DocumentOutputManager.save_epub_output(
                 self._data.filepath,
                 self._data.translated_segments,
                 self._data.output_filename,
                 self._data.style_map
             )
+            # Also save to job-specific location if available
+            if self._data.job_output_filename:
+                DocumentOutputManager.save_epub_output(
+                    self._data.filepath,
+                    self._data.translated_segments,
+                    self._data.job_output_filename,
+                    self._data.style_map
+                )
         else:
+            # Save to main output location
             DocumentOutputManager.save_text_output(
                 self._data.translated_segments,
                 self._data.output_filename
             )
+            # Also save to job-specific location if available
+            if self._data.job_output_filename:
+                DocumentOutputManager.save_text_output(
+                    self._data.translated_segments,
+                    self._data.job_output_filename
+                )
     
     def save_final_output(self):
         """Save the final output based on the input file format."""
         print(f"\nSaving final output to {self._data.output_filename}...")
+        if self._data.job_output_filename:
+            print(f"Also saving to job directory: {self._data.job_output_filename}")
         self.save_partial_output()
         print("Save complete.")
     

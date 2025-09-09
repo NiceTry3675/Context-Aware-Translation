@@ -8,8 +8,10 @@ from clerk_backend_api.security import AuthenticateRequestOptions
 from typing import Optional
 
 # Internal imports
-from . import crud, models, schemas
-from .database import SessionLocal
+from .domains.user import schemas as user_schemas
+from .domains.user.models import User
+from .config.database import SessionLocal
+from .domains.user.repository import SqlAlchemyUserRepository
 
 # Initialize the Clerk client with proper API key.
 clerk = Clerk(bearer_auth=os.environ.get("CLERK_SECRET_KEY"))
@@ -114,7 +116,7 @@ async def get_current_user_claims(request: Request) -> Optional[dict]:
 async def get_required_user(
     claims: dict = Depends(get_current_user_claims),
     db: Session = Depends(get_db)
-) -> models.User:
+) -> User:
     """
     Dependency that requires a user to be authenticated.
     It ensures a user exists in our database for the given Clerk JWT claims.
@@ -132,7 +134,8 @@ async def get_required_user(
     if not clerk_user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Clerk user ID (sub) not found in token.")
 
-    db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
+    repo = SqlAlchemyUserRepository(db)
+    db_user = repo.get_by_clerk_id(clerk_user_id)
 
     # Helper: extract preferred name/email from JWT claims
     def _name_email_from_claims(claims_dict: dict) -> tuple[str | None, str | None]:
@@ -148,17 +151,21 @@ async def get_required_user(
         print(f"--- [INFO] User with Clerk ID {clerk_user_id} not found in DB. Creating from JWT claims. ---")
         try:
             name, email_address = _name_email_from_claims(claims)
-            new_user_data = schemas.UserCreate(
+            new_user_data = user_schemas.UserCreate(
                 clerk_user_id=clerk_user_id,
                 email=email_address,
                 name=name
             )
-            db_user = crud.create_user(db, user=new_user_data)
+            db_user = User(clerk_user_id=new_user_data.clerk_user_id, email=new_user_data.email, name=new_user_data.name)
+            db.add(db_user)
+            db.commit()
+            db.refresh(db_user)
             print(f"--- [INFO] Created user {db_user.id} for Clerk ID {clerk_user_id} (claims-based). ---")
         except IntegrityError:
             db.rollback()
             print(f"--- [WARN] Race condition detected for Clerk ID {clerk_user_id}. User likely created by webhook. Refetching... ---")
-            db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
+            repo = SqlAlchemyUserRepository(db)
+            db_user = repo.get_by_clerk_id(clerk_user_id)
             if not db_user:
                 raise HTTPException(status_code=500, detail="Failed to create or find user after race condition.")
     else:
@@ -171,8 +178,12 @@ async def get_required_user(
             if not db_user.email and email_address:
                 update_data['email'] = email_address
         if update_data:
-            user_update = schemas.UserUpdate(**update_data)
-            db_user = crud.update_user(db, clerk_user_id, user_update)
+            user_update = user_schemas.UserUpdate(**update_data)
+            if db_user:
+                for key, value in user_update.dict(exclude_unset=True).items():
+                    setattr(db_user, key, value)
+                db.commit()
+                db.refresh(db_user)
             print(f"--- [INFO] Updated user {db_user.id} with: {update_data} (claims-based). ---")
 
     # Sync user role from JWT claims (no external API call)
@@ -184,7 +195,7 @@ async def get_required_user(
 async def get_optional_user(
     claims: Optional[dict] = Depends(get_current_user_claims),
     db: Session = Depends(get_db)
-) -> Optional[models.User]:
+) -> Optional[User]:
     """
     Dependency that provides the user model if authenticated, but doesn't fail if not.
     Returns the user model instance or None.
@@ -197,7 +208,8 @@ async def get_optional_user(
     if not clerk_user_id:
         return None
 
-    db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
+    repo = SqlAlchemyUserRepository(db)
+    db_user = repo.get_by_clerk_id(clerk_user_id)
 
     # If user doesn't exist in DB but is authenticated, create them (claims-based)
     if not db_user:
@@ -209,17 +221,21 @@ async def get_optional_user(
                 f"{claims.get('first_name', '')} {claims.get('last_name', '')}".strip() or
                 (email_address.split('@')[0] if email_address else None)
             )
-            new_user_data = schemas.UserCreate(
+            new_user_data = user_schemas.UserCreate(
                 clerk_user_id=clerk_user_id,
                 email=email_address,
                 name=name
             )
-            db_user = crud.create_user(db, user=new_user_data)
+            db_user = User(clerk_user_id=new_user_data.clerk_user_id, email=new_user_data.email, name=new_user_data.name)
+            db.add(db_user)
+            db.commit()
+            db.refresh(db_user)
             print(f"--- [INFO] Created user {db_user.id} for Clerk ID {clerk_user_id} (optional, claims-based). ---")
         except IntegrityError:
             db.rollback()
             print(f"--- [WARN] Race condition detected for Clerk ID {clerk_user_id} during optional auth. Refetching... ---")
-            db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
+            repo = SqlAlchemyUserRepository(db)
+            db_user = repo.get_by_clerk_id(clerk_user_id)
         except Exception as e:
             print(f"--- [ERROR] Failed to create user in optional auth: {e}")
             return None
@@ -229,7 +245,7 @@ async def get_optional_user(
 
     return db_user
 
-async def sync_user_role_from_claims(db: Session, db_user: models.User, claims: dict | None) -> models.User:
+async def sync_user_role_from_claims(db: Session, db_user: User, claims: dict | None) -> User:
     """
     Prefer JWT claims public_metadata for role; avoid remote Clerk API calls.
     """
@@ -248,7 +264,7 @@ async def sync_user_role_from_claims(db: Session, db_user: models.User, claims: 
         print(f"--- [WARN] Could not sync user role from claims for {db_user.clerk_user_id}: {e}")
     return db_user
 
-async def is_admin(user: models.User) -> bool:
+async def is_admin(user: User) -> bool:
     """
     사용자가 관리자인지 확인
     1. 로컬 데이터베이스의 role 컬럼 확인
@@ -269,7 +285,7 @@ async def is_admin(user: models.User) -> bool:
     
     return False
 
-def is_admin_sync(user: models.User) -> bool:
+def is_admin_sync(user: User) -> bool:
     """
     동기 버전: 사용자가 관리자인지 확인
     주로 CRUD 함수들에서 사용 (로컬 DB만 확인)

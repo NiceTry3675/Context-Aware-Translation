@@ -302,7 +302,7 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
                 const checked = currentSelection ? (currentSelection[absoluteIndex] !== false) : true;
                 const src = c.problematic_source_sentence || '';
                 const cur = c.current_korean_sentence || '';
-                const fix = (c as any).recommend_korean_sentence || (c as any).corrected_korean_sentence || '';
+                const fix = (c as any).recommend_korean_sentence || '';
                 const reasonId = `reason-${selectedSegment}-${absoluteIndex}`;
                 return (
                   <Box key={i} sx={{ p: 1.5, border: `1px solid ${sev.fg}`, bgcolor: sev.bg, borderRadius: 1 }} onClick={() => toggleExpanded(absoluteIndex)} role="button" aria-expanded={isExpanded(absoluteIndex)} aria-controls={reasonId} tabIndex={0}>

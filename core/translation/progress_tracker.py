@@ -10,7 +10,7 @@ from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
 
 from ..schemas import SegmentInfo
-from ..utils.logging import TranslationLogger
+from shared.utils.logging import TranslationLogger
 
 
 class ProgressTracker:

@@ -10,10 +10,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from backend.main import app
+from backend.domains.community.schemas import rebuild_models as rebuild_community_models
 
 
 def export_openapi():
     """Export the OpenAPI schema to a JSON file."""
+    # Rebuild models to resolve forward references
+    rebuild_community_models()
+    
     # Get the OpenAPI schema from the FastAPI app
     openapi_schema = app.openapi()
     

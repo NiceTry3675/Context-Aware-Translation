@@ -12,8 +12,8 @@ from core.config.builder import DynamicConfigBuilder
 from core.translation.document import TranslationDocument
 from core.translation.translation_pipeline import TranslationPipeline
 from core.utils.file_parser import parse_document
-from backend.database import SessionLocal
-from backend import crud
+from backend.config.database import SessionLocal
+from backend.domains.translation import repository as crud
 
 class TestIntegrationTranslation(unittest.TestCase):
     """Integration test with actual Gemini API (requires API key)."""
@@ -50,7 +50,7 @@ class TestIntegrationTranslation(unittest.TestCase):
         self.db = SessionLocal()
         
         # Create a test job in the database
-        from backend.models import TranslationJob as DBTranslationJob
+        from backend.domains.translation.models import TranslationJob as DBTranslationJob
         test_job = DBTranslationJob(
             filename=f"test_catcher_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
             status="PROCESSING"
@@ -63,7 +63,7 @@ class TestIntegrationTranslation(unittest.TestCase):
         """Clean up database."""
         if hasattr(self, 'db'):
             # Delete the test job
-            from backend.models import TranslationJob as DBTranslationJob
+            from backend.domains.translation.models import TranslationJob as DBTranslationJob
             job = self.db.query(DBTranslationJob).filter(DBTranslationJob.id == self.job_id).first()
             if job:
                 self.db.delete(job)

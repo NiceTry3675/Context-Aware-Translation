@@ -15,7 +15,7 @@ from .text_segmentation import (
     create_segments_from_plain_text,
     get_segment_statistics
 )
-from .logging import TranslationLogger, StructuredLogger, get_logger
+from shared.utils.logging import TranslationLogger, StructuredLogger, get_logger
 
 __all__ = [
     # File operations

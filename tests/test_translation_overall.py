@@ -78,7 +78,8 @@ class TestOverallTranslation(unittest.TestCase):
             mock_build_guides.return_value = (
                 {"Holden": "홀든", "Pencey Prep": "펜시 프렙"},  # glossary
                 {"Holden": "Uses informal, cynical teenage speech"},  # character styles
-                "Maintaining cynical narrative tone"  # style deviation
+                "Maintaining cynical narrative tone",  # style deviation
+                None  # world_atmosphere (optional, can be None)
             )
             
             # Create and run translation engine

@@ -13,7 +13,7 @@ from typing import Dict, List, Tuple, Any
 
 from core.schemas.validation import ValidationCase, ValidationResult, make_validation_response_schema as make_response_schema
 from core.prompts.manager import PromptManager
-from core.utils.logging import StructuredLogger
+from shared.utils.logging import StructuredLogger
 
 
 class TranslationValidator:
@@ -68,8 +68,18 @@ class TranslationValidator:
             # Use JSON schema for compatibility with Gemini API
             response_schema = make_response_schema()
             response = self.ai_model.generate_structured(prompt, response_schema)
+            
+            if self.verbose:
+                print(f"[VALIDATOR DEBUG] Segment {segment_index} response: {response}")
+            
             # Response is a dict when using JSON schema
             cases = (response or {}).get('cases', [])
+            
+            if self.verbose and not cases:
+                print(f"[VALIDATOR DEBUG] Segment {segment_index}: No issues found (PASS)")
+            elif self.verbose:
+                print(f"[VALIDATOR DEBUG] Segment {segment_index}: Found {len(cases)} issues")
+                
             # Convert dict cases to ValidationCase models
             result.structured_cases = [ValidationCase(**case) for case in cases] if cases else None
             result.status = "FAIL" if cases else "PASS"
@@ -90,6 +100,7 @@ class TranslationValidator:
     ) -> Tuple[List[ValidationResult], Dict[str, Any]]:
         results: List[ValidationResult] = []
         total_segments = len(document.segments)
+        print(f"[VALIDATOR] Starting validation - source segments: {total_segments}, translated segments: {len(document.translated_segments)}")
         if total_segments != len(document.translated_segments):
             print(
                 f"Warning: Segment count mismatch! Source: {total_segments}, Translated: {len(document.translated_segments)}"
@@ -118,6 +129,7 @@ class TranslationValidator:
             print(f"{'='*60}\n")
 
         # Process segments with centralized progress tracking
+        print(f"[VALIDATOR] Will validate {segments_to_validate} segments, indices: {list(indices)[:5]}...")
         for i, idx in enumerate(indices):
             source_text = document.segments[idx].text
             translated_text = document.translated_segments[idx]
@@ -138,6 +150,7 @@ class TranslationValidator:
                 progress = int(((i + 1) / segments_to_validate) * 100)
                 progress_callback(progress)
 
+        print(f"[VALIDATOR] Validation complete - {len(results)} results collected")
         summary = self._calculate_summary(results, total_segments, segments_to_validate)
         
         # Use centralized structured logging

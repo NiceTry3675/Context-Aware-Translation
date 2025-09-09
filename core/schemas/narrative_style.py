@@ -14,6 +14,186 @@ from pydantic import BaseModel, Field
 # Pydantic Models
 # --------------------
 
+class PhysicalWorld(BaseModel):
+    """Physical world and setting details."""
+    
+    location: str = Field(
+        ...,
+        description="Primary location with environmental specifics"
+    )
+    architecture_landscape: Optional[str] = Field(
+        None,
+        description="Architectural or landscape characteristics"
+    )
+    technology_period: Optional[str] = Field(
+        None,
+        description="Technology level and time period indicators"
+    )
+    scale_spatial: Optional[str] = Field(
+        None,
+        description="Scale and spatial relationships"
+    )
+    material_culture: List[str] = Field(
+        default_factory=list,
+        description="Objects, tools, and furnishings present"
+    )
+
+
+class AtmosphericQualities(BaseModel):
+    """Atmospheric and emotional qualities."""
+    
+    emotional_atmosphere: str = Field(
+        ...,
+        description="Primary emotional atmosphere and mood"
+    )
+    tension_level: Literal["calm", "building", "climactic", "aftermath"] = Field(
+        ...,
+        description="Current tension level in the scene"
+    )
+    sensory_details: List[str] = Field(
+        default_factory=list,
+        description="Sensory details (sounds, smells, textures, temperatures)"
+    )
+    pacing_energy: str = Field(
+        ...,
+        description="Pacing and narrative energy description"
+    )
+    implicit_feelings: Optional[str] = Field(
+        None,
+        description="Implicit feelings and undercurrents"
+    )
+
+
+class VisualMood(BaseModel):
+    """Visual mood and aesthetic elements."""
+    
+    lighting_conditions: str = Field(
+        ...,
+        description="Dominant lighting conditions and quality"
+    )
+    color_palette: List[str] = Field(
+        default_factory=list,
+        description="Color palette (explicit and implied)"
+    )
+    weather_environment: Optional[str] = Field(
+        None,
+        description="Weather and environmental conditions"
+    )
+    visual_texture: Optional[str] = Field(
+        None,
+        description="Visual texture and contrast description"
+    )
+    time_indicators: str = Field(
+        ...,
+        description="Time of day and seasonal indicators"
+    )
+
+
+class CulturalContext(BaseModel):
+    """Cultural and social context elements."""
+    
+    social_dynamics: Optional[str] = Field(
+        None,
+        description="Social dynamics and power relationships"
+    )
+    cultural_patterns: List[str] = Field(
+        default_factory=list,
+        description="Cultural customs or behavioral patterns"
+    )
+    hierarchy_indicators: Optional[str] = Field(
+        None,
+        description="Class, status, or hierarchy indicators"
+    )
+    communication_style: Optional[str] = Field(
+        None,
+        description="Communication styles and formality levels"
+    )
+    societal_norms: List[str] = Field(
+        default_factory=list,
+        description="Implicit societal norms"
+    )
+
+
+class NarrativeElements(BaseModel):
+    """Narrative and dramatic elements."""
+    
+    point_of_focus: str = Field(
+        ...,
+        description="Point of focus in the scene"
+    )
+    dramatic_weight: Literal["low", "medium", "high", "climactic"] = Field(
+        ...,
+        description="Dramatic weight and significance"
+    )
+    symbolic_elements: List[str] = Field(
+        default_factory=list,
+        description="Symbolic or thematic elements"
+    )
+    narrative_connections: Optional[str] = Field(
+        None,
+        description="Foreshadowing or callbacks to other parts"
+    )
+    scene_role: str = Field(
+        ...,
+        description="Scene's role in larger narrative"
+    )
+
+
+class WorldAtmosphereAnalysis(BaseModel):
+    """Comprehensive world and atmosphere analysis for a text segment."""
+    
+    physical_world: PhysicalWorld = Field(
+        ...,
+        description="Physical world and setting details"
+    )
+    atmosphere: AtmosphericQualities = Field(
+        ...,
+        description="Atmospheric and emotional qualities"
+    )
+    visual_mood: VisualMood = Field(
+        ...,
+        description="Visual mood and aesthetic elements"
+    )
+    cultural_context: CulturalContext = Field(
+        ...,
+        description="Cultural and social context"
+    )
+    narrative_elements: NarrativeElements = Field(
+        ...,
+        description="Narrative and dramatic elements"
+    )
+    
+    def to_prompt_format(self) -> str:
+        """Format for inclusion in translation prompts."""
+        lines = [
+            "**World & Atmosphere Context:**",
+            f"- Setting: {self.physical_world.location}",
+            f"- Atmosphere: {self.atmosphere.emotional_atmosphere} ({self.atmosphere.tension_level})",
+            f"- Visual: {self.visual_mood.lighting_conditions}, {self.visual_mood.time_indicators}",
+            f"- Focus: {self.narrative_elements.point_of_focus}"
+        ]
+        if self.cultural_context.social_dynamics:
+            lines.append(f"- Social: {self.cultural_context.social_dynamics}")
+        return "\n".join(lines)
+    
+    def to_illustration_context(self) -> Dict[str, Any]:
+        """Format for use in illustration generation."""
+        return {
+            "setting": self.physical_world.location,
+            "setting_details": [
+                self.physical_world.architecture_landscape,
+                self.physical_world.technology_period
+            ],
+            "mood": self.atmosphere.emotional_atmosphere,
+            "lighting": self.visual_mood.lighting_conditions,
+            "colors": self.visual_mood.color_palette,
+            "weather": self.visual_mood.weather_environment,
+            "time": self.visual_mood.time_indicators,
+            "tension": self.atmosphere.tension_level,
+            "focus": self.narrative_elements.point_of_focus,
+            "dramatic_weight": self.narrative_elements.dramatic_weight
+        }
+
 class NarrationStyle(BaseModel):
     """Narration style details."""
     
@@ -90,6 +270,100 @@ class StyleDeviation(BaseModel):
 # --------------------
 # JSON Schema Builders (for Gemini API)
 # --------------------
+
+def make_world_atmosphere_schema() -> Dict[str, Any]:
+    """
+    Create JSON schema for world and atmosphere analysis.
+    
+    Returns:
+        JSON schema for analyzing world and atmosphere
+    """
+    return {
+        "type": "object",
+        "properties": {
+            "physical_world": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string"},
+                    "architecture_landscape": {"type": "string"},
+                    "technology_period": {"type": "string"},
+                    "scale_spatial": {"type": "string"},
+                    "material_culture": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    }
+                },
+                "required": ["location"]
+            },
+            "atmosphere": {
+                "type": "object",
+                "properties": {
+                    "emotional_atmosphere": {"type": "string"},
+                    "tension_level": {
+                        "type": "string",
+                        "enum": ["calm", "building", "climactic", "aftermath"]
+                    },
+                    "sensory_details": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    "pacing_energy": {"type": "string"},
+                    "implicit_feelings": {"type": "string"}
+                },
+                "required": ["emotional_atmosphere", "tension_level", "pacing_energy"]
+            },
+            "visual_mood": {
+                "type": "object",
+                "properties": {
+                    "lighting_conditions": {"type": "string"},
+                    "color_palette": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    "weather_environment": {"type": "string"},
+                    "visual_texture": {"type": "string"},
+                    "time_indicators": {"type": "string"}
+                },
+                "required": ["lighting_conditions", "time_indicators"]
+            },
+            "cultural_context": {
+                "type": "object",
+                "properties": {
+                    "social_dynamics": {"type": "string"},
+                    "cultural_patterns": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    "hierarchy_indicators": {"type": "string"},
+                    "communication_style": {"type": "string"},
+                    "societal_norms": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    }
+                },
+                "required": []
+            },
+            "narrative_elements": {
+                "type": "object",
+                "properties": {
+                    "point_of_focus": {"type": "string"},
+                    "dramatic_weight": {
+                        "type": "string",
+                        "enum": ["low", "medium", "high", "climactic"]
+                    },
+                    "symbolic_elements": {
+                        "type": "array",
+                        "items": {"type": "string"}
+                    },
+                    "narrative_connections": {"type": "string"},
+                    "scene_role": {"type": "string"}
+                },
+                "required": ["point_of_focus", "dramatic_weight", "scene_role"]
+            }
+        },
+        "required": ["physical_world", "atmosphere", "visual_mood", "cultural_context", "narrative_elements"]
+    }
+
 
 def make_narrative_style_schema() -> Dict[str, Any]:
     """
@@ -168,6 +442,11 @@ def make_style_deviation_schema() -> Dict[str, Any]:
 # --------------------
 # Helper Functions
 # --------------------
+
+def parse_world_atmosphere_response(response: Dict[str, Any]) -> WorldAtmosphereAnalysis:
+    """Parse JSON response into WorldAtmosphereAnalysis model."""
+    return WorldAtmosphereAnalysis(**response)
+
 
 def parse_narrative_style_response(response: Dict[str, Any]) -> NarrativeStyleDefinition:
     """Parse JSON response into NarrativeStyleDefinition model."""

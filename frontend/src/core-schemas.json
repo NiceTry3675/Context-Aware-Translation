@@ -242,12 +242,12 @@
         "description": "Individual validation issue found in translation.",
         "properties": {
           "current_korean_sentence": {
-            "description": "문제가 되는 현재 한국어 문장 (최대 1~2문장)",
+            "description": "문제가 되는 현재 한국어 문장 (최대 3~4문장)",
             "title": "Current Korean Sentence",
             "type": "string"
           },
           "problematic_source_sentence": {
-            "description": "대응하는 원문 문장 (최대 1~2문장)",
+            "description": "대응하는 원문 문장 (최대 3~4문장)",
             "title": "Problematic Source Sentence",
             "type": "string"
           },
@@ -297,10 +297,10 @@
         "required": [
           "current_korean_sentence",
           "problematic_source_sentence",
-          "recommend_korean_sentence",
           "reason",
           "dimension",
-          "severity"
+          "severity",
+          "recommend_korean_sentence"
         ],
         "title": "ValidationCase",
         "type": "object"
@@ -324,12 +324,12 @@
     "description": "Individual validation issue found in translation.",
     "properties": {
       "current_korean_sentence": {
-        "description": "문제가 되는 현재 한국어 문장 (최대 1~2문장)",
+        "description": "문제가 되는 현재 한국어 문장 (최대 3~4문장)",
         "title": "Current Korean Sentence",
         "type": "string"
       },
       "problematic_source_sentence": {
-        "description": "대응하는 원문 문장 (최대 1~2문장)",
+        "description": "대응하는 원문 문장 (최대 3~4문장)",
         "title": "Problematic Source Sentence",
         "type": "string"
       },
@@ -379,10 +379,10 @@
     "required": [
       "current_korean_sentence",
       "problematic_source_sentence",
-      "recommend_korean_sentence",
       "reason",
       "dimension",
-      "severity"
+      "severity",
+      "recommend_korean_sentence"
     ],
     "title": "ValidationCase",
     "type": "object"

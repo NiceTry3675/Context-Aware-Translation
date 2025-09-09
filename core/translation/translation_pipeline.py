@@ -22,9 +22,9 @@ from ..prompts.manager import PromptManager
 from ..prompts.sanitizer import PromptSanitizer
 from ..config.builder import DynamicConfigBuilder
 from ..schemas.illustration import IllustrationConfig, IllustrationBatch
-from ..errors import ProhibitedException, TranslationError
-from ..errors import prohibited_content_logger
-from ..utils.logging import TranslationLogger
+from shared.errors import ProhibitedException, TranslationError
+from shared.errors import prohibited_content_logger
+from shared.utils.logging import TranslationLogger
 
 
 def get_segment_ending(segment_text: str, max_chars: int) -> str:
@@ -164,8 +164,13 @@ class TranslationPipeline:
             self.progress_tracker.update_progress(i, total_segments)
             
             # Build dynamic guides (glossary and character styles)
-            updated_glossary, updated_styles, style_deviation = self._build_dynamic_guides(
-                document, segment_info, segment_index, core_narrative_style
+            # Get previous context for world atmosphere analysis
+            previous_context = None
+            if i > 0 and document.segments:
+                previous_context = document.segments[i-1].text
+            
+            updated_glossary, updated_styles, style_deviation, world_atmosphere = self._build_dynamic_guides(
+                document, segment_info, segment_index, core_narrative_style, previous_context
             )
             
             # Prepare context for translation
@@ -177,12 +182,13 @@ class TranslationPipeline:
             prompt = self._build_translation_prompt(
                 segment_info, contextual_glossary, updated_styles,
                 core_narrative_style, style_deviation,
-                immediate_context_source, immediate_context_ko
+                immediate_context_source, immediate_context_ko, world_atmosphere
             )
             
             # Log context and prompt
             context_data = {
                 'style_deviation': style_deviation,
+                'world_atmosphere': world_atmosphere.to_prompt_format() if world_atmosphere else None,
                 'contextual_glossary': contextual_glossary,
                 'full_glossary': document.glossary,
                 'character_styles': document.character_styles,
@@ -205,7 +211,7 @@ class TranslationPipeline:
             if self.illustration_generator and self._should_generate_illustration(segment_info, i):
                 self._generate_segment_illustration(
                     segment_info, i, document.glossary, 
-                    core_narrative_style, style_deviation
+                    core_narrative_style, style_deviation, world_atmosphere
                 )
             
             document.save_partial_output()
@@ -249,27 +255,29 @@ class TranslationPipeline:
             )
     
     def _build_dynamic_guides(self, document: TranslationDocument, segment_info: Any,
-                             segment_index: int, core_narrative_style: str) -> tuple:
+                             segment_index: int, core_narrative_style: str,
+                             previous_context: Optional[str] = None) -> tuple:
         """
         Build dynamic glossary and character style guides for the segment.
         
         Returns:
-            Tuple of (updated_glossary, updated_styles, style_deviation)
+            Tuple of (updated_glossary, updated_styles, style_deviation, world_atmosphere)
         """
-        updated_glossary, updated_styles, style_deviation = self.dyn_config_builder.build_dynamic_guides(
+        updated_glossary, updated_styles, style_deviation, world_atmosphere = self.dyn_config_builder.build_dynamic_guides(
             segment_text=segment_info.text,
             core_narrative_style=core_narrative_style,
             current_glossary=document.glossary,
             current_character_styles=document.character_styles,
             job_base_filename=document.user_base_filename,
-            segment_index=segment_index
+            segment_index=segment_index,
+            previous_context=previous_context
         )
         
         # Update document with new guides
         document.glossary = updated_glossary
         document.character_styles = updated_styles
         
-        return updated_glossary, updated_styles, style_deviation
+        return updated_glossary, updated_styles, style_deviation, world_atmosphere
     
     def _get_contextual_glossary(self, glossary: Dict[str, str], segment_text: str) -> Dict[str, str]:
         """
@@ -283,10 +291,15 @@ class TranslationPipeline:
     def _build_translation_prompt(self, segment_info: Any, contextual_glossary: Dict[str, str],
                                  character_styles: Dict[str, str], core_narrative_style: str,
                                  style_deviation: str, immediate_context_source: str,
-                                 immediate_context_ko: str) -> str:
+                                 immediate_context_ko: str, world_atmosphere=None) -> str:
         """Build the translation prompt for a segment."""
+        # Add world atmosphere to core narrative style if available
+        enhanced_narrative_style = core_narrative_style
+        if world_atmosphere:
+            enhanced_narrative_style = f"{core_narrative_style}\n\n{world_atmosphere.to_prompt_format()}"
+        
         return self.prompt_builder.build_translation_prompt(
-            core_narrative_style=core_narrative_style,
+            core_narrative_style=enhanced_narrative_style,
             style_deviation_info=style_deviation,
             glossary=contextual_glossary,
             character_styles=character_styles,
@@ -422,7 +435,7 @@ class TranslationPipeline:
     
     def _generate_segment_illustration(self, segment_info: Any, segment_index: int,
                                      glossary: Dict[str, str], core_style: str,
-                                     style_deviation: str):
+                                     style_deviation: str, world_atmosphere=None):
         """
         Generate an illustration for the current segment.
         
@@ -432,6 +445,7 @@ class TranslationPipeline:
             glossary: Current glossary
             core_style: Core narrative style
             style_deviation: Style deviation for this segment
+            world_atmosphere: World and atmosphere analysis for the segment
         """
         if not self.illustration_generator:
             return
@@ -447,7 +461,8 @@ class TranslationPipeline:
                 segment_text=segment_info.text,
                 segment_index=segment_index,
                 style_hints=style_hints,
-                glossary=glossary
+                glossary=glossary,
+                world_atmosphere=world_atmosphere
             )
             
             if illustration_path:

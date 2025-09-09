@@ -145,9 +145,8 @@ export default function ResultsView({
     onCaseSelectionChange(segmentIndex, caseIndex, selected, totalCases);
   }, [onCaseSelectionChange]);
 
-  // Allow re-running validation when translation is completed and validation is not currently running
   const canRunValidation = selectedJob?.status === 'COMPLETED' && selectedJob?.validation_status !== 'IN_PROGRESS';
-  const canRunPostEdit = selectedJob?.validation_status === 'COMPLETED' && (!selectedJob?.post_edit_status || selectedJob?.post_edit_status === 'FAILED');
+  const canRunPostEdit = selectedJob?.validation_status === 'COMPLETED' && selectedJob?.post_edit_status !== 'IN_PROGRESS';
   const canGenerateIllustrations = selectedJob?.status === 'COMPLETED' && selectedJob?.illustrations_status !== 'IN_PROGRESS';
 
   return (
@@ -163,7 +162,7 @@ export default function ResultsView({
           >
             새 번역 시작
           </Button>
-          <Tooltip title={canRunValidation ? '검증 실행' : '번역 완료 후 실행 가능'}>
+          <Tooltip title={canRunValidation ? '검증 실행' : selectedJob?.validation_status === 'IN_PROGRESS' ? '검증 진행 중' : '번역 완료 후 실행 가능'}>
             <span>
               <Button
                 variant="contained"
@@ -178,7 +177,7 @@ export default function ResultsView({
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title={canRunPostEdit ? '포스트에디팅 실행' : '검증 완료 후 실행 가능'}>
+          <Tooltip title={canRunPostEdit ? '포스트에디팅 실행' : selectedJob?.post_edit_status === 'IN_PROGRESS' ? '포스트에디팅 진행 중' : '검증 완료 후 실행 가능'}>
             <span>
               <Button
                 variant="contained"

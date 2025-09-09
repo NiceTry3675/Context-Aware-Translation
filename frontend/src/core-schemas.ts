@@ -25,8 +25,8 @@ export type NarrationStyle = z.infer<typeof NarrationStyleSchema>;
 
 // ValidationCase Schema
 export const ValidationCaseSchema = z.object({
-  current_korean_sentence: z.string().describe("문제가 되는 현재 한국어 문장 (최대 1~2문장)"),
-  problematic_source_sentence: z.string().describe("대응하는 원문 문장 (최대 1~2문장)"),
+  current_korean_sentence: z.string().describe("문제가 되는 현재 한국어 문장 (최대 3~4문장)"),
+  problematic_source_sentence: z.string().describe("대응하는 원문 문장 (최대 3~4문장)"),
   reason: z.string().describe("왜 문제인지"),
   dimension: z.enum(["completeness", "accuracy", "addition", "name_consistency", "dialogue_style", "flow", "other"]).describe("이슈 차원(카테고리)"),
   severity: z.enum(["1", "2", "3"]).describe("이슈의 심각도. 1(사소함), 2(중대함), 3(치명적) 중 하나의 숫자로 표기."),

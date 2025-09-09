@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 from tqdm import tqdm
 from core.prompts.manager import PromptManager
-from ..utils.logging import TranslationLogger, StructuredLogger
+from shared.utils.logging import TranslationLogger, StructuredLogger
 
 
 class PostEditEngine:
@@ -27,16 +27,18 @@ class PostEditEngine:
         Args:
             ai_model: The AI model to use for post-editing
             verbose: Whether to print verbose output
-            job_id: Optional job ID for logging
+            job_id: Optional job ID for logging (required for saving logs)
         """
         self.ai_model = ai_model
         self.verbose = verbose
         self.job_id = job_id
-        self.logger = None  # Will be initialized per document
+        self.logger: Optional[TranslationLogger] = None  # Will be initialized per document
+        self.postedit_log_dir: Optional[Path] = None
         
-        # Create post-edit log directory
-        self.postedit_log_dir = Path('logs/postedit_logs')
-        self.postedit_log_dir.mkdir(parents=True, exist_ok=True)
+        # Create post-edit log directory only if job_id is provided
+        if job_id:
+            self.postedit_log_dir = Path(f'logs/jobs/{job_id}/postedit')
+            self.postedit_log_dir.mkdir(parents=True, exist_ok=True)
     
     def load_validation_report(self, report_path: str) -> Dict[str, Any]:
         """
@@ -130,8 +132,7 @@ class PostEditEngine:
             cur = case.get('current_korean_sentence')
             src = case.get('problematic_source_sentence')
             why = case.get('reason')
-            # Prefer new field; fallback for backward compatibility
-            fix = case.get('recommend_korean_sentence') or case.get('corrected_korean_sentence')
+            fix = case.get('recommend_korean_sentence')
             issues_text += f"- 현재: {cur}\n  원문: {src}\n  이유: {why}\n"
             if fix:
                 issues_text += f"  수정안: {fix}\n"
@@ -430,12 +431,19 @@ class PostEditEngine:
     
     def _save_postedit_log(self, complete_log: List[Dict], summary: Dict[str, Any], base_filename: str, job_id: Optional[int] = None):
         """Save comprehensive post-edit log to file."""
-        # Include job ID if provided to match the retrieval pattern
-        if job_id is not None:
-            log_filename = f"{job_id}_{base_filename}_postedit_log.json"
-        else:
-            log_filename = f"{base_filename}_postedit_log.json"
+        # Only save log if job_id is available
+        if not self.job_id and not job_id:
+            print("Warning: Cannot save post-edit log without job_id")
+            return
         
+        # Ensure log directory exists
+        if not self.postedit_log_dir:
+            actual_job_id = job_id or self.job_id
+            self.postedit_log_dir = Path(f'logs/jobs/{actual_job_id}/postedit')
+            self.postedit_log_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Use simplified filename for job-centric structure
+        log_filename = "postedit_log.json"
         log_path = self.postedit_log_dir / log_filename
         
         log_data = {

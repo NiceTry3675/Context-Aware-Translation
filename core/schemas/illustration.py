@@ -22,6 +22,30 @@ class IllustrationStyle(str, Enum):
     MINIMALIST = "minimalist"
 
 
+class CameraDistance(str, Enum):
+    """Camera distance/shot types for composition."""
+    EXTREME_CLOSE_UP = "extreme close-up"
+    CLOSE_UP = "close-up"
+    MEDIUM = "medium"
+    WIDE = "wide"
+    EXTREME_WIDE = "extreme wide"
+
+
+class CameraAngle(str, Enum):
+    """Camera angle types for composition."""
+    EYE_LEVEL = "eye-level"
+    LOW_ANGLE = "low-angle"
+    HIGH_ANGLE = "high-angle"
+    DUTCH_ANGLE = "dutch-angle"
+
+
+class IllustrationWorthiness(str, Enum):
+    """Assessment of whether a scene is worth illustrating."""
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
 class IllustrationStatus(str, Enum):
     """Status of illustration generation."""
     PENDING = "pending"
@@ -31,6 +55,49 @@ class IllustrationStatus(str, Enum):
     SKIPPED = "skipped"
 
 
+class CharacterVisualInfo(BaseModel):
+    """Visual information about a character in a scene."""
+    name: str = Field(..., description="Character name from glossary")
+    position: str = Field(..., description="Specific body position/posture")
+    expression: Optional[str] = Field(None, description="Facial expression if known")
+    clothing: Optional[str] = Field(None, description="Specific clothing details")
+
+
+class LightingInfo(BaseModel):
+    """Lighting information for a scene."""
+    source: str = Field(..., description="Specific light source")
+    quality: str = Field(..., description="Light quality (harsh/soft/filtered/etc)")
+    direction: str = Field(..., description="Light direction (from above/side/behind/etc)")
+
+
+class CameraInfo(BaseModel):
+    """Camera composition information for a scene."""
+    distance: CameraDistance = Field(..., description="Shot distance/type")
+    angle: CameraAngle = Field(..., description="Camera angle")
+    lens_suggestion: str = Field(..., description="Suggested lens type (85mm portrait/24mm wide/etc)")
+
+
+class VisualElements(BaseModel):
+    """
+    Comprehensive visual elements extracted from a text segment.
+    
+    This model represents all the visual information needed to generate
+    a detailed, cinematic illustration from literary text.
+    """
+    setting: str = Field(..., description="Detailed location with architectural/environmental specifics")
+    setting_details: List[str] = Field(default_factory=list, description="Specific texture/material details and scale indicators")
+    characters: List[CharacterVisualInfo] = Field(default_factory=list, description="Character visual information")
+    action: str = Field(..., description="Precise action with movement details")
+    lighting: LightingInfo = Field(..., description="Lighting setup information")
+    camera: CameraInfo = Field(..., description="Camera composition information")
+    mood: str = Field(..., description="Specific emotional atmosphere")
+    color_palette: List[str] = Field(default_factory=list, description="Color scheme (dominant, accent, mood colors)")
+    key_objects: List[str] = Field(default_factory=list, description="Detailed object descriptions with materials")
+    time_of_day: str = Field(..., description="Specific time with light quality")
+    visual_impact_score: int = Field(..., ge=1, le=10, description="Visual impact rating (1-10)")
+    illustration_worth: IllustrationWorthiness = Field(..., description="Assessment of illustration worthiness")
+
+
 class IllustrationConfig(BaseModel):
     """
     Configuration for illustration generation.
@@ -38,6 +105,7 @@ class IllustrationConfig(BaseModel):
     This model defines the settings and preferences for generating
     illustrations for translation segments.
     """
+    # Basic Settings
     enabled: bool = Field(
         default=False,
         description="Whether illustration generation is enabled"
@@ -69,6 +137,94 @@ class IllustrationConfig(BaseModel):
     cache_enabled: bool = Field(
         default=True,
         description="Whether to cache generated illustrations"
+    )
+    
+    # Character Consistency Settings
+    use_character_profile: bool = Field(
+        default=False,
+        description="Use character profile for consistent appearance across scenes"
+    )
+    profile_lock_enabled: bool = Field(
+        default=False,
+        description="Lock character appearance using reference images for consistency"
+    )
+    base_image_generation_count: int = Field(
+        default=3,
+        description="Number of base character images to generate for selection"
+    )
+    
+    # Reference Image Settings
+    allow_reference_images: bool = Field(
+        default=True,
+        description="Allow using reference images for generation"
+    )
+    reference_image_source: str = Field(
+        default="base_selection",
+        description="Source for reference images: 'base_selection', 'upload', 'none'"
+    )
+    
+    # Custom Prompt Settings
+    allow_custom_prompts: bool = Field(
+        default=True,
+        description="Allow custom prompt overrides for specific scenes"
+    )
+    prefer_custom_prompts: bool = Field(
+        default=False,
+        description="Prefer custom prompts over automatic generation when available"
+    )
+    
+    # Model and Quality Settings
+    model_name: str = Field(
+        default="gemini-2.5-flash-image-preview",
+        description="AI model to use for image generation"
+    )
+    image_quality: str = Field(
+        default="high",
+        description="Image quality setting: 'low', 'medium', 'high', 'ultra'"
+    )
+    aspect_ratio: str = Field(
+        default="16:9",
+        description="Preferred aspect ratio for generated images"
+    )
+    image_width: Optional[int] = Field(
+        default=None,
+        description="Target image width in pixels (None for model default)"
+    )
+    image_height: Optional[int] = Field(
+        default=None,
+        description="Target image height in pixels (None for model default)"
+    )
+    
+    # Generation Behavior
+    max_retries: int = Field(
+        default=3,
+        description="Maximum retry attempts for failed generations"
+    )
+    fallback_to_prompt_only: bool = Field(
+        default=True,
+        description="Save prompt as JSON when image generation fails"
+    )
+    safety_filter_level: str = Field(
+        default="medium",
+        description="Safety filter level: 'low', 'medium', 'high'"
+    )
+    retry_on_safety_filter: bool = Field(
+        default=True,
+        description="Retry with modified prompt when safety filter triggers"
+    )
+    
+    # Advanced Options
+    use_world_atmosphere: bool = Field(
+        default=True,
+        description="Use AI-analyzed world atmosphere data for richer prompts"
+    )
+    combine_segments_threshold: float = Field(
+        default=0.8,
+        description="Similarity threshold for combining adjacent segments (0.0-1.0)"
+    )
+    illustration_density: str = Field(
+        default="moderate",
+        description="Illustration frequency: 'sparse', 'moderate', 'dense'"
     )
     
     class Config:

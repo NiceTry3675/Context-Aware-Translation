@@ -1,0 +1,16 @@
+# ERROR LOG
+# Job ID: None
+# File: temp_963bf689-cf0a-4317-a26e-d486611548ea_Metamorphosis_test
+# Timestamp: 2025-09-07T12:03:35.981835
+# Segment: None
+# Context: analyze_narrative_style
+
+Error Type: TypeError
+Error Message: expected str, bytes or os.PathLike object, not NoneType
+
+Traceback:
+Traceback (most recent call last):
+  File "/home/soryhyun/Context-Aware-Translation/core/translation/style_analyzer.py", line 99, in analyze_narrative_style
+    with open(self.logger.context_log_path, 'a', encoding='utf-8') as f:
+         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: expected str, bytes or os.PathLike object, not NoneType

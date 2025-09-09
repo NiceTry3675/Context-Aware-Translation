@@ -11,7 +11,7 @@ from core.translation.models.gemini import GeminiModel
 from core.config.builder import DynamicConfigBuilder
 from core.translation.document import TranslationDocument
 from core.translation.translation_pipeline import TranslationPipeline
-from core.errors.base import TranslationError
+from shared.errors.base import TranslationError
 from core.utils.file_parser import parse_document
 from core.translation.style_analyzer import StyleAnalyzer
 from core.translation.validator import TranslationValidator

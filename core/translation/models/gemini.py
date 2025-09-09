@@ -1,7 +1,7 @@
 import time
 import google.generativeai as genai
 from google.api_core import exceptions as google_exceptions
-from ...errors import ProhibitedException
+from shared.errors import ProhibitedException
 from ...utils.retry import retry_with_softer_prompt
 
 class GeminiModel:
@@ -33,6 +33,13 @@ class GeminiModel:
         )
         self.enable_soft_retry = enable_soft_retry
         print(f"GeminiModel initialized with model: {model_name}, soft_retry: {enable_soft_retry}")
+    
+    def _build_generation_config(self, overrides: dict | None = None):
+        """Merge base generation_config with optional overrides and return SDK GenerationConfig."""
+        base = dict(self.generation_config or {})
+        if overrides:
+            base.update(overrides)
+        return genai.GenerationConfig(**base)
     
     def _attempt_json_repair(self, truncated_json: str) -> str:
         """Attempt to repair truncated JSON by closing open structures."""
@@ -206,15 +213,10 @@ class GeminiModel:
                 # or constructor works; we pass here to avoid global state on the model.
                 response = self.model.generate_content(
                     contents=prompt,
-                    generation_config=genai.GenerationConfig(
-                        response_mime_type="application/json",
-                        response_schema=response_schema,
-                        # Keep temperature if provided; otherwise inherit a conservative default
-                        temperature=self.generation_config.get('temperature', 0.7) if self.generation_config else 0.7,
-                        # Add low top_p default for more deterministic structured output unless overridden
-                        top_p=self.generation_config.get('top_p', 0.2) if self.generation_config else 0.2,
-                        max_output_tokens=self.generation_config.get('max_output_tokens', 65536) if self.generation_config else 32768,  # Increased for structured output
-                    ),
+                    generation_config=self._build_generation_config({
+                        "response_mime_type": "application/json",
+                        "response_schema": response_schema,
+                    }),
                     safety_settings=self.safety_settings,
                 )
                 

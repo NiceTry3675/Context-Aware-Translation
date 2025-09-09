@@ -1,0 +1,47 @@
+{
+  "description": "Visual information about a character in a scene.",
+  "properties": {
+    "name": {
+      "description": "Character name from glossary",
+      "title": "Name",
+      "type": "string"
+    },
+    "position": {
+      "description": "Specific body position/posture",
+      "title": "Position",
+      "type": "string"
+    },
+    "expression": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Facial expression if known",
+      "title": "Expression"
+    },
+    "clothing": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Specific clothing details",
+      "title": "Clothing"
+    }
+  },
+  "required": [
+    "name",
+    "position"
+  ],
+  "title": "CharacterVisualInfo",
+  "type": "object"
+}

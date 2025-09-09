@@ -1,3 +1,6 @@
+aiofiles
+celery
+redis==5.0.7
 alembic==1.16.4
 annotated-types==0.7.0
 anyio==4.9.0

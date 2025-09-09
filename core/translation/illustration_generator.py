@@ -8,6 +8,7 @@ using Google's Gemini image generation API.
 import os
 import json
 import hashlib
+import concurrent.futures
 from typing import Optional, Dict, Any, Tuple, List
 from pathlib import Path
 from PIL import Image
@@ -22,8 +23,8 @@ except ImportError:
     GENAI_AVAILABLE = False
     logging.warning("google-genai package not installed. Image generation will be disabled.")
 
-from ..utils.logging import TranslationLogger
-from ..errors import TranslationError
+from shared.utils.logging import TranslationLogger
+from shared.errors import TranslationError
 from ..schemas.illustration import IllustrationStyle
 
 
@@ -41,7 +42,7 @@ class IllustrationGenerator:
     def __init__(self, 
                  api_key: str, 
                  job_id: Optional[int] = None,
-                 output_dir: str = "illustrations",
+                 output_dir: str = "logs/jobs",
                  enable_caching: bool = True):
         """
         Initialize the illustration generator.
@@ -56,7 +57,16 @@ class IllustrationGenerator:
             raise ImportError("google-genai package is required for illustration generation. "
                             "Please install it with: pip install google-genai")
         
-        self.client = genai.Client(api_key=api_key)
+        if not api_key:
+            raise ValueError("API key is required for illustration generation")
+        
+        logging.info(f"[ILLUSTRATION] Initializing GenAI client with API key: {api_key[:10]}...")
+        try:
+            self.client = genai.Client(api_key=api_key)
+            logging.info("[ILLUSTRATION] GenAI client initialized successfully")
+        except Exception as e:
+            logging.error(f"[ILLUSTRATION] Failed to initialize GenAI client: {e}")
+            raise
         self.job_id = job_id
         self.output_dir = output_dir
         self.enable_caching = enable_caching
@@ -78,9 +88,9 @@ class IllustrationGenerator:
         """
         base_dir = Path(self.output_dir)
         if self.job_id:
-            job_dir = base_dir / f"job_{self.job_id}"
+            job_dir = base_dir / str(self.job_id) / "illustrations"
         else:
-            job_dir = base_dir / "default"
+            job_dir = base_dir / "default" / "illustrations"
         
         job_dir.mkdir(parents=True, exist_ok=True)
         return job_dir
@@ -90,7 +100,7 @@ class IllustrationGenerator:
         base_dir = self.job_output_dir / "base"
         base_dir.mkdir(parents=True, exist_ok=True)
         return base_dir
-    
+
     def _load_cache_metadata(self):
         """Load existing cache metadata from disk if available."""
         if not self.enable_caching:
@@ -135,7 +145,8 @@ class IllustrationGenerator:
                                   segment_text: str, 
                                   context: Optional[str] = None,
                                   style_hints: str = "",
-                                  glossary: Optional[Dict[str, str]] = None) -> str:
+                                  glossary: Optional[Dict[str, str]] = None,
+                                  world_atmosphere=None) -> str:
         """
         Create an illustration prompt from segment text.
         
@@ -144,27 +155,29 @@ class IllustrationGenerator:
             context: Optional context from previous segments
             style_hints: Style preferences for the illustration
             glossary: Optional glossary for character/place names
-            
+            world_atmosphere: World and atmosphere analysis data
+
         Returns:
             Generated prompt for image generation
         """
-        # Extract key visual elements from the text
-        prompt_parts = []
-        
-        # Analyze the segment for visual elements
-        visual_elements = self._extract_visual_elements(segment_text, glossary)
+        # Use AI-analyzed world atmosphere if available, otherwise fall back to keyword extraction
+        if world_atmosphere:
+            visual_elements = self._create_prompt_from_atmosphere(world_atmosphere, segment_text, glossary)
+        else:
+            # Fallback to simple keyword extraction
+            visual_elements = self._extract_visual_elements(segment_text, glossary)
         
         # Build a more descriptive, image-friendly prompt
         base_description = []
         
         # Start with setting
-        if visual_elements['setting']:
+        if visual_elements.get('setting'):
             base_description.append(f"A scene in {visual_elements['setting']}")
         else:
             base_description.append("A scene")
         
         # Add characters with visual descriptions (without names)
-        if visual_elements['characters']:
+        if visual_elements.get('characters'):
             character_descriptions = self._get_character_descriptions(visual_elements['characters'], segment_text)
             if character_descriptions:
                 if len(character_descriptions) == 1:
@@ -173,11 +186,11 @@ class IllustrationGenerator:
                     base_description.append(f"featuring {', '.join(character_descriptions)}")
         
         # Add action
-        if visual_elements['action']:
+        if visual_elements.get('action'):
             base_description.append(f"with {visual_elements['action']}")
         
         # Add mood/atmosphere
-        if visual_elements['mood']:
+        if visual_elements.get('mood'):
             base_description.append(f"in a {visual_elements['mood']} atmosphere")
         
         # Combine the base description
@@ -318,8 +331,58 @@ class IllustrationGenerator:
         prefix = (style_hints + ". ") if style_hints else ""
         scene_prompt = f"{prefix}{lock_clause}. {base_scene}. No text or watermark in the image."
         return scene_prompt
-    
-    def _extract_visual_elements(self, 
+
+    def _create_prompt_from_atmosphere(self, world_atmosphere, segment_text: str, glossary: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+        """
+        Create visual elements from AI-analyzed world atmosphere data.
+
+        Args:
+            world_atmosphere: WorldAtmosphereAnalysis object with rich context
+            segment_text: The text segment
+            glossary: Optional glossary for names
+
+        Returns:
+            Dictionary of visual elements optimized for illustration
+        """
+        illustration_context = world_atmosphere.to_illustration_context()
+
+        elements = {
+            'setting': illustration_context.get('setting', ''),
+            'characters': [],
+            'mood': illustration_context.get('mood', ''),
+            'action': None,
+            'lighting': illustration_context.get('lighting', ''),
+            'colors': illustration_context.get('colors', []),
+            'weather': illustration_context.get('weather', ''),
+            'time': illustration_context.get('time', ''),
+            'tension': illustration_context.get('tension', ''),
+            'dramatic_weight': illustration_context.get('dramatic_weight', 'medium')
+        }
+
+        # Extract characters from glossary if they appear in the text
+        if glossary:
+            for name in glossary.keys():
+                if name in segment_text:
+                    elements['characters'].append(name)
+
+        # Determine action based on narrative focus
+        focus = illustration_context.get('focus', '')
+        if 'conversation' in focus.lower() or 'dialogue' in focus.lower():
+            elements['action'] = 'people in conversation'
+        elif 'action' in focus.lower() or 'movement' in focus.lower():
+            elements['action'] = 'dynamic movement'
+        elif 'contemplation' in focus.lower() or 'thinking' in focus.lower():
+            elements['action'] = 'quiet contemplation'
+
+        # Enhance mood with tension and dramatic weight
+        if elements['tension'] == 'climactic' or elements['dramatic_weight'] == 'high':
+            elements['mood'] = f"intense and {elements['mood']}"
+        elif elements['tension'] == 'calm':
+            elements['mood'] = f"peaceful and {elements['mood']}"
+
+        return elements
+
+    def _extract_visual_elements(self,
                                 text: str, 
                                 glossary: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         """
@@ -475,9 +538,10 @@ class IllustrationGenerator:
                             context: Optional[str] = None,
                             style_hints: str = "",
                             glossary: Optional[Dict[str, str]] = None,
-                            max_retries: int = 3,
+                            world_atmosphere=None,
                             custom_prompt: Optional[str] = None,
-                            reference_image: Optional[Tuple[bytes, str]] = None) -> Tuple[Optional[str], Optional[str]]:
+                            reference_image: Optional[Tuple[bytes, str]] = None,
+                            max_retries: int = 3) -> Tuple[Optional[str], Optional[str]]:
         """
         Generate an illustration for a text segment using Gemini's image generation.
         
@@ -487,11 +551,17 @@ class IllustrationGenerator:
             context: Optional context from previous segments
             style_hints: Style preferences for the illustration
             glossary: Optional glossary for names
+            world_atmosphere: World and atmosphere analysis data
+            custom_prompt: Optional custom prompt to override automatic generation
+            reference_image: Optional reference image as tuple of (bytes, mime_type)
             max_retries: Maximum number of retry attempts
             
         Returns:
             Tuple of (image_file_path, prompt_used) or (None, None) on failure
         """
+        # Initialize cache_key for later use
+        cache_key = None
+        
         # Check cache first
         if self.enable_caching:
             extra_key = ""
@@ -512,9 +582,12 @@ class IllustrationGenerator:
                     logging.info(f"Using cached illustration for segment {segment_index}")
                     return cached_path, cached_prompt
         
-        # Generate or accept a custom prompt
-        prompt = custom_prompt if custom_prompt is not None else self.create_illustration_prompt(segment_text, context, style_hints, glossary)
-
+        # Generate the prompt
+        if custom_prompt:
+            prompt = custom_prompt
+        else:
+            prompt = self.create_illustration_prompt(segment_text, context, style_hints, glossary, world_atmosphere)
+        
         # Generate the actual image using Gemini
         for attempt in range(max_retries):
             try:
@@ -544,10 +617,45 @@ class IllustrationGenerator:
                         logging.warning(f"Failed to attach reference image for segment {segment_index}: {e}")
                 contents.append(prompt)
 
-                response = self.client.models.generate_content(
-                    model="gemini-2.5-flash-image-preview",
-                    contents=contents
-                )
+                logging.info(f"[ILLUSTRATION] Calling Gemini API for segment {segment_index}, attempt {attempt + 1}/{max_retries}")
+                logging.info(f"[ILLUSTRATION] Using model: gemini-2.5-flash-image-preview")
+                logging.info(f"[ILLUSTRATION] Prompt length: {len(prompt)} chars")
+                
+                # Add timeout to prevent hanging
+                def generate_with_timeout():
+                    return self.client.models.generate_content(
+                        model="gemini-2.5-flash-image-preview",
+                        contents=contents
+                    )
+                
+                # Use ThreadPoolExecutor with timeout
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(generate_with_timeout)
+                    try:
+                        # 120 second timeout for image generation (increased from 60)
+                        response = future.result(timeout=120)
+                        logging.info(f"[ILLUSTRATION] Received response from Gemini API for segment {segment_index}")
+                    except concurrent.futures.TimeoutError:
+                        logging.error(f"[ILLUSTRATION] Timeout waiting for Gemini API response for segment {segment_index}")
+                        future.cancel()
+                        if attempt == max_retries - 1:
+                            # Save prompt as fallback on final attempt
+                            json_filename = f"segment_{segment_index:04d}_prompt.json"
+                            json_filepath = self.job_output_dir / json_filename
+                            prompt_data = {
+                                "segment_index": segment_index,
+                                "prompt": prompt,
+                                "segment_text": segment_text[:500],
+                                "style_hints": style_hints,
+                                "status": "timeout",
+                                "failure_reason": "API call timed out after 120 seconds",
+                                "note": "Image generation timed out. Use this prompt with another service.",
+                                "attempt": attempt + 1
+                            }
+                            with open(json_filepath, 'w', encoding='utf-8') as f:
+                                json.dump(prompt_data, f, ensure_ascii=False, indent=2)
+                            return str(json_filepath), prompt
+                        continue
 
                 # Extract the image from the response
                 image_generated = False
@@ -617,7 +725,7 @@ class IllustrationGenerator:
                     return str(json_filepath), prompt
                 
                 # Update cache
-                if self.enable_caching:
+                if self.enable_caching and cache_key is not None:
                     self.cache[cache_key] = {
                         'path': str(image_filepath),
                         'prompt': prompt,
@@ -734,10 +842,24 @@ class IllustrationGenerator:
                             logging.warning(f"Failed to attach reference image part: {e}")
                     contents.append(prompt)
 
-                    response = self.client.models.generate_content(
-                        model="gemini-2.5-flash-image-preview",
-                        contents=contents
-                    )
+                    # Add timeout to prevent hanging
+                    def generate_with_timeout():
+                        return self.client.models.generate_content(
+                            model="gemini-2.5-flash-image-preview",
+                            contents=contents
+                        )
+                    
+                    # Use ThreadPoolExecutor with timeout
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(generate_with_timeout)
+                        try:
+                            # 120 second timeout for image generation
+                            response = future.result(timeout=120)
+                            logging.info(f"[ILLUSTRATION] Received response from Gemini API for base generation")
+                        except concurrent.futures.TimeoutError:
+                            logging.error(f"[ILLUSTRATION] Timeout waiting for Gemini API response for base generation")
+                            future.cancel()
+                            raise Exception("API call timed out after 120 seconds")
 
                     image_generated = False
                     if response and hasattr(response, 'candidates') and response.candidates:
@@ -846,10 +968,24 @@ class IllustrationGenerator:
                             logging.warning(f"Failed to attach reference image part: {e}")
                     contents.append(prompt)
 
-                    response = self.client.models.generate_content(
-                        model="gemini-2.5-flash-image-preview",
-                        contents=contents
-                    )
+                    # Add timeout to prevent hanging
+                    def generate_with_timeout():
+                        return self.client.models.generate_content(
+                            model="gemini-2.5-flash-image-preview",
+                            contents=contents
+                        )
+                    
+                    # Use ThreadPoolExecutor with timeout
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(generate_with_timeout)
+                        try:
+                            # 120 second timeout for image generation
+                            response = future.result(timeout=120)
+                            logging.info(f"[ILLUSTRATION] Received response from Gemini API for base generation")
+                        except concurrent.futures.TimeoutError:
+                            logging.error(f"[ILLUSTRATION] Timeout waiting for Gemini API response for base generation")
+                            future.cancel()
+                            raise Exception("API call timed out after 120 seconds")
 
                     image_generated = False
                     if response and hasattr(response, 'candidates') and response.candidates:

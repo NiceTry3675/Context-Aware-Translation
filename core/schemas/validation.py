@@ -13,7 +13,7 @@ stable for direct frontend consumption and post-edit automation.
 from __future__ import annotations
 
 from typing import Dict, List, Any, Optional, Literal
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 
 # --------------------
@@ -56,18 +56,7 @@ class ValidationCase(BaseModel):
     # Optional fields
     tags: List[str] = Field(default_factory=list, description="보조 라벨(예: terminology, formality, punctuation)")
 
-    @model_validator(mode="before")
-    @classmethod
-    def _upgrade_legacy_keys(cls, data: Any):
-        """Accept legacy 'corrected_korean_sentence' as 'recommend_korean_sentence'."""
-        if isinstance(data, dict):
-            if (
-                'recommend_korean_sentence' not in data
-                and 'corrected_korean_sentence' in data
-            ):
-                data = dict(data)
-                data['recommend_korean_sentence'] = data.pop('corrected_korean_sentence')
-        return data
+    # Note: Legacy key migration removed. Input must provide 'recommend_korean_sentence'.
 
 
 class ValidationResponse(BaseModel):
