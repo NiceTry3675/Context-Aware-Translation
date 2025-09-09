@@ -163,8 +163,8 @@ router.add_api_route(
     tags=["community"]
 )
 router.add_api_route(
-    "/comments", 
-    community.create_comment, 
+    "/posts/{post_id}/comments",
+    community.create_comment,
     methods=["POST"],
     response_model=Comment,
     tags=["community"]

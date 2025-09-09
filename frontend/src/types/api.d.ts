@@ -815,7 +815,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/comments": {
+    "/api/v1/posts/{post_id}/comments": {
         parameters: {
             query?: never;
             header?: never;
@@ -828,7 +828,7 @@ export interface paths {
          * Create Comment
          * @description Create a comment on a post.
          */
-        post: operations["create_comment_api_v1_comments_post"];
+        post: operations["create_comment_api_v1_posts__post_id__comments_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2884,13 +2884,13 @@ export interface operations {
             };
         };
     };
-    create_comment_api_v1_comments_post: {
+    create_comment_api_v1_posts__post_id__comments_post: {
         parameters: {
-            query: {
+            query?: never;
+            header?: never;
+            path: {
                 post_id: number;
             };
-            header?: never;
-            path?: never;
             cookie?: never;
         };
         requestBody: {

@@ -1777,18 +1777,18 @@
         }
       }
     },
-    "/api/v1/comments": {
+    "/api/v1/posts/{post_id}/comments": {
       "post": {
         "tags": [
           "community"
         ],
         "summary": "Create Comment",
         "description": "Create a comment on a post.",
-        "operationId": "create_comment_api_v1_comments_post",
+        "operationId": "create_comment_api_v1_posts__post_id__comments_post",
         "parameters": [
           {
             "name": "post_id",
-            "in": "query",
+            "in": "path",
             "required": true,
             "schema": {
               "type": "integer",

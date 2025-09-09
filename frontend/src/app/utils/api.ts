@@ -406,7 +406,6 @@ export async function generateCharacterBases(
   profile: CharacterProfileBody,
   referenceImage?: File
 ): Promise<{ bases: any[]; directory?: string }> {
-  let response: Response;
   // Always use FormData since backend expects it
   const form = new FormData();
   form.append('api_key', apiKey);
@@ -414,7 +413,7 @@ export async function generateCharacterBases(
   if (referenceImage) {
     form.append('reference_image', referenceImage, referenceImage.name);
   }
-  response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate`, {
     method: 'POST',
     headers: {
       'Authorization': token ? `Bearer ${token}` : '',
@@ -460,7 +459,6 @@ export async function generateBasesFromPrompt(
   prompts: string[],
   referenceImage?: File
 ): Promise<{ bases: any[]; directory?: string }> {
-  let response: Response;
   // Always use FormData since backend expects it
   const form = new FormData();
   form.append('api_key', apiKey);
@@ -469,7 +467,7 @@ export async function generateBasesFromPrompt(
   if (referenceImage) {
     form.append('reference_image', referenceImage, referenceImage.name);
   }
-  response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate-from-prompt`, {
+  const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate-from-prompt`, {
     method: 'POST',
     headers: {
       'Authorization': token ? `Bearer ${token}` : '',

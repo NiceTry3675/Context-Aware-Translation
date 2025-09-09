@@ -29,10 +29,10 @@ export function setAuthToken(token: string) {
 // Export types from the generated API for convenience
 export type Job = paths['/api/v1/jobs']['get']['responses']['200']['content']['application/json'][0];
 export type JobCreate = paths['/api/v1/jobs']['post']['requestBody']['content']['multipart/form-data'];
-export type Post = paths['/community/posts']['get']['responses']['200']['content']['application/json'][0];
-export type Comment = paths['/community/posts/{post_id}/comments']['get']['responses']['200']['content']['application/json'][0];
-export type ValidationResponse = paths['/api/v1/jobs/{job_id}/validation']['put']['responses']['200']['content']['application/json'];
-export type PostEditResponse = paths['/api/v1/jobs/{job_id}/post-edit']['put']['responses']['200']['content']['application/json'];
+export type Post = paths['/api/v1/posts']['get']['responses']['200']['content']['application/json'][0];
+export type Comment = paths['/api/v1/posts/{post_id}/comments']['post']['responses']['200']['content']['application/json'];
+export type ValidationResponse = paths['/api/v1/validate/{job_id}']['post']['responses']['200']['content']['application/json'];
+export type PostEditResponse = paths['/api/v1/post-edit/{job_id}']['post']['responses']['200']['content']['application/json'];
 
 // Type-safe API endpoints
 export const endpoints = {
@@ -59,19 +59,17 @@ export const endpoints = {
     });
   },
   
-  // Analysis
-  async getAnalysis(jobId: number) {
-    return api.GET('/api/v1/jobs/{job_id}/glossary', { 
-      params: { path: { job_id: jobId } } 
-    });
-  },
+  // Analysis (placeholder; see backend /api/v1/analysis/* endpoints)
+  // async getAnalysis(jobId: number) {
+  //   return api.POST('/api/v1/analysis/glossary', { body: { job_id: jobId } });
+  // },
   
   // Validation
   async validateTranslation(jobId: number, options?: { 
     quick?: boolean; 
     sample_rate?: number 
   }) {
-    return api.PUT('/api/v1/jobs/{job_id}/validation', {
+    return api.POST('/api/v1/validate/{job_id}', {
       params: { path: { job_id: jobId } },
       body: {
         quick_validation: options?.quick ?? false,
@@ -82,7 +80,7 @@ export const endpoints = {
   
   // Post-editing
   async postEditTranslation(jobId: number) {
-    return api.PUT('/api/v1/jobs/{job_id}/post-edit', {
+    return api.POST('/api/v1/post-edit/{job_id}', {
       params: { path: { job_id: jobId } },
       body: {}
     });
@@ -95,25 +93,26 @@ export const endpoints = {
     page?: number; 
     page_size?: number 
   }) {
-    return api.GET('/community/posts', { 
+    return api.GET('/api/v1/posts', { 
       params: { query: params } 
     });
   },
   
   async createPost(data: any) {
-    return api.POST('/community/posts', { 
+    return api.POST('/api/v1/posts', { 
       body: data 
     });
   },
   
   async getComments(postId: number) {
-    return api.GET('/community/posts/{post_id}/comments', { 
-      params: { path: { post_id: postId } } 
+    // Comments are included in post response in current API; implement when backend adds GET endpoint
+    return api.GET('/api/v1/posts/{post_id}', {
+      params: { path: { post_id: postId } }
     });
   },
   
   async createComment(postId: number, data: any) {
-    return api.POST('/community/posts/{post_id}/comments', {
+    return api.POST('/api/v1/posts/{post_id}/comments', {
       params: { path: { post_id: postId } },
       body: data
     });
