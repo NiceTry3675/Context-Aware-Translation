@@ -383,10 +383,10 @@ validation:
     Analyze each issue according to the criteria below and provide your answer strictly in the provided JSON schema format.
 
     SEVERITY (impact‑based)
-    - 1 minor: Meaning intact; local grammar/wording/tone; publishable after touch‑up.
-    - 2 major: Partial meaning loss, wrong nuance, or terminology error; needs correction before publish.
-    - 3 critical: Core meaning wrong, invented details, or safety‑critical error; block publish.
-
+    - 1 Minor: A stylistic or grammatical imperfection where the core meaning remains intact. The content is usable after a quick fix.
+    - 2 Major: An error that leads to a partial loss of meaning, incorrect terminology, or a misleading nuance. Must be corrected to ensure accuracy.
+    - 3 Critical: A severe error that corrupts the core message, introduces fabricated facts, or poses a risk to the user. Do not publish.
+    
     DIMENSIONS (one‑liners)
     - accuracy: Korean meaning ≠ source meaning (incl. false friends/term misuse).
     - completeness: Required info missing.
