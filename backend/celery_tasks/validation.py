@@ -198,6 +198,27 @@ def process_validation_task(
                 state='SUCCESS',
                 meta={'current': 100, 'total': 100, 'status': 'Validation completed'}
             )
+
+            # Auto-trigger post-edit if enabled on the job
+            try:
+                job = repo.get(job_id)
+                if job and getattr(job, 'post_edit_enabled', False):
+                    # Pre-mark post-edit status so UI reflects immediate progress
+                    repo.set_status(job_id, "POST_EDITING")
+                    repo.update_post_edit_status(job_id, "IN_PROGRESS", progress=0)
+                    db.commit()
+
+                    # Import locally to avoid circular imports
+                    from .post_edit import process_post_edit_task
+                    process_post_edit_task.delay(
+                        job_id=job_id,
+                        api_key=api_key,
+                        model_name=model_name,
+                        user_id=user_id
+                    )
+                    logger.info(f"[VALIDATION TASK] Queued post-edit task for Job ID: {job_id}")
+            except Exception as e:
+                logger.error(f"[VALIDATION TASK] Failed to auto-trigger post-edit for Job ID {job_id}: {e}")
             
             return {
                 'job_id': job_id,

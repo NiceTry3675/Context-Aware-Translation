@@ -132,7 +132,34 @@ def process_translation_task(
             state='SUCCESS',
             meta={'current': 100, 'total': 100, 'status': 'Translation completed'}
         )
-        
+
+        # Auto-trigger validation if enabled on the job
+        try:
+            job = repo.get(job_id)
+            if job and getattr(job, 'validation_enabled', False):
+                # Pre-mark validation status so UI reflects immediate progress
+                repo.set_status(job_id, "VALIDATING")
+                repo.update_validation_status(job_id, "IN_PROGRESS", progress=0)
+                db.commit()
+
+                # Import locally to avoid potential circular imports
+                from .validation import process_validation_task
+
+                validation_mode = "quick" if getattr(job, 'quick_validation', False) else "comprehensive"
+                sample_rate = (getattr(job, 'validation_sample_rate', 100) or 100) / 100.0
+
+                process_validation_task.delay(
+                    job_id=job_id,
+                    api_key=api_key,
+                    model_name=model_name,
+                    validation_mode=validation_mode,
+                    sample_rate=sample_rate,
+                    user_id=user_id
+                )
+                logger.info(f"Queued validation task for Job ID: {job_id} (mode={validation_mode}, sample_rate={sample_rate})")
+        except Exception as e:
+            logger.error(f"Failed to auto-trigger validation for Job ID {job_id}: {e}")
+
         return {
             'job_id': job_id,
             'status': 'completed',

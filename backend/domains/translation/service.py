@@ -549,7 +549,12 @@ class TranslationDomainService(DomainServiceBase):
         glossary_model_name: Optional[str] = None,
         style_data: Optional[str] = None,
         glossary_data: Optional[str] = None,
-        segment_size: int = 15000
+        segment_size: int = 15000,
+        # Validation & Post-Edit toggles
+        enable_validation: bool = False,
+        quick_validation: bool = False,
+        validation_sample_rate: float = 1.0,
+        enable_post_edit: bool = False,
     ) -> TranslationJobSchema:
         """
         Create a new translation job with file upload.
@@ -565,6 +570,10 @@ class TranslationDomainService(DomainServiceBase):
             style_data: Optional style data
             glossary_data: Optional glossary data
             segment_size: Segment size for translation
+            enable_validation: Whether to run validation automatically after translation
+            quick_validation: Whether to use quick validation mode
+            validation_sample_rate: Portion of segments to validate (0.0-1.0)
+            enable_post_edit: Whether to run post-edit automatically after validation
             
         Returns:
             Created translation job
@@ -580,7 +589,12 @@ class TranslationDomainService(DomainServiceBase):
         job_with_id = self.create_translation_job(
             filename=file.filename,
             owner_id=user.id,
-            segment_size=segment_size
+            segment_size=segment_size,
+            # Persist toggles into job record
+            validation_enabled=enable_validation,
+            quick_validation=quick_validation,
+            validation_sample_rate=int(max(0, min(1.0, validation_sample_rate)) * 100),
+            post_edit_enabled=enable_post_edit
         )
         
         # Fetch the complete job using the ID

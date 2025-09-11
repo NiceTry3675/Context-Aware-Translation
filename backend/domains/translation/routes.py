@@ -53,6 +53,11 @@ def create_job(
     style_data: Optional[str] = Form(None),
     glossary_data: Optional[str] = Form(None),
     segment_size: int = Form(15000),
+    # Validation & Post-Edit toggles (optional)
+    enable_validation: bool = Form(False),
+    quick_validation: bool = Form(False),
+    validation_sample_rate: float = Form(1.0),  # 0.0 - 1.0
+    enable_post_edit: bool = Form(False),
     user: User = Depends(get_required_user),
     service: TranslationDomainService = Depends(get_translation_service)
 ) -> TranslationJob:
@@ -69,6 +74,10 @@ def create_job(
         style_data: Optional style data
         glossary_data: Optional glossary data
         segment_size: Segment size for translation
+        enable_validation: Whether to run validation automatically after translation
+        quick_validation: Whether to use quick validation mode
+        validation_sample_rate: Portion of segments to validate (0.0-1.0)
+        enable_post_edit: Whether to run post-edit automatically after validation
         user: Current authenticated user
         service: Translation domain service
         
@@ -85,7 +94,11 @@ def create_job(
         glossary_model_name=glossary_model_name,
         style_data=style_data,
         glossary_data=glossary_data,
-        segment_size=segment_size
+        segment_size=segment_size,
+        enable_validation=enable_validation,
+        quick_validation=quick_validation,
+        validation_sample_rate=validation_sample_rate,
+        enable_post_edit=enable_post_edit
     )
 
 
