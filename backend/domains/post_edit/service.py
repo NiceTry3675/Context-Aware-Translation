@@ -176,6 +176,7 @@ class PostEditDomainService(DomainServiceBase):
         translated_path: str,
         validation_report_path: str,
         selected_cases: Optional[Dict[str, Any]] = None,
+        modified_cases: Optional[Dict[str, Any]] = None,
         progress_callback: Optional[Callable[[int], None]] = None,
         job_id: Optional[int] = None
     ) -> List[str]:
@@ -197,11 +198,27 @@ class PostEditDomainService(DomainServiceBase):
         Raises:
             IOError: If unable to write the edited file
         """
+        # Normalize possible string keys from JSON to int indices
+        def _normalize_index_dict(d: Optional[Dict[str, Any]]) -> Optional[Dict[int, Any]]:
+            if not isinstance(d, dict):
+                return None
+            out: Dict[int, Any] = {}
+            for k, v in d.items():
+                try:
+                    out[int(k)] = v
+                except (ValueError, TypeError):
+                    continue
+            return out
+
+        normalized_selected = _normalize_index_dict(selected_cases) or selected_cases
+        normalized_modified = _normalize_index_dict(modified_cases) or modified_cases
+
         # Run the post-editing process
         edited_segments = post_editor.post_edit_document(
             translation_document,
             validation_report_path,
-            selected_cases,
+            normalized_selected,
+            normalized_modified,
             progress_callback=progress_callback,
             job_id=job_id
         )
@@ -302,6 +319,7 @@ class PostEditDomainService(DomainServiceBase):
         api_key: str,
         model_name: str = "gemini-2.0-flash-exp",
         selected_cases: Optional[Dict[str, Any]] = None,
+        modified_cases: Optional[Dict[str, Any]] = None,
         progress_callback: Optional[Callable[[int], None]] = None
     ) -> Dict[str, Any]:
         """
@@ -315,6 +333,7 @@ class PostEditDomainService(DomainServiceBase):
             api_key: API key for the model
             model_name: Model to use for post-editing
             selected_cases: Optional specific validation cases to address
+            modified_cases: Optional overrides for reason/recommend_korean_sentence per case
             progress_callback: Optional progress callback
             
         Returns:
@@ -345,6 +364,7 @@ class PostEditDomainService(DomainServiceBase):
                 translated_path,
                 job.validation_report_path,
                 selected_cases,
+                modified_cases,
                 progress_callback,
                 job_id
             )

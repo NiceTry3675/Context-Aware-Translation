@@ -154,7 +154,8 @@ def process_translation_task(
                     model_name=model_name,
                     validation_mode=validation_mode,
                     sample_rate=sample_rate,
-                    user_id=user_id
+                    user_id=user_id,
+                    autotrigger_post_edit=True
                 )
                 logger.info(f"Queued validation task for Job ID: {job_id} (mode={validation_mode}, sample_rate={sample_rate})")
         except Exception as e:

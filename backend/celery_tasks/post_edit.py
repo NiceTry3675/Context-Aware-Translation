@@ -36,6 +36,8 @@ def process_post_edit_task(
     job_id: int,
     api_key: str,
     model_name: str = "gemini-1.5-pro",
+    selected_cases: Optional[dict] = None,
+    modified_cases: Optional[dict] = None,
     user_id: Optional[int] = None
 ):
     """
@@ -110,6 +112,8 @@ def process_post_edit_task(
             translation_document=translation_document,
             translated_path=translated_path,
             validation_report_path=validation_report_path,
+            selected_cases=selected_cases,
+            modified_cases=modified_cases,
             progress_callback=update_progress,
             job_id=job_id
         )

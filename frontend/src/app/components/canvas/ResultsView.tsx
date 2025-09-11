@@ -107,6 +107,13 @@ interface ResultsViewProps {
   onOpenValidationDialog: () => void;
   onOpenPostEditDialog: () => void;
   onOpenIllustrationDialog: () => void;
+  // Editable suggestion overrides
+  modifiedCases?: Record<number, Array<{ reason?: string; recommend_korean_sentence?: string }>>;
+  onCaseEditChange?: (
+    segmentIndex: number,
+    caseIndex: number,
+    patch: { reason?: string; recommend_korean_sentence?: string }
+  ) => void;
 }
 
 export default function ResultsView({
@@ -140,6 +147,8 @@ export default function ResultsView({
   onOpenValidationDialog,
   onOpenPostEditDialog,
   onOpenIllustrationDialog,
+  modifiedCases,
+  onCaseEditChange,
 }: ResultsViewProps) {
   const handleCaseSelectionChange = React.useCallback((segmentIndex: number, caseIndex: number, selected: boolean, totalCases: number) => {
     onCaseSelectionChange(segmentIndex, caseIndex, selected, totalCases);
@@ -335,6 +344,8 @@ export default function ResultsView({
                 selectedCases={selectedCases}
                 onCaseSelectionChange={handleCaseSelectionChange}
                 currentSegmentIndex={segmentNav.currentSegmentIndex}
+                modifiedCases={modifiedCases}
+                onCaseEditChange={onCaseEditChange}
               />
             ) : selectedJob?.validation_status === 'COMPLETED' ? (
               <Stack spacing={2}>

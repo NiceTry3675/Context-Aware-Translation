@@ -50,7 +50,8 @@ def process_validation_task(
     model_name: str = "gemini-1.5-pro",
     validation_mode: str = "comprehensive",
     sample_rate: float = 1.0,
-    user_id: Optional[int] = None
+    user_id: Optional[int] = None,
+    autotrigger_post_edit: bool = False
 ):
     """
     Process a validation task using Celery.
@@ -199,10 +200,10 @@ def process_validation_task(
                 meta={'current': 100, 'total': 100, 'status': 'Validation completed'}
             )
 
-            # Auto-trigger post-edit if enabled on the job
+            # Auto-trigger post-edit only when explicitly allowed by caller
             try:
                 job = repo.get(job_id)
-                if job and getattr(job, 'post_edit_enabled', False):
+                if autotrigger_post_edit and job and getattr(job, 'post_edit_enabled', False):
                     # Pre-mark post-edit status so UI reflects immediate progress
                     repo.set_status(job_id, "POST_EDITING")
                     repo.update_post_edit_status(job_id, "IN_PROGRESS", progress=0)

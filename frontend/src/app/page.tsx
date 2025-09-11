@@ -14,6 +14,7 @@ import IllustrationDialog from './components/TranslationSidebar/IllustrationDial
 function CanvasContent() {
   const mainContainerRef = useRef<HTMLDivElement>(null);
   const state = useCanvasState();
+  const editTimersRef = useRef<Record<string, any>>({});
   
   const handleToggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -152,6 +153,22 @@ function CanvasContent() {
                 onOpenValidationDialog={() => state.setValidationDialogOpen(true)}
                 onOpenPostEditDialog={() => state.setPostEditDialogOpen(true)}
                 onOpenIllustrationDialog={() => state.setIllustrationDialogOpen(true)}
+                modifiedCases={state.modifiedCases}
+                onCaseEditChange={(segmentIndex, caseIndex, patch) => {
+                  const key = `${segmentIndex}:${caseIndex}`;
+                  if (editTimersRef.current[key]) clearTimeout(editTimersRef.current[key]);
+                  editTimersRef.current[key] = setTimeout(() => {
+                    state.setModifiedCases(prev => {
+                      const next = { ...prev } as Record<number, Array<{ reason?: string; recommend_korean_sentence?: string }>>;
+                      const arr = next[segmentIndex] ? next[segmentIndex].slice() : [];
+                      while (arr.length <= caseIndex) arr.push({});
+                      const current = { ...(arr[caseIndex] || {}) };
+                      arr[caseIndex] = { ...current, ...patch };
+                      next[segmentIndex] = arr;
+                      return next;
+                    });
+                  }, 250);
+                }}
               />
             )}
           </Container>

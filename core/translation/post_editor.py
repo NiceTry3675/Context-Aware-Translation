@@ -55,13 +55,16 @@ class PostEditEngine:
     
     def identify_segments_needing_edit(self,
                                        validation_report: Dict[str, Any],
-                                       selected_cases: Dict[int, Any] | None = None) -> List[Dict[str, Any]]:
+                                       selected_cases: Dict[int, Any] | None = None,
+                                       modified_cases: Dict[int, Any] | None = None) -> List[Dict[str, Any]]:
         """
         Identify segments that need post-editing based on validation results and selected structured cases.
+        Apply simple overrides (reason, recommend_korean_sentence) if provided.
         
         Args:
             validation_report: The loaded validation report
             selected_cases: Optional mask per segment index -> boolean[] indicating which structured cases to fix
+            modified_cases: Optional per segment overrides array aligned to original cases order
             
         Returns:
             List of segments that need editing with their issues
@@ -85,9 +88,25 @@ class PostEditEngine:
             if selected_cases and segment_idx in selected_cases:
                 mask = selected_cases.get(segment_idx)
             chosen_cases = []
+            overrides_for_seg = None
+            if modified_cases and segment_idx in modified_cases:
+                overrides_for_seg = modified_cases.get(segment_idx)
             for i, case in enumerate(cases):
                 if mask is None or (isinstance(mask, list) and i < len(mask) and mask[i]):
-                    chosen_cases.append(case)
+                    # Clone to avoid mutating original dict
+                    chosen_case = dict(case)
+                    # Apply overrides if present for this original case index
+                    if isinstance(overrides_for_seg, list) and i < len(overrides_for_seg):
+                        override = overrides_for_seg[i]
+                        if isinstance(override, dict):
+                            # Only apply the two editable fields, trimmed and bounded
+                            new_reason = override.get('reason')
+                            if isinstance(new_reason, str) and new_reason.strip():
+                                chosen_case['reason'] = new_reason.strip()[:2000]
+                            new_rec = override.get('recommend_korean_sentence')
+                            if isinstance(new_rec, str) and new_rec.strip():
+                                chosen_case['recommend_korean_sentence'] = new_rec.strip()[:2000]
+                    chosen_cases.append(chosen_case)
             if not chosen_cases:
                 continue
             # Build a normalized record for editing
@@ -218,11 +237,12 @@ class PostEditEngine:
             return translated_text
     
     def post_edit_document(self,
-                          translation_document,
-                          validation_report_path: str,
-                          selected_cases: Dict[int, Any] | None = None,
-                          progress_callback=None,
-                          job_id: Optional[int] = None) -> List[str]:
+                         translation_document,
+                         validation_report_path: str,
+                         selected_cases: Dict[int, Any] | None = None,
+                         modified_cases: Dict[int, Any] | None = None,
+                         progress_callback=None,
+                         job_id: Optional[int] = None) -> List[str]:
         """
         Post-edit an entire translation document based on validation report.
         
@@ -250,8 +270,8 @@ class PostEditEngine:
                 f.write(f"Validation report: {validation_report_path}\n")
                 f.write(f"Document: {translation_document.user_base_filename}\n\n")
         
-        # Identify segments needing edit based on structured case selection
-        segments_to_edit = self.identify_segments_needing_edit(validation_report, selected_cases)
+        # Identify segments needing edit based on structured case selection and apply overrides
+        segments_to_edit = self.identify_segments_needing_edit(validation_report, selected_cases, modified_cases)
         segments_to_edit_idx = {s['segment_index'] for s in segments_to_edit}
         
         if not segments_to_edit:

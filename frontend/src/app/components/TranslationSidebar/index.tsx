@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Drawer,
   Box,
@@ -95,6 +95,8 @@ export default function TranslationSidebar({
 
   // Structured case selection state (segment-indexed)
   const [selectedCases, setSelectedCases] = useState<Record<number, boolean[]>>({});
+  const [modifiedCases, setModifiedCases] = useState<Record<number, Array<{ reason?: string; recommend_korean_sentence?: string }>>>({});
+  const editTimersRef = useRef<Record<string, any>>({});
   const handleCaseSelectionChange = (segmentIndex: number, caseIndex: number, selected: boolean, totalCases: number) => {
     setSelectedCases(prev => {
       const next = { ...prev };
@@ -106,7 +108,7 @@ export default function TranslationSidebar({
   };
 
   const validation = useValidation({ jobId, onRefresh, apiProvider, defaultModelName: selectedModel });
-  const postEdit = usePostEdit({ jobId, onRefresh, selectedCases, apiProvider, defaultModelName: selectedModel });
+  const postEdit = usePostEdit({ jobId, onRefresh, selectedCases, modifiedCases, apiProvider, defaultModelName: selectedModel });
 
   // Combine loading states
   const loading = dataLoading || validation.loading || postEdit.loading;
@@ -266,6 +268,22 @@ export default function TranslationSidebar({
                   onSegmentClick={(index) => console.log('Segment clicked:', index)}
                   selectedCases={selectedCases}
                   onCaseSelectionChange={handleCaseSelectionChange}
+                  modifiedCases={modifiedCases}
+                  onCaseEditChange={(segmentIndex, caseIndex, patch) => {
+                    const key = `${segmentIndex}:${caseIndex}`;
+                    if (editTimersRef.current[key]) clearTimeout(editTimersRef.current[key]);
+                    editTimersRef.current[key] = setTimeout(() => {
+                      setModifiedCases(prev => {
+                        const next = { ...prev } as Record<number, Array<{ reason?: string; recommend_korean_sentence?: string }>>;
+                        const arr = next[segmentIndex] ? next[segmentIndex].slice() : [];
+                        while (arr.length <= caseIndex) arr.push({});
+                        const current = { ...(arr[caseIndex] || {}) };
+                        arr[caseIndex] = { ...current, ...patch };
+                        next[segmentIndex] = arr;
+                        return next;
+                      });
+                    }, 250);
+                  }}
                 />
               ) : validationStatus === 'COMPLETED' ? (
                 <Stack spacing={2}>

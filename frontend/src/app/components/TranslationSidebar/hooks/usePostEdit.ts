@@ -9,11 +9,12 @@ interface UsePostEditProps {
   jobId: string;
   onRefresh?: () => void;
   selectedCases?: Record<number, boolean[]>;
+  modifiedCases?: Record<number, Array<{ reason?: string; recommend_korean_sentence?: string }>>;
   apiProvider?: 'gemini' | 'openrouter';
   defaultModelName?: string;
 }
 
-export function usePostEdit({ jobId, onRefresh, selectedCases, apiProvider, defaultModelName }: UsePostEditProps) {
+export function usePostEdit({ jobId, onRefresh, selectedCases, modifiedCases, apiProvider, defaultModelName }: UsePostEditProps) {
   const [postEditDialogOpen, setPostEditDialogOpen] = useState(false);
   // Structured-only: issue types removed
   const [modelName, setModelName] = useState<string>(defaultModelName || '');
@@ -30,8 +31,9 @@ export function usePostEdit({ jobId, onRefresh, selectedCases, apiProvider, defa
       const token = await getCachedClerkToken(getToken);
       const body = {
         selected_cases: selectedCases || {},
+        modified_cases: modifiedCases || {},
         model_name: modelName || defaultModelName,
-      };
+      } as any;
       await triggerPostEdit(jobId, token || undefined, body);
       setPostEditDialogOpen(false);
       // Lightweight UI kick: public single-job refresh (no JWT)

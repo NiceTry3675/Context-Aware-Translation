@@ -325,17 +325,18 @@ export async function triggerPostEdit(
   token: string | undefined,
   body: components['schemas']['PostEditRequest'],
 ): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/post-edit`, {
-    method: 'PUT',
+  const response = await fetch(`${API_BASE_URL}/api/v1/post-edit/${jobId}`, {
+    method: 'POST',
     headers: {
       'Authorization': token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(body as any),
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to trigger post-edit: ${response.statusText}`);
+    const text = await response.text();
+    throw new Error(`Failed to trigger post-edit: ${response.status} ${text}`);
   }
 }
 

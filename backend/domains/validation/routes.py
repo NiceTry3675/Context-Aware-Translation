@@ -67,7 +67,8 @@ async def validate_job(
         model_name=request.model_name or "gemini-2.0-flash-exp",
         validation_mode=validation_mode,
         sample_rate=request.validation_sample_rate,
-        user_id=user.id
+        user_id=user.id,
+        autotrigger_post_edit=False
     )
     
     return {

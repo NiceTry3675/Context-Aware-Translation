@@ -37,6 +37,13 @@ interface StructuredValidationExplorerProps {
   selectedCases?: Record<number, boolean[]>;
   onCaseSelectionChange?: (segmentIndex: number, caseIndex: number, selected: boolean, totalCases: number) => void;
   currentSegmentIndex?: number;
+  // Inline edit support
+  modifiedCases?: Record<number, Array<{ reason?: string; recommend_korean_sentence?: string }>>;
+  onCaseEditChange?: (
+    segmentIndex: number,
+    caseIndex: number,
+    patch: { reason?: string; recommend_korean_sentence?: string }
+  ) => void;
 }
 
 function deriveCasesFromLegacy(segment: any): StructuredCase[] {
@@ -65,7 +72,7 @@ function severityColor(theme: any, s: number) {
   return { fg: theme.palette.info.main, bg: alpha(theme.palette.info.main, 0.08), icon: <InfoIcon fontSize="small" /> };
 }
 
-export default function StructuredValidationExplorer({ report, onSegmentClick, selectedCases, onCaseSelectionChange, currentSegmentIndex }: StructuredValidationExplorerProps) {
+export default function StructuredValidationExplorer({ report, onSegmentClick, selectedCases, onCaseSelectionChange, currentSegmentIndex, modifiedCases, onCaseEditChange }: StructuredValidationExplorerProps) {
   const theme = useTheme();
   const [query, setQuery] = useState('');
   const [selectedSegment, setSelectedSegment] = useState<number>(report?.detailed_results?.[0]?.segment_index ?? 0);
@@ -302,7 +309,10 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
                 const checked = currentSelection ? (currentSelection[absoluteIndex] !== false) : true;
                 const src = c.problematic_source_sentence || '';
                 const cur = c.current_korean_sentence || '';
-                const fix = (c as any).recommend_korean_sentence || '';
+                const overrideArr = modifiedCases?.[selectedSegment];
+                const override = Array.isArray(overrideArr) ? overrideArr[absoluteIndex] : undefined;
+                const fixOrig = (c as any).recommend_korean_sentence || '';
+                const fix = (override?.recommend_korean_sentence ?? fixOrig);
                 const reasonId = `reason-${selectedSegment}-${absoluteIndex}`;
                 return (
                   <Box key={i} sx={{ p: 1.5, border: `1px solid ${sev.fg}`, bgcolor: sev.bg, borderRadius: 1 }} onClick={() => toggleExpanded(absoluteIndex)} role="button" aria-expanded={isExpanded(absoluteIndex)} aria-controls={reasonId} tabIndex={0}>
@@ -340,7 +350,17 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
                       </Box>
                       <Box sx={{ p: 1, border: '1px dashed', borderColor: sev.fg, borderRadius: 1, bgcolor: 'background.paper', position: 'relative' }}>
                         <Typography variant="caption" color="text.secondary">수정 제안</Typography>
-                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', pr: 4 }}>{fix || '-'}</Typography>
+                        <TextField
+                          size="small"
+                          fullWidth
+                          multiline
+                          minRows={2}
+                          key={`fix-${selectedSegment}-${absoluteIndex}`}
+                          defaultValue={fix}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => onCaseEditChange?.(selectedSegment, absoluteIndex, { recommend_korean_sentence: e.target.value })}
+                          placeholder={fixOrig || '-'}
+                        />
                         {fix && (
                           <Tooltip title="수정안 복사">
                             <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigator.clipboard?.writeText(fix); }} sx={{ position: 'absolute', top: 2, right: 2 }}>
@@ -361,7 +381,17 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
                     <Collapse in={isExpanded(absoluteIndex)} timeout="auto" unmountOnExit id={reasonId}>
                       <Divider sx={{ my: 1 }} />
                       <Typography variant="subtitle2" gutterBottom>이유</Typography>
-                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{c.reason || '-'}</Typography>
+                      <TextField
+                        size="small"
+                        fullWidth
+                        multiline
+                        minRows={2}
+                        key={`reason-${selectedSegment}-${absoluteIndex}`}
+                        defaultValue={override?.reason ?? (c.reason || '')}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => onCaseEditChange?.(selectedSegment, absoluteIndex, { reason: e.target.value })}
+                        placeholder={c.reason || '-'}
+                      />
                     </Collapse>
                   </Box>
                 );
@@ -398,4 +428,3 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
     </Box>
   );
 }
-

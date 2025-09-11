@@ -12,6 +12,9 @@ class PostEditRequest(BaseModel):
     # Structured validation selection: per-segment boolean array
     # { [segmentIndex]: boolean[] }
     selected_cases: Optional[dict] = None
+    # Optional per-case overrides for reason/recommendation
+    # { [segmentIndex]: Array<{ reason?: string, recommend_korean_sentence?: string }> }
+    modified_cases: Optional[dict] = None
     model_name: Optional[str] = None
     api_key: Optional[str] = None
 

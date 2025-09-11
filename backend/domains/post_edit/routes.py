@@ -64,6 +64,8 @@ async def post_edit_job(
         job_id=job_id,
         api_key=request.api_key,
         model_name=request.model_name or "gemini-2.0-flash-exp",
+        selected_cases=request.selected_cases,
+        modified_cases=request.modified_cases,
         user_id=user.id
     )
     

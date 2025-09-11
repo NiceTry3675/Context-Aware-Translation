@@ -135,6 +135,7 @@ export function useCanvasState() {
   const [postEditDialogOpen, setPostEditDialogOpen] = useState(false);
   const [postEditModelName, setPostEditModelName] = useState<string>('');
   const [selectedCases, setSelectedCases] = useState<Record<number, boolean[]>>({});
+  const [modifiedCases, setModifiedCases] = useState<Record<number, Array<{ reason?: string; recommend_korean_sentence?: string }>>>({});
 
   const [illustrationDialogOpen, setIllustrationDialogOpen] = useState(false);
   const [illustrationStyle, setIllustrationStyle] = useState<string>('digital_art');
@@ -181,11 +182,13 @@ export function useCanvasState() {
     if (!jobId) return;
     handleTriggerPostEdit(parseInt(jobId, 10), {
       selected_cases: selectedCases || {},
+      modified_cases: modifiedCases || {},
       model_name: postEditModelName || selectedModel,
     });
     setPostEditDialogOpen(false);
     // Clear selectedCases after confirmation
     setSelectedCases({});
+    // Keep modifiedCases in memory so user edits persist across dialogs
   };
 
   const onConfirmIllustration = () => {
@@ -478,6 +481,8 @@ export function useCanvasState() {
     setPostEditModelName,
     selectedCases,
     setSelectedCases,
+    modifiedCases,
+    setModifiedCases,
     onConfirmPostEdit,
     segmentNav,
     
