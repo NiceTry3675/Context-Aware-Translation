@@ -15,6 +15,8 @@ class PostEditRequest(BaseModel):
     # Optional per-case overrides for reason/recommendation
     # { [segmentIndex]: Array<{ reason?: string, recommend_korean_sentence?: string }> }
     modified_cases: Optional[dict] = None
+    # Selection policy: when True, unspecified cases are treated as selected (default)
+    default_select_all: bool = True
     model_name: Optional[str] = None
     api_key: Optional[str] = None
 

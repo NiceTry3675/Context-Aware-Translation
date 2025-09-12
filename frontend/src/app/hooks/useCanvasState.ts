@@ -180,11 +180,13 @@ export function useCanvasState() {
 
   const onConfirmPostEdit = () => {
     if (!jobId) return;
-    handleTriggerPostEdit(parseInt(jobId, 10), {
+    const body: any = {
       selected_cases: selectedCases || {},
       modified_cases: modifiedCases || {},
       model_name: postEditModelName || selectedModel,
-    });
+      default_select_all: true,
+    };
+    handleTriggerPostEdit(parseInt(jobId, 10), body as any);
     setPostEditDialogOpen(false);
     // Clear selectedCases after confirmation
     setSelectedCases({});

@@ -343,7 +343,26 @@ export default function TranslationSidebar({
         onConfirm={postEdit.handleTriggerPostEdit}
         validationReport={validationReport}
         loading={postEdit.loading}
-        selectedCounts={{ total: Object.values(selectedCases).reduce((acc, arr)=> acc + (arr?.filter(Boolean).length || 0), 0) }}
+        selectedCounts={{
+          total: (() => {
+            const results = validationReport?.detailed_results || [];
+            if (!results || results.length === 0) return 0;
+            let sum = 0;
+            for (const seg of results as any[]) {
+              const idx = seg.segment_index as number;
+              const cases: any[] = Array.isArray(seg.structured_cases) ? seg.structured_cases : [];
+              if (!cases.length) continue; // no cases -> excluded
+              const sel = selectedCases[idx];
+              if (Array.isArray(sel)) {
+                sum += sel.filter(Boolean).length;
+              } else {
+                // default-select-all semantics for segments not in selectedCases
+                sum += cases.length;
+              }
+            }
+            return sum;
+          })()
+        }}
         apiProvider={postEdit.apiProvider}
         modelName={postEdit.modelName}
         onModelNameChange={postEdit.setModelName}

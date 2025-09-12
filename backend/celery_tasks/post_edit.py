@@ -38,6 +38,7 @@ def process_post_edit_task(
     model_name: str = "gemini-1.5-pro",
     selected_cases: Optional[dict] = None,
     modified_cases: Optional[dict] = None,
+    default_select_all: bool = True,
     user_id: Optional[int] = None
 ):
     """
@@ -114,6 +115,7 @@ def process_post_edit_task(
             validation_report_path=validation_report_path,
             selected_cases=selected_cases,
             modified_cases=modified_cases,
+            default_select_all=default_select_all,
             progress_callback=update_progress,
             job_id=job_id
         )

@@ -27,8 +27,6 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { ValidationReport } from '../../utils/api';
 import { ValidationCase } from '@/core-schemas';
-
-// Use ValidationCase from core schemas instead of local type
 type StructuredCase = ValidationCase;
 
 interface StructuredValidationExplorerProps {
@@ -46,25 +44,7 @@ interface StructuredValidationExplorerProps {
   ) => void;
 }
 
-function deriveCasesFromLegacy(segment: any): StructuredCase[] {
-  const cases: StructuredCase[] = [];
-  const pushAll = (arr: string[] | undefined, dimension: ValidationCase['dimension'], severity: "1" | "2" | "3") => {
-    (arr || []).forEach((reason) => cases.push({ 
-      dimension, 
-      severity, 
-      reason,
-      current_korean_sentence: '',
-      problematic_source_sentence: ''
-    } as StructuredCase));
-  };
-  // Heuristics to convert legacy arrays into structured cases for display
-  pushAll(segment.critical_issues, 'accuracy', '3');
-  pushAll(segment.missing_content, 'completeness', '2');
-  pushAll(segment.added_content, 'addition', '2');
-  pushAll(segment.name_inconsistencies, 'name_consistency', '2');
-  pushAll(segment.minor_issues, 'other', '1');
-  return cases;
-}
+// Legacy arrays removed: expect structured_cases only
 
 function severityColor(theme: any, s: number) {
   if (s >= 3) return { fg: theme.palette.error.main, bg: alpha(theme.palette.error.main, 0.08), icon: <ErrorIcon fontSize="small" /> };
@@ -86,9 +66,7 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
     const map: Record<number, StructuredCase[]> = {};
     segments.forEach((seg: any) => {
       const idx = seg.segment_index;
-      const cases: StructuredCase[] = Array.isArray(seg.structured_cases) && seg.structured_cases.length > 0
-        ? seg.structured_cases
-        : deriveCasesFromLegacy(seg);
+      const cases: StructuredCase[] = Array.isArray(seg.structured_cases) ? seg.structured_cases : [];
       map[idx] = cases;
     });
     return map;

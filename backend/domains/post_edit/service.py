@@ -177,6 +177,7 @@ class PostEditDomainService(DomainServiceBase):
         validation_report_path: str,
         selected_cases: Optional[Dict[str, Any]] = None,
         modified_cases: Optional[Dict[str, Any]] = None,
+        default_select_all: bool = True,
         progress_callback: Optional[Callable[[int], None]] = None,
         job_id: Optional[int] = None
     ) -> List[str]:
@@ -214,10 +215,17 @@ class PostEditDomainService(DomainServiceBase):
         normalized_modified = _normalize_index_dict(modified_cases) or modified_cases
 
         # Run the post-editing process
+        # Normalize selection into explicit boolean masks per segment based on the report
+        effective_selected = self._normalize_selected_cases_from_report(
+            validation_report_path,
+            normalized_selected,
+            default_select_all
+        )
+
         edited_segments = post_editor.post_edit_document(
             translation_document,
             validation_report_path,
-            normalized_selected,
+            effective_selected,
             normalized_modified,
             progress_callback=progress_callback,
             job_id=job_id
@@ -233,6 +241,74 @@ class PostEditDomainService(DomainServiceBase):
             raise e
         
         return edited_segments
+
+    def _normalize_selected_cases_from_report(
+        self,
+        report_path: str,
+        selected_cases: Optional[Dict[int, Any]],
+        default_select_all: bool
+    ) -> Optional[Dict[int, List[bool]]]:
+        """
+        Normalize selection to explicit boolean masks per segment index.
+
+        - If a segment has no cases, it is excluded (not returned).
+        - If selected_cases is None: all cases selected when default_select_all=True, else all False.
+        - Accepts list[bool] or dict[int|str,bool] per segment.
+        """
+        try:
+            with open(report_path, 'r', encoding='utf-8') as f:
+                report = json.load(f)
+        except Exception:
+            # If report cannot be loaded, fall back to original selected_cases behavior
+            return selected_cases  # type: ignore
+
+        detailed = report.get('detailed_results', []) or []
+        if not detailed:
+            return None
+
+        # Build a map: seg_idx -> case_count
+        seg_case_counts: Dict[int, int] = {}
+        for res in detailed:
+            try:
+                seg_idx = int(res.get('segment_index'))
+            except Exception:
+                continue
+            cases = res.get('structured_cases') or []
+            if cases:
+                seg_case_counts[seg_idx] = len(cases)
+
+        if not seg_case_counts:
+            return None
+
+        effective: Dict[int, List[bool]] = {}
+
+        for seg_idx, count in seg_case_counts.items():
+            # Start with default mask per policy
+            base = [True if default_select_all else False for _ in range(count)]
+
+            if isinstance(selected_cases, dict) and seg_idx in selected_cases:
+                value = selected_cases.get(seg_idx)
+                if isinstance(value, list):
+                    # Copy values within bounds, fill rest with base
+                    for i in range(min(count, len(value))):
+                        base[i] = bool(value[i])
+                elif isinstance(value, dict):
+                    # Accept sparse dict mask
+                    # Normalize possible string keys
+                    for k, v in value.items():
+                        try:
+                            idx = int(k)
+                        except (ValueError, TypeError):
+                            continue
+                        if 0 <= idx < count:
+                            base[idx] = bool(v)
+                # else: ignore unknown types, keep base
+
+            # If all False, we still keep mask; engine will exclude this segment.
+            # If all True and default_select_all True, it's equivalent to selecting all.
+            effective[seg_idx] = base
+
+        return effective
     
     def get_post_edit_log_path(self, job: TranslationJob) -> str:
         """
@@ -320,6 +396,7 @@ class PostEditDomainService(DomainServiceBase):
         model_name: str = "gemini-2.0-flash-exp",
         selected_cases: Optional[Dict[str, Any]] = None,
         modified_cases: Optional[Dict[str, Any]] = None,
+        default_select_all: bool = True,
         progress_callback: Optional[Callable[[int], None]] = None
     ) -> Dict[str, Any]:
         """
@@ -365,6 +442,7 @@ class PostEditDomainService(DomainServiceBase):
                 job.validation_report_path,
                 selected_cases,
                 modified_cases,
+                default_select_all,
                 progress_callback,
                 job_id
             )

@@ -255,62 +255,6 @@ class TranslationLogger:
                 f.write(completion_message)
 
 
-class StructuredLogger:
-    """
-    Logger for structured data like validation reports and post-edit logs.
-    """
-    
-    @staticmethod
-    def log_validation_report(job_id: int, filename: str, report_data: Dict[str, Any]):
-        """
-        Log a validation report in structured format.
-        
-        Args:
-            job_id: Job ID
-            filename: Source filename
-            report_data: Validation report data
-        """
-        # Use job-centric directory structure
-        job_dir = os.path.join("logs/jobs", str(job_id), "validation")
-        os.makedirs(job_dir, exist_ok=True)
-        
-        log_path = os.path.join(job_dir, "validation_report.json")
-        
-        import json
-        with open(log_path, 'w', encoding='utf-8') as f:
-            json.dump({
-                'job_id': job_id,
-                'filename': filename,
-                'timestamp': datetime.now().isoformat(),
-                'report': report_data
-            }, f, indent=2, ensure_ascii=False)
-    
-    @staticmethod
-    def log_post_edit_report(job_id: int, filename: str, edit_data: Dict[str, Any]):
-        """
-        Log a post-edit report in structured format.
-        
-        Args:
-            job_id: Job ID
-            filename: Source filename
-            edit_data: Post-edit data
-        """
-        # Use job-centric directory structure
-        job_dir = os.path.join("logs/jobs", str(job_id), "postedit")
-        os.makedirs(job_dir, exist_ok=True)
-        
-        log_path = os.path.join(job_dir, "postedit_log.json")
-        
-        import json
-        with open(log_path, 'w', encoding='utf-8') as f:
-            json.dump({
-                'job_id': job_id,
-                'filename': filename,
-                'timestamp': datetime.now().isoformat(),
-                'edit_data': edit_data
-            }, f, indent=2, ensure_ascii=False)
-
-
 def get_logger(job_id: Optional[int] = None, filename: Optional[str] = None) -> TranslationLogger:
     """
     Get a configured translation logger instance.

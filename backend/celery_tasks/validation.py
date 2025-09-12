@@ -215,6 +215,7 @@ def process_validation_task(
                         job_id=job_id,
                         api_key=api_key,
                         model_name=model_name,
+                        default_select_all=True,
                         user_id=user_id
                     )
                     logger.info(f"[VALIDATION TASK] Queued post-edit task for Job ID: {job_id}")

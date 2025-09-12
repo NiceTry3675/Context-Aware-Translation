@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 from tqdm import tqdm
 from core.prompts.manager import PromptManager
-from shared.utils.logging import TranslationLogger, StructuredLogger
+from shared.utils.logging import TranslationLogger
 
 
 class PostEditEngine:
@@ -63,7 +63,10 @@ class PostEditEngine:
         
         Args:
             validation_report: The loaded validation report
-            selected_cases: Optional mask per segment index -> boolean[] indicating which structured cases to fix
+            selected_cases: Optional selection per segment index. Accepts:
+                - list[bool]: mask aligned to structured cases; missing indices default to True (selected)
+                - dict[int|str,bool]: sparse map of caseIndex -> bool; unspecified indices default to True (selected)
+                - None: select all cases
             modified_cases: Optional per segment overrides array aligned to original cases order
             
         Returns:
@@ -83,16 +86,17 @@ class PostEditEngine:
             cases = result.get('structured_cases') or []
             if not cases:
                 continue
-            # Apply selection mask if provided
+            # Apply selection mask if provided by service (normalized list[bool])
             mask = None
-            if selected_cases and segment_idx in selected_cases:
+            if isinstance(selected_cases, dict) and segment_idx in selected_cases:
                 mask = selected_cases.get(segment_idx)
             chosen_cases = []
             overrides_for_seg = None
             if modified_cases and segment_idx in modified_cases:
                 overrides_for_seg = modified_cases.get(segment_idx)
             for i, case in enumerate(cases):
-                if mask is None or (isinstance(mask, list) and i < len(mask) and mask[i]):
+                include = bool(mask[i]) if isinstance(mask, list) and i < len(mask) else False
+                if include:
                     # Clone to avoid mutating original dict
                     chosen_case = dict(case)
                     # Apply overrides if present for this original case index
@@ -345,18 +349,7 @@ class PostEditEngine:
             'edit_percentage': (len(segments_to_edit) / len(translation_document.translated_segments) * 100),
         }
         
-        # Save post-edit log using StructuredLogger
-        log_data = {
-            'summary': summary,
-            'segments': complete_log
-        }
-        StructuredLogger.log_post_edit_report(
-            job_id or self.job_id or 0,
-            translation_document.user_base_filename,
-            log_data
-        )
-        
-        # Also save using the existing method for compatibility
+        # Save post-edit log using the existing method
         self._save_postedit_log(complete_log, summary, translation_document.user_base_filename, job_id)
         
         # Print summary

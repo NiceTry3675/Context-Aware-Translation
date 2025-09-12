@@ -33,6 +33,7 @@ export function usePostEdit({ jobId, onRefresh, selectedCases, modifiedCases, ap
         selected_cases: selectedCases || {},
         modified_cases: modifiedCases || {},
         model_name: modelName || defaultModelName,
+        default_select_all: true,
       } as any;
       await triggerPostEdit(jobId, token || undefined, body);
       setPostEditDialogOpen(false);

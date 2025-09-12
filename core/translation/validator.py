@@ -13,7 +13,7 @@ from typing import Dict, List, Tuple, Any
 
 from core.schemas.validation import ValidationCase, ValidationResult, make_validation_response_schema as make_response_schema
 from core.prompts.manager import PromptManager
-from shared.utils.logging import StructuredLogger
+# Logging handled by service; no direct logger usage here
 
 
 class TranslationValidator:
@@ -153,9 +153,6 @@ class TranslationValidator:
         print(f"[VALIDATOR] Validation complete - {len(results)} results collected")
         summary = self._calculate_summary(results, total_segments, segments_to_validate)
         
-        # Use centralized structured logging
-        self._save_validation_report_structured(results, summary, document)
-        
         if self.verbose:
             self._print_detailed_summary(summary, results)
         return results, summary
@@ -207,24 +204,7 @@ class TranslationValidator:
             'segments_with_cases': [r.segment_index for r in results if r.has_issues()],
         }
 
-    def _save_validation_report_structured(self, results: List[ValidationResult], summary: Dict[str, Any], document):
-        """Save validation report using centralized structured logging."""
-        report_data = {
-            'summary': summary,
-            'detailed_results': [r.to_dict() for r in results],
-        }
-        
-        job_id = getattr(document, 'job_id', None) or 0
-        StructuredLogger.log_validation_report(
-            job_id=job_id,
-            filename=document.user_base_filename,
-            report_data=report_data
-        )
-        
-        if self.verbose:
-            print(f"\nValidation report saved via StructuredLogger")
-
-    # Removed _save_segment_report - individual segment reports now handled by centralized logging
+    # Removed centralized logging duplication; the service persists the report
 
     def _print_detailed_summary(self, summary: Dict[str, Any], results: List[ValidationResult]):
         print(f"\n{'='*60}")
@@ -249,5 +229,3 @@ class TranslationValidator:
             if len(segs) > 10:
                 print(f"  ... and {len(segs) - 10} more")
         print(f"{'='*60}")
-
-

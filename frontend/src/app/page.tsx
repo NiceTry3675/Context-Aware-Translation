@@ -193,12 +193,31 @@ function CanvasContent() {
         open={state.postEditDialogOpen}
         onClose={() => {
           state.setPostEditDialogOpen(false);
-          state.setSelectedCases({});
+          // Keep selection state; do not reset to avoid losing user choices
         }}
         onConfirm={state.onConfirmPostEdit}
         validationReport={state.validationReport}
         loading={state.loading}
-        selectedCounts={{ total: Object.values(state.selectedCases).reduce((acc, arr) => acc + (arr?.filter(Boolean).length || 0), 0) }}
+        selectedCounts={{
+          total: (() => {
+            const results = state.validationReport?.detailed_results || [];
+            if (!results || results.length === 0) return 0;
+            let sum = 0;
+            for (const seg of results as any[]) {
+              const idx = seg.segment_index as number;
+              const cases: any[] = Array.isArray(seg.structured_cases) ? seg.structured_cases : [];
+              if (!cases.length) continue; // exclude segments without cases
+              const sel = (state.selectedCases as Record<number, boolean[]>)[idx];
+              if (Array.isArray(sel)) {
+                sum += sel.filter(Boolean).length;
+              } else {
+                // default-select-all semantics when no entry exists
+                sum += cases.length;
+              }
+            }
+            return sum;
+          })()
+        }}
         apiProvider={state.apiProvider}
         modelName={state.postEditModelName || state.selectedModel}
         onModelNameChange={state.setPostEditModelName}
