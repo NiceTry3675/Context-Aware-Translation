@@ -78,7 +78,6 @@ interface ResultsViewProps {
   translationContent: any;
   translationSegments: any;
   fullSourceText: string | undefined;
-  selectedIssues: any;
   segmentNav: any;
   onTabChange: (event: React.SyntheticEvent, newValue: number) => void;
   onViewModeChange: (mode: 'full' | 'segment') => void;
@@ -90,12 +89,6 @@ interface ResultsViewProps {
     has_more: boolean;
     total_segments: number;
   }>;
-  onIssueSelectionChange: (
-    segmentIndex: number,
-    issueType: string,
-    issueIndex: number,
-    selected: boolean
-  ) => void;
   onSegmentClick: (index: number) => void;
   selectedCases: Record<number, boolean[]>;
   onCaseSelectionChange: (
@@ -132,7 +125,6 @@ export default function ResultsView({
   translationContent,
   translationSegments,
   fullSourceText,
-  selectedIssues,
   segmentNav,
   onTabChange,
   onViewModeChange,
@@ -140,7 +132,6 @@ export default function ResultsView({
   onShowNewTranslation,
   onLoadData,
   onLoadMoreSegments,
-  onIssueSelectionChange,
   onSegmentClick,
   selectedCases,
   onCaseSelectionChange,

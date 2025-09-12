@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from typing import Dict, List, Tuple, Any
 
-from core.schemas.validation import ValidationCase, ValidationResult, make_validation_response_schema as make_response_schema
+from core.schemas.validation import ValidationCase, ValidationResult, make_validation_response_schema
 from core.prompts.manager import PromptManager
 # Logging handled by service; no direct logger usage here
 
@@ -66,7 +66,7 @@ class TranslationValidator:
 
         try:
             # Use JSON schema for compatibility with Gemini API
-            response_schema = make_response_schema()
+            response_schema = make_validation_response_schema()
             response = self.ai_model.generate_structured(prompt, response_schema)
             
             if self.verbose:

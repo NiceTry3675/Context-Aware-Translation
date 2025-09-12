@@ -88,8 +88,6 @@ export default function TranslationSidebar({
     translationSegments,
     loading: dataLoading,
     error: dataError,
-    selectedIssues,
-    setSelectedIssues,
     loadData,
   } = useTranslationData({ open, jobId, jobStatus, validationStatus, postEditStatus });
 

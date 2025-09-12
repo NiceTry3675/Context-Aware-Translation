@@ -81,7 +81,7 @@ class ValidationResponse(BaseModel):
 
 
 # --------------------
-# Response schema (JSON Schema for Gemini) - Backward compatibility
+# Response schema (JSON Schema for Gemini)
 # --------------------
 def make_validation_response_schema() -> Dict[str, Any]:
     """
@@ -154,17 +154,10 @@ def make_validation_response_schema() -> Dict[str, Any]:
         },
         "required": ["cases"],
     }
-
-
-# Legacy alias for backward compatibility
-make_response_schema = make_validation_response_schema
-
-
 # Re-export all items
 __all__ = [
     "ValidationResult",
     "ValidationCase",
     "ValidationResponse",
     "make_validation_response_schema",
-    "make_response_schema",  # Legacy alias
 ]

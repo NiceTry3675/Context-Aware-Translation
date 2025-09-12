@@ -39,11 +39,6 @@ export function useTranslationData({
   const [illustrationStatus, setIllustrationStatus] = useState<IllustrationStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedIssues, setSelectedIssues] = useState<{
-    [segmentIndex: number]: {
-      [issueType: string]: boolean[]
-    }
-  }>({});
   
   const { getToken } = useAuth();
 
@@ -199,8 +194,6 @@ export function useTranslationData({
     illustrationStatus,
     loading,
     error,
-    selectedIssues,
-    setSelectedIssues,
     loadData,
     loadMoreSegments,
     getSegmentData,

@@ -113,8 +113,6 @@ export function useCanvasState() {
     illustrationStatus,
     loading: dataLoading,
     error: dataError,
-    selectedIssues,
-    setSelectedIssues,
     loadData,
     loadMoreSegments,
   } = useTranslationData({ 
@@ -438,8 +436,6 @@ export function useCanvasState() {
     translationSegments,
     illustrationStatus,
     fullSourceText,
-    selectedIssues,
-    setSelectedIssues,
     selectedCounts,
     
     // Loading states

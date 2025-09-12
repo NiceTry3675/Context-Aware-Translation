@@ -127,7 +127,6 @@ function CanvasContent() {
                 translationContent={state.translationContent}
                 translationSegments={state.translationSegments}
                 fullSourceText={state.fullSourceText}
-                selectedIssues={state.selectedIssues}
                 segmentNav={state.segmentNav}
                 onTabChange={state.handleTabChange}
                 onViewModeChange={state.setViewMode}
@@ -135,7 +134,7 @@ function CanvasContent() {
                 onShowNewTranslation={state.handleNewTranslation}
                 onLoadData={state.loadData}
                 onLoadMoreSegments={state.loadMoreSegments}
-                onIssueSelectionChange={() => { /* structured-only: legacy issue selection not used */ }}
+                
                 onSegmentClick={(index) => {
                   state.setViewMode('segment');
                   state.segmentNav.goToSegment(index);
