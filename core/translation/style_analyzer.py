@@ -11,7 +11,7 @@ from ..prompts.manager import PromptManager
 from ..translation.models.gemini import GeminiModel
 from ..translation.models.openrouter import OpenRouterModel
 from shared.errors import ProhibitedException, TranslationError
-from shared.errors.error_logger import prohibited_content_logger
+from shared.errors.error_logger import ProhibitedContentLogger
 from ..utils.file_parser import parse_document
 from ..utils.text_segmentation import create_segments_from_plain_text
 from shared.utils.logging import TranslationLogger
@@ -82,8 +82,11 @@ class StyleAnalyzer:
         """
         # Initialize logger if not already done
         if not self.logger:
-            self.logger = TranslationLogger(self.job_id, job_filename)
+            self.logger = TranslationLogger(self.job_id, job_filename, task_type="style_analysis")
             self.logger.initialize_session()
+        
+        # Initialize prohibited content logger for this job
+        prohibited_logger = ProhibitedContentLogger(job_id=self.job_id)
         
         prompt = PromptManager.DEFINE_NARRATIVE_STYLE.format(sample_text=sample_text)
         
@@ -103,7 +106,7 @@ class StyleAnalyzer:
             
             return style
         except ProhibitedException as e:
-            log_path = prohibited_content_logger.log_simple_prohibited_content(
+            log_path = prohibited_logger.log_simple_prohibited_content(
                 api_call_type="core_style_definition",
                 prompt=prompt,
                 source_text=sample_text,
@@ -206,7 +209,7 @@ class StyleAnalyzer:
         
         # Initialize logger if not already done
         if not self.logger:
-            self.logger = TranslationLogger(self.job_id, job_base_filename)
+            self.logger = TranslationLogger(self.job_id, job_base_filename, task_type="style_analysis")
             self.logger.initialize_session()
         
         # Log core style definition start

@@ -262,7 +262,7 @@ class PostEditEngine:
         """
         # Initialize logger for this document
         self.job_id = job_id or self.job_id
-        self.logger = TranslationLogger(self.job_id, translation_document.user_base_filename)
+        self.logger = TranslationLogger(self.job_id, translation_document.user_base_filename, task_type="postedit")
         self.logger.initialize_session()
         
         # Load validation report

@@ -70,7 +70,7 @@ class IllustrationGenerator:
         self.job_id = job_id
         self.output_dir = output_dir
         self.enable_caching = enable_caching
-        self.logger = TranslationLogger(job_id, "illustration_generator") if job_id else None
+        self.logger = TranslationLogger(job_id, "illustration_generator", task_type="illustration") if job_id else None
         
         # Setup output directory
         self.job_output_dir = self._setup_output_directory()

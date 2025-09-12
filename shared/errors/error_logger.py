@@ -13,14 +13,23 @@ class ProhibitedContentLogger:
     Handles logging of prohibited content errors in a standardized format.
     """
     
-    def __init__(self, base_dir: str = "logs/prohibited_content_logs"):
+    def __init__(self, job_id: Optional[int] = None, base_dir: Optional[str] = None):
         """
         Initialize the logger with a base directory for log files.
         
         Args:
-            base_dir: Directory where prohibited content logs will be stored
+            job_id: Optional job ID for job-specific logging
+            base_dir: Optional custom base directory (defaults to job-specific directory if job_id provided)
         """
-        self.base_dir = base_dir
+        if job_id:
+            # Use job-specific directory
+            self.base_dir = os.path.join("logs", "jobs", str(job_id), "prohibited_content")
+        elif base_dir:
+            self.base_dir = base_dir
+        else:
+            # Fallback to legacy directory for backward compatibility
+            self.base_dir = "logs/prohibited_content_logs"
+        
         os.makedirs(self.base_dir, exist_ok=True)
         
     def log_prohibited_content(self, 
