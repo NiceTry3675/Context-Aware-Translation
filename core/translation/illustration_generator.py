@@ -302,10 +302,9 @@ class IllustrationGenerator:
                 lock_items.append(f"{key.replace('_', ' ')}: {val}")
         lock_text = "; ".join(lock_items)
         lock_clause = (
-            f"Maintain the exact same character appearance ({lock_text}). Do not change these traits. "
-            f"Use the attached reference image to preserve identity (face, hair, overall look); do not copy any reference background"
+            f"Maintain the exact same character appearance ({lock_text}). Do not change these traits"
             if lock_text else
-            "Maintain the same character appearance as previously defined. Use the attached reference image to preserve identity; do not copy any reference background"
+            "Maintain the same character appearance as previously defined"
         )
 
         # Extract visual elements to emphasize scene context
