@@ -80,3 +80,4 @@ frontend/node_modules/
 
 # Temporary files
 /tmp/translation_temp/
+/aws/

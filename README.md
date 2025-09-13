@@ -191,7 +191,42 @@ python init_categories.py
     cd ..
     ```
 
-4.  **코드 생성 (TypeScript 타입 동기화)**:
+4.  **데이터베이스 백업 시스템 (S3)**:
+
+    이 프로젝트는 AWS S3를 사용한 자동 데이터베이스 백업 시스템을 제공합니다.
+
+    ```bash
+    # 수동 백업 실행
+    python scripts/backup_database.py
+
+    # 백업 목록 확인
+    python scripts/backup_database.py --list
+
+    # 최신 백업에서 복구
+    python scripts/backup_database.py --restore
+
+    # 특정 백업에서 복구
+    python scripts/backup_database.py --restore backups/full/20250913_141313/database.db.gz
+
+    # 백업 상태 확인
+    python scripts/check_backup_status.py
+    ```
+
+    **자동 백업 설정**:
+    - Celery Beat를 통해 매일 자동 백업이 실행됩니다
+    - 백업은 gzip으로 압축되어 S3에 업로드됩니다 (약 81% 압축률)
+    - 30일 이상 된 백업은 자동으로 삭제됩니다
+
+    **필요한 환경 변수** (`.env`):
+    ```
+    AWS_ACCESS_KEY_ID=your-access-key
+    AWS_SECRET_ACCESS_KEY=your-secret-key
+    AWS_REGION=ap-southeast-2
+    S3_BACKUP_BUCKET=your-bucket-name
+    BACKUP_RETENTION_DAYS=30
+    ```
+
+5.  **코드 생성 (TypeScript 타입 동기화)**:
     
     이 프로젝트는 단일 진실의 원천(Single Source of Truth) 원칙을 따라 Pydantic 모델에서 TypeScript 타입을 자동 생성합니다.
     
