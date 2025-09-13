@@ -18,15 +18,7 @@ from ..domains.translation.repository import SqlAlchemyTranslationJobRepository
 
 logger = logging.getLogger(__name__)
 
-# Set up file-based logging for validation tasks
-log_dir = "logs/validation_task_logs"
-os.makedirs(log_dir, exist_ok=True)
-log_file = os.path.join(log_dir, f"validation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
-file_handler = logging.FileHandler(log_file)
-file_handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
+# Note: File-based logging will be set up per-job in the task function
 logger.setLevel(logging.DEBUG)
 
 
@@ -66,47 +58,63 @@ def process_validation_task(
     """
     db = None
     
-    # Log to both console and file immediately
-    logger.info(f"[VALIDATION TASK START] ========================================")
-    logger.info(f"[VALIDATION TASK START] Task ID: {self.request.id if self.request else 'N/A'}")
-    logger.info(f"[VALIDATION TASK START] Job ID: {job_id}")
-    logger.info(f"[VALIDATION TASK START] Log file: {log_file}")
-    logger.info(f"[VALIDATION TASK START] ========================================")
+    # Set up job-specific file logging
+    log_dir = os.path.join("logs", "jobs", str(job_id), "tasks")
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, f"validation_task_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
     
+    # Create a job-specific file handler
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    
+    # Add handler to task_logger for this task
+    task_logger = logging.getLogger(f"{__name__}.job_{job_id}")
+    task_logger.addHandler(file_handler)
+    task_logger.setLevel(logging.DEBUG)
+
+    # Log to both console and file immediately
+    task_logger.info(f"[VALIDATION TASK START] ========================================")
+    task_logger.info(f"[VALIDATION TASK START] Task ID: {self.request.id if self.request else 'N/A'}")
+    task_logger.info(f"[VALIDATION TASK START] Job ID: {job_id}")
+    task_logger.info(f"[VALIDATION TASK START] Log file: {log_file}")
+    task_logger.info(f"[VALIDATION TASK START] ========================================")
+
     try:
-        logger.info(f"[VALIDATION TASK] Starting validation task for job_id={job_id}")
+        task_logger.info(f"[VALIDATION TASK] Starting validation task for job_id={job_id}")
         api_key_display = f"{api_key[:8]}..." if api_key else "None"
-        logger.info(f"[VALIDATION TASK] Parameters: api_key={api_key_display}, model={model_name}, mode={validation_mode}, sample_rate={sample_rate}")
+        task_logger.info(f"[VALIDATION TASK] Parameters: api_key={api_key_display}, model={model_name}, mode={validation_mode}, sample_rate={sample_rate}")
         
         # Check if API key is provided, use default from settings if not
         if not api_key:
-            logger.info(f"[VALIDATION TASK] No API key provided, using default Gemini API key from settings")
+            task_logger.info(f"[VALIDATION TASK] No API key provided, using default Gemini API key from settings")
             from backend.config.settings import get_settings
             settings = get_settings()
             api_key = settings.gemini_api_key
             if not api_key:
-                logger.error(f"[VALIDATION TASK] No API key provided and no default Gemini API key in settings")
+                task_logger.error(f"[VALIDATION TASK] No API key provided and no default Gemini API key in settings")
                 raise ValueError("API key is required for validation")
         
         # Get database session
         db = self.db_session
-        logger.debug(f"[VALIDATION TASK] Database session obtained: {db}")
+        task_logger.debug(f"[VALIDATION TASK] Database session obtained: {db}")
         
         # Get the job
         repo = SqlAlchemyTranslationJobRepository(db)
         job = repo.get(job_id)
         if not job:
-            logger.error(f"[VALIDATION TASK] Job ID {job_id} not found in database")
+            task_logger.error(f"[VALIDATION TASK] Job ID {job_id} not found in database")
             raise ValueError(f"Job ID {job_id} not found")
         
-        logger.info(f"[VALIDATION TASK] Found job: id={job.id}, status={job.status}, filepath={job.filepath}")
+        task_logger.info(f"[VALIDATION TASK] Found job: id={job.id}, status={job.status}, filepath={job.filepath}")
         
         # Update job status and validation_status
         repo.set_status(job_id, "VALIDATING")
         repo.update_validation_status(job_id, "IN_PROGRESS", progress=0)
         db.commit()
-        logger.info(f"[VALIDATION TASK] Updated job status to VALIDATING and validation_status to IN_PROGRESS")
-        logger.info(f"[VALIDATION TASK] Starting validation for Job ID: {job_id}, Mode: {validation_mode}, Sample Rate: {sample_rate}")
+        task_logger.info(f"[VALIDATION TASK] Updated job status to VALIDATING and validation_status to IN_PROGRESS")
+        task_logger.info(f"[VALIDATION TASK] Starting validation for Job ID: {job_id}, Mode: {validation_mode}, Sample Rate: {sample_rate}")
         
         # Update task progress
         current_task.update_state(
@@ -116,29 +124,29 @@ def process_validation_task(
         
         # Run validation
         validation_service = ValidationDomainService()
-        logger.info(f"[VALIDATION TASK] Created ValidationDomainService")
+        task_logger.info(f"[VALIDATION TASK] Created ValidationDomainService")
         
         # Prepare validation components
         try:
-            logger.info(f"[VALIDATION TASK] Preparing validation components...")
+            task_logger.info(f"[VALIDATION TASK] Preparing validation components...")
             validator, validation_document, translated_path = validation_service.prepare_validation(
                 session=db,
                 job_id=job_id,
                 api_key=api_key,
                 model_name=model_name
             )
-            logger.info(f"[VALIDATION TASK] Validation components prepared successfully")
-            logger.info(f"[VALIDATION TASK] Translated file path: {translated_path}")
-            logger.info(f"[VALIDATION TASK] Document segments: {len(validation_document.segments) if validation_document else 0}")
-            logger.info(f"[VALIDATION TASK] Translated segments: {len(validation_document.translated_segments) if validation_document and hasattr(validation_document, 'translated_segments') else 0}")
+            task_logger.info(f"[VALIDATION TASK] Validation components prepared successfully")
+            task_logger.info(f"[VALIDATION TASK] Translated file path: {translated_path}")
+            task_logger.info(f"[VALIDATION TASK] Document segments: {len(validation_document.segments) if validation_document else 0}")
+            task_logger.info(f"[VALIDATION TASK] Translated segments: {len(validation_document.translated_segments) if validation_document and hasattr(validation_document, 'translated_segments') else 0}")
         except Exception as e:
-            logger.error(f"[VALIDATION TASK] Error during validation preparation: {str(e)}")
-            logger.error(f"[VALIDATION TASK] Preparation error traceback: {traceback.format_exc()}")
+            task_logger.error(f"[VALIDATION TASK] Error during validation preparation: {str(e)}")
+            task_logger.error(f"[VALIDATION TASK] Preparation error traceback: {traceback.format_exc()}")
             raise
         
         # Run the validation
         quick_mode = validation_mode == 'quick'
-        logger.info(f"[VALIDATION TASK] Running validation with quick_mode={quick_mode}, sample_rate={sample_rate}")
+        task_logger.info(f"[VALIDATION TASK] Running validation with quick_mode={quick_mode}, sample_rate={sample_rate}")
         
         def update_progress(p: int):
             """Update both Celery task state and database progress."""
@@ -158,15 +166,15 @@ def process_validation_task(
                 quick_mode=quick_mode,
                 progress_callback=update_progress
             )
-            logger.info(f"[VALIDATION TASK] Validation run completed, result: {validation_result is not None}")
+            task_logger.info(f"[VALIDATION TASK] Validation run completed, result: {validation_result is not None}")
         except Exception as e:
-            logger.error(f"[VALIDATION TASK] Error during validation run: {str(e)}")
-            logger.error(f"[VALIDATION TASK] Run error traceback: {traceback.format_exc()}")
+            task_logger.error(f"[VALIDATION TASK] Error during validation run: {str(e)}")
+            task_logger.error(f"[VALIDATION TASK] Run error traceback: {traceback.format_exc()}")
             raise
         
         # Store validation results
         if validation_result:
-            logger.info(f"[VALIDATION TASK] Validation result structure: "
+            task_logger.info(f"[VALIDATION TASK] Validation result structure: "
                        f"keys={list(validation_result.keys())}, "
                        f"summary={validation_result.get('summary', {})}, "
                        f"detailed_results_count={len(validation_result.get('detailed_results', []))}")
@@ -192,7 +200,7 @@ def process_validation_task(
             repo.set_status(job_id, "COMPLETED")
             db.commit()
             
-            logger.info(f"[VALIDATION TASK] Validation completed for Job ID: {job_id}, report saved to: {report_path}")
+            task_logger.info(f"[VALIDATION TASK] Validation completed for Job ID: {job_id}, report saved to: {report_path}")
             
             # Update final progress
             current_task.update_state(
@@ -218,9 +226,9 @@ def process_validation_task(
                         default_select_all=True,
                         user_id=user_id
                     )
-                    logger.info(f"[VALIDATION TASK] Queued post-edit task for Job ID: {job_id}")
+                    task_logger.info(f"[VALIDATION TASK] Queued post-edit task for Job ID: {job_id}")
             except Exception as e:
-                logger.error(f"[VALIDATION TASK] Failed to auto-trigger post-edit for Job ID {job_id}: {e}")
+                task_logger.error(f"[VALIDATION TASK] Failed to auto-trigger post-edit for Job ID {job_id}: {e}")
             
             return {
                 'job_id': job_id,
@@ -229,7 +237,7 @@ def process_validation_task(
                 'issues_found': len(validation_result.get('detailed_results', []))
             }
         else:
-            logger.error(f"[VALIDATION TASK] Validation failed to produce results for job {job_id}")
+            task_logger.error(f"[VALIDATION TASK] Validation failed to produce results for job {job_id}")
             raise ValueError("Validation failed to produce results")
             
     except SoftTimeLimitExceeded:
@@ -242,7 +250,7 @@ def process_validation_task(
             )
             repo.update_validation_status(job_id, "FAILED")
             db.commit()
-        logger.error(f"Validation task {self.request.id} exceeded time limit")
+        task_logger.error(f"Validation task {self.request.id} exceeded time limit")
         raise
         
     except Exception as e:
@@ -255,12 +263,12 @@ def process_validation_task(
             repo.update_validation_status(job_id, "FAILED")
             db.commit()
         
-        logger.error(f"Validation error for Job ID {job_id}: {e}")
-        logger.error(traceback.format_exc())
+        task_logger.error(f"Validation error for Job ID {job_id}: {e}")
+        task_logger.error(traceback.format_exc())
         
         # Retry the task if retries are available
         if self.request.retries < self.max_retries:
-            logger.info(f"Retrying task {self.request.id} (attempt {self.request.retries + 1}/{self.max_retries})")
+            task_logger.info(f"Retrying task {self.request.id} (attempt {self.request.retries + 1}/{self.max_retries})")
             raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
         
         raise
@@ -269,7 +277,7 @@ def process_validation_task(
         # Clean up
         if db:
             db.close()
-        logger.debug(f"Validation for Job ID {job_id} finished. DB session closed.")
+        task_logger.debug(f"Validation for Job ID {job_id} finished. DB session closed.")
 
 
 # Backward compatibility wrapper

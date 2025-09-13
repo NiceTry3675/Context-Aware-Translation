@@ -22,6 +22,7 @@ export default function AnnouncementHandler() {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [open, setOpen] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const [isClient, setIsClient] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
@@ -85,6 +86,9 @@ export default function AnnouncementHandler() {
   }, []);
 
   useEffect(() => {
+    // Ensure dev-only UI that may be mutated by extensions only renders on client
+    setIsClient(true);
+
     connectToSSE();
 
     return () => {
@@ -155,8 +159,8 @@ export default function AnnouncementHandler() {
         </Snackbar>
       )}
 
-      {process.env.NODE_ENV === 'development' && (
-        <div style={{
+      {process.env.NODE_ENV === 'development' && isClient && (
+        <div suppressHydrationWarning style={{
           position: 'fixed',
           top: 10,
           right: 10,

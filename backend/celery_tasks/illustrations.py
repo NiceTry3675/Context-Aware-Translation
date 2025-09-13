@@ -221,7 +221,7 @@ def generate_illustrations_task(
                     style_hints=config.style_hints,
                     glossary=job.final_glossary,
                     custom_prompt=custom_prompt,
-                    reference_image=ref_tuple
+                    reference_image=None  # Don't use reference image for scene generation to avoid hanging
                 )
                 
                 print(f"[ILLUSTRATIONS TASK] Completed generation for segment {segment['index']}")
@@ -229,26 +229,10 @@ def generate_illustrations_task(
             except Exception as e:
                 print(f"[ILLUSTRATIONS TASK] Error generating illustration for segment {segment['index']}: {e}")
                 
-                # Retry without reference image if it failed with one
-                if ref_tuple is not None:
-                    print(f"[ILLUSTRATIONS TASK] Retrying without reference image for segment {segment['index']}")
-                    try:
-                        illustration_path, prompt = generator.generate_illustration(
-                            segment_text=segment['text'],
-                            segment_index=segment['index'],
-                            style_hints=config.style_hints,
-                            glossary=job.final_glossary,
-                            custom_prompt=custom_prompt,
-                            reference_image=None  # No reference image this time
-                        )
-                        print(f"[ILLUSTRATIONS TASK] Retry successful for segment {segment['index']}")
-                    except Exception as e2:
-                        print(f"[ILLUSTRATIONS TASK] Retry also failed: {e2}")
-                        illustration_path = None
-                        prompt = None
-                else:
-                    illustration_path = None
-                    prompt = None
+                # Just log the error and continue without retry since we're already not using reference
+                print(f"[ILLUSTRATIONS TASK] Generation failed, continuing without image")
+                illustration_path = None
+                prompt = None
             
             # Determine if it's an image or prompt
             file_type = 'image' if illustration_path and illustration_path.endswith('.png') else 'prompt'
@@ -259,7 +243,7 @@ def generate_illustrations_task(
                 'prompt': prompt,
                 'success': illustration_path is not None,
                 'type': file_type,
-                'reference_used': ref_tuple is not None
+                'reference_used': False  # We don't use reference for scene generation
             }
             if use_profile_lock:
                 result['used_base_index'] = selected_base_index
@@ -408,31 +392,17 @@ def regenerate_single_illustration(
                 style_hints=style_hints or (job.illustrations_config.get('style_hints', '') if job.illustrations_config else '')
             )
         
-        # Optionally load selected base as reference image
-        ref_tuple = None
-        try:
-            if job.character_base_selected_index is not None and job.character_base_images:
-                idx = job.character_base_selected_index
-                bases = job.character_base_images or []
-                if 0 <= idx < len(bases):
-                    base_path = bases[idx].get('illustration_path')
-                    if base_path and not os.path.isabs(base_path) and job.character_base_directory:
-                        base_path = str(Path(job.character_base_directory) / Path(base_path).name)
-                    if base_path and base_path.endswith('.png') and os.path.exists(base_path):
-                        with open(base_path, 'rb') as bf:
-                            ref_bytes = bf.read()
-                        ref_tuple = (ref_bytes, 'image/png')
-        except Exception as e:
-            print(f"Warning: failed to attach base reference for regeneration: {e}")
+        # Don't use reference image for scene generation to avoid hanging
+        # ref_tuple = None (removed reference image loading logic)
         
-        # Generate new illustration prompt
+        # Generate new illustration prompt without reference image
         prompt_path, prompt = generator.generate_illustration(
             segment_text=segment.get('source_text', ''),
             segment_index=segment_index,
             style_hints=style_hints or (job.illustrations_config.get('style_hints', '') if job.illustrations_config else ''),
             glossary=job.final_glossary,
             custom_prompt=custom_prompt,
-            reference_image=ref_tuple
+            reference_image=None  # Don't use reference image to avoid hanging
         )
         
         # Update job metadata
@@ -447,7 +417,7 @@ def regenerate_single_illustration(
                     ill['prompt'] = prompt
                     ill['success'] = True
                     ill['type'] = 'image' if prompt_path.endswith('.png') else 'prompt'
-                    ill['reference_used'] = ref_tuple is not None
+                    ill['reference_used'] = False  # We don't use reference for scene generation
                     found = True
                     break
             
@@ -458,7 +428,7 @@ def regenerate_single_illustration(
                     'prompt': prompt,
                     'success': True,
                     'type': 'image' if prompt_path.endswith('.png') else 'prompt',
-                    'reference_used': ref_tuple is not None
+                    'reference_used': False  # We don't use reference for scene generation
                 })
             
             job.illustrations_data = illustrations_data

@@ -16,10 +16,11 @@ celery_app = Celery(
     backend=settings.redis_url,
     include=[
         "backend.celery_tasks.translation",
-        "backend.celery_tasks.validation", 
+        "backend.celery_tasks.validation",
         "backend.celery_tasks.post_edit",
         "backend.celery_tasks.illustrations",
-        "backend.celery_tasks.event_processor"
+        "backend.celery_tasks.event_processor",
+        "backend.celery_tasks.backup_tasks"
     ]
 )
 
@@ -61,6 +62,14 @@ celery_app.conf.update(
             'task': 'backend.celery_tasks.maintenance.cleanup_temp_files',
             'schedule': 3600.0,  # Every hour
         },
+        'backup-database-daily': {
+            'task': 'backup.database_to_s3',
+            'schedule': 86400.0,  # Every 24 hours (daily)
+            'options': {
+                'queue': 'maintenance',
+                'priority': 1,
+            }
+        },
     },
     
     # Worker configuration
@@ -75,6 +84,7 @@ celery_app.conf.update(
         'backend.celery_tasks.illustrations.*': {'queue': 'illustrations'},
         'backend.celery_tasks.event_processor.*': {'queue': 'events'},
         'backend.celery_tasks.maintenance.*': {'queue': 'maintenance'},
+        'backup.*': {'queue': 'maintenance'},
     },
     
     # Queue configuration

@@ -24,18 +24,31 @@ class TranslationLogger:
     - Error logging
     """
     
-    def __init__(self, job_id: Optional[int] = None, user_base_filename: Optional[str] = None):
+    def __init__(self, job_id: Optional[int] = None, user_base_filename: Optional[str] = None, job_storage_base: Optional[str] = None, task_type: str = "translation"):
         """
         Initialize the translation logger.
         
         Args:
             job_id: Optional job ID for file naming
             user_base_filename: Base filename for log naming
+            job_storage_base: Optional custom path for job storage (defaults to 'logs/jobs')
+            task_type: Type of task (translation, validation, postedit, style_analysis, etc.)
         """
         self.job_id = job_id
         self.user_base_filename = user_base_filename
+        self.task_type = task_type
         self.start_time = time.time()
-        self.job_storage_base = "logs/jobs"
+        
+        # Try to use settings if available, otherwise use default
+        if job_storage_base:
+            self.job_storage_base = job_storage_base
+        else:
+            try:
+                from backend.config.settings import get_settings
+                self.job_storage_base = get_settings().job_storage_base
+            except (ImportError, Exception):
+                # Backend not available (running in standalone mode) or settings not configured
+                self.job_storage_base = "logs/jobs"
         
         # Initialize logging directories
         self._setup_logging_directories()
@@ -55,11 +68,16 @@ class TranslationLogger:
     def _setup_log_paths(self):
         """Setup paths for various log files."""
         if self.job_id:
-            # Use job-centric directory structure
+            # Use job-centric directory structure with task-specific filenames
             job_dir = os.path.join(self.job_storage_base, str(self.job_id))
-            self.prompt_log_path = os.path.join(job_dir, "prompts", "debug_prompts.txt")
-            self.context_log_path = os.path.join(job_dir, "context", "context_log.txt")
-            self.progress_log_path = os.path.join(job_dir, "progress", "progress_log.txt")
+            # Create unique prompt log filename based on task type
+            prompt_filename = f"{self.task_type}_prompts.txt"
+            context_filename = f"{self.task_type}_context.txt"
+            progress_filename = f"{self.task_type}_progress.txt"
+            
+            self.prompt_log_path = os.path.join(job_dir, "prompts", prompt_filename)
+            self.context_log_path = os.path.join(job_dir, "context", context_filename)
+            self.progress_log_path = os.path.join(job_dir, "progress", progress_filename)
         else:
             # No logging without job_id
             self.prompt_log_path = None
@@ -255,15 +273,17 @@ class TranslationLogger:
                 f.write(completion_message)
 
 
-def get_logger(job_id: Optional[int] = None, filename: Optional[str] = None) -> TranslationLogger:
+def get_logger(job_id: Optional[int] = None, filename: Optional[str] = None, job_storage_base: Optional[str] = None, task_type: str = "translation") -> TranslationLogger:
     """
     Get a configured translation logger instance.
     
     Args:
         job_id: Optional job ID
         filename: Optional filename for log naming
+        job_storage_base: Optional custom path for job storage
+        task_type: Type of task (translation, validation, postedit, style_analysis, etc.)
         
     Returns:
         Configured TranslationLogger instance
     """
-    return TranslationLogger(job_id=job_id, user_base_filename=filename)
+    return TranslationLogger(job_id=job_id, user_base_filename=filename, job_storage_base=job_storage_base, task_type=task_type)

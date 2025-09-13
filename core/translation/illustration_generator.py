@@ -70,14 +70,19 @@ class IllustrationGenerator:
         self.job_id = job_id
         self.output_dir = output_dir
         self.enable_caching = enable_caching
-        self.logger = TranslationLogger(job_id, "illustration_generator") if job_id else None
+        # Pass the output_dir as job_storage_base to ensure logs are in the same location
+        self.logger = TranslationLogger(job_id, "illustration_generator", job_storage_base=output_dir, task_type="illustration") if job_id else None
         
         # Setup output directory
         self.job_output_dir = self._setup_output_directory()
-        
+
         # Cache for generated illustrations
         self.cache = {} if enable_caching else None
         self._load_cache_metadata()
+
+        # Initialize logging session
+        if self.logger:
+            self.logger.initialize_session()
     
     def _setup_output_directory(self) -> Path:
         """
@@ -302,10 +307,9 @@ class IllustrationGenerator:
                 lock_items.append(f"{key.replace('_', ' ')}: {val}")
         lock_text = "; ".join(lock_items)
         lock_clause = (
-            f"Maintain the exact same character appearance ({lock_text}). Do not change these traits. "
-            f"Use the attached reference image to preserve identity (face, hair, overall look); do not copy any reference background"
+            f"Maintain the exact same character appearance ({lock_text}). Do not change these traits"
             if lock_text else
-            "Maintain the same character appearance as previously defined. Use the attached reference image to preserve identity; do not copy any reference background"
+            "Maintain the same character appearance as previously defined"
         )
 
         # Extract visual elements to emphasize scene context
@@ -587,7 +591,41 @@ class IllustrationGenerator:
             prompt = custom_prompt
         else:
             prompt = self.create_illustration_prompt(segment_text, context, style_hints, glossary, world_atmosphere)
-        
+
+        # Log the prompt and context
+        if self.logger:
+            self.logger.log_translation_prompt(segment_index, f"[ILLUSTRATION PROMPT]\n{prompt}")
+
+            # Log context information
+            context_data = {
+                'style_hints': style_hints or 'None',
+                'has_custom_prompt': custom_prompt is not None,
+                'has_reference_image': reference_image is not None,
+                'has_world_atmosphere': world_atmosphere is not None,
+                'glossary_size': len(glossary) if glossary else 0,
+                'segment_text_length': len(segment_text),
+                'contextual_glossary': glossary or {},
+                'full_glossary': glossary or {}
+            }
+
+            # Add world atmosphere details if available
+            if world_atmosphere:
+                try:
+                    illustration_context = world_atmosphere.to_illustration_context()
+                    context_data['world_atmosphere'] = {
+                        'setting': illustration_context.get('setting', ''),
+                        'mood': illustration_context.get('mood', ''),
+                        'lighting': illustration_context.get('lighting', ''),
+                        'time': illustration_context.get('time', ''),
+                        'weather': illustration_context.get('weather', ''),
+                        'tension': illustration_context.get('tension', ''),
+                        'dramatic_weight': illustration_context.get('dramatic_weight', '')
+                    }
+                except:
+                    pass
+
+            self.logger.log_segment_context(segment_index, context_data)
+
         # Generate the actual image using Gemini
         for attempt in range(max_retries):
             try:
@@ -784,7 +822,13 @@ class IllustrationGenerator:
                 'prompt': prompt,
                 'success': illustration_path is not None
             })
-        
+
+        # Log completion
+        if self.logger:
+            successful_count = sum(1 for r in results if r['success'])
+            self.logger.log_completion(len(segments), None)
+            logging.info(f"Illustration batch generation completed: {successful_count}/{len(segments)} successful")
+
         return results
 
     def generate_character_bases(self,
@@ -820,6 +864,10 @@ class IllustrationGenerator:
         for i in range(num_variations):
             vh = variant_directives[i % len(variant_directives)]
             prompt = self.create_character_base_prompt(profile, style_hints=(style_hints + f". {vh}").strip(), context_text=context_text)
+
+            # Log the character base prompt
+            if self.logger:
+                self.logger.log_translation_prompt(i, f"[CHARACTER BASE PROMPT {i+1}]\n{prompt}")
 
             # File targets
             image_filename = f"base_{i+1:02d}.png"
@@ -948,6 +996,10 @@ class IllustrationGenerator:
             final_prompts = prompts[:num_variations]
 
         for i, prompt in enumerate(final_prompts):
+            # Log the custom base prompt
+            if self.logger:
+                self.logger.log_translation_prompt(i, f"[CUSTOM BASE PROMPT {i+1}]\n{prompt}")
+
             image_filename = f"base_{i+1:02d}.png"
             image_filepath = base_dir / image_filename
             json_filename = f"base_{i+1:02d}_prompt.json"

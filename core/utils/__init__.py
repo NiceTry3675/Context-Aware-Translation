@@ -8,7 +8,7 @@ This package provides centralized utilities for:
 """
 
 from .file_parser import parse_document
-from .document_io import DocumentOutputManager, DebugLogger
+from .document_io import DocumentOutputManager
 from .text_segmentation import (
     create_segments_for_text, 
     create_segments_for_epub, 
@@ -21,7 +21,6 @@ __all__ = [
     # File operations
     "parse_document",
     "DocumentOutputManager", 
-    "DebugLogger",
     # Text segmentation
     "create_segments_for_text",
     "create_segments_for_epub", 

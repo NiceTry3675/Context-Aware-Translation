@@ -23,7 +23,7 @@ from ..prompts.sanitizer import PromptSanitizer
 from ..config.builder import DynamicConfigBuilder
 from ..schemas.illustration import IllustrationConfig, IllustrationBatch
 from shared.errors import ProhibitedException, TranslationError
-from shared.errors import prohibited_content_logger
+from shared.errors import ProhibitedContentLogger
 from shared.utils.logging import TranslationLogger
 
 
@@ -146,6 +146,9 @@ class TranslationPipeline:
         # Initialize logging for this document
         self.logger = TranslationLogger(self.job_id, document.user_base_filename)
         self.logger.initialize_session()
+        
+        # Initialize job-specific prohibited content logger
+        self.prohibited_logger = ProhibitedContentLogger(job_id=self.job_id)
         
         if not document.segments:
             print("No segments to translate. Exiting.")
@@ -375,7 +378,7 @@ class TranslationPipeline:
         if self.logger:
             self.logger.log_error(e, segment_index, "prohibited_content_final")
         
-        log_path = prohibited_content_logger.log_prohibited_content(
+        log_path = self.prohibited_logger.log_prohibited_content(
             e, document.user_base_filename, segment_index
         )
         print(f"\nAll soft retry attempts failed. Log saved to: {log_path}")

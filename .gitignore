@@ -29,22 +29,18 @@ _archive/
 commit_message.txt
 
 # Translation output & logs
-
+# All job-related logs are now stored in /logs/jobs/{job-id}/
+/logs/jobs/
 
 # Vector DB files (if re-enabled)
 vector_db/
 
-# Ignore all files in data directories by default
-logs/context_log/*
-logs/debug_prompts/*
+# Source and translated files
 source_novel/*
 translated_novel/*
-logs/progress_logs/*
 illustrations/*
 
 # But exclude specific example files from being ignored
-!logs/context_log/context_Metamorphosis.txt
-!logs/debug_prompts/prompts_Metamorphosis.txt
 !source_novel/Metamorphosis.txt
 !translated_novel/Metamorphosis_translated.txt
 backend/TODO.md
@@ -68,17 +64,20 @@ community/images/
 # Database files
 database.db
 
-# Logs (most now in /logs/jobs/)
+# Legacy log directories (deprecated - now using /logs/jobs/)
 /logs/validation_logs/
 /logs/postedit_logs/
-logs/prohibited_content_logs/
+/logs/context_log/
+/logs/debug_prompts/
+/logs/progress_logs/
+/logs/prohibited_content_logs/
 frontend/.next/
 .env.*
 frontend/node_modules/
 /TODO.md
 /node_modules/
 /logs/validation_task_logs/
-/logs/jobs/
 
 # Temporary files
 /tmp/translation_temp/
+/aws/

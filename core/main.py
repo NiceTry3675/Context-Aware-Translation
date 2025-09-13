@@ -2,6 +2,8 @@
 import os
 import sys
 import argparse
+import json
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
@@ -38,6 +40,12 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
     try:
         # Load environment variables from .env file
         load_dotenv()
+        
+        # Generate a local job ID for CLI mode (timestamp-based)
+        job_id = int(datetime.now().strftime('%Y%m%d%H%M%S'))
+        if verbose:
+            print(f"Generated local job ID: {job_id}")
+            print(f"Logs will be saved to: logs/jobs/{job_id}/")
         
         # Validate source file
         if not os.path.exists(source_file):
@@ -118,8 +126,8 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
             protagonist_name
         )
         
-        # Create translation pipeline (no database for CLI mode)
-        pipeline = TranslationPipeline(gemini_model, dyn_config_builder, db=None, job_id=None)
+        # Create translation pipeline with local job ID
+        pipeline = TranslationPipeline(gemini_model, dyn_config_builder, db=None, job_id=job_id)
         
         # Run translation
         if verbose:
@@ -163,6 +171,42 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
                 quick_mode=quick_validation
             )
             
+            # Save validation report to job-centric location
+            validation_report_path = f"logs/jobs/{job_id}/validation/validation_report.json"
+            os.makedirs(os.path.dirname(validation_report_path), exist_ok=True)
+            
+            # Prepare validation report data
+            validation_report = {
+                "summary": validation_summary,
+                "detailed_results": [
+                    {
+                        "segment_index": result.segment_index,
+                        "source_text": result.source_text,
+                        "translated_text": result.translated_text,
+                        "status": result.status,
+                        "issues": [
+                            {
+                                "dimension": case.dimension,
+                                "severity": case.severity,
+                                "issue_ko": case.issue_ko,
+                                "issue_en": case.issue_en,
+                                "suggestion": case.suggestion
+                            } for case in (result.structured_cases or [])
+                        ] if result.structured_cases else []
+                    } for result in validation_results
+                ],
+                "job_id": job_id,
+                "filename": document.user_base_filename,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # Save the report
+            with open(validation_report_path, 'w', encoding='utf-8') as f:
+                json.dump(validation_report, f, indent=2, ensure_ascii=False)
+            
+            if verbose:
+                print(f"\nValidation report saved to: {validation_report_path}")
+            
             # Show additional details based on validation results
             if validation_summary['pass_rate'] < 70:
                 print("\n⚠️  WARNING: Translation validation found significant issues!")
@@ -177,7 +221,7 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
                     print(f"  👤 {validation_summary['total_name_inconsistencies']} name inconsistencies")
                 
                 print(f"\nPlease review the validation report for full details.")
-                print(f"Report location: logs/validation_logs/{document.user_base_filename}_validation_report.json")
+                print(f"Report location: logs/jobs/{job_id}/validation/validation_report.json")
             elif validation_summary['pass_rate'] >= 95:
                 print("\n✅ Excellent! Translation passed validation with high quality.")
             elif validation_summary['pass_rate'] >= 85:
@@ -189,13 +233,13 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
                 print("Running Post-Edit Process")
                 print("="*60)
                 
-                # Check if validation report exists
-                validation_report_path = f"logs/validation_logs/{document.user_base_filename}_validation_report.json"
+                # Use the job-centric validation report path
+                validation_report_path = f"logs/jobs/{job_id}/validation/validation_report.json"
                 if not os.path.exists(validation_report_path):
                     print("Error: Validation report not found. Post-edit requires validation to be run first.")
                     print("Please run with --with-validation flag.")
                 else:
-                    post_editor = PostEditEngine(gemini_model, verbose=verbose)
+                    post_editor = PostEditEngine(gemini_model, verbose=verbose, job_id=job_id)
                     edited_segments = post_editor.post_edit_document(document, validation_report_path)
                     
                     # Save the post-edited translation
@@ -207,6 +251,7 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
                         # Write post-edited translation
                         document.save_translation(post_edit_output)
                         print(f"\nPost-edited translation saved to: {post_edit_output}")
+                        print(f"Post-edit log saved to: logs/jobs/{job_id}/postedit/postedit_log.json")
                         
                         # Optionally run validation again on post-edited version
                         if verbose:
