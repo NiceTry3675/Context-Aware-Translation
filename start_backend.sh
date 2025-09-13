@@ -46,7 +46,7 @@ fi
 
 # Start Celery worker from project root with full module path
 echo -e "${YELLOW}Starting Celery worker...${NC}"
-celery -A backend.celery_app worker --loglevel=info --queues=translation,validation,post_edit,default --detach
+celery -A backend.celery_app worker --loglevel=info --queues=translation,validation,post_edit,default,illustrations --detach
 
 # Check if Celery started successfully
 sleep 2
@@ -56,7 +56,7 @@ else
     echo -e "${RED}Warning: Celery worker may not have started properly${NC}"
     echo -e "${YELLOW}Trying to start Celery in foreground for debugging...${NC}"
     # Try to show more detailed error
-    celery -A backend.celery_app worker --loglevel=debug --queues=translation,validation,post_edit,default &
+    celery -A backend.celery_app worker --loglevel=debug --queues=translation,validation,post_edit,default,illustrations &
     sleep 3
     if ! pgrep -f "celery.*backend.celery_app" > /dev/null; then
         echo -e "${RED}Failed to start Celery. Check if backend/.env has all required variables.${NC}"

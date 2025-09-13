@@ -70,21 +70,21 @@ def process_validation_task(
     file_handler.setFormatter(formatter)
     
     # Add handler to task_logger for this task
-    task_task_logger = logging.getLogger(f"{__name__}.job_{job_id}")
-    task_task_logger.addHandler(file_handler)
-    task_task_logger.setLevel(logging.DEBUG)
-    
+    task_logger = logging.getLogger(f"{__name__}.job_{job_id}")
+    task_logger.addHandler(file_handler)
+    task_logger.setLevel(logging.DEBUG)
+
     # Log to both console and file immediately
-    task_task_logger.info(f"[VALIDATION TASK START] ========================================")
-    task_task_logger.info(f"[VALIDATION TASK START] Task ID: {self.request.id if self.request else 'N/A'}")
-    task_task_logger.info(f"[VALIDATION TASK START] Job ID: {job_id}")
-    task_task_logger.info(f"[VALIDATION TASK START] Log file: {log_file}")
-    task_task_logger.info(f"[VALIDATION TASK START] ========================================")
-    
+    task_logger.info(f"[VALIDATION TASK START] ========================================")
+    task_logger.info(f"[VALIDATION TASK START] Task ID: {self.request.id if self.request else 'N/A'}")
+    task_logger.info(f"[VALIDATION TASK START] Job ID: {job_id}")
+    task_logger.info(f"[VALIDATION TASK START] Log file: {log_file}")
+    task_logger.info(f"[VALIDATION TASK START] ========================================")
+
     try:
-        task_task_logger.info(f"[VALIDATION TASK] Starting validation task for job_id={job_id}")
+        task_logger.info(f"[VALIDATION TASK] Starting validation task for job_id={job_id}")
         api_key_display = f"{api_key[:8]}..." if api_key else "None"
-        task_task_logger.info(f"[VALIDATION TASK] Parameters: api_key={api_key_display}, model={model_name}, mode={validation_mode}, sample_rate={sample_rate}")
+        task_logger.info(f"[VALIDATION TASK] Parameters: api_key={api_key_display}, model={model_name}, mode={validation_mode}, sample_rate={sample_rate}")
         
         # Check if API key is provided, use default from settings if not
         if not api_key:
