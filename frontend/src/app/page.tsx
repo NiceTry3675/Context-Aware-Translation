@@ -137,7 +137,6 @@ function CanvasContent() {
                 onLoadMoreSegments={state.loadMoreSegments}
                 
                 onSegmentClick={(index) => {
-                  state.setViewMode('segment');
                   state.segmentNav.goToSegment(index);
                 }}
                 selectedCases={state.selectedCases}

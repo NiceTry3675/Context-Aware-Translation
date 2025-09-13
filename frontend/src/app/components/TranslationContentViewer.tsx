@@ -6,7 +6,6 @@ import {
   Typography,
   Paper,
   Stack,
-  Divider,
   IconButton,
   Tooltip,
   Grid,
@@ -81,26 +80,7 @@ export default function TranslationContentViewer({ content, sourceText, segments
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       <Stack spacing={2} sx={{ height: '100%', minHeight: 0 }}>
-        {/* Header with file info */}
-        <Paper elevation={0} sx={{ p: 2, backgroundColor: 'background.default', flexShrink: 0 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
-            <Box>
-              <Typography variant="subtitle1" fontWeight="medium">
-                번역된 파일
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {content.filename}
-              </Typography>
-              {content.completed_at && (
-                <Typography variant="caption" color="text.secondary">
-                  완료 시간: {new Date(content.completed_at).toLocaleString('ko-KR')}
-                </Typography>
-              )}
-            </Box>
-          </Stack>
-        </Paper>
-
-        <Divider />
+        {/* Removed header box as requested */}
 
         {/* Content display - side by side if source is available */}
         {mergedSourceText ? (
