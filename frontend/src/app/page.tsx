@@ -77,6 +77,7 @@ function CanvasContent() {
             selectedJob={state.selectedJob}
             fullscreen={state.fullscreen}
             onToggleFullscreen={handleToggleFullscreen}
+            onRefresh={state.loadData}
           />
 
           <Container maxWidth={false} sx={{ flex: 1, display: 'flex', flexDirection: 'column', py: 2, gap: 2, overflow: 'auto' }}>

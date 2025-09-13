@@ -149,10 +149,16 @@ export default function ResultsView({
   const canRunPostEdit = selectedJob?.validation_status === 'COMPLETED' && selectedJob?.post_edit_status !== 'IN_PROGRESS';
   const canGenerateIllustrations = selectedJob?.status === 'COMPLETED' && selectedJob?.illustrations_status !== 'IN_PROGRESS';
 
+  const getTooltipTitle = (action: string, condition: boolean, inProgressStatus?: string, requiredStatus?: string) => {
+    if (inProgressStatus === 'IN_PROGRESS') return `${action} 진행 중`;
+    if (condition) return action;
+    return `${requiredStatus} 후 실행 가능`;
+  };
+
   return (
     <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <Box sx={{ px: 2, pt: 1 }}>
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
           <Button
             variant="outlined"
             startIcon={<AddCircleIcon />}
@@ -162,7 +168,7 @@ export default function ResultsView({
           >
             새 번역 시작
           </Button>
-          <Tooltip title={canRunValidation ? '검증 실행' : selectedJob?.validation_status === 'IN_PROGRESS' ? '검증 진행 중' : '번역 완료 후 실행 가능'}>
+          <Tooltip title={getTooltipTitle('검증 실행', canRunValidation, selectedJob?.validation_status, '번역 완료')}>
             <span>
               <Button
                 variant="contained"
@@ -170,14 +176,14 @@ export default function ResultsView({
                 size="small"
                 startIcon={<CheckCircleIcon />}
                 onClick={onOpenValidationDialog}
-                disabled={!canRunValidation || selectedJob?.validation_status === 'IN_PROGRESS'}
+                disabled={!canRunValidation}
                 sx={{ mb: 1 }}
               >
                 검증 실행
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title={canRunPostEdit ? '포스트에디팅 실행' : selectedJob?.post_edit_status === 'IN_PROGRESS' ? '포스트에디팅 진행 중' : '검증 완료 후 실행 가능'}>
+          <Tooltip title={getTooltipTitle('포스트에디팅 실행', canRunPostEdit, selectedJob?.post_edit_status, '검증 완료')}>
             <span>
               <Button
                 variant="contained"
@@ -185,14 +191,14 @@ export default function ResultsView({
                 size="small"
                 startIcon={<EditIcon />}
                 onClick={onOpenPostEditDialog}
-                disabled={!canRunPostEdit || selectedJob?.post_edit_status === 'IN_PROGRESS'}
+                disabled={!canRunPostEdit}
                 sx={{ mb: 1 }}
               >
                 포스트 에디팅 실행
               </Button>
             </span>
           </Tooltip>
-          <Tooltip title={canGenerateIllustrations ? '삽화 생성' : '번역 완료 후 실행 가능'}>
+          <Tooltip title={getTooltipTitle('삽화 생성', canGenerateIllustrations, selectedJob?.illustrations_status, '번역 완료')}>
             <span>
               <Button
                 variant="contained"
@@ -200,7 +206,7 @@ export default function ResultsView({
                 size="small"
                 startIcon={<BrushIcon />}
                 onClick={onOpenIllustrationDialog}
-                disabled={!canGenerateIllustrations || selectedJob?.illustrations_status === 'IN_PROGRESS'}
+                disabled={!canGenerateIllustrations}
                 sx={{ mb: 1 }}
               >
                 삽화 생성
@@ -237,7 +243,7 @@ export default function ResultsView({
           {isPolling && (
             <Alert severity="info" sx={{ mb: 2 }}>
               <AlertTitle>작업 진행 중</AlertTitle>
-              {selectedJob?.status === 'IN_PROGRESS' && `번역 작업이 진행 중입니다... (${selectedJob?.progress || 0}%)`}
+              {selectedJob?.status === 'PROCESSING' && `번역 작업이 진행 중입니다... (${selectedJob?.progress || 0}%)`}
               {selectedJob?.validation_status === 'IN_PROGRESS' && `검증 작업이 진행 중입니다... (${selectedJob?.validation_progress || 0}%)`}
               {selectedJob?.post_edit_status === 'IN_PROGRESS' && `포스트에디팅 작업이 진행 중입니다... (${selectedJob?.post_edit_progress || 0}%)`}
             </Alert>
@@ -306,23 +312,14 @@ export default function ResultsView({
                 segments={translationSegments}
                 postEditLog={postEditLog}
               />
-            ) : selectedJob?.status === 'COMPLETED' ? (
-              <Stack spacing={2}>
-                <Alert severity="warning">
-                  <AlertTitle>번역 결과를 찾을 수 없습니다</AlertTitle>
-                  번역이 완료되었지만 결과를 불러올 수 없습니다.
-                </Alert>
-                <Button 
-                  variant="contained" 
-                  onClick={onLoadData}
-                  startIcon={<RefreshIcon />}
-                >
-                  결과 다시 불러오기
-                </Button>
-              </Stack>
             ) : (
               <Alert severity="info">
-                번역이 완료되면 결과가 여기에 표시됩니다.
+                <AlertTitle>결과 준비 중</AlertTitle>
+                {selectedJob?.status === 'PROCESSING' || selectedJob?.status === 'PENDING'
+                  ? '번역 작업이 진행 중입니다. 완료되면 자동으로 표시됩니다.'
+                  : selectedJob?.post_edit_status === 'IN_PROGRESS'
+                    ? '포스트에디팅 진행 중입니다. 기존 번역 결과를 불러오는 중입니다.'
+                    : '번역 결과를 불러오는 중입니다. 잠시 후 자동으로 갱신됩니다.'}
               </Alert>
             )}
           </TabPanel>
@@ -338,23 +335,14 @@ export default function ResultsView({
                 modifiedCases={modifiedCases}
                 onCaseEditChange={onCaseEditChange}
               />
-            ) : selectedJob?.validation_status === 'COMPLETED' ? (
-              <Stack spacing={2}>
-                <Alert severity="warning">
-                  <AlertTitle>검증 보고서를 찾을 수 없습니다</AlertTitle>
-                  검증이 완료되었지만 보고서를 불러올 수 없습니다.
-                </Alert>
-                <Button 
-                  variant="contained" 
-                  onClick={onLoadData}
-                  startIcon={<RefreshIcon />}
-                >
-                  보고서 다시 불러오기
-                </Button>
-              </Stack>
             ) : (
               <Alert severity="info">
-                검증을 실행하면 결과가 여기에 표시됩니다.
+                <AlertTitle>보고서 준비 중</AlertTitle>
+                {selectedJob?.validation_status === 'IN_PROGRESS'
+                  ? '검증 작업이 진행 중입니다. 완료되면 자동으로 표시됩니다.'
+                  : selectedJob?.validation_status === 'COMPLETED'
+                    ? '검증 보고서를 불러오는 중입니다. 잠시 후 자동으로 표시됩니다.'
+                    : '검증을 실행하면 결과가 여기에 표시됩니다.'}
               </Alert>
             )}
           </TabPanel>

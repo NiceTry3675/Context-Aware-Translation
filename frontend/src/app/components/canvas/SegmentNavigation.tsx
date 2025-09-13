@@ -136,6 +136,7 @@ export default function SegmentNavigation({
                   onClick={goToFirst}
                   disabled={currentSegmentIndex === 0 || loading}
                   size="small"
+                  aria-label="첫 세그먼트로 이동"
                 >
                   <FirstIcon />
                 </IconButton>
@@ -147,6 +148,7 @@ export default function SegmentNavigation({
                 <IconButton 
                   onClick={goToPrevious}
                   disabled={currentSegmentIndex === 0 || loading}
+                  aria-label="이전 세그먼트로 이동"
                 >
                   <PrevIcon />
                 </IconButton>
@@ -175,6 +177,7 @@ export default function SegmentNavigation({
                 <IconButton 
                   onClick={goToNext}
                   disabled={currentSegmentIndex >= totalSegments - 1 || loading}
+                  aria-label="다음 세그먼트로 이동"
                 >
                   <NextIcon />
                 </IconButton>
@@ -187,6 +190,7 @@ export default function SegmentNavigation({
                   onClick={goToLast}
                   disabled={currentSegmentIndex >= totalSegments - 1 || loading}
                   size="small"
+                  aria-label="마지막 세그먼트로 이동"
                 >
                   <LastIcon />
                 </IconButton>
@@ -204,16 +208,17 @@ export default function SegmentNavigation({
                 onChange={(e) => setJumpToValue(e.target.value)}
                 disabled={loading}
                 sx={{ width: 120 }}
+                type="number"
                 inputProps={{
                   min: 1,
                   max: totalSegments,
-                  type: 'number',
                 }}
               />
               <IconButton 
                 type="submit"
                 size="small"
                 disabled={!jumpToValue || loading}
+                aria-label="세그먼트로 이동"
               >
                 <NextIcon />
               </IconButton>

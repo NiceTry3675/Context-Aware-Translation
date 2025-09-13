@@ -22,17 +22,19 @@ interface CanvasHeaderProps {
   selectedJob: Job | null;
   fullscreen: boolean;
   onToggleFullscreen: () => void;
+  onRefresh: () => void;
 }
 
-export default function CanvasHeader({ 
-  selectedJob, 
-  fullscreen, 
-  onToggleFullscreen 
+export default function CanvasHeader({
+  selectedJob,
+  fullscreen,
+  onToggleFullscreen,
+  onRefresh,
 }: CanvasHeaderProps) {
   const router = useRouter();
-  
+
   return (
-    <Paper elevation={1} sx={{ borderRadius: 0 }}>
+    <Paper elevation={1} sx={{ borderRadius: 0, borderBottom: 1, borderColor: 'divider' }}>
       <Container maxWidth={false}>
         <Box sx={{ py: 2 }}>
           <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -41,27 +43,32 @@ export default function CanvasHeader({
                 번역 캔버스
               </Typography>
               {selectedJob && (
-                <Chip
-                  label={selectedJob.filename}
-                  size="small"
-                  sx={{ maxWidth: 300 }}
-                />
+                <Tooltip title={selectedJob.filename}>
+                  <Chip
+                    label={selectedJob.filename}
+                    size="small"
+                    sx={{
+                      maxWidth: 300,
+                      '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' }
+                    }}
+                  />
+                </Tooltip>
               )}
             </Stack>
 
             <Stack direction="row" spacing={1} alignItems="center">
               <Tooltip title="새로고침">
-                <IconButton onClick={() => window.location.reload()}>
+                <IconButton aria-label="새로고침" onClick={onRefresh}>
                   <RefreshIcon />
                 </IconButton>
               </Tooltip>
-              <Tooltip title="About">
-                <IconButton onClick={() => router.push('/about')}>
+              <Tooltip title="정보">
+                <IconButton aria-label="소개 페이지" onClick={() => router.push('/about')}>
                   <InfoOutlinedIcon />
                 </IconButton>
               </Tooltip>
               <Tooltip title={fullscreen ? "전체화면 종료" : "전체화면"}>
-                <IconButton onClick={onToggleFullscreen}>
+                <IconButton aria-label={fullscreen ? '전체화면 종료' : '전체화면'} onClick={onToggleFullscreen}>
                   {fullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
                 </IconButton>
               </Tooltip>

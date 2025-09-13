@@ -43,47 +43,31 @@ export function useTranslationData({
   const { getToken } = useAuth();
 
   const loadData = useCallback(async () => {
-    // Don't load data if jobId is missing or jobStatus is not properly set
-    if (!jobId || !jobStatus) {
-      console.log('[useTranslationData] Skipping loadData - missing jobId or jobStatus', { jobId, jobStatus });
+    // Skip only when jobId is missing
+    if (!jobId) {
+      console.log('[useTranslationData] Skipping loadData - missing jobId');
       return;
     }
-    
+
     setLoading(true);
     setError(null);
-    
-    // Clear previous data when loading new job data to prevent stale data
-    setValidationReport(null);
-    setPostEditLog(null);
-    setTranslationContent(null);
-    setTranslationSegments(null);
-    setIllustrationStatus(null);
-    
+
     try {
       const token = await getCachedClerkToken(getToken);
       
-      // Load translation content and segments if job is completed
-      if (jobStatus === 'COMPLETED') {
-        console.log('[useTranslationData] Loading content and segments for completed job:', jobId);
-        const [content, segments] = await Promise.all([
-          fetchTranslationContent(jobId, token || undefined),
-          fetchTranslationSegments(jobId, token || undefined, 0, 200) // Load up to 200 segments for segment view navigation
-        ]);
-        setTranslationContent(content);
-        setTranslationSegments(segments);
-      } else {
-        console.log('[useTranslationData] Job not completed, skipping content/segments load:', { jobId, jobStatus });
-      }
+      // Load translation content and segments whenever available.
+      // Even if post-edit is in progress and job status changes, content should remain accessible.
+      console.log('[useTranslationData] Loading content and segments for job:', { jobId, jobStatus });
+      const [content, segments] = await Promise.all([
+        fetchTranslationContent(jobId, token || undefined),
+        fetchTranslationSegments(jobId, token || undefined, 0, 200)
+      ]);
+      if (content) setTranslationContent(content);
+      if (segments) setTranslationSegments(segments);
       
-      // Load validation report if available AND job is completed
-      console.log('[useTranslationData] Checking validation load conditions:', { 
-        jobId, 
-        jobStatus, 
-        validationStatus,
-        shouldLoad: jobStatus === 'COMPLETED' && validationStatus === 'COMPLETED'
-      });
-      
-      if (jobStatus === 'COMPLETED' && validationStatus === 'COMPLETED') {
+      // Load validation report if validation is completed (independent of jobStatus)
+      console.log('[useTranslationData] Checking validation load conditions:', { jobId, jobStatus, validationStatus });
+      if (validationStatus === 'COMPLETED') {
         console.log('Loading validation report for job:', jobId);
         const report = await fetchValidationReport(jobId, token || undefined);
         console.log('Validation report loaded:', report);
@@ -94,16 +78,12 @@ export function useTranslationData({
         } else {
           console.log('[useTranslationData] Validation report was null for job:', jobId);
         }
-      } else if (validationStatus === 'COMPLETED') {
-        console.log('[useTranslationData] Skipping validation load - job not completed:', { jobId, jobStatus });
       }
       
-      // Load post-edit log if available AND job is completed
-      if (jobStatus === 'COMPLETED' && postEditStatus === 'COMPLETED') {
+      // Load post-edit log if available
+      if (postEditStatus === 'COMPLETED') {
         const log = await fetchPostEditLog(jobId, token || undefined);
         setPostEditLog(log);
-      } else if (postEditStatus === 'COMPLETED') {
-        console.log('[useTranslationData] Skipping post-edit load - job not completed:', { jobId, jobStatus });
       }
       
       // Load illustration status if illustrations are enabled or in progress
@@ -150,6 +130,13 @@ export function useTranslationData({
       loadData();
     }
   }, [validationStatus, validationReport, loadData]);
+
+  // Reload data when post-edit completes
+  useEffect(() => {
+    if (postEditStatus === 'COMPLETED' && !postEditLog) {
+      loadData();
+    }
+  }, [postEditStatus, postEditLog, loadData]);
 
   // Helper function to get segment data
   const getSegmentData = useCallback((segmentIndex: number) => {

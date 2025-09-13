@@ -20,6 +20,11 @@ import {
   LinearProgress,
   Stack,
   Tooltip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from '@mui/material';
 import {
   Article as ArticleIcon,
@@ -108,6 +113,25 @@ export default function JobSidebar({
 }: JobSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const { getToken } = useAuth();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
+
+  const handleOpenDeleteDialog = (job: Job) => {
+    setJobToDelete(job);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setJobToDelete(null);
+    setDeleteDialogOpen(false);
+  };
+
+  const handleConfirmDelete = () => {
+    if (jobToDelete) {
+      onJobDelete(jobToDelete.id);
+    }
+    handleCloseDeleteDialog();
+  };
 
   const filteredJobs = jobs.filter(job =>
     job.filename.toLowerCase().includes(searchQuery.toLowerCase())
@@ -295,9 +319,7 @@ export default function JobSidebar({
                           size="small"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (confirm(`정말로 "${job.filename}"을(를) 삭제하시겠습니까?`)) {
-                              onJobDelete(job.id);
-                            }
+                            handleOpenDeleteDialog(job);
                           }}
                         >
                           <DeleteIcon fontSize="small" />
@@ -414,6 +436,27 @@ export default function JobSidebar({
           </List>
         )}
       </Box>
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleCloseDeleteDialog}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          {"작업 삭제"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            {jobToDelete && `정말로 "${jobToDelete.filename}"을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog}>취소</Button>
+          <Button onClick={handleConfirmDelete} autoFocus color="error">
+            삭제
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

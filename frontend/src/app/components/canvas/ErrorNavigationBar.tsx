@@ -177,7 +177,13 @@ export default function ErrorNavigationBar({
     const segmentWidth = mapWidth / totalSegments;
     
     return (
-      <Box sx={{ position: 'relative', width: mapWidth, height: 20, bgcolor: 'grey.200', borderRadius: 1 }}>
+      <Box sx={{ 
+        position: 'relative', 
+        width: mapWidth, 
+        height: 20, 
+        bgcolor: (theme) => theme.palette.mode === 'dark' ? 'grey.800' : 'grey.200', 
+        borderRadius: 1 
+      }}>
         {validationReport.detailed_results.map((result, idx: number) => {
           const cases = (result as any).structured_cases || [];
           if (!Array.isArray(cases) || cases.length === 0) return null;

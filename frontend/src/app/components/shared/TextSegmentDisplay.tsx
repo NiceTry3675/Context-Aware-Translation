@@ -30,7 +30,7 @@ export function TextSegmentDisplay({
       <Grid container spacing={2}>
         {/* Source Text - only show if not hidden */}
         {!hideSource && (
-          <Grid size={14}>
+          <Grid item xs={12}>
             <Typography variant="subtitle2" gutterBottom color="text.secondary">
               원문
             </Typography>
@@ -47,7 +47,7 @@ export function TextSegmentDisplay({
         
         {/* Diff View or Side-by-Side Comparison */}
         {showDiff ? (
-          <Grid size={14}>
+          <Grid item xs={12}>
             <Typography variant="subtitle2" gutterBottom color="text.secondary">
               변경 사항
             </Typography>
@@ -62,7 +62,7 @@ export function TextSegmentDisplay({
         ) : (
           <>
             {/* Original Translation */}
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid item xs={12} md={6}>
               <Typography variant="subtitle2" gutterBottom color="text.secondary">
                 수정 전 번역
               </Typography>
@@ -88,7 +88,7 @@ export function TextSegmentDisplay({
             </Grid>
             
             {/* Edited Translation */}
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid item xs={12} md={6}>
               <Typography variant="subtitle2" gutterBottom color="text.secondary">
                 수정 후 번역
               </Typography>
