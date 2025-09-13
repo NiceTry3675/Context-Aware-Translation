@@ -10,7 +10,7 @@ echo -e "${GREEN}Starting Celery Workers for Translation Processing...${NC}"
 
 # Activate virtual environment
 echo -e "${YELLOW}Activating virtual environment...${NC}"
-source venv/bin/activate
+source .venv/bin/activate
 
 # Check if Redis is running
 redis-cli ping > /dev/null 2>&1

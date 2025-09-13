@@ -283,7 +283,7 @@ python init_categories.py
 
 1.  **백엔드 서버 실행** (권장 방법):
     ```bash
-    ./start_backend.sh
+    ./scripts/start_backend.sh
     ```
     
     이 스크립트는 자동으로:
