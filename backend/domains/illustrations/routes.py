@@ -28,6 +28,8 @@ from core.schemas.illustration import (
     CharacterProfile
 )
 from ..analysis import StyleAnalysis, CharacterAnalysis
+from ..shared.model_factory import ModelAPIFactory
+from core.config.loader import load_config
 from .service import IllustrationsService
 
 router = APIRouter(prefix="/illustrations", tags=["illustrations"])
@@ -229,11 +231,16 @@ async def analyze_character_appearance(
         raise HTTPException(status_code=404, detail="Translation job not found")
 
     try:
+        # Create model API and configure analysis service
+        config = load_config()
+        model_api = ModelAPIFactory.create(api_key, model_name, config)
+
         svc = CharacterAnalysis()
+        svc.set_model_api(model_api)
+
+        # Run appearance analysis on the source file
         result = svc.analyze_appearance(
             filepath=job.filepath,
-            api_key=api_key,
-            model_name=model_name,
             protagonist_name=protagonist_name
         )
         return {
