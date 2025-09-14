@@ -124,7 +124,7 @@ def generate_illustrations_task(
         # Determine if we have a base selection and profile
         selected_base_index = job.character_base_selected_index
         character_profile = job.character_profile
-        
+
         # Add a debug flag to disable profile lock for testing
         DISABLE_PROFILE_LOCK = os.environ.get('DISABLE_ILLUSTRATION_PROFILE_LOCK', '').lower() == 'true'
         if DISABLE_PROFILE_LOCK:
@@ -132,7 +132,7 @@ def generate_illustrations_task(
             use_profile_lock = False
         else:
             use_profile_lock = (selected_base_index is not None) and bool(character_profile)
-        
+
         print(f"[ILLUSTRATIONS TASK] Profile lock enabled: {use_profile_lock}")
         
         for idx, segment in enumerate(segments_to_illustrate):
@@ -149,9 +149,33 @@ def generate_illustrations_task(
                 }
             )
             
-            # Build custom prompt if profile locking is enabled
+            # Prepare prompt and reference image
             custom_prompt = None
             ref_tuple = None
+
+            # Attempt to load selected base image as reference regardless of profile lock
+            # (reference usage will still be gated by config below)
+            try:
+                bases = job.character_base_images or []
+                if selected_base_index is not None:
+                    print(f"[ILLUSTRATIONS TASK] Number of base images available: {len(bases)}")
+                    if 0 <= selected_base_index < len(bases):
+                        base_path = bases[selected_base_index].get('illustration_path')
+                        print(f"[ILLUSTRATIONS TASK] Base path from DB: {base_path}")
+                        if base_path and not os.path.isabs(base_path) and job.character_base_directory:
+                            base_path = str(Path(job.character_base_directory) / Path(base_path).name)
+                            print(f"[ILLUSTRATIONS TASK] Resolved base path: {base_path}")
+                        if base_path and base_path.endswith('.png') and os.path.exists(base_path):
+                            with open(base_path, 'rb') as bf:
+                                ref_bytes = bf.read()
+                            ref_tuple = (ref_bytes, 'image/png')
+                            print(f"[ILLUSTRATIONS TASK] Reference image loaded, size: {len(ref_bytes)} bytes")
+                        else:
+                            print(f"[ILLUSTRATIONS TASK] No PNG base found for reference at: {base_path}")
+            except Exception as e:
+                print(f"[ILLUSTRATIONS TASK] Error loading base reference image: {e}")
+                traceback.print_exc()
+
             if use_profile_lock:
                 print(f"[ILLUSTRATIONS TASK] Using profile lock for segment {segment['index']}")
                 print(f"[ILLUSTRATIONS TASK] Selected base index: {selected_base_index}")
@@ -173,38 +197,6 @@ def generate_illustrations_task(
                 except Exception as e:
                     print(f"[ILLUSTRATIONS TASK] Error creating custom prompt: {e}")
                     custom_prompt = None
-                
-                # Attach selected base image as reference if available
-                try:
-                    bases = job.character_base_images or []
-                    print(f"[ILLUSTRATIONS TASK] Number of base images available: {len(bases)}")
-                    
-                    if 0 <= selected_base_index < len(bases):
-                        base_path = bases[selected_base_index].get('illustration_path')
-                        print(f"[ILLUSTRATIONS TASK] Base path from DB: {base_path}")
-                        
-                        # Resolve relative paths via directory
-                        if base_path and not os.path.isabs(base_path) and job.character_base_directory:
-                            base_path = str(Path(job.character_base_directory) / Path(base_path).name)
-                            print(f"[ILLUSTRATIONS TASK] Resolved base path: {base_path}")
-                        
-                        if base_path and base_path.endswith('.png'):
-                            if os.path.exists(base_path):
-                                print(f"[ILLUSTRATIONS TASK] Loading reference image from: {base_path}")
-                                with open(base_path, 'rb') as bf:
-                                    ref_bytes = bf.read()
-                                ref_tuple = (ref_bytes, 'image/png')
-                                print(f"[ILLUSTRATIONS TASK] Reference image loaded, size: {len(ref_bytes)} bytes")
-                            else:
-                                print(f"[ILLUSTRATIONS TASK] Warning: base image file not found: {base_path}")
-                        else:
-                            print(f"[ILLUSTRATIONS TASK] Warning: base path is not a PNG file: {base_path}")
-                    else:
-                        print(f"[ILLUSTRATIONS TASK] Selected base index {selected_base_index} out of range")
-                except Exception as e:
-                    print(f"[ILLUSTRATIONS TASK] Error loading base reference image: {e}")
-                    import traceback
-                    traceback.print_exc()
             else:
                 print(f"[ILLUSTRATIONS TASK] Not using profile lock for segment {segment['index']}")
             
@@ -214,14 +206,28 @@ def generate_illustrations_task(
             print(f"[ILLUSTRATIONS TASK] Has custom prompt: {custom_prompt is not None}")
             print(f"[ILLUSTRATIONS TASK] Has reference image: {ref_tuple is not None}")
             
+            # Decide whether to use the selected base image as a reference
+            use_reference = False
+            if ref_tuple is not None and getattr(config, 'allow_reference_images', True):
+                if getattr(config, 'reference_image_source', 'base_selection') == 'base_selection':
+                    use_reference = True
+
+            # If we plan to use reference, add a short instruction to the prompt
+            effective_prompt = custom_prompt
+            if use_reference and effective_prompt:
+                effective_prompt = (
+                    effective_prompt
+                    + ". Use the attached reference image to preserve identity; do not copy any reference background."
+                )
+
             try:
                 illustration_path, prompt = generator.generate_illustration(
                     segment_text=segment['text'],
                     segment_index=segment['index'],
                     style_hints=config.style_hints,
                     glossary=job.final_glossary,
-                    custom_prompt=custom_prompt,
-                    reference_image=None  # Don't use reference image for scene generation to avoid hanging
+                    custom_prompt=effective_prompt,
+                    reference_image=(ref_tuple if use_reference else None)
                 )
                 
                 print(f"[ILLUSTRATIONS TASK] Completed generation for segment {segment['index']}")
@@ -243,7 +249,7 @@ def generate_illustrations_task(
                 'prompt': prompt,
                 'success': illustration_path is not None,
                 'type': file_type,
-                'reference_used': False  # We don't use reference for scene generation
+                'reference_used': bool(use_reference)
             }
             if use_profile_lock:
                 result['used_base_index'] = selected_base_index
@@ -384,6 +390,7 @@ def regenerate_single_illustration(
         
         # If base selection exists, build a custom prompt using profile lock
         custom_prompt = None
+        ref_tuple = None
         if job.character_base_selected_index is not None and job.character_profile:
             custom_prompt = generator.create_scene_prompt_with_profile(
                 segment_text=segment.get('source_text', ''),
@@ -391,18 +398,44 @@ def regenerate_single_illustration(
                 profile=job.character_profile,
                 style_hints=style_hints or (job.illustrations_config.get('style_hints', '') if job.illustrations_config else '')
             )
-        
-        # Don't use reference image for scene generation to avoid hanging
-        # ref_tuple = None (removed reference image loading logic)
-        
-        # Generate new illustration prompt without reference image
+
+            # Optionally attach the selected base as a reference image
+            try:
+                bases = job.character_base_images or []
+                idx = job.character_base_selected_index
+                if 0 <= idx < len(bases):
+                    base_path = bases[idx].get('illustration_path')
+                    if base_path and not os.path.isabs(base_path) and job.character_base_directory:
+                        base_path = str(Path(job.character_base_directory) / Path(base_path).name)
+                    if base_path and base_path.endswith('.png') and os.path.exists(base_path):
+                        with open(base_path, 'rb') as bf:
+                            ref_bytes = bf.read()
+                        ref_tuple = (ref_bytes, 'image/png')
+            except Exception:
+                ref_tuple = None
+
+        # Decide reference usage based on config
+        allow_ref = False
+        cfg = job.illustrations_config or {}
+        if cfg.get('allow_reference_images', True) and cfg.get('reference_image_source', 'base_selection') == 'base_selection':
+            if ref_tuple is not None:
+                allow_ref = True
+
+        # If using reference, clarify how to use it without copying background
+        if allow_ref and custom_prompt:
+            custom_prompt = (
+                custom_prompt +
+                ". Use the attached reference image to preserve identity; do not copy any reference background."
+            )
+
+        # Generate new illustration prompt (with reference if allowed)
         prompt_path, prompt = generator.generate_illustration(
             segment_text=segment.get('source_text', ''),
             segment_index=segment_index,
             style_hints=style_hints or (job.illustrations_config.get('style_hints', '') if job.illustrations_config else ''),
             glossary=job.final_glossary,
             custom_prompt=custom_prompt,
-            reference_image=None  # Don't use reference image to avoid hanging
+            reference_image=(ref_tuple if allow_ref else None)
         )
         
         # Update job metadata
@@ -417,7 +450,7 @@ def regenerate_single_illustration(
                     ill['prompt'] = prompt
                     ill['success'] = True
                     ill['type'] = 'image' if prompt_path.endswith('.png') else 'prompt'
-                    ill['reference_used'] = False  # We don't use reference for scene generation
+                    ill['reference_used'] = bool(allow_ref)
                     found = True
                     break
             
@@ -428,7 +461,7 @@ def regenerate_single_illustration(
                     'prompt': prompt,
                     'success': True,
                     'type': 'image' if prompt_path.endswith('.png') else 'prompt',
-                    'reference_used': False  # We don't use reference for scene generation
+                    'reference_used': bool(allow_ref)
                 })
             
             job.illustrations_data = illustrations_data

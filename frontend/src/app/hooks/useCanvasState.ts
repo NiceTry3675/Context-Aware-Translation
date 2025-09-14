@@ -269,23 +269,22 @@ export function useCanvasState() {
     }
   };
 
-  // Lightweight auto-refresh using public endpoints only (no Clerk token)
+  // Lightweight auto-refresh for the currently selected job (no Clerk token)
   useEffect(() => {
-    if (
+    const anyInProgress = (
       selectedJob?.status === 'IN_PROGRESS' ||
       selectedJob?.validation_status === 'IN_PROGRESS' || 
       selectedJob?.post_edit_status === 'IN_PROGRESS' ||
       selectedJob?.illustrations_status === 'IN_PROGRESS'
-    ) {
-      const interval = setInterval(() => {
-        // Jobs list update is handled in useTranslationJobs poller (public GET /jobs/{id}).
-        // Avoid calling refreshJobs() here to prevent frequent Clerk token usage.
-        // Sidebar data loads call protected endpoints; avoid tokened calls here as well.
-        // loadData is intentionally not called automatically.
-      }, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [selectedJob?.status, selectedJob?.validation_status, selectedJob?.post_edit_status, selectedJob?.illustrations_status, refreshJobs]);
+    );
+    if (!jobId || !anyInProgress) return;
+
+    const interval = setInterval(() => {
+      // Trigger a public refresh of the selected job only; no token required
+      refreshJobPublic(jobId);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [jobId, selectedJob?.status, selectedJob?.validation_status, selectedJob?.post_edit_status, selectedJob?.illustrations_status, refreshJobPublic]);
 
   // Handle job selection change
   const handleJobChange = (newJobId: string) => {

@@ -71,6 +71,7 @@ database.db
 /logs/debug_prompts/
 /logs/progress_logs/
 /logs/prohibited_content_logs/
+/logs/errors/
 frontend/.next/
 .env.*
 frontend/node_modules/

@@ -71,7 +71,8 @@ export function useTranslationJobs({ apiUrl }: UseTranslationJobsOptions) {
     const processingJobs = jobs.filter(job =>
       ['PROCESSING', 'PENDING'].includes(job.status) ||
       job.validation_status === 'IN_PROGRESS' ||
-      job.post_edit_status === 'IN_PROGRESS'
+      job.post_edit_status === 'IN_PROGRESS' ||
+      job.illustrations_status === 'IN_PROGRESS'
     );
     if (processingJobs.length === 0) return;
 

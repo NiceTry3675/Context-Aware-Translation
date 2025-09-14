@@ -200,6 +200,27 @@ class IllustrationGenerator:
         
         # Combine the base description
         prompt = " ".join(base_description)
+
+        # Add lightweight cinematic details (time, weather, lighting, camera, key objects)
+        merged_text = (context + "\n" + segment_text) if context else segment_text
+        cine = self._extract_cinematic_details(merged_text)
+        details = []
+        if cine.get('time_of_day'):
+            details.append(f"time of day: {cine['time_of_day']}")
+        if cine.get('weather'):
+            details.append(f"weather: {cine['weather']}")
+        if cine.get('lighting'):
+            details.append(f"lighting: {cine['lighting']}")
+        # camera
+        if cine.get('camera_distance') or cine.get('camera_angle'):
+            cd = cine.get('camera_distance') or 'medium or wide'
+            ca = cine.get('camera_angle') or 'eye-level'
+            details.append(f"compose as a {cd} shot at {ca} angle; include foreground, midground, and background for depth")
+        # key objects (limit)
+        if cine.get('key_objects'):
+            details.append(f"include key objects: {', '.join(cine['key_objects'])}")
+        if details:
+            prompt = f"{prompt}. " + ". ".join(details)
         
         # Add style hints at the beginning if provided
         if style_hints:
@@ -298,7 +319,12 @@ class IllustrationGenerator:
                                          context: Optional[str],
                                          profile: Dict[str, Any],
                                          style_hints: str = "") -> str:
-        """Compose a scene prompt that locks the character’s appearance while varying scene/action."""
+        """Compose a richer scene prompt with profile lock and cinematic details.
+
+        - Locks visual identity from `profile`.
+        - Extracts setting/action/mood plus cinematic cues (time, weather, lighting, camera).
+        - Uses optional previous context to improve extraction.
+        """
         # Consistency lock
         lock_items = []
         for key in ['hair_color', 'hair_style', 'eye_color', 'eye_shape', 'skin_tone', 'body_type', 'clothing', 'accessories']:
@@ -312,29 +338,119 @@ class IllustrationGenerator:
             "Maintain the same character appearance as previously defined"
         )
 
+        # Merge current segment with brief previous context for better signal
+        merged_text = segment_text
+        if context:
+            merged_text = (context + "\n" + segment_text)
+
         # Extract visual elements to emphasize scene context
-        elements = self._extract_visual_elements(segment_text, glossary=None)
+        elements = self._extract_visual_elements(merged_text, glossary=None)
         setting_txt = elements.get('setting') or 'an appropriate environment'
         action_txt = elements.get('action') or 'a context-appropriate action'
         mood_txt = elements.get('mood') or None
+
+        # Add cinematic details
+        cine = self._extract_cinematic_details(merged_text)
 
         # Strong scene directive (avoid portraits when scene demanded)
         scene_directives = [
             f"Place the character in {setting_txt}",
             f"showing {action_txt}",
-            "compose as a medium or wide shot (not a simple portrait)",
+            # Camera details
+            (
+                f"compose as a {cine['camera_distance']} shot at {cine['camera_angle']} angle"
+                if cine.get('camera_distance') and cine.get('camera_angle')
+                else "compose as a medium or wide shot (not a simple portrait)"
+            ),
+            "include foreground, midground, and background for depth",
             "include background elements matching the environment, with depth and lighting",
         ]
         if mood_txt:
             scene_directives.append(f"overall atmosphere: {mood_txt}")
+        # Time/weather/lighting and key objects
+        if cine.get('time_of_day'):
+            scene_directives.append(f"time of day: {cine['time_of_day']}")
+        if cine.get('weather'):
+            scene_directives.append(f"weather: {cine['weather']}")
+        if cine.get('lighting'):
+            scene_directives.append(f"lighting: {cine['lighting']}")
+        if cine.get('key_objects'):
+            scene_directives.append(f"include key objects: {', '.join(cine['key_objects'])}")
 
         base_scene = ". ".join(scene_directives)
 
         # Strengthen constraints
         # Style hints come first to bias rendering
         prefix = (style_hints + ". ") if style_hints else ""
-        scene_prompt = f"{prefix}{lock_clause}. {base_scene}. No text or watermark in the image."
+        scene_prompt = f"{prefix}{lock_clause}. {base_scene}. No text or watermark in the image. Cinematic composition, high quality."
+        # Prefer a general art direction but avoid over-constraining exact style engines
+        scene_prompt += " Digital illustration, detailed background, consistent lighting"
         return scene_prompt
+
+    def _extract_cinematic_details(self, text: str) -> Dict[str, Any]:
+        """Lightweight heuristics to enrich prompts with cinematic details.
+
+        Returns keys: time_of_day, weather, lighting, camera_distance, camera_angle, key_objects(list)
+        """
+        t = (text or "").lower()
+        out: Dict[str, Any] = {}
+
+        # Time of day
+        if any(k in t for k in ["dawn", "sunrise", "first light"]):
+            out['time_of_day'] = 'dawn'
+        elif any(k in t for k in ["morning", "forenoon"]):
+            out['time_of_day'] = 'morning'
+        elif any(k in t for k in ["noon", "midday"]):
+            out['time_of_day'] = 'noon'
+        elif any(k in t for k in ["afternoon", "sunset", "twilight", "dusk"]):
+            out['time_of_day'] = 'late afternoon / dusk'
+        elif any(k in t for k in ["night", "midnight", "moon", "stars", "lamplight", "candlelight"]):
+            out['time_of_day'] = 'night'
+
+        # Weather
+        if any(k in t for k in ["rain", "drizzle", "shower"]):
+            out['weather'] = 'rainy'
+        elif any(k in t for k in ["storm", "thunder", "lightning"]):
+            out['weather'] = 'stormy'
+        elif any(k in t for k in ["fog", "mist", "haze"]):
+            out['weather'] = 'foggy'
+        elif any(k in t for k in ["snow", "blizzard"]):
+            out['weather'] = 'snowy'
+        elif 'wind' in t:
+            out['weather'] = 'windy'
+
+        # Lighting (prioritized from explicit cues)
+        if 'candle' in t or 'candlelight' in t or 'lantern' in t or 'lamplight' in t:
+            out['lighting'] = 'warm candle/lamplight with soft falloff'
+        elif 'moon' in t or 'moonlight' in t or 'night' in t:
+            out['lighting'] = 'cool moonlight with gentle shadows'
+        elif 'window' in t or 'sun' in t or 'daylight' in t or 'sunlight' in t:
+            out['lighting'] = 'soft daylight streaming through windows'
+        elif out.get('weather') == 'rainy' or 'overcast' in t:
+            out['lighting'] = 'overcast diffuse lighting'
+
+        # Camera cues
+        out.setdefault('camera_distance', 'medium or wide')
+        out.setdefault('camera_angle', 'eye-level')
+        if any(k in t for k in ["tower", "castle gate", "statue towering", "cathedral"]):
+            out['camera_angle'] = 'low-angle'
+        if any(k in t for k in ["balcony", "cliff", "overlook", "overhead", "mezzanine"]):
+            out['camera_angle'] = 'high-angle'
+
+        # Key objects (very small curated list)
+        objects_map = [
+            ("sword", "sword"), ("blade", "blade"), ("shield", "shield"), ("book", "book"),
+            ("letter", "letter"), ("window", "window"), ("desk", "desk"), ("table", "table"),
+            ("candle", "candle"), ("lantern", "lantern"), ("armor", "armor"), ("cup", "cup"),
+            ("bottle", "bottle"), ("painting", "painting"), ("fireplace", "fireplace"),
+        ]
+        found = []
+        for kw, label in objects_map:
+            if kw in t:
+                found.append(label)
+        # Keep it short to avoid over-specification
+        out['key_objects'] = found[:4]
+        return out
 
     def _create_prompt_from_atmosphere(self, world_atmosphere, segment_text: str, glossary: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         """

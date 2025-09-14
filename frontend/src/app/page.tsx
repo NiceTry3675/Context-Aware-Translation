@@ -77,7 +77,13 @@ function CanvasContent() {
             selectedJob={state.selectedJob}
             fullscreen={state.fullscreen}
             onToggleFullscreen={handleToggleFullscreen}
-            onRefresh={state.loadData}
+            onRefresh={() => {
+              // Refresh the selected job metadata (public GET) and reload sidebar data
+              if (state.jobId) {
+                state.refreshJobPublic(state.jobId);
+              }
+              state.loadData();
+            }}
           />
 
           <Container maxWidth={false} sx={{ flex: 1, display: 'flex', flexDirection: 'column', py: 2, gap: 2, overflow: 'auto' }}>
