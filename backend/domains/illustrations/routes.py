@@ -19,6 +19,12 @@ from ...config.database import SessionLocal
 from ..translation.models import TranslationJob
 from ..user.models import User
 from ...celery_tasks.illustrations import generate_illustrations_task, regenerate_single_illustration
+from ...domains.tasks.models import TaskKind
+from ...domains.tasks.repository import TaskRepository
+from ...celery_app import celery_app
+from celery.result import AsyncResult
+from ...celery_tasks.base import create_task_execution
+import uuid
 from core.translation.illustration_generator import IllustrationGenerator
 from core.schemas.illustration import (
     IllustrationConfig, 
@@ -76,6 +82,17 @@ async def generate_illustrations(
             detail="Translation must be completed before generating illustrations"
         )
     
+    # If illustrations already in progress, check for an active task and avoid duplicates
+    if job.illustrations_status == "IN_PROGRESS":
+        task_repo = TaskRepository(db)
+        tasks = task_repo.get_job_tasks(job_id)
+        recent_task = next((t for t in tasks if t.kind == TaskKind.ILLUSTRATION), None)
+        if recent_task:
+            celery_state = AsyncResult(recent_task.id, app=celery_app).state
+            if celery_state in ("PENDING", "STARTED", "RETRY"):
+                raise HTTPException(status_code=409, detail="Illustration generation already in progress for this job")
+        # else fall through to re-queue a new one
+
     # Update job with illustration configuration
     job.illustrations_enabled = True
     job.illustrations_config = config.dict()
@@ -85,12 +102,31 @@ async def generate_illustrations(
     
     print(f"--- [ILLUSTRATIONS] Starting generation for job {job_id} with config: {config.dict()} ---")
     
-    # Start illustration generation using Celery
-    generate_illustrations_task.delay(
+    # Start illustration generation using Celery with task tracking
+    task_id = str(uuid.uuid4())
+    create_task_execution(
+        task_id=task_id,
+        task_name=generate_illustrations_task.name,
+        task_kind=TaskKind.ILLUSTRATION,
         job_id=job_id,
-        config_dict=config.dict(),
-        api_key=api_key,
-        max_illustrations=max_illustrations
+        user_id=current_user.id,
+        args=[],
+        kwargs={
+            "job_id": job_id,
+            "config_dict": config.dict(),
+            "api_key": api_key,
+            "max_illustrations": max_illustrations,
+        },
+    )
+
+    generate_illustrations_task.apply_async(
+        kwargs={
+            "job_id": job_id,
+            "config_dict": config.dict(),
+            "api_key": api_key,
+            "max_illustrations": max_illustrations,
+        },
+        task_id=task_id,
     )
     
     return {
@@ -98,6 +134,7 @@ async def generate_illustrations(
         "job_id": job_id,
         "status": "IN_PROGRESS",
         "type": "prompt_generation",
+        "task_id": task_id,
         "note": "Generated prompts can be used with services like DALL-E, Midjourney, or Stable Diffusion to create actual illustrations."
     }
 

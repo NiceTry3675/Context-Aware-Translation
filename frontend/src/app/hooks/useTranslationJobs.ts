@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
 import type { components } from '@/types/api';
+import { fetchWithRetry } from '../utils/fetchWithRetry';
 
 // Type alias for convenience
 type TranslationJob = components['schemas']['TranslationJob'];
@@ -35,7 +36,7 @@ export function useTranslationJobs({ apiUrl }: UseTranslationJobsOptions) {
           throw new Error("Failed to get authentication token");
         }
 
-        const response = await fetch(`${apiUrl}/api/v1/jobs`, {
+        const response = await fetchWithRetry(`${apiUrl}/api/v1/jobs`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -79,7 +80,7 @@ export function useTranslationJobs({ apiUrl }: UseTranslationJobsOptions) {
       const updatedJobs = await Promise.all(
         processingJobs.map(async (job) => {
           try {
-            const response = await fetch(`${apiUrl}/api/v1/jobs/${job.id}`);
+            const response = await fetchWithRetry(`${apiUrl}/api/v1/jobs/${job.id}`);
             return response.ok ? response.json() : job;
           } catch {
             return job;
@@ -121,7 +122,7 @@ export function useTranslationJobs({ apiUrl }: UseTranslationJobsOptions) {
         throw new Error("Failed to get authentication token");
       }
 
-      const response = await fetch(`${apiUrl}/api/v1/jobs`, {
+      const response = await fetchWithRetry(`${apiUrl}/api/v1/jobs`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -142,7 +143,7 @@ export function useTranslationJobs({ apiUrl }: UseTranslationJobsOptions) {
   // Public single-job refresh (no token) for lightweight state kick-off
   const refreshJobPublic = useCallback(async (jobId: number | string) => {
     try {
-      const response = await fetch(`${apiUrl}/api/v1/jobs/${jobId}`);
+      const response = await fetchWithRetry(`${apiUrl}/api/v1/jobs/${jobId}`);
       if (!response.ok) {
         // Do not set global error for public refresh; keep it silent
         return;

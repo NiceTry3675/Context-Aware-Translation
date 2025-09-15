@@ -9,6 +9,7 @@ from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 import json
 import os
+import uuid
 
 from backend.config.dependencies import get_db, get_required_user
 from backend.domains.user.models import User
@@ -16,6 +17,11 @@ from backend.domains.validation.schemas import ValidationRequest
 from backend.domains.validation.service import ValidationDomainService
 from backend.celery_tasks.validation import process_validation_task
 from backend.domains.translation.repository import SqlAlchemyTranslationJobRepository
+from backend.domains.tasks.models import TaskKind
+from backend.domains.tasks.repository import TaskRepository
+from backend.celery_app import celery_app
+from celery.result import AsyncResult
+from backend.celery_tasks.base import create_task_execution
 
 
 def get_validation_service(db: Session = Depends(get_db)) -> ValidationDomainService:
@@ -51,28 +57,64 @@ async def validate_job(
     if job.owner_id != user.id:
         raise HTTPException(status_code=403, detail="Not authorized to access this job")
     
-    # Update validation status to IN_PROGRESS immediately
+    # If a validation is already marked as in progress, check for an active task.
+    if job.validation_status == "IN_PROGRESS":
+        task_repo = TaskRepository(db)
+        tasks = task_repo.get_job_tasks(job_id)
+        # Find the most recent validation task for this job
+        recent_validation_task = next((t for t in tasks if t.kind == TaskKind.VALIDATION), None)
+
+        if recent_validation_task:
+            celery_state = AsyncResult(recent_validation_task.id, app=celery_app).state
+            if celery_state in ("PENDING", "STARTED", "RETRY"):
+                # Already running; avoid duplicate
+                raise HTTPException(status_code=409, detail="Validation is already in progress for this job")
+        # No active task found; fall through and re-queue a new one
+
+    # Update validation status to IN_PROGRESS immediately (idempotent)
     repo.update_validation_status(
         job_id,
         "IN_PROGRESS",
         progress=0
     )
     db.commit()
-    
-    # Launch the validation task
+
+    # Launch the validation task with a pre-created tracking record and explicit task_id
     validation_mode = "quick" if request.quick_validation else "comprehensive"
-    task = process_validation_task.delay(
+    task_id = str(uuid.uuid4())
+    create_task_execution(
+        task_id=task_id,
+        task_name=process_validation_task.name,
+        task_kind=TaskKind.VALIDATION,
         job_id=job_id,
-        api_key=request.api_key,
-        model_name=request.model_name or "gemini-2.0-flash-exp",
-        validation_mode=validation_mode,
-        sample_rate=request.validation_sample_rate,
         user_id=user.id,
-        autotrigger_post_edit=False
+        args=[],
+        kwargs={
+            "job_id": job_id,
+            "api_key": request.api_key,
+            "model_name": request.model_name or "gemini-2.0-flash-exp",
+            "validation_mode": validation_mode,
+            "sample_rate": request.validation_sample_rate,
+            "user_id": user.id,
+            "autotrigger_post_edit": False,
+        },
     )
-    
+
+    process_validation_task.apply_async(
+        kwargs={
+            "job_id": job_id,
+            "api_key": request.api_key,
+            "model_name": request.model_name or "gemini-2.0-flash-exp",
+            "validation_mode": validation_mode,
+            "sample_rate": request.validation_sample_rate,
+            "user_id": user.id,
+            "autotrigger_post_edit": False,
+        },
+        task_id=task_id,
+    )
+
     return {
-        "task_id": task.id,
+        "task_id": task_id,
         "job_id": job_id,
         "status": "queued"
     }
