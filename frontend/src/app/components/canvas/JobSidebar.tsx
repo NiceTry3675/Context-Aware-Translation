@@ -52,6 +52,7 @@ interface JobSidebarProps {
   loading?: boolean;
   apiProvider?: 'gemini' | 'openrouter';
   defaultModelName?: string;
+  apiKey?: string;
 }
 
 const getStatusIcon = (status: string) => {
@@ -110,6 +111,7 @@ export default function JobSidebar({
   loading = false,
   apiProvider,
   defaultModelName,
+  apiKey,
 }: JobSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const { getToken } = useAuth();
@@ -245,6 +247,7 @@ export default function JobSidebar({
                             compact={true}
                             apiProvider={apiProvider}
                             defaultModelName={defaultModelName}
+                            apiKey={apiKey}
                           />
                           <Tooltip title="다운로드">
                             <IconButton

@@ -10,6 +10,7 @@ from typing import List
 
 from ..celery_app import celery_app
 from ..config.settings import get_settings
+from ..maintenance.watchdog import mark_stalled_jobs
 
 
 @celery_app.task(
@@ -63,3 +64,13 @@ def cleanup_temp_files(max_age_seconds: int | None = None) -> dict:
         "age_threshold_seconds": age_threshold,
     }
 
+
+@celery_app.task(
+    name="backend.celery_tasks.maintenance.watchdog_stalled_jobs",
+    max_retries=0,
+)
+def watchdog_stalled_jobs(max_inprogress_minutes: int = 60, lookback_hours: int = 24) -> dict:
+    """
+    Periodic watchdog to mark stalled IN_PROGRESS jobs as FAILED when no active Celery task exists.
+    """
+    return mark_stalled_jobs(max_inprogress_minutes=max_inprogress_minutes, lookback_hours=lookback_hours)

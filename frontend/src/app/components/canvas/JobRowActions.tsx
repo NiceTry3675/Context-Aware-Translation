@@ -19,7 +19,8 @@ import { Job } from '../../types/ui';
 import ValidationDialog from '../TranslationSidebar/ValidationDialog';
 import PostEditDialog from '../TranslationSidebar/PostEditDialog';
 import { useJobActions } from '../../hooks/useJobActions';
-import { fetchValidationReport, ValidationReport } from '../../utils/api';
+import { fetchValidationReport, ValidationReport, fetchJobTasks } from '../../utils/api';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 interface JobRowActionsProps {
   job: Job;
@@ -27,9 +28,10 @@ interface JobRowActionsProps {
   compact?: boolean;
   apiProvider?: 'gemini' | 'openrouter';
   defaultModelName?: string;
+  apiKey?: string;
 }
 
-export default function JobRowActions({ job, onRefresh, compact = false, apiProvider, defaultModelName }: JobRowActionsProps) {
+export default function JobRowActions({ job, onRefresh, compact = false, apiProvider, defaultModelName, apiKey }: JobRowActionsProps) {
   const onRowRefresh = () => onRefresh(job.id);
   const jobId = job.id.toString();
   
@@ -49,6 +51,7 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
 
   const { handleTriggerValidation, handleTriggerPostEdit } = useJobActions({
     apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+    apiKey,
     onSuccess: onRowRefresh,
     onError: (error) => console.error(error),
   });
@@ -71,6 +74,34 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
   };
 
   const { getToken } = useAuth();
+  const [tasks, setTasks] = useState<import('../../../types/api').components['schemas']['TaskExecutionResponse'][]>([]);
+
+  // Poll tasks when relevant phases are IN_PROGRESS
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+    const load = async () => {
+      try {
+        const token = await getCachedClerkToken(getToken);
+        const list = await fetchJobTasks(job.id, token || undefined);
+        setTasks(list);
+      } catch (e) {
+        // silent fail to avoid noisy UI
+      }
+    };
+    if (job.validation_status === 'IN_PROGRESS' || job.post_edit_status === 'IN_PROGRESS' || job.illustrations_status === 'IN_PROGRESS') {
+      load();
+      timer = setInterval(load, 10000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [job.id, job.validation_status, job.post_edit_status, job.illustrations_status, getToken]);
+
+  const hasActive = (kind: string) =>
+    tasks.some(t => t.kind === (kind as any) && ['PENDING', 'STARTED', 'RETRY', 'running'].includes((t.celery_state || '').toUpperCase()));
+
+  const validationStalled = job.validation_status === 'IN_PROGRESS' && !hasActive('validation');
+  const postEditStalled = job.post_edit_status === 'IN_PROGRESS' && !hasActive('post_edit');
 
   const canRunValidation = job.status === 'COMPLETED' && 
     job.validation_status !== 'IN_PROGRESS';
@@ -163,6 +194,28 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
             </Tooltip>
           )}
 
+          {/* Validation Retry when stalled */}
+          {validationStalled && (
+            <Tooltip title="검증 재시도 (작업이 멈춘 경우)">
+              <span>
+                <IconButton
+                  size="small"
+                  sx={{ p: 0.5 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleTriggerValidation(job.id, {
+                      quick_validation: Boolean((job as any).quick_validation),
+                      validation_sample_rate: Number((job as any).validation_sample_rate || 100) / 100,
+                      model_name: defaultModelName,
+                    });
+                  }}
+                >
+                  <RefreshIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          )}
+
           {/* Post-Edit Button */}
           {(canRunPostEdit || job.post_edit_status) && (
             <Tooltip title={
@@ -182,6 +235,28 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
                   sx={{ p: 0.5 }}
                 >
                   {getPostEditIcon()}
+                </IconButton>
+              </span>
+            </Tooltip>
+          )}
+
+          {/* Optional: Post-Edit Retry when stalled */}
+          {postEditStalled && (
+            <Tooltip title="포스트에디팅 재시도 (작업이 멈춘 경우)">
+              <span>
+                <IconButton
+                  size="small"
+                  sx={{ p: 0.5 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleTriggerPostEdit(job.id, {
+                      selected_cases: {},
+                      default_select_all: true,
+                      model_name: defaultModelName,
+                    } as any);
+                  }}
+                >
+                  <RefreshIcon fontSize="small" />
                 </IconButton>
               </span>
             </Tooltip>

@@ -62,6 +62,14 @@ celery_app.conf.update(
             'task': 'backend.celery_tasks.maintenance.cleanup_temp_files',
             'schedule': 3600.0,  # Every hour
         },
+        'watchdog-stalled-jobs': {
+            'task': 'backend.celery_tasks.maintenance.watchdog_stalled_jobs',
+            'schedule': 900.0,  # Every 15 minutes
+            'options': {
+                'queue': 'maintenance',
+                'priority': 1,
+            }
+        },
         'backup-database-daily': {
             'task': 'backup.database_to_s3',
             'schedule': 86400.0,  # Every 24 hours (daily)
