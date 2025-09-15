@@ -1,5 +1,6 @@
 import { ValidationCase } from '@/core-schemas';
 import type { components } from '@/types/api';
+import { fetchWithRetry } from './fetchWithRetry';
 
 // Type aliases for generated API types - exported for use in components
 export type GlossaryAnalysisResponse = components['schemas']['GlossaryAnalysisResponse'];
@@ -116,11 +117,11 @@ export interface PostEditLog {
 export async function fetchValidationReport(jobId: string, token?: string): Promise<ValidationReport | null> {
   try {
     console.log(`[fetchValidationReport] Fetching validation report for job ${jobId}`);
-    const response = await fetch(`${API_BASE_URL}/api/v1/validation/${jobId}/status`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/validation/${jobId}/status`, {
       headers: {
         'Authorization': token ? `Bearer ${token}` : '',
       },
-    });
+    }, { retries: 3, timeoutMs: 10000 });
 
     console.log(`[fetchValidationReport] Response status: ${response.status}`);
 
@@ -152,11 +153,11 @@ export async function fetchValidationReport(jobId: string, token?: string): Prom
 
 export async function fetchPostEditLog(jobId: string, token?: string): Promise<PostEditLog | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/post-edit/${jobId}/status`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/post-edit/${jobId}/status`, {
       headers: {
         'Authorization': token ? `Bearer ${token}` : '',
       },
-    });
+    }, { retries: 3, timeoutMs: 10000 });
 
     if (!response.ok) {
       if (response.status === 404 || response.status === 400) {
@@ -183,13 +184,25 @@ export interface IllustrationStatus {
   has_character_base: boolean;
 }
 
+export async function fetchJobTasks(jobId: number, token?: string): Promise<components['schemas']['TaskExecutionResponse'][]> {
+  const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/tasks/job/${jobId}/tasks`, {
+    headers: {
+      'Authorization': token ? `Bearer ${token}` : '',
+    },
+  }, { retries: 3, timeoutMs: 8000 });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch job tasks: ${response.statusText}`);
+  }
+  return await response.json();
+}
+
 export async function fetchIllustrationStatus(jobId: string, token?: string): Promise<IllustrationStatus | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/status`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/illustrations/${jobId}/status`, {
       headers: {
         'Authorization': token ? `Bearer ${token}` : '',
       },
-    });
+    }, { retries: 3, timeoutMs: 10000 });
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -231,11 +244,11 @@ export interface TranslationSegments {
 
 export async function fetchTranslationContent(jobId: string, token?: string): Promise<TranslationContent | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/content`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/jobs/${jobId}/content`, {
       headers: {
         'Authorization': token ? `Bearer ${token}` : '',
       },
-    });
+    }, { retries: 3, timeoutMs: 10000 });
 
     if (!response.ok) {
       if (response.status === 404 || response.status === 400) {
@@ -264,11 +277,11 @@ export async function fetchTranslationSegments(
     
     const url = `${API_BASE_URL}/api/v1/jobs/${jobId}/segments${params.toString() ? '?' + params.toString() : ''}`;
     
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       headers: {
         'Authorization': token ? `Bearer ${token}` : '',
       },
-    });
+    }, { retries: 3, timeoutMs: 12000 });
 
     if (!response.ok) {
       if (response.status === 404 || response.status === 400) {

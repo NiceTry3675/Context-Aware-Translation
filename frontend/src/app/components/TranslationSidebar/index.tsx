@@ -199,7 +199,7 @@ export default function TranslationSidebar({
               />
               <Tab 
                 label="포스트 에디팅"
-                disabled={!postEditLog && postEditStatus !== 'COMPLETED'} 
+                disabled={!Array.isArray((postEditLog as any)?.segments) && postEditStatus !== 'COMPLETED'} 
               />
             </Tabs>
           </Box>
@@ -305,7 +305,7 @@ export default function TranslationSidebar({
             </TabPanel>
             
             <TabPanel value={tabValue} index={2}>
-              {postEditLog && (
+              {postEditLog && Array.isArray((postEditLog as any).segments) && (
                 <PostEditLogViewer 
                   log={postEditLog}
                   onSegmentClick={(index) => {

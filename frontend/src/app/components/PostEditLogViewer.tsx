@@ -44,7 +44,15 @@ export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogVi
   const [diffMode, setDiffMode] = useState<DiffMode>('word');
   const [diffViewMode, setDiffViewMode] = useState<ViewMode>('unified');
 
-  const filteredSegments = log.segments.filter(segment => {
+  // Guard against malformed or partial data
+  const segments = log.segments || [];
+  const summary = log.summary || {
+    total_segments: segments.length,
+    segments_edited: segments.filter(s => s.was_edited).length,
+    edit_percentage: 0,
+  };
+
+  const filteredSegments = segments.filter(segment => {
     if (viewMode === 'edited') return segment.was_edited;
     if (viewMode === 'unedited') return !segment.was_edited;
     return true;
@@ -56,9 +64,9 @@ export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogVi
       <SummaryStatistics
         title="포스트 에디팅 요약"
         stats={[
-          { label: '전체 세그먼트', value: log.summary.total_segments },
-          { label: '수정된 세그먼트', value: log.summary.segments_edited, color: 'primary' },
-          { label: '수정 비율', value: `${log.summary.edit_percentage.toFixed(1)}%`, color: 'secondary' }
+          { label: '전체 세그먼트', value: summary.total_segments || 0 },
+          { label: '수정된 세그먼트', value: summary.segments_edited || 0, color: 'primary' },
+          { label: '수정 비율', value: `${Number(summary.edit_percentage || 0).toFixed(1)}%`, color: 'secondary' }
         ]}
       />
 
@@ -74,16 +82,16 @@ export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogVi
               size="small"
             >
               <ToggleButton value="all">
-                전체 ({log.segments.length})
+                전체 ({segments.length})
               </ToggleButton>
               <ToggleButton value="edited">
-                <Badge badgeContent={log.summary.segments_edited} color="primary">
+                <Badge badgeContent={summary.segments_edited || 0} color="primary">
                   <EditIcon fontSize="small" sx={{ mr: 0.5 }} />
                 </Badge>
                 수정됨
               </ToggleButton>
               <ToggleButton value="unedited">
-                수정 안됨 ({log.summary.total_segments - log.summary.segments_edited})
+                수정 안됨 ({(summary.total_segments || 0) - (summary.segments_edited || 0)})
               </ToggleButton>
             </ToggleButtonGroup>
             

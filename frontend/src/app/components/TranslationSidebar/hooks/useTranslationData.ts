@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../../../utils/authToken';
 import {
@@ -42,6 +42,12 @@ export function useTranslationData({
   
   const { getToken } = useAuth();
 
+  // Track the latest jobId to prevent race conditions when switching jobs quickly
+  const jobIdRef = useRef(jobId);
+  useEffect(() => {
+    jobIdRef.current = jobId;
+  }, [jobId]);
+
   const loadData = useCallback(async () => {
     // Skip only when jobId is missing
     if (!jobId) {
@@ -62,37 +68,41 @@ export function useTranslationData({
         fetchTranslationContent(jobId, token || undefined),
         fetchTranslationSegments(jobId, token || undefined, 0, 200)
       ]);
-      if (content) setTranslationContent(content);
-      if (segments) setTranslationSegments(segments);
+      // Guard against stale responses after job switch
+      if (jobIdRef.current !== jobId) return;
+      setTranslationContent(content || null);
+      setTranslationSegments(segments || null);
       
       // Load validation report if validation is completed (independent of jobStatus)
       console.log('[useTranslationData] Checking validation load conditions:', { jobId, jobStatus, validationStatus });
       if (validationStatus === 'COMPLETED') {
         console.log('Loading validation report for job:', jobId);
         const report = await fetchValidationReport(jobId, token || undefined);
-        console.log('Validation report loaded:', report);
-        
-        if (report) {
-          // Store report; structured selection is managed elsewhere (selectedCases)
-          setValidationReport(report);
-        } else {
-          console.log('[useTranslationData] Validation report was null for job:', jobId);
-        }
+        if (jobIdRef.current !== jobId) return;
+        setValidationReport(report || null);
+      } else {
+        // Clear stale validation report when status is not completed
+        setValidationReport(null);
       }
       
       // Load post-edit log if available
       if (postEditStatus === 'COMPLETED') {
         const log = await fetchPostEditLog(jobId, token || undefined);
-        setPostEditLog(log);
+        if (jobIdRef.current !== jobId) return;
+        setPostEditLog(log || null);
+      } else {
+        // Clear stale post-edit log when status is not completed
+        setPostEditLog(null);
       }
       
       // Load illustration status if illustrations are enabled or in progress
       if (jobStatus === 'COMPLETED' && (illustrationsStatus === 'IN_PROGRESS' || illustrationsStatus === 'COMPLETED')) {
         console.log('[useTranslationData] Loading illustration status for job:', jobId);
         const status = await fetchIllustrationStatus(jobId, token || undefined);
-        if (status) {
-          setIllustrationStatus(status);
-        }
+        if (jobIdRef.current !== jobId) return;
+        setIllustrationStatus(status || null);
+      } else {
+        setIllustrationStatus(null);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : '데이터를 불러오는 중 오류가 발생했습니다.');
@@ -120,6 +130,12 @@ export function useTranslationData({
   // Load data when sidebar opens or job changes
   useEffect(() => {
     if (open && jobId) {
+      // Clear all data when switching jobs to avoid showing stale results
+      setValidationReport(null);
+      setPostEditLog(null);
+      setTranslationContent(null);
+      setTranslationSegments(null);
+      setIllustrationStatus(null);
       loadData();
     }
   }, [open, jobId, loadData]);

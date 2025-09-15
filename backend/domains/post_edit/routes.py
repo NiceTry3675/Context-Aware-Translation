@@ -9,6 +9,7 @@ from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 import json
 import os
+import uuid
 
 from backend.config.dependencies import get_db, get_required_user
 from backend.domains.user.models import User
@@ -16,6 +17,11 @@ from backend.domains.post_edit.schemas import PostEditRequest
 from backend.domains.post_edit.service import PostEditDomainService
 from backend.celery_tasks.post_edit import process_post_edit_task
 from backend.domains.translation.repository import SqlAlchemyTranslationJobRepository
+from backend.domains.tasks.models import TaskKind
+from backend.domains.tasks.repository import TaskRepository
+from backend.celery_app import celery_app
+from celery.result import AsyncResult
+from backend.celery_tasks.base import create_task_execution
 
 
 def get_post_edit_service(db: Session = Depends(get_db)) -> PostEditDomainService:
@@ -51,27 +57,60 @@ async def post_edit_job(
     if job.owner_id != user.id:
         raise HTTPException(status_code=403, detail="Not authorized to access this job")
     
-    # Update post-edit status to IN_PROGRESS immediately
+    # If already marked IN_PROGRESS, verify if a task is actively running to avoid duplicates
+    if job.post_edit_status == "IN_PROGRESS":
+        task_repo = TaskRepository(db)
+        tasks = task_repo.get_job_tasks(job_id)
+        recent_post_edit_task = next((t for t in tasks if t.kind == TaskKind.POST_EDIT), None)
+        if recent_post_edit_task:
+            celery_state = AsyncResult(recent_post_edit_task.id, app=celery_app).state
+            if celery_state in ("PENDING", "STARTED", "RETRY"):
+                raise HTTPException(status_code=409, detail="Post-edit is already in progress for this job")
+        # else fall through and re-queue
+
+    # Update post-edit status to IN_PROGRESS immediately (idempotent)
     repo.update_post_edit_status(
         job_id,
         "IN_PROGRESS",
         progress=0
     )
     db.commit()
-    
-    # Launch the post-edit task
-    task = process_post_edit_task.delay(
+
+    # Launch the post-edit task with pre-created tracking record and explicit task_id
+    task_id = str(uuid.uuid4())
+    create_task_execution(
+        task_id=task_id,
+        task_name=process_post_edit_task.name,
+        task_kind=TaskKind.POST_EDIT,
         job_id=job_id,
-        api_key=request.api_key,
-        model_name=request.model_name or "gemini-2.0-flash-exp",
-        selected_cases=request.selected_cases,
-        modified_cases=request.modified_cases,
-        default_select_all=request.default_select_all,
-        user_id=user.id
+        user_id=user.id,
+        args=[],
+        kwargs={
+            "job_id": job_id,
+            "api_key": request.api_key,
+            "model_name": request.model_name or "gemini-2.0-flash-exp",
+            "selected_cases": request.selected_cases,
+            "modified_cases": request.modified_cases,
+            "default_select_all": request.default_select_all,
+            "user_id": user.id,
+        },
     )
-    
+
+    process_post_edit_task.apply_async(
+        kwargs={
+            "job_id": job_id,
+            "api_key": request.api_key,
+            "model_name": request.model_name or "gemini-2.0-flash-exp",
+            "selected_cases": request.selected_cases,
+            "modified_cases": request.modified_cases,
+            "default_select_all": request.default_select_all,
+            "user_id": user.id,
+        },
+        task_id=task_id,
+    )
+
     return {
-        "task_id": task.id,
+        "task_id": task_id,
         "job_id": job_id,
         "status": "queued"
     }

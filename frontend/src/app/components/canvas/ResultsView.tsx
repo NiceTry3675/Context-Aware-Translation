@@ -228,7 +228,7 @@ export default function ResultsView({
           />
           <Tab 
             label="포스트 에디팅"
-            disabled={!jobId || (!postEditLog && selectedJob?.post_edit_status !== 'COMPLETED')} 
+            disabled={!jobId || (!Array.isArray((postEditLog as any)?.segments) && selectedJob?.post_edit_status !== 'COMPLETED')} 
           />
           <Tab 
             label="삽화"
@@ -348,7 +348,7 @@ export default function ResultsView({
           </TabPanel>
           
           <TabPanel value={tabValue} index={2}>
-            {postEditLog ? (
+            {postEditLog && Array.isArray((postEditLog as any).segments) ? (
               <PostEditLogViewer 
                 log={postEditLog}
                 onSegmentClick={onSegmentClick}
