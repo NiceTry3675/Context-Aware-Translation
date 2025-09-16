@@ -490,7 +490,8 @@ class TranslationDomainService(DomainServiceBase):
         dyn_config_builder = DynamicConfigBuilder(
             dyn_model_for_guides,
             protagonist_name,
-            initial_glossary=initial_glossary
+            initial_glossary=initial_glossary,
+            character_style_model=style_model_api
         )
         
         pipeline = TranslationPipeline(
