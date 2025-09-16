@@ -16,7 +16,7 @@ from .models.openrouter import OpenRouterModel
 from .document import TranslationDocument
 from .style_analyzer import StyleAnalyzer
 from .progress_tracker import ProgressTracker
-from .illustration_generator import IllustrationGenerator
+from .illustration import IllustrationGenerator
 from ..prompts.builder import PromptBuilder
 from ..prompts.manager import PromptManager
 from ..prompts.sanitizer import PromptSanitizer
@@ -216,7 +216,7 @@ class TranslationPipeline:
             # Log segment input/output
             if self.logger:
                 metadata = {
-                    "world_atmosphere": world_atmosphere,
+                    "world_atmosphere": world_atmosphere.model_dump() if world_atmosphere else None,
                     "glossary_used": contextual_glossary,
                     "style_deviation": style_deviation,
                     "translation_time": segment_translation_time,
@@ -236,8 +236,9 @@ class TranslationPipeline:
             # Generate illustration if enabled
             if self.illustration_generator and self._should_generate_illustration(segment_info, i):
                 self._generate_segment_illustration(
-                    segment_info, i, document.glossary, 
-                    core_narrative_style, style_deviation, world_atmosphere
+                    segment_info, i, document.glossary,
+                    core_narrative_style, style_deviation, world_atmosphere,
+                    character_styles=updated_styles
                 )
             
             document.save_partial_output()
@@ -485,10 +486,11 @@ class TranslationPipeline:
     
     def _generate_segment_illustration(self, segment_info: Any, segment_index: int,
                                      glossary: Dict[str, str], core_style: str,
-                                     style_deviation: str, world_atmosphere=None):
+                                     style_deviation: str, world_atmosphere=None,
+                                     character_styles: Optional[Dict[str, str]] = None):
         """
         Generate an illustration for the current segment.
-        
+
         Args:
             segment_info: The segment information
             segment_index: Index of the current segment
@@ -496,6 +498,7 @@ class TranslationPipeline:
             core_style: Core narrative style
             style_deviation: Style deviation for this segment
             world_atmosphere: World and atmosphere analysis for the segment
+            character_styles: Optional character styles dictionary
         """
         if not self.illustration_generator:
             return
@@ -512,7 +515,8 @@ class TranslationPipeline:
                 segment_index=segment_index,
                 style_hints=style_hints,
                 glossary=glossary,
-                world_atmosphere=world_atmosphere
+                world_atmosphere=world_atmosphere,
+                character_styles=character_styles
             )
             
             if illustration_path:

@@ -40,6 +40,10 @@ export interface paths {
          *         style_data: Optional style data
          *         glossary_data: Optional glossary data
          *         segment_size: Segment size for translation
+         *         enable_validation: Whether to run validation automatically after translation
+         *         quick_validation: Whether to use quick validation mode
+         *         validation_sample_rate: Portion of segments to validate (0.0-1.0)
+         *         enable_post_edit: Whether to run post-edit automatically after validation
          *         user: Current authenticated user
          *         service: Translation domain service
          *
@@ -1134,6 +1138,26 @@ export interface components {
              * @default 15000
              */
             segment_size: number;
+            /**
+             * Enable Validation
+             * @default false
+             */
+            enable_validation: boolean;
+            /**
+             * Quick Validation
+             * @default false
+             */
+            quick_validation: boolean;
+            /**
+             * Validation Sample Rate
+             * @default 1
+             */
+            validation_sample_rate: number;
+            /**
+             * Enable Post Edit
+             * @default false
+             */
+            enable_post_edit: boolean;
         };
         /** Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post */
         Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post: {
@@ -1432,6 +1456,15 @@ export interface components {
             selected_cases?: {
                 [key: string]: unknown;
             } | null;
+            /** Modified Cases */
+            modified_cases?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Default Select All
+             * @default true
+             */
+            default_select_all: boolean;
             /** Model Name */
             model_name?: string | null;
             /** Api Key */

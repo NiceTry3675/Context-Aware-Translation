@@ -14,8 +14,9 @@ import traceback
 from ..celery_app import celery_app
 from .base import TrackedTask
 from ..config.database import SessionLocal
+from ..config.settings import get_settings
 from backend.domains.translation.models import TranslationJob
-from core.translation.illustration_generator import IllustrationGenerator
+from core.translation.illustration import IllustrationGenerator
 from core.schemas.illustration import IllustrationConfig
 
 
@@ -78,12 +79,14 @@ def generate_illustrations_task(
         
         # Initialize illustration generator
         try:
+            settings = get_settings()
             generator = IllustrationGenerator(
                 api_key=api_key,
                 job_id=job_id,
-                enable_caching=config.cache_enabled
+                enable_caching=config.cache_enabled,
+                model_name=settings.illustration_model
             )
-            print(f"[ILLUSTRATIONS TASK] Generator initialized successfully")
+            print(f"[ILLUSTRATIONS TASK] Generator initialized successfully with model: {settings.illustration_model}")
         except Exception as e:
             print(f"[ILLUSTRATIONS TASK] Error initializing generator: {e}")
             import traceback
@@ -387,10 +390,12 @@ def regenerate_single_illustration(
             raise ValueError(f"Job {job_id} not found")
         
         # Initialize illustration generator
+        settings = get_settings()
         generator = IllustrationGenerator(
             api_key=api_key,
             job_id=job_id,
-            enable_caching=False  # Don't use cache for regeneration
+            enable_caching=False,  # Don't use cache for regeneration
+            model_name=settings.illustration_model
         )
         
         # Get the segment

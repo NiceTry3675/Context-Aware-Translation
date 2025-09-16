@@ -8,9 +8,9 @@ from shared.errors import prohibited_content_logger
 from typing import List, Dict, Optional, Union
 from ..schemas.narrative_style import (
     StyleDeviation,
+    WorldAtmosphereAnalysis,
     make_style_deviation_schema,
     parse_style_deviation_response,
-    WorldAtmosphereAnalysis,
     make_world_atmosphere_schema,
     parse_world_atmosphere_response,
 )
@@ -162,28 +162,42 @@ class DynamicConfigBuilder:
     def _analyze_world_atmosphere(self, segment_text: str, previous_context: Optional[str], glossary: dict, job_base_filename: str = "unknown", segment_index: Optional[int] = None) -> Optional[WorldAtmosphereAnalysis]:
         """Analyzes world and atmosphere using structured output."""
         prompt_manager = PromptManager()
-        
+
         # Format glossary for prompt
         glossary_str = "\n".join([f"{term}: {translation}" for term, translation in glossary.items()]) if glossary else "N/A"
-        
+
         # Get the prompt template
         try:
             prompt_template = prompt_manager._prompts["world_atmosphere"]["analyze"]
         except (KeyError, TypeError):
             print("Warning: world_atmosphere.analyze prompt not found")
             return None
-        
+
         prompt = prompt_template.format(
             segment_text=segment_text,
             previous_context=previous_context or "N/A",
             glossary=glossary_str
         )
-        
+
         try:
-            schema = make_world_atmosphere_schema()
-            response = self.model.generate_structured(prompt, schema)
-            world_atmosphere = parse_world_atmosphere_response(response)
-            return world_atmosphere
+            # Check if the model supports structured output
+            if hasattr(self.model, 'generate_structured'):
+                schema = make_world_atmosphere_schema()
+                response = self.model.generate_structured(prompt, schema)
+                world_atmosphere = parse_world_atmosphere_response(response)
+
+                # Validate that we got a proper summary, not raw text
+                if world_atmosphere.segment_summary:
+                    # Check if summary looks like actual source text (too long and matches source)
+                    if (len(world_atmosphere.segment_summary) > 400 and
+                        world_atmosphere.segment_summary[:100] in segment_text):
+                        raise ValueError(f"World atmosphere analysis failed: segment_summary contains raw text instead of a summary. Length: {len(world_atmosphere.segment_summary)}")
+
+                return world_atmosphere
+            else:
+                # Model doesn't support structured output (e.g., OpenRouter)
+                print(f"Warning: Model {type(self.model).__name__} doesn't support structured output. Skipping world atmosphere analysis.")
+                return None
         except ProhibitedException as e:
             log_path = prohibited_content_logger.log_simple_prohibited_content(
                 api_call_type="world_atmosphere_analysis",
@@ -197,5 +211,5 @@ class DynamicConfigBuilder:
             print(f"Warning: World atmosphere analysis blocked by safety settings. Log saved to: {log_path}")
             return None
         except Exception as e:
-            print(f"Warning: Could not analyze world atmosphere. {e}")
-            return None
+            print(f"ERROR: World atmosphere analysis failed: {e}")
+            raise  # Re-raise the exception to make it fail properly

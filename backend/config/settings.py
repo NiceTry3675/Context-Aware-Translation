@@ -80,6 +80,7 @@ class Settings(BaseSettings):
     
     # Translation Settings
     default_model: str = Field(default="gemini-1.5-pro", env="DEFAULT_MODEL")
+    illustration_model: str = Field(default="gemini-2.5-flash-image-preview", env="ILLUSTRATION_MODEL")
     max_retries: int = 3
     retry_delay: int = 1  # seconds
     request_timeout: int = 300  # 5 minutes
@@ -100,6 +101,12 @@ class Settings(BaseSettings):
     s3_access_key: Optional[str] = Field(default=None, env="AWS_ACCESS_KEY_ID")
     s3_secret_key: Optional[str] = Field(default=None, env="AWS_SECRET_ACCESS_KEY")
     s3_endpoint_url: Optional[str] = Field(default=None, env="S3_ENDPOINT_URL")
+
+    # S3 Task Output Persistence
+    s3_task_persistence_enabled: bool = Field(default=False, env="S3_TASK_PERSISTENCE_ENABLED")
+    s3_task_output_bucket: Optional[str] = Field(default=None, env="S3_TASK_OUTPUT_BUCKET")
+    s3_compress_threshold_mb: int = Field(default=10, env="S3_COMPRESS_THRESHOLD_MB")
+    s3_server_side_encryption: bool = Field(default=True, env="S3_SERVER_SIDE_ENCRYPTION")
     
     @field_validator("cors_origins", mode='before')
     @classmethod

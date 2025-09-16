@@ -18,6 +18,7 @@ from typing import Dict, List, Optional, Any
 from pathlib import Path
 import tempfile
 import shutil
+from backend.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -28,27 +29,34 @@ class AWSBackupService:
     def __init__(self):
         """Initialize AWS S3 client and configuration"""
         self.s3_client = None
+        settings = get_settings()
         self.bucket = os.getenv('S3_BACKUP_BUCKET', 'translation-system-backups')
-        self.local_db_path = os.getenv('DATABASE_PATH', 'database.db')
+        # Extract database path from database_url
+        if settings.database_url.startswith('sqlite:///'):
+            self.local_db_path = settings.database_url.replace('sqlite:///', '')
+        else:
+            # For non-SQLite databases, this service doesn't apply
+            self.local_db_path = None
         self.retention_days = int(os.getenv('BACKUP_RETENTION_DAYS', '30'))
-        self.aws_region = os.getenv('AWS_REGION', 'us-east-1')
+        self.aws_region = settings.s3_region or 'us-east-1'
 
         # Initialize S3 client only if AWS credentials are configured
         if self._has_aws_credentials():
             self.s3_client = boto3.client(
                 's3',
                 region_name=self.aws_region,
-                aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-                aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY')
+                aws_access_key_id=get_settings().s3_access_key or os.getenv('AWS_ACCESS_KEY_ID'),
+                aws_secret_access_key=get_settings().s3_secret_key or os.getenv('AWS_SECRET_ACCESS_KEY')
             )
         else:
             logger.warning("AWS credentials not configured. Backup service will run in dry-run mode.")
 
     def _has_aws_credentials(self) -> bool:
         """Check if AWS credentials are configured"""
+        settings = get_settings()
         return bool(
-            os.getenv('AWS_ACCESS_KEY_ID') and
-            os.getenv('AWS_SECRET_ACCESS_KEY')
+            (settings.s3_access_key or os.getenv('AWS_ACCESS_KEY_ID')) and
+            (settings.s3_secret_key or os.getenv('AWS_SECRET_ACCESS_KEY'))
         )
 
     def backup_to_s3(self) -> Dict[str, Any]:
