@@ -7,6 +7,7 @@ logging for translation operations.
 """
 
 import os
+import json
 import time
 from pathlib import Path
 from typing import Optional, Dict, Any, List
@@ -61,9 +62,14 @@ class TranslationLogger:
         # Only create job-specific directories if job_id is provided
         if self.job_id:
             job_dir = os.path.join(self.job_storage_base, str(self.job_id))
-            subdirs = ["prompts", "context", "validation", "postedit", "progress"]
+            subdirs = ["prompts", "context", "validation", "postedit", "progress", "segments"]
             for subdir in subdirs:
                 os.makedirs(os.path.join(job_dir, subdir), exist_ok=True)
+
+            # Create task-specific segment directories
+            segments_dir = os.path.join(job_dir, "segments")
+            for task_type in ["translation", "validation", "post_edit", "style_analysis"]:
+                os.makedirs(os.path.join(segments_dir, task_type), exist_ok=True)
     
     def _setup_log_paths(self):
         """Setup paths for various log files."""
@@ -74,15 +80,21 @@ class TranslationLogger:
             prompt_filename = f"{self.task_type}_prompts.txt"
             context_filename = f"{self.task_type}_context.txt"
             progress_filename = f"{self.task_type}_progress.txt"
-            
+
             self.prompt_log_path = os.path.join(job_dir, "prompts", prompt_filename)
             self.context_log_path = os.path.join(job_dir, "context", context_filename)
             self.progress_log_path = os.path.join(job_dir, "progress", progress_filename)
+
+            # Setup segment logging paths
+            self.segments_dir = os.path.join(job_dir, "segments", self.task_type)
+            self.segments_summary_path = os.path.join(self.segments_dir, "summary.json")
         else:
             # No logging without job_id
             self.prompt_log_path = None
             self.context_log_path = None
             self.progress_log_path = None
+            self.segments_dir = None
+            self.segments_summary_path = None
     
     def initialize_session(self):
         """Initialize a new translation session with log headers."""
@@ -247,17 +259,126 @@ class TranslationLogger:
                 import traceback
                 f.write(f"\nTraceback:\n{traceback.format_exc()}")
     
+    def log_segment_io(self, segment_index: int, source_text: str,
+                       translated_text: Optional[str] = None,
+                       metadata: Optional[Dict[str, Any]] = None,
+                       error: Optional[str] = None):
+        """
+        Log segment input/output to individual and summary files.
+
+        Args:
+            segment_index: Index of the segment (1-based for display)
+            source_text: Original source text
+            translated_text: Translated/processed text (None if error)
+            metadata: Additional metadata (world_atmosphere, glossary, etc.)
+            error: Error message if translation failed
+        """
+        if not self.segments_dir:
+            return  # Skip logging without job_id
+
+        # Prepare segment data
+        segment_data = {
+            "segment_index": segment_index,
+            "timestamp": datetime.now().isoformat(),
+            "source": {
+                "text": source_text,
+                "length": len(source_text)
+            }
+        }
+
+        if translated_text is not None:
+            segment_data["translation"] = {
+                "text": translated_text,
+                "length": len(translated_text)
+            }
+
+        if error:
+            segment_data["error"] = error
+
+        if metadata:
+            segment_data["metadata"] = metadata
+
+        # Save individual segment file
+        segment_filename = f"segment_{segment_index:04d}.json"
+        segment_path = os.path.join(self.segments_dir, segment_filename)
+
+        try:
+            with open(segment_path, 'w', encoding='utf-8') as f:
+                json.dump(segment_data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Warning: Failed to save segment {segment_index} log: {e}")
+
+        # Update summary file
+        self._update_segments_summary(segment_index, segment_data)
+
+    def _update_segments_summary(self, segment_index: int, segment_data: Dict[str, Any]):
+        """
+        Update the segments summary file with the new segment.
+
+        Args:
+            segment_index: Index of the segment
+            segment_data: Segment data to add to summary
+        """
+        if not self.segments_summary_path:
+            return
+
+        # Load existing summary or create new
+        summary = {}
+        if os.path.exists(self.segments_summary_path):
+            try:
+                with open(self.segments_summary_path, 'r', encoding='utf-8') as f:
+                    summary = json.load(f)
+            except (json.JSONDecodeError, FileNotFoundError):
+                summary = {}
+
+        # Initialize structure if needed
+        if "job_info" not in summary:
+            summary["job_info"] = {
+                "job_id": self.job_id,
+                "task_type": self.task_type,
+                "started_at": datetime.now().isoformat(),
+                "filename": self.user_base_filename
+            }
+
+        if "segments" not in summary:
+            summary["segments"] = {}
+
+        # Add/update segment
+        summary["segments"][str(segment_index)] = segment_data
+
+        # Update statistics
+        total_segments = len(summary["segments"])
+        completed_segments = sum(
+            1 for s in summary["segments"].values()
+            if "translation" in s or "validation" in s or "post_edit" in s
+        )
+        failed_segments = sum(1 for s in summary["segments"].values() if "error" in s)
+
+        summary["statistics"] = {
+            "total_segments": total_segments,
+            "completed_segments": completed_segments,
+            "failed_segments": failed_segments,
+            "last_updated": datetime.now().isoformat()
+        }
+
+        # Save updated summary
+        try:
+            with open(self.segments_summary_path, 'w', encoding='utf-8') as f:
+                json.dump(summary, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"Warning: Failed to update segments summary: {e}")
+
     def log_completion(self, total_segments: int, total_time: Optional[float] = None):
         """
         Log completion of translation job.
-        
+
         Args:
             total_segments: Total number of segments translated
             total_time: Optional total time taken
         """
         if total_time is None:
             total_time = time.time() - self.start_time
-        
+
         completion_message = (
             f"\n--- TRANSLATION COMPLETED ---\n"
             f"Total segments: {total_segments}\n"
@@ -266,11 +387,27 @@ class TranslationLogger:
             f"Completed at: {datetime.now().isoformat()}\n"
             f"="*50 + "\n"
         )
-        
+
         # Log to all active log files
         for log_path in [self.prompt_log_path, self.context_log_path, self.progress_log_path]:
-            with open(log_path, 'a', encoding='utf-8') as f:
-                f.write(completion_message)
+            if log_path:
+                with open(log_path, 'a', encoding='utf-8') as f:
+                    f.write(completion_message)
+
+        # Update segments summary with completion info
+        if self.segments_summary_path and os.path.exists(self.segments_summary_path):
+            try:
+                with open(self.segments_summary_path, 'r', encoding='utf-8') as f:
+                    summary = json.load(f)
+
+                summary["job_info"]["completed_at"] = datetime.now().isoformat()
+                summary["job_info"]["total_time"] = total_time
+                summary["job_info"]["average_time_per_segment"] = total_time/total_segments if total_segments > 0 else 0
+
+                with open(self.segments_summary_path, 'w', encoding='utf-8') as f:
+                    json.dump(summary, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                print(f"Warning: Failed to update summary with completion info: {e}")
 
 
 def get_logger(job_id: Optional[int] = None, filename: Optional[str] = None, job_storage_base: Optional[str] = None, task_type: str = "translation") -> TranslationLogger:

@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from core.translation.validator import TranslationValidator
 from core.translation.document import TranslationDocument
+from shared.utils.logging import get_logger
 from backend.domains.translation.models import TranslationJob
 from backend.domains.translation.repository import TranslationJobRepository, SqlAlchemyTranslationJobRepository
 from backend.domains.shared.uow import SqlAlchemyUoW
@@ -54,7 +55,7 @@ class ValidationDomainService(DomainServiceBase):
         job_id: int,
         api_key: str,
         model_name: str = "gemini-2.0-flash-exp"
-    ) -> Tuple[TranslationValidator, TranslationDocument, str]:
+    ) -> Tuple[TranslationValidator, TranslationDocument, str, Any]:
         """
         Prepare the validator and translation job for validation.
         
@@ -65,8 +66,8 @@ class ValidationDomainService(DomainServiceBase):
             model_name: Name of the model to use for validation
             
         Returns:
-            Tuple of (validator, validation_document, translated_path)
-            
+            Tuple of (validator, validation_document, translated_path, segment_logger)
+
         Raises:
             ValueError: If job not found
             FileNotFoundError: If translated file not found
@@ -97,13 +98,22 @@ class ValidationDomainService(DomainServiceBase):
         
         logger.info(f"[VALIDATION PREP] Translated file exists, initializing validator...")
         
-        # Initialize validator with the model API
+        # Initialize validator with the model API and logger
         try:
             logger.info(f"[VALIDATION PREP] Creating model API with validate_and_create_model...")
             model_api = self.validate_and_create_model(api_key, model_name)
             logger.info(f"[VALIDATION PREP] Model API created: {type(model_api)}")
-            validator = TranslationValidator(model_api)
-            logger.info(f"[VALIDATION PREP] Validator initialized")
+
+            # Create a logger for segment I/O
+            segment_logger = get_logger(
+                job_id=job_id,
+                filename=job.filename,
+                task_type="validation"
+            )
+            segment_logger.initialize_session()
+
+            validator = TranslationValidator(model_api, logger=segment_logger)
+            logger.info(f"[VALIDATION PREP] Validator initialized with segment logger")
         except Exception as e:
             logger.error(f"[VALIDATION PREP] Error creating validator: {str(e)}")
             raise
@@ -196,7 +206,7 @@ class ValidationDomainService(DomainServiceBase):
                 else job.final_glossary
             )
         
-        return validator, validation_document, translated_path
+        return validator, validation_document, translated_path, segment_logger
     
     def run_validation(
         self,
@@ -204,7 +214,8 @@ class ValidationDomainService(DomainServiceBase):
         validation_document: TranslationDocument,
         sample_rate: float = 1.0,
         quick_mode: bool = False,
-        progress_callback: Optional[Callable[[int], None]] = None
+        progress_callback: Optional[Callable[[int], None]] = None,
+        segment_logger=None
     ) -> Dict[str, Any]:
         """
         Run the validation process and return the report.
@@ -226,6 +237,13 @@ class ValidationDomainService(DomainServiceBase):
             quick_mode=quick_mode,
             progress_callback=progress_callback
         )
+
+        # Log completion if logger is available
+        if segment_logger:
+            segment_logger.log_completion(
+                total_segments=summary.get('validated_segments', 0),
+                total_time=None
+            )
         
         # Create the validation report
         report = {

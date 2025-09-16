@@ -201,12 +201,35 @@ class TranslationPipeline:
             self.logger.log_segment_context(segment_index, context_data)
             self.logger.log_translation_prompt(segment_index, prompt)
             
+            # Track segment translation time
+            segment_start_time = time.time()
+
             # Translate segment with retries
             translated_text = self._translate_segment_with_retries(
-                prompt, segment_info, segment_index, document, 
+                prompt, segment_info, segment_index, document,
                 contextual_glossary, style_deviation
             )
-            
+
+            # Calculate translation time
+            segment_translation_time = time.time() - segment_start_time
+
+            # Log segment input/output
+            if self.logger:
+                metadata = {
+                    "world_atmosphere": world_atmosphere,
+                    "glossary_used": contextual_glossary,
+                    "style_deviation": style_deviation,
+                    "translation_time": segment_translation_time,
+                    "chapter_title": segment_info.chapter_title,
+                    "chapter_filename": segment_info.chapter_filename
+                }
+                self.logger.log_segment_io(
+                    segment_index=segment_index,
+                    source_text=segment_info.text,
+                    translated_text=translated_text,
+                    metadata=metadata
+                )
+
             # Append translation and save progress
             document.append_translated_segment(translated_text, segment_info)
             
@@ -387,14 +410,38 @@ class TranslationPipeline:
             print("Attempting minimal prompt as last resort...")
             minimal_prompt = PromptSanitizer.create_minimal_prompt(segment_info.text, "Korean")
             model_response = self.gemini_api.generate_text(minimal_prompt)
-            return _extract_translation_from_response(model_response)
+            translated_text = _extract_translation_from_response(model_response)
+
+            # Log segment with error recovery info
+            if self.logger:
+                metadata = {
+                    "error_recovered": True,
+                    "error_type": "ProhibitedContent",
+                    "error_message": str(e),
+                    "soft_retry_attempts": soft_retry_attempts,
+                    "used_minimal_prompt": True
+                }
+                self.logger.log_segment_io(
+                    segment_index=segment_index,
+                    source_text=segment_info.text,
+                    translated_text=translated_text,
+                    metadata=metadata
+                )
+
+            return translated_text
         except Exception as final_e:
             print(f"Minimal prompt also failed: {final_e}")
-            
-            # Log the final failure
+
+            # Log segment failure
             if self.logger:
+                self.logger.log_segment_io(
+                    segment_index=segment_index,
+                    source_text=segment_info.text,
+                    translated_text=None,
+                    error=f"Unrecoverable error: {str(final_e)}"
+                )
                 self.logger.log_error(final_e, segment_index, "minimal_prompt_failed")
-            
+
             raise e from final_e
     
     def _should_generate_illustration(self, segment_info: Any, segment_index: int) -> bool:

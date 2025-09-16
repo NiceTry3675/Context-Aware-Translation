@@ -220,12 +220,24 @@ def generate_illustrations_task(
                     + ". Use the attached reference image to preserve identity; do not copy any reference background."
                 )
 
+            # Extract world_atmosphere data if available in the segment
+            world_atmosphere_data = None
+            if segment['index'] < len(segments):
+                full_segment = segments[segment['index']]
+                if isinstance(full_segment, dict):
+                    world_atmosphere_data = full_segment.get('world_atmosphere')
+
+            print(f"[ILLUSTRATIONS TASK] World atmosphere data available: {world_atmosphere_data is not None}")
+            if world_atmosphere_data:
+                print(f"[ILLUSTRATIONS TASK] World atmosphere keys: {list(world_atmosphere_data.keys()) if isinstance(world_atmosphere_data, dict) else 'N/A'}")
+
             try:
                 illustration_path, prompt = generator.generate_illustration(
                     segment_text=segment['text'],
                     segment_index=segment['index'],
                     style_hints=config.style_hints,
                     glossary=job.final_glossary,
+                    world_atmosphere=world_atmosphere_data,
                     custom_prompt=effective_prompt,
                     reference_image=(ref_tuple if use_reference else None)
                 )
@@ -387,7 +399,14 @@ def regenerate_single_illustration(
             raise ValueError(f"Segment {segment_index} not found")
         
         segment = segments[segment_index]
-        
+
+        # Extract world_atmosphere data if available
+        world_atmosphere_data = None
+        if isinstance(segment, dict):
+            world_atmosphere_data = segment.get('world_atmosphere')
+
+        print(f"[REGENERATE ILLUSTRATION] World atmosphere data available: {world_atmosphere_data is not None}")
+
         # If base selection exists, build a custom prompt using profile lock
         custom_prompt = None
         ref_tuple = None
@@ -434,6 +453,7 @@ def regenerate_single_illustration(
             segment_index=segment_index,
             style_hints=style_hints or (job.illustrations_config.get('style_hints', '') if job.illustrations_config else ''),
             glossary=job.final_glossary,
+            world_atmosphere=world_atmosphere_data,
             custom_prompt=custom_prompt,
             reference_image=(ref_tuple if allow_ref else None)
         )

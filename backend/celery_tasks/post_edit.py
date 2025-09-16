@@ -79,7 +79,7 @@ def process_post_edit_task(
         post_edit_service = PostEditDomainService()
         
         # Prepare post-editing components
-        post_editor, translation_document, translated_path = post_edit_service.prepare_post_edit(
+        post_editor, translation_document, translated_path, segment_logger = post_edit_service.prepare_post_edit(
             session=db,
             job_id=job_id,
             api_key=api_key,
@@ -117,7 +117,8 @@ def process_post_edit_task(
             modified_cases=modified_cases,
             default_select_all=default_select_all,
             progress_callback=update_progress,
-            job_id=job_id
+            job_id=job_id,
+            segment_logger=segment_logger
         )
         
         # Create result paths
