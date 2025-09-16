@@ -2,167 +2,70 @@
 
 world_atmosphere:
   analyze: |
-    You are an expert literary analyst specializing in extracting world-building and atmospheric elements from text. Your analysis will provide crucial context for both translation accuracy and visual illustration generation.
+    Extract world-building and atmospheric elements for translation context and illustration.
 
-    **Analysis Objectives:**
-    Extract comprehensive world and atmosphere details that capture the essence of the scene, including both explicit and implicit elements.
+    **Core Dimensions:**
 
-    **Analysis Dimensions:**
-
-    1. **Physical World & Setting**:
-       - Primary location with specific environmental details
-       - Architecture, landscape, or space characteristics
-       - Technology level and time period indicators
-       - Scale and spatial relationships
-       - Material culture (objects, tools, furnishings)
-
-    2. **Atmospheric Qualities**:
-       - Emotional atmosphere and mood
-       - Tension level (calm, building, climactic, aftermath)
-       - Sensory details (sounds, smells, textures, temperatures)
-       - Pacing and narrative energy
-       - Implicit feelings and undercurrents
-
-    3. **Visual Mood & Aesthetics**:
-       - Dominant lighting conditions and quality
-       - Color palette (explicit and implied)
-       - Weather and environmental conditions
-       - Visual texture and contrast
-       - Time of day and seasonal indicators
-
-    4. **Cultural & Social Context**:
-       - Social dynamics and power relationships
-       - Cultural customs or behavioral patterns
-       - Class, status, or hierarchy indicators
-       - Communication styles and formality levels
-       - Implicit societal norms
-
-    5. **Narrative Elements**:
-       - Point of focus in the scene
-       - Dramatic weight and significance
-       - Symbolic or thematic elements
-       - Foreshadowing or callbacks
-       - Scene's role in larger narrative
+    1. **Physical Setting**: Location, architecture, technology, scale, objects
+    2. **Atmosphere**: Mood, tension, sensory details, pacing
+    3. **Visual Elements**: Lighting, colors, weather, time of day
+    4. **Social Context**: Dynamics, customs, hierarchy, communication styles
+    5. **Narrative Role**: Focus, significance, symbolism, scene purpose
 
     **Text Segment:**
     {segment_text}
 
-    **Previous Context (if available):**
+    **Previous Context:**
     {previous_context}
 
-    **Character Glossary (if available):**
+    **Glossary:**
     {glossary}
 
-    **Output Requirements:**
-    Provide a structured JSON response following the WorldAtmosphereAnalysis schema with detailed, specific observations for each dimension.
+    Output structured JSON following WorldAtmosphereAnalysis schema.
 
 illustration:
   analyze_visual_elements: |
-    You are a cinematic scene analyzer specializing in extracting hyper-specific visual elements for AI illustration generation. Your goal is to identify scenes with the highest visual impact and provide exhaustive detail for image generation.
+    Extract specific visual elements for AI illustration generation.
 
-    **Analysis Guidelines:**
-    
-    1. **Setting & Environment**: 
-       - Primary location with architectural/environmental specifics
-       - Material textures (e.g., weathered oak floors, frosted glass, rough stone walls)
-       - Scale indicators (vast halls, cramped quarters, intimate spaces)
-    
-    2. **Characters & Physical Details**:
-       - Names from glossary with physical descriptions
-       - Body language and positioning (e.g., "leaning forward with tension", "shoulders slumped in defeat")
-       - Clothing details with materials and condition
-       - Facial expressions if described
-    
-    3. **Lighting & Atmosphere**:
-       - Light sources (natural sunlight, candlelight, fluorescent, moonlight)
-       - Light quality (harsh, soft, dappled, filtered)
-       - Shadows and contrast levels
-       - Weather conditions affecting light
-    
-    4. **Camera Perspective** (inferred from narrative):
-       - Narrative distance (intimate close-up, mid-range, wide establishing)
-       - Suggested angle (eye-level, low-angle for drama, high-angle overview)
-       - Focus hints from the text's attention
-    
-    5. **Color Palette**:
-       - Dominant colors mentioned or implied
-       - Mood colors based on scene emotion
-       - Time of day color temperature
-    
-    6. **Key Objects & Props**:
-       - Significant items with specific details
-       - Their placement and relationship to characters
-       - Material and condition descriptions
-    
-    7. **Movement & Energy**:
-       - Static vs dynamic scene
-       - Direction of movement if present
-       - Tension or relaxation in positioning
+    **Visual Categories:**
 
-    **Text Segment:**
+    1. **Scene**: Location, textures, scale, environment specifics
+    2. **Characters**: Names, descriptions, body language, clothing
+    3. **Lighting**: Sources, quality, shadows, weather effects
+    4. **Composition**: Camera angle, distance, narrative focus
+    5. **Details**: Colors, key objects, movement, energy
+
+    **Text:**
     {segment_text}
 
-    **Character Glossary (if available):**
+    **Glossary:**
     {glossary}
 
-    **Output:**
-    Provide a structured JSON response with hyper-specific visual elements following the VisualElements schema.
+    Output JSON following VisualElements schema with specific details for image generation.
 
   generate_illustration_prompt: |
-    You are a master prompt engineer for Gemini 2.5 Flash Image generation. Create a hyper-specific, cinematically composed illustration prompt that will produce a consistent, high-quality image.
+    Create a detailed image generation prompt for Gemini 2.5 Flash.
 
-    **Scene Analysis Data:**
-    {visual_elements}
+    **Input Data:**
+    Visual Elements: {visual_elements}
+    Style: {style_hints}
 
-    **Style Preferences:**
-    {style_hints}
+    **Structure (in order):**
+    1. Camera setup and composition (lens, angle, distance)
+    2. Characters with specific details (appearance, clothing, body language)
+    3. Environment and setting (architecture, scale, atmosphere)
+    4. Lighting (sources, quality, interaction)
+    5. Colors and mood (palette, temperature, atmosphere)
+    6. Artistic style and quality markers
 
-    **Prompt Construction Rules:**
+    **Requirements:**
+    - Single paragraph, max 200 words
+    - Start with camera/composition
+    - Use specific measurements and materials
+    - Positive descriptions only
+    - Maintain scene's literary tone
 
-    1. **Camera & Composition (MANDATORY - Start with this)**:
-       - Specify exact camera setup (e.g., "85mm portrait lens, shallow depth of field, eye-level angle")
-       - Define composition (e.g., "rule of thirds composition with character positioned left")
-       - Include distance (e.g., "medium shot capturing waist-up")
-
-    2. **Hyper-Specific Subject Description**:
-       - Describe characters with exact details (e.g., "young woman with shoulder-length auburn hair in loose waves, wearing a navy wool peacoat with brass buttons")
-       - Include precise body language (e.g., "left hand gripping the iron railing, knuckles white with tension")
-       - Specify materials and textures (e.g., "weathered leather boots with scuff marks")
-
-    3. **Environment & Setting Details**:
-       - Use architectural/environmental specifics (e.g., "Victorian-era train station with cast iron pillars and frosted glass ceiling")
-       - Include scale references (e.g., "massive oak doors twice the height of the figure")
-       - Add atmospheric elements (e.g., "steam rising from wet cobblestones")
-
-    4. **Lighting Setup**:
-       - Primary light source and quality (e.g., "golden hour sunlight streaming through tall windows, creating long shadows")
-       - Secondary/fill lighting if relevant (e.g., "cool blue ambient light from the north")
-       - Light interaction with materials (e.g., "rim lighting on the character's hair")
-
-    5. **Color Grading & Mood**:
-       - Specific color palette (e.g., "desaturated earth tones with pops of crimson")
-       - Color temperature (e.g., "warm 3200K tungsten lighting")
-       - Mood through color (e.g., "melancholic blue-grey atmosphere")
-
-    6. **Semantic Positive Details** (what TO include, not what to avoid):
-       - Focus on presence, not absence
-       - Describe the desired scene completely
-       - Use positive framing for all elements
-
-    7. **Style & Artistic Direction**:
-       - If relevant, reference artistic style (e.g., "in the style of atmospheric Victorian paintings")
-       - Quality markers (e.g., "photorealistic rendering", "cinematic quality")
-
-    **CRITICAL REQUIREMENTS**:
-    - Maximum 200 words (slightly increased for better detail)
-    - Start with camera setup ALWAYS
-    - Use specific measurements and references
-    - Include material and texture details
-    - Maintain consistency with the scene's literary tone
-    - Every descriptor should be actionable for the AI
-
-    **Output:**
-    Generate a single, continuous prompt paragraph that flows naturally while incorporating all the specific details above. Do not use bullet points or numbered lists in the final prompt.
+    Generate a flowing prompt paragraph with cinematic specificity.
 
 glossary:
   extract_nouns: |
