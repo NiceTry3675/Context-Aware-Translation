@@ -1,6 +1,7 @@
 import os
-from typing import Dict, Optional
+from typing import Dict
 from ..translation.models.gemini import GeminiModel
+from ..translation.models.openrouter import OpenRouterModel
 from ..prompts.manager import PromptManager
 from shared.errors import ProhibitedException
 from shared.errors import prohibited_content_logger
@@ -15,19 +16,25 @@ class CharacterStyleManager:
 
     def __init__(
         self, 
-        model: GeminiModel, 
+        model: GeminiModel | OpenRouterModel, 
         protagonist_name: str = "protagonist"
     ):
         self.model = model
         # In a more advanced system, the protagonist's name could be identified dynamically.
         self.protagonist_name = protagonist_name
-        print(f"CharacterStyleManager using structured output mode.")
+        self._supports_structured_output = hasattr(model, 'generate_structured')
+        if not self._supports_structured_output:
+            print("Warning: Character style model does not support structured output. Character style analysis will be skipped.")
+        else:
+            print(f"CharacterStyleManager using structured output mode.")
 
     def update_styles(self, segment_text: str, current_styles: Dict[str, str], job_base_filename: str, segment_index: int) -> Dict[str, str]:
         """
         Analyzes the segment to determine who the protagonist speaks to
         and what speech level is used, then returns the updated styles.
         """
+        if not self._supports_structured_output:
+            return current_styles
         return self._update_styles_structured(segment_text, current_styles, job_base_filename, segment_index)
     
     def _update_styles_structured(self, segment_text: str, current_styles: Dict[str, str], job_base_filename: str, segment_index: int) -> Dict[str, str]:

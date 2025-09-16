@@ -1,4 +1,5 @@
 from ..translation.models.gemini import GeminiModel
+from ..translation.models.openrouter import OpenRouterModel
 from ..prompts.manager import PromptManager
 from .glossary import GlossaryManager
 from .character_style import CharacterStyleManager
@@ -22,9 +23,10 @@ class DynamicConfigBuilder:
 
     def __init__(
         self, 
-        model: GeminiModel, 
+        model: GeminiModel | OpenRouterModel, 
         protagonist_name: str, 
-        initial_glossary: Optional[Union[List[Dict[str, str]], Dict[str, str]]] = None
+        initial_glossary: Optional[Union[List[Dict[str, str]], Dict[str, str]]] = None,
+        character_style_model: Optional[GeminiModel | OpenRouterModel] = None
     ):
         """
         Initializes the builder with the shared Gemini model and managers.
@@ -35,7 +37,15 @@ class DynamicConfigBuilder:
             initial_glossary: An optional dictionary or list of dictionaries to pre-populate the glossary.
         """
         self.model = model
-        self.character_style_manager = CharacterStyleManager(model, protagonist_name)
+
+        # Prefer a dedicated model for character style analysis if it supports structured output
+        character_style_backend = character_style_model if (
+            character_style_model and hasattr(character_style_model, 'generate_structured')
+        ) else model
+        if character_style_model and not hasattr(character_style_model, 'generate_structured'):
+            print("Warning: Selected style model does not support structured output for character styles. Falling back to dynamic guide model.")
+
+        self.character_style_manager = CharacterStyleManager(character_style_backend, protagonist_name)
         
         self.initial_glossary_dict = {}
         if initial_glossary:
