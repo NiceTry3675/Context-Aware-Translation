@@ -11,11 +11,13 @@ import os
 import json
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 from pathlib import Path
 import mimetypes
 import gzip
 import tempfile
+
+from backend.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -26,21 +28,35 @@ class AWSTaskOutputService:
     def __init__(self):
         """Initialize AWS S3 client and configuration"""
         self.s3_client = None
-        self.bucket = os.getenv('S3_TASK_OUTPUT_BUCKET', os.getenv('S3_BUCKET', 'translation-system-outputs'))
-        self.aws_region = os.getenv('S3_REGION', 'us-east-1')
-        self.enabled = os.getenv('S3_TASK_PERSISTENCE_ENABLED', 'false').lower() == 'true'
-        self.compress_threshold = int(os.getenv('S3_COMPRESS_THRESHOLD_MB', '10')) * 1024 * 1024  # Convert to bytes
+        settings = get_settings()
+
+        self.bucket = (
+            settings.s3_task_output_bucket
+            or settings.s3_bucket
+            or 'translation-system-outputs'
+        )
+        self.aws_region = settings.s3_region or 'us-east-1'
+        self.enabled = settings.s3_task_persistence_enabled
+        self.compress_threshold = settings.s3_compress_threshold_mb * 1024 * 1024
+        self.server_side_encryption = settings.s3_server_side_encryption
+
+        self._access_key = settings.s3_access_key or os.getenv('AWS_ACCESS_KEY_ID')
+        self._secret_key = settings.s3_secret_key or os.getenv('AWS_SECRET_ACCESS_KEY')
+        self._endpoint_url = settings.s3_endpoint_url or os.getenv('S3_ENDPOINT_URL')
 
         # Initialize S3 client only if enabled and credentials are configured
         if self.enabled and self._has_aws_credentials():
             try:
                 import boto3
-                self.s3_client = boto3.client(
-                    's3',
-                    region_name=self.aws_region,
-                    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-                    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY')
-                )
+                client_kwargs: Dict[str, Any] = {
+                    'region_name': self.aws_region,
+                    'aws_access_key_id': self._access_key,
+                    'aws_secret_access_key': self._secret_key,
+                }
+                if self._endpoint_url:
+                    client_kwargs['endpoint_url'] = self._endpoint_url
+
+                self.s3_client = boto3.client('s3', **client_kwargs)
                 # Verify bucket exists
                 self.s3_client.head_bucket(Bucket=self.bucket)
                 logger.info(f"AWS Task Output Service initialized with bucket: {self.bucket}")
@@ -53,10 +69,7 @@ class AWSTaskOutputService:
 
     def _has_aws_credentials(self) -> bool:
         """Check if AWS credentials are configured"""
-        return bool(
-            os.getenv('AWS_ACCESS_KEY_ID') and
-            os.getenv('AWS_SECRET_ACCESS_KEY')
-        )
+        return bool(self._access_key and self._secret_key)
 
     def persist_job_outputs(self, job_id: int, task_id: str, task_name: str) -> Dict[str, Any]:
         """
@@ -196,7 +209,7 @@ class AWSTaskOutputService:
             }
 
             # Add server-side encryption if specified
-            if os.getenv('S3_SERVER_SIDE_ENCRYPTION'):
+            if self.server_side_encryption:
                 extra_args['ServerSideEncryption'] = 'AES256'
 
             self.s3_client.upload_file(
