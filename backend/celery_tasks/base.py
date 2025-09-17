@@ -4,7 +4,7 @@ Base task class for Celery tasks with common functionality.
 from celery import Task
 from celery.signals import task_prerun, task_postrun, task_failure
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence
 import logging
 import uuid
 
@@ -13,6 +13,29 @@ from ..domains.tasks.models import TaskExecution, TaskStatus, TaskKind
 from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_job_id(
+    task_execution: Optional[TaskExecution],
+    args: Optional[Sequence[Any]],
+    kwargs: Optional[Dict[str, Any]]
+) -> Optional[int]:
+    """Derive job_id from task execution context and invocation arguments."""
+
+    if task_execution and getattr(task_execution, "job_id", None):
+        return task_execution.job_id
+
+    if kwargs:
+        job_id = kwargs.get("job_id")
+        if isinstance(job_id, int):
+            return job_id
+
+    if args:
+        first_arg = args[0]
+        if isinstance(first_arg, int):
+            return first_arg
+
+    return None
 
 
 class DatabaseTask(Task):
@@ -82,12 +105,9 @@ def task_prerun_handler(sender=None, task_id=None, task=None, args=None, kwargs=
                 attempts=1
             )
             
-            # Extract job_id if present in kwargs
-            if 'job_id' in kwargs:
-                task_execution.job_id = kwargs['job_id']
-            elif args and isinstance(args[0], int):
-                # Assume first arg is job_id for backward compatibility
-                task_execution.job_id = args[0]
+            extracted_job_id = _extract_job_id(None, args, kwargs)
+            if extracted_job_id is not None:
+                task_execution.job_id = extracted_job_id
             
             # Extract user_id if present
             if 'user_id' in kwargs:
@@ -146,15 +166,9 @@ def task_postrun_handler(sender=None, task_id=None, task=None, args=None, kwargs
                 try:
                     from backend.services.aws_task_output_service import get_task_output_service
 
-                    # Extract job_id from task execution or args
-                    job_id = task_execution.job_id
-                    if not job_id and args and len(args) > 0:
-                        # Try to get job_id from first argument
-                        job_id = args[0] if isinstance(args[0], int) else None
-                    if not job_id and kwargs:
-                        job_id = kwargs.get('job_id')
+                    job_id = _extract_job_id(task_execution, args, kwargs)
 
-                    if job_id:
+                    if job_id is not None:
                         service = get_task_output_service()
                         if service.enabled:
                             # Run S3 persistence in background to not block task completion

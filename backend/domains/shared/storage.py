@@ -433,7 +433,10 @@ class S3Storage(Storage):
         try:
             self.s3_client.head_bucket(Bucket=self.bucket)
         except Exception as e:
-            logger.warning(f"Could not verify S3 bucket {bucket}: {e}")
+            logger.error(f"Failed to verify S3 bucket {bucket}: {e}")
+            raise ValueError(
+                f"S3 bucket '{bucket}' is not accessible or does not exist."
+            ) from e
 
         logger.info(f"Initialized S3Storage with bucket {bucket} in region {region}")
     

@@ -5,7 +5,7 @@ This module provides Celery tasks for generating illustrations for translation j
 including character base images and scene illustrations.
 """
 
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any
 from pathlib import Path
 import os
 import json
@@ -18,6 +18,40 @@ from ..config.settings import get_settings
 from backend.domains.translation.models import TranslationJob
 from core.translation.illustration import IllustrationGenerator
 from core.schemas.illustration import IllustrationConfig
+
+
+def _segment_sort_key(segment_key: Any) -> int:
+    """Sort helper that safely handles non-numeric keys."""
+
+    try:
+        return int(segment_key)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _load_segment_from_data(seg_data: Dict[str, Any], seg_id: Optional[int] = None) -> Dict[str, Any]:
+    """Construct a normalized segment dictionary from log data."""
+
+    metadata = seg_data.get('metadata', {}) if isinstance(seg_data, dict) else {}
+
+    segment_index = seg_data.get('segment_index') if isinstance(seg_data, dict) else None
+    if segment_index is None and seg_id is not None:
+        segment_index = seg_id - 1
+
+    segment = {
+        'segment_index': segment_index or 0,
+        'source_text': seg_data.get('source', {}).get('text', '') if isinstance(seg_data, dict) else '',
+        'translated_text': seg_data.get('translation', {}).get('text', '') if isinstance(seg_data, dict) else '',
+        'world_atmosphere': metadata.get('world_atmosphere'),
+        'chapter_title': metadata.get('chapter_title'),
+        'chapter_filename': metadata.get('chapter_filename')
+    }
+
+    world_atmosphere = segment.get('world_atmosphere')
+    if isinstance(world_atmosphere, dict):
+        segment['segment_summary'] = world_atmosphere.get('segment_summary', '')
+
+    return segment
 
 
 @celery_app.task(
@@ -107,22 +141,14 @@ def generate_illustrations_task(
 
                     # Extract segments from summary data
                     segments_dict = summary_data.get('segments', {})
-                    for seg_id in sorted(segments_dict.keys(), key=lambda x: int(x)):
-                        seg_data = segments_dict[seg_id]
-                        segment = {
-                            'segment_index': seg_data.get('segment_index', int(seg_id) - 1),
-                            'source_text': seg_data.get('source', {}).get('text', ''),
-                            'translated_text': seg_data.get('translation', {}).get('text', ''),
-                            'world_atmosphere': seg_data.get('metadata', {}).get('world_atmosphere'),
-                            'chapter_title': seg_data.get('metadata', {}).get('chapter_title'),
-                            'chapter_filename': seg_data.get('metadata', {}).get('chapter_filename')
-                        }
+                    for seg_id_key in sorted(segments_dict.keys(), key=_segment_sort_key):
+                        seg_data = segments_dict[seg_id_key]
+                        try:
+                            seg_id_int = int(seg_id_key)
+                        except (TypeError, ValueError):
+                            seg_id_int = None
 
-                        # Extract segment_summary if available
-                        if segment['world_atmosphere']:
-                            segment['segment_summary'] = segment['world_atmosphere'].get('segment_summary', '')
-
-                        segments.append(segment)
+                        segments.append(_load_segment_from_data(seg_data, seg_id_int))
 
                     print(f"[ILLUSTRATIONS TASK] Loaded {len(segments)} segments from log summary")
                 except Exception as e:
@@ -137,20 +163,7 @@ def generate_illustrations_task(
                     try:
                         with open(seg_file, 'r', encoding='utf-8') as f:
                             seg_data = json.load(f)
-                            segment = {
-                                'segment_index': seg_data.get('segment_index', 0),
-                                'source_text': seg_data.get('source', {}).get('text', ''),
-                                'translated_text': seg_data.get('translation', {}).get('text', ''),
-                                'world_atmosphere': seg_data.get('metadata', {}).get('world_atmosphere'),
-                                'chapter_title': seg_data.get('metadata', {}).get('chapter_title'),
-                                'chapter_filename': seg_data.get('metadata', {}).get('chapter_filename')
-                            }
-
-                            # Extract segment_summary if available
-                            if segment['world_atmosphere']:
-                                segment['segment_summary'] = segment['world_atmosphere'].get('segment_summary', '')
-
-                            segments.append(segment)
+                            segments.append(_load_segment_from_data(seg_data))
                     except Exception as e:
                         print(f"[ILLUSTRATIONS TASK] Error loading {seg_file}: {e}")
 

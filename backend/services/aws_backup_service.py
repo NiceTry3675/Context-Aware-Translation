@@ -79,6 +79,11 @@ class AWSBackupService:
             backup_result = self._create_full_backup()
             results['steps'].append(backup_result)
 
+            if backup_result.get('skip'):
+                logger.info("Skipping remaining backup steps: %s", backup_result.get('note', 'No SQLite database configured'))
+                results['success'] = True
+                return results
+
             # Step 2: Upload to S3
             if self.s3_client:
                 upload_result = self._upload_backup(backup_result['backup_file'])
@@ -122,6 +127,16 @@ class AWSBackupService:
         temp_dir = tempfile.gettempdir()
         backup_filename = f"backup_{timestamp}.db.gz"
         backup_path = os.path.join(temp_dir, backup_filename)
+
+        if not self.local_db_path:
+            note = "SQLite database path not configured; skipping backup."
+            logger.info(note)
+            return {
+                'step': 'create_backup',
+                'success': True,
+                'skip': True,
+                'note': note
+            }
 
         try:
             # Get database statistics before backup
