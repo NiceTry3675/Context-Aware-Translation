@@ -148,9 +148,15 @@ class IllustrationGenerator:
         # Log prompt generation details if logger available
         if self.logger:
             # Use summary from world atmosphere if available, otherwise fallback to segment text
-            if world_atmosphere and hasattr(world_atmosphere, 'segment_summary'):
-                segment_preview = world_atmosphere.segment_summary
-            else:
+            segment_preview = ''
+            if world_atmosphere:
+                # Handle both object and dictionary formats
+                if hasattr(world_atmosphere, 'segment_summary'):
+                    segment_preview = world_atmosphere.segment_summary
+                elif isinstance(world_atmosphere, dict) and 'segment_summary' in world_atmosphere:
+                    segment_preview = world_atmosphere['segment_summary']
+
+            if not segment_preview:
                 segment_preview = segment_text[:500] if segment_text else ''
 
             self._log_prompt_generation_details({

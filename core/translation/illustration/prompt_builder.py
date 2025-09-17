@@ -46,10 +46,13 @@ class IllustrationPromptBuilder:
             )
             extraction_method = 'world_atmosphere'
             # Use summary from world atmosphere for better context
-            if hasattr(world_atmosphere, 'segment_summary') and world_atmosphere.segment_summary:
-                effective_text = world_atmosphere.segment_summary
-            else:
-                effective_text = segment_text
+            effective_text = segment_text
+            if hasattr(world_atmosphere, 'segment_summary'):
+                if world_atmosphere.segment_summary:
+                    effective_text = world_atmosphere.segment_summary
+            elif isinstance(world_atmosphere, dict) and 'segment_summary' in world_atmosphere:
+                if world_atmosphere['segment_summary']:
+                    effective_text = world_atmosphere['segment_summary']
         else:
             # Fallback to simple keyword extraction
             visual_elements = self.visual_extractor.extract_visual_elements(segment_text, glossary)

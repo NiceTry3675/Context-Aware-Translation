@@ -306,20 +306,72 @@ class VisualElementExtractor:
 
         return hints
 
+    def _dict_to_illustration_context(self, world_atmosphere_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert world_atmosphere dictionary to illustration context.
+
+        Args:
+            world_atmosphere_dict: Dictionary containing world atmosphere data
+
+        Returns:
+            Dictionary with illustration context
+        """
+        context = {}
+
+        # Extract summary
+        context['summary'] = world_atmosphere_dict.get('segment_summary', '')
+
+        # Extract physical world details
+        physical_world = world_atmosphere_dict.get('physical_world', {})
+        if isinstance(physical_world, dict):
+            context['setting'] = physical_world.get('location', '')
+            if physical_world.get('architecture'):
+                context['setting'] += f" with {physical_world['architecture']}"
+
+        # Extract atmospheric qualities
+        atmosphere = world_atmosphere_dict.get('atmosphere', {})
+        if isinstance(atmosphere, dict):
+            context['mood'] = atmosphere.get('emotional_tone', '')
+            context['tension'] = atmosphere.get('tension_level', '')
+
+        # Extract visual mood
+        visual_mood = world_atmosphere_dict.get('visual_mood', {})
+        if isinstance(visual_mood, dict):
+            context['lighting'] = visual_mood.get('lighting', '')
+            context['colors'] = visual_mood.get('color_palette', [])
+            context['weather'] = visual_mood.get('weather', '')
+            context['time'] = visual_mood.get('time_indicators', '')
+
+        # Extract narrative elements
+        narrative_elements = world_atmosphere_dict.get('narrative_elements', {})
+        if isinstance(narrative_elements, dict):
+            context['focus'] = narrative_elements.get('focus_point', '')
+            context['dramatic_weight'] = narrative_elements.get('dramatic_weight', 'medium')
+
+        return context
+
     def create_prompt_from_atmosphere(self, world_atmosphere, segment_text: str,
                                      glossary: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         """
         Create visual elements from AI-analyzed world atmosphere data.
 
         Args:
-            world_atmosphere: WorldAtmosphereAnalysis object with rich context
+            world_atmosphere: WorldAtmosphereAnalysis object or dict with rich context
             segment_text: The text segment
             glossary: Optional glossary for names
 
         Returns:
             Dictionary of visual elements optimized for illustration
         """
-        illustration_context = world_atmosphere.to_illustration_context()
+        # Handle both object and dictionary formats
+        if hasattr(world_atmosphere, 'to_illustration_context'):
+            illustration_context = world_atmosphere.to_illustration_context()
+        elif isinstance(world_atmosphere, dict):
+            # Reconstruct illustration context from dictionary
+            illustration_context = self._dict_to_illustration_context(world_atmosphere)
+        else:
+            # Fallback to empty context
+            illustration_context = {}
 
         elements = {
             'setting': illustration_context.get('setting', ''),

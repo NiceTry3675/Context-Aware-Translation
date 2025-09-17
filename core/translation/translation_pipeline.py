@@ -175,7 +175,11 @@ class TranslationPipeline:
             updated_glossary, updated_styles, style_deviation, world_atmosphere = self._build_dynamic_guides(
                 document, segment_info, segment_index, core_narrative_style, previous_context
             )
-            
+
+            # Save world_atmosphere to segment_info for later use (e.g., illustrations)
+            if world_atmosphere:
+                segment_info.world_atmosphere = world_atmosphere.model_dump()
+
             # Prepare context for translation
             contextual_glossary = self._get_contextual_glossary(updated_glossary, segment_info.text)
             immediate_context_source = get_segment_ending(document.get_previous_segment(i), max_chars=1500)
@@ -461,7 +465,7 @@ class TranslationPipeline:
         
         # Check maximum illustrations limit
         if self.illustration_config.max_illustrations:
-            current_count = len(self.illustration_generator.cache) if self.illustration_generator else 0
+            current_count = len(self.illustration_generator.cache_manager.cache) if self.illustration_generator and self.illustration_generator.cache_manager.cache else 0
             if current_count >= self.illustration_config.max_illustrations:
                 return False
         

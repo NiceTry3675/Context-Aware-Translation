@@ -93,14 +93,82 @@ def generate_illustrations_task(
             traceback.print_exc()
             raise
         
-        # Get segments from the job
-        segments = job.translation_segments
+        # Load segments from log files instead of database for richer metadata
+        log_dir = Path(f"logs/jobs/{job_id}/segments/translation")
+        segments = []
+
+        if log_dir.exists():
+            summary_file = log_dir / "summary.json"
+            if summary_file.exists():
+                print(f"[ILLUSTRATIONS TASK] Loading segments from {summary_file}")
+                try:
+                    with open(summary_file, 'r', encoding='utf-8') as f:
+                        summary_data = json.load(f)
+
+                    # Extract segments from summary data
+                    segments_dict = summary_data.get('segments', {})
+                    for seg_id in sorted(segments_dict.keys(), key=lambda x: int(x)):
+                        seg_data = segments_dict[seg_id]
+                        segment = {
+                            'segment_index': seg_data.get('segment_index', int(seg_id) - 1),
+                            'source_text': seg_data.get('source', {}).get('text', ''),
+                            'translated_text': seg_data.get('translation', {}).get('text', ''),
+                            'world_atmosphere': seg_data.get('metadata', {}).get('world_atmosphere'),
+                            'chapter_title': seg_data.get('metadata', {}).get('chapter_title'),
+                            'chapter_filename': seg_data.get('metadata', {}).get('chapter_filename')
+                        }
+
+                        # Extract segment_summary if available
+                        if segment['world_atmosphere']:
+                            segment['segment_summary'] = segment['world_atmosphere'].get('segment_summary', '')
+
+                        segments.append(segment)
+
+                    print(f"[ILLUSTRATIONS TASK] Loaded {len(segments)} segments from log summary")
+                except Exception as e:
+                    print(f"[ILLUSTRATIONS TASK] Error loading from summary.json: {e}")
+                    import traceback
+                    traceback.print_exc()
+
+            # Fallback: load individual segment files if summary doesn't work
+            if not segments:
+                print(f"[ILLUSTRATIONS TASK] Attempting to load individual segment files from {log_dir}")
+                for seg_file in sorted(log_dir.glob("segment_*.json")):
+                    try:
+                        with open(seg_file, 'r', encoding='utf-8') as f:
+                            seg_data = json.load(f)
+                            segment = {
+                                'segment_index': seg_data.get('segment_index', 0),
+                                'source_text': seg_data.get('source', {}).get('text', ''),
+                                'translated_text': seg_data.get('translation', {}).get('text', ''),
+                                'world_atmosphere': seg_data.get('metadata', {}).get('world_atmosphere'),
+                                'chapter_title': seg_data.get('metadata', {}).get('chapter_title'),
+                                'chapter_filename': seg_data.get('metadata', {}).get('chapter_filename')
+                            }
+
+                            # Extract segment_summary if available
+                            if segment['world_atmosphere']:
+                                segment['segment_summary'] = segment['world_atmosphere'].get('segment_summary', '')
+
+                            segments.append(segment)
+                    except Exception as e:
+                        print(f"[ILLUSTRATIONS TASK] Error loading {seg_file}: {e}")
+
+        # Fallback to database if log files don't exist
         if not segments:
-            job.illustrations_status = "FAILED"
-            job.illustrations_data = {"error": "No segments found"}
-            db.commit()
-            raise ValueError("No segments found in translation job")
-        
+            print(f"[ILLUSTRATIONS TASK] Log files not found, falling back to database")
+            segments = job.translation_segments
+            if not segments:
+                job.illustrations_status = "FAILED"
+                job.illustrations_data = {"error": "No segments found in logs or database"}
+                db.commit()
+                raise ValueError("No segments found in translation job")
+
+        # Log what we found
+        print(f"[ILLUSTRATIONS TASK] Total segments loaded: {len(segments)}")
+        if segments and segments[0].get('world_atmosphere'):
+            print(f"[ILLUSTRATIONS TASK] First segment has world_atmosphere data")
+
         # Prepare segments for illustration
         segments_to_illustrate = []
         for i, segment in enumerate(segments):
@@ -223,16 +291,21 @@ def generate_illustrations_task(
                     + ". Use the attached reference image to preserve identity; do not copy any reference background."
                 )
 
-            # Extract world_atmosphere data if available in the segment
+            # Extract world_atmosphere data from the segment (now loaded from logs)
             world_atmosphere_data = None
+            segment_summary = None
+
             if segment['index'] < len(segments):
                 full_segment = segments[segment['index']]
                 if isinstance(full_segment, dict):
                     world_atmosphere_data = full_segment.get('world_atmosphere')
+                    segment_summary = full_segment.get('segment_summary', '')
 
             print(f"[ILLUSTRATIONS TASK] World atmosphere data available: {world_atmosphere_data is not None}")
             if world_atmosphere_data:
                 print(f"[ILLUSTRATIONS TASK] World atmosphere keys: {list(world_atmosphere_data.keys()) if isinstance(world_atmosphere_data, dict) else 'N/A'}")
+                if segment_summary:
+                    print(f"[ILLUSTRATIONS TASK] Segment summary: {segment_summary[:100]}...")
 
             try:
                 illustration_path, prompt = generator.generate_illustration(
