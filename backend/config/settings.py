@@ -79,7 +79,7 @@ class Settings(BaseSettings):
     cleanup_interval: int = 3600  # Clean temp files every hour
     
     # Translation Settings
-    default_model: str = Field(default="gemini-1.5-pro", env="DEFAULT_MODEL")
+    default_model: str = Field(default="gemini-2.5-flash-lite", env="DEFAULT_MODEL")
     max_retries: int = 3
     retry_delay: int = 1  # seconds
     request_timeout: int = 300  # 5 minutes

@@ -70,6 +70,9 @@ function CanvasContent() {
           loading={state.dataLoading}
           apiProvider={state.apiProvider}
           defaultModelName={state.selectedModel}
+          apiKey={state.apiKey}
+          vertexProjectId={state.vertexProjectId}
+          vertexLocation={state.vertexLocation}
         />
         
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -92,6 +95,8 @@ function CanvasContent() {
                 jobId={state.jobId}
                 apiProvider={state.apiProvider}
                 apiKey={state.apiKey}
+                vertexProjectId={state.vertexProjectId}
+                vertexLocation={state.vertexLocation}
                 selectedModel={state.selectedModel}
                 taskModelOverrides={state.taskModelOverrides}
                 taskOverridesEnabled={state.taskOverridesEnabled}
@@ -106,6 +111,8 @@ function CanvasContent() {
                 glossaryAnalysisError={state.glossaryAnalysisError}
                 onProviderChange={state.setApiProvider}
                 onApiKeyChange={state.setApiKey}
+                onVertexProjectIdChange={state.setVertexProjectId}
+                onVertexLocationChange={state.setVertexLocation}
                 onModelChange={state.setSelectedModel}
                 onTaskModelOverridesChange={state.setTaskModelOverrides}
                 onTaskOverridesEnabledChange={state.setTaskOverridesEnabled}
@@ -124,6 +131,9 @@ function CanvasContent() {
                 tabValue={state.tabValue}
                 viewMode={state.viewMode}
                 apiKey={state.apiKey}
+                apiProvider={state.apiProvider}
+                vertexProjectId={state.vertexProjectId}
+                vertexLocation={state.vertexLocation}
                 errorFilters={state.errorFilters}
                 isPolling={state.isPolling}
                 dataLoading={state.dataLoading}

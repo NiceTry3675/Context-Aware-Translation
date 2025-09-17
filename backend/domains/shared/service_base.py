@@ -18,7 +18,8 @@ from fastapi import HTTPException
 from core.config.loader import load_config
 from core.translation.models.gemini import GeminiModel
 from core.translation.models.openrouter import OpenRouterModel
-from backend.domains.shared.model_factory import ModelAPIFactory
+from core.translation.models.vertex import VertexGeminiModel
+from backend.domains.shared.model_factory import ModelAPIFactory, ModelValidationError
 from backend.domains.shared.utils.file_manager import FileManager
 
 # Type variable for repository classes
@@ -61,8 +62,9 @@ class ServiceBase:
     def create_model_api(
         self, 
         api_key: str, 
-        model_name: str
-    ) -> Union[GeminiModel, OpenRouterModel]:
+        model_name: str,
+        **provider_kwargs: Any
+    ) -> Union[GeminiModel, OpenRouterModel, VertexGeminiModel]:
         """
         Create a model API instance using the factory.
         
@@ -73,26 +75,27 @@ class ServiceBase:
         Returns:
             Model API instance
         """
-        return ModelAPIFactory.create(api_key, model_name, self.config)
+        return ModelAPIFactory.create(api_key, model_name, self.config, **provider_kwargs)
     
-    def validate_api_key(self, api_key: str, model_name: str) -> bool:
+    def validate_api_key(self, api_key: str, model_name: str, **provider_kwargs: Any) -> bool:
         """
         Validate API key using the factory.
-        
+
         Args:
             api_key: API key to validate
             model_name: Model name to validate against
-            
+
         Returns:
-            True if valid, False otherwise
+            True if valid. Raises ModelValidationError if validation fails.
         """
-        return ModelAPIFactory.validate_api_key(api_key, model_name)
-    
+        return ModelAPIFactory.validate_api_key(api_key, model_name, **provider_kwargs)
+
     def validate_and_create_model(
         self, 
         api_key: str, 
-        model_name: str
-    ) -> Union[GeminiModel, OpenRouterModel]:
+        model_name: str,
+        **provider_kwargs: Any
+    ) -> Union[GeminiModel, OpenRouterModel, VertexGeminiModel]:
         """
         Validate API key and create model in one step.
         
@@ -106,15 +109,20 @@ class ServiceBase:
         Raises:
             HTTPException: If API key is invalid
         """
-        if not self.validate_api_key(api_key, model_name):
-            self.raise_invalid_api_key()
-        return self.create_model_api(api_key, model_name)
-    
-    def raise_invalid_api_key(self):
+        try:
+            is_valid = self.validate_api_key(api_key, model_name, **provider_kwargs)
+        except ModelValidationError as exc:
+            self.raise_invalid_api_key(str(exc))
+        else:
+            if not is_valid:
+                self.raise_invalid_api_key()
+        return self.create_model_api(api_key, model_name, **provider_kwargs)
+
+    def raise_invalid_api_key(self, message: Optional[str] = None):
         """Raise standardized invalid API key exception."""
         raise HTTPException(
             status_code=400, 
-            detail="Invalid API Key or unsupported model."
+            detail=message or "Invalid API Key or unsupported model."
         )
     
     def raise_not_found(self, resource: str):

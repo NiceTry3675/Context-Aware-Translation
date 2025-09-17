@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useAuth } from '@clerk/nextjs';
+import { useAuth, useClerk } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../../utils/authToken';
 import {
   Box,
@@ -25,6 +25,7 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Alert,
 } from '@mui/material';
 import {
   Article as ArticleIcon,
@@ -36,11 +37,14 @@ import {
   PlayCircle as ProcessingIcon,
   Delete as DeleteIcon,
   Download as DownloadIcon,
+  MenuBook as MenuBookIcon,
   PictureAsPdf as PdfIcon,
   AutoStories as AutoStoriesIcon,
 } from '@mui/icons-material';
 import { Job } from '../../types/ui';
 import JobRowActions from './JobRowActions';
+import { createGlossaryDownloadPackage, normalizeGlossaryData, serializeGlossaryDownloadPackage } from '../../utils/glossary';
+import type { ApiProvider } from '../../hooks/useApiKey';
 
 interface JobSidebarProps {
   jobs: Job[];
@@ -50,9 +54,11 @@ interface JobSidebarProps {
   onNewTranslation: () => void;
   onRefreshJobs: (jobId: number) => void | Promise<void>;
   loading?: boolean;
-  apiProvider?: 'gemini' | 'openrouter';
+  apiProvider?: ApiProvider;
   defaultModelName?: string;
   apiKey?: string;
+  vertexProjectId?: string;
+  vertexLocation?: string;
 }
 
 const getStatusIcon = (status: string) => {
@@ -112,11 +118,15 @@ export default function JobSidebar({
   apiProvider,
   defaultModelName,
   apiKey,
+  vertexProjectId,
+  vertexLocation,
 }: JobSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const { getToken } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
+  const { openSignIn } = useClerk();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
+  const [downloadError, setDownloadError] = useState('');
 
   const handleOpenDeleteDialog = (job: Job) => {
     setJobToDelete(job);
@@ -167,6 +177,12 @@ export default function JobSidebar({
           번역 작업
         </Typography>
         
+        {downloadError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {downloadError}
+          </Alert>
+        )}
+
         {/* Search */}
         <TextField
           fullWidth
@@ -248,6 +264,8 @@ export default function JobSidebar({
                             apiProvider={apiProvider}
                             defaultModelName={defaultModelName}
                             apiKey={apiKey}
+                            vertexProjectId={vertexProjectId}
+                            vertexLocation={vertexLocation}
                           />
                           <Tooltip title="다운로드">
                             <IconButton
@@ -279,6 +297,76 @@ export default function JobSidebar({
                               }}
                             >
                               <DownloadIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="용어집 다운로드">
+                            <IconButton
+                              size="small"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                setDownloadError('');
+                                if (!isSignedIn) {
+                                  openSignIn({ redirectUrl: '/' });
+                                  return;
+                                }
+                                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                                try {
+                                  const token = await getCachedClerkToken(getToken);
+                                  const response = await fetch(`${API_URL}/api/v1/jobs/${job.id}/glossary?structured=true`, {
+                                    headers: {
+                                      'Authorization': token ? `Bearer ${token}` : '',
+                                      'Accept': 'application/json',
+                                    },
+                                  });
+                                  if (!response.ok) throw new Error('Glossary download failed');
+
+                                  const data = await response.json().catch(() => ({}));
+                                  const terms = normalizeGlossaryData(data);
+
+                                  if (terms.length === 0) {
+                                    setDownloadError('이 작업에는 저장된 용어집이 없습니다. 번역이 완료된 후 용어집 옵션을 활성화했는지 확인해주세요.');
+                                    return;
+                                  }
+
+                                  let extractedTerms: string[] | undefined;
+                                  if (data && typeof data === 'object' && 'extracted_terms' in data) {
+                                    const rawExtracted = (data as Record<string, unknown>)['extracted_terms'];
+                                    if (Array.isArray(rawExtracted)) {
+                                      extractedTerms = rawExtracted.filter((term): term is string => typeof term === 'string');
+                                    } else if (rawExtracted && typeof rawExtracted === 'object' && 'terms' in rawExtracted) {
+                                      const nested = (rawExtracted as Record<string, unknown>)['terms'];
+                                      if (Array.isArray(nested)) {
+                                        extractedTerms = nested.filter((term): term is string => typeof term === 'string');
+                                      }
+                                    }
+                                  }
+
+                                  const downloadPackage = createGlossaryDownloadPackage({
+                                    jobId: job.id,
+                                    jobFilename: job.filename,
+                                    terms,
+                                    extractedTerms,
+                                  });
+
+                                  const payloadText = serializeGlossaryDownloadPackage(downloadPackage);
+
+                                  const blob = new Blob([payloadText], { type: 'application/json' });
+                                  const url = window.URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  const baseFilename = job.filename ? job.filename.replace(/\.[^/.]+$/, '') : `translation_${job.id}`;
+                                  a.download = `${baseFilename}_glossary.json`;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  document.body.removeChild(a);
+                                  window.URL.revokeObjectURL(url);
+                                } catch (error) {
+                                  console.error('Glossary download error:', error);
+                                  setDownloadError('용어집을 다운로드하지 못했습니다. 잠시 후 다시 시도해주세요.');
+                                }
+                              }}
+                            >
+                              <MenuBookIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="PDF 다운로드">

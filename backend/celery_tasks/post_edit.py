@@ -35,11 +35,15 @@ def process_post_edit_task(
     self,
     job_id: int,
     api_key: str,
-    model_name: str = "gemini-1.5-pro",
+    model_name: str = "gemini-2.5-flash-lite",
     selected_cases: Optional[dict] = None,
     modified_cases: Optional[dict] = None,
     default_select_all: bool = True,
-    user_id: Optional[int] = None
+    user_id: Optional[int] = None,
+    api_provider: Optional[str] = None,
+    vertex_project_id: Optional[str] = None,
+    vertex_location: Optional[str] = None,
+    vertex_service_account: Optional[str] = None,
 ):
     """
     Process a post-edit task using Celery.
@@ -83,7 +87,11 @@ def process_post_edit_task(
             session=db,
             job_id=job_id,
             api_key=api_key,
-            model_name=model_name
+            model_name=model_name,
+            api_provider=api_provider,
+            vertex_project_id=vertex_project_id,
+            vertex_location=vertex_location,
+            vertex_service_account=vertex_service_account,
         )
         
         # Get validation report path from job (stored in database)
@@ -207,7 +215,7 @@ def process_post_edit_task(
 def run_post_edit_in_background(
     job_id: int,
     api_key: str,
-    model_name: str = "gemini-1.5-pro"
+    model_name: str = "gemini-2.5-flash-lite"
 ):
     """
     Backward compatibility wrapper for existing code.

@@ -78,7 +78,7 @@ export default function TranslationSidebar({
   onRefresh,
 }: TranslationSidebarProps) {
   const [tabValue, setTabValue] = useState(0);
-  const { apiProvider, selectedModel } = useApiKey();
+  const { apiProvider, apiKey, selectedModel, vertexProjectId, vertexLocation } = useApiKey();
   
   // Use custom hooks
   const {
@@ -105,8 +105,26 @@ export default function TranslationSidebar({
     });
   };
 
-  const validation = useValidation({ jobId, onRefresh, apiProvider, defaultModelName: selectedModel });
-  const postEdit = usePostEdit({ jobId, onRefresh, selectedCases, modifiedCases, apiProvider, defaultModelName: selectedModel });
+  const validation = useValidation({
+    jobId,
+    onRefresh,
+    apiProvider,
+    apiKey,
+    vertexProjectId,
+    vertexLocation,
+    defaultModelName: selectedModel
+  });
+  const postEdit = usePostEdit({
+    jobId,
+    onRefresh,
+    selectedCases,
+    modifiedCases,
+    apiProvider,
+    apiKey,
+    vertexProjectId,
+    vertexLocation,
+    defaultModelName: selectedModel
+  });
 
   // Combine loading states
   const loading = dataLoading || validation.loading || postEdit.loading;

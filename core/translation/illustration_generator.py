@@ -27,6 +27,13 @@ from shared.utils.logging import TranslationLogger
 from shared.errors import TranslationError
 from ..schemas.illustration import IllustrationStyle
 
+from .models.vertex_utils import (
+    VertexConfigurationError,
+    build_vertex_client,
+    build_vertex_model_path,
+    create_vertex_client_config,
+    normalize_vertex_model_name,
+)
 
 class IllustrationGenerator:
     """
@@ -43,7 +50,11 @@ class IllustrationGenerator:
                  api_key: str, 
                  job_id: Optional[int] = None,
                  output_dir: str = "logs/jobs",
-                 enable_caching: bool = True):
+                 enable_caching: bool = True,
+                 api_provider: Optional[str] = None,
+                 vertex_project_id: Optional[str] = None,
+                 vertex_location: Optional[str] = None,
+                 vertex_service_account: Optional[str] = None):
         """
         Initialize the illustration generator.
         
@@ -57,16 +68,58 @@ class IllustrationGenerator:
             raise ImportError("google-genai package is required for illustration generation. "
                             "Please install it with: pip install google-genai")
         
-        if not api_key:
-            raise ValueError("API key is required for illustration generation")
-        
-        logging.info(f"[ILLUSTRATION] Initializing GenAI client with API key: {api_key[:10]}...")
-        try:
-            self.client = genai.Client(api_key=api_key)
-            logging.info("[ILLUSTRATION] GenAI client initialized successfully")
-        except Exception as e:
-            logging.error(f"[ILLUSTRATION] Failed to initialize GenAI client: {e}")
-            raise
+        if not api_key and not vertex_service_account:
+            raise ValueError("API key or service account is required for illustration generation")
+
+        provider = api_provider
+        if provider is None:
+            if vertex_service_account or (api_key and api_key.strip().startswith('{')):
+                provider = 'vertex'
+            elif api_key and api_key.startswith('sk-or-'):
+                provider = 'openrouter'
+            else:
+                provider = 'gemini'
+        self._using_vertex = provider == 'vertex'
+        self._image_model_name = "gemini-2.5-flash-image-preview"
+
+        if self._using_vertex:
+            service_account_json = vertex_service_account or api_key
+            if not service_account_json:
+                raise ValueError("Vertex service account JSON is required for illustration generation")
+            logging.info("[ILLUSTRATION] Initializing Vertex GenAI client")
+            try:
+                client_config = create_vertex_client_config(
+                    service_account_json,
+                    project_id=vertex_project_id,
+                    location=vertex_location,
+                )
+                self.client = build_vertex_client(client_config)
+                self._image_model_name = build_vertex_model_path(
+                    self._image_model_name,
+                    client_config.project_id,
+                    client_config.location,
+                )
+                logging.info(
+                    "[ILLUSTRATION] Vertex GenAI client initialized successfully (project=%s, location=%s)",
+                    client_config.project_id,
+                    client_config.location,
+                )
+            except VertexConfigurationError as exc:
+                logging.error("[ILLUSTRATION] Invalid Vertex configuration: %s", exc)
+                raise ValueError(str(exc)) from exc
+            except Exception as e:
+                logging.error(f"[ILLUSTRATION] Failed to initialize Vertex GenAI client: {e}")
+                raise
+        else:
+            if not api_key:
+                raise ValueError("API key is required for illustration generation")
+            logging.info(f"[ILLUSTRATION] Initializing GenAI client with API key: {api_key[:10]}...")
+            try:
+                self.client = genai.Client(api_key=api_key)
+                logging.info("[ILLUSTRATION] GenAI client initialized successfully")
+            except Exception as e:
+                logging.error(f"[ILLUSTRATION] Failed to initialize GenAI client: {e}")
+                raise
         self.job_id = job_id
         self.output_dir = output_dir
         self.enable_caching = enable_caching
@@ -772,13 +825,13 @@ class IllustrationGenerator:
                 contents.append(prompt)
 
                 logging.info(f"[ILLUSTRATION] Calling Gemini API for segment {segment_index}, attempt {attempt + 1}/{max_retries}")
-                logging.info(f"[ILLUSTRATION] Using model: gemini-2.5-flash-image-preview")
+                logging.info(f"[ILLUSTRATION] Using model: {self._image_model_name}")
                 logging.info(f"[ILLUSTRATION] Prompt length: {len(prompt)} chars")
                 
                 # Add timeout to prevent hanging
                 def generate_with_timeout():
                     return self.client.models.generate_content(
-                        model="gemini-2.5-flash-image-preview",
+                        model=self._image_model_name,
                         contents=contents
                     )
                 
@@ -988,11 +1041,10 @@ class IllustrationGenerator:
             # File targets
             image_filename = f"base_{i+1:02d}.png"
             image_filepath = base_dir / image_filename
-            json_filename = f"base_{i+1:02d}_prompt.json"
-            json_filepath = base_dir / json_filename
-
             success = False
             generated_path: Optional[str] = None
+            last_error: Optional[Exception] = None
+            last_failure_reason: Optional[str] = None
 
             for attempt in range(max_retries):
                 try:
@@ -1009,7 +1061,7 @@ class IllustrationGenerator:
                     # Add timeout to prevent hanging
                     def generate_with_timeout():
                         return self.client.models.generate_content(
-                            model="gemini-2.5-flash-image-preview",
+                            model=self._image_model_name,
                             contents=contents
                         )
                     
@@ -1021,9 +1073,9 @@ class IllustrationGenerator:
                             response = future.result(timeout=120)
                             logging.info(f"[ILLUSTRATION] Received response from Gemini API for base generation")
                         except concurrent.futures.TimeoutError:
-                            logging.error(f"[ILLUSTRATION] Timeout waiting for Gemini API response for base generation")
+                            logging.error("[ILLUSTRATION] Timeout waiting for Gemini API response for base generation")
                             future.cancel()
-                            raise Exception("API call timed out after 120 seconds")
+                            raise TimeoutError("API call timed out after 120 seconds")
 
                     image_generated = False
                     if response and hasattr(response, 'candidates') and response.candidates:
@@ -1041,22 +1093,23 @@ class IllustrationGenerator:
                         generated_path = str(image_filepath)
                         break
 
-                    # Fallback to prompt JSON
-                    prompt_data = {
-                        "index": i,
-                        "prompt": prompt,
-                        "status": "image_generation_failed",
-                        "note": "Image generation failed. Use this prompt with another service."
-                    }
-                    with open(json_filepath, 'w', encoding='utf-8') as f:
-                        json.dump(prompt_data, f, ensure_ascii=False, indent=2)
-                    generated_path = str(json_filepath)
-                    break
+                    last_failure_reason = "Model returned no image data"
+                    logging.error("[ILLUSTRATION] No image data returned for base variant %s (attempt %s)", i + 1, attempt + 1)
                 except Exception as e:
                     logging.error(f"Base image attempt {attempt+1} failed: {e}")
+                    last_error = e
                     if attempt == max_retries - 1:
-                        generated_path = None
                         success = False
+            if not success:
+                reason_parts = []
+                if last_failure_reason:
+                    reason_parts.append(last_failure_reason)
+                if last_error:
+                    reason_parts.append(str(last_error))
+                reason = "; ".join(part for part in reason_parts if part) or "unknown error"
+                raise TranslationError(
+                    f"Failed to generate base image variant {i + 1} after {max_retries} attempts: {reason}"
+                )
             results.append({
                 'index': i,
                 'illustration_path': generated_path,
@@ -1118,11 +1171,11 @@ class IllustrationGenerator:
 
             image_filename = f"base_{i+1:02d}.png"
             image_filepath = base_dir / image_filename
-            json_filename = f"base_{i+1:02d}_prompt.json"
-            json_filepath = base_dir / json_filename
 
             success = False
             generated_path: Optional[str] = None
+            last_error: Optional[Exception] = None
+            last_failure_reason: Optional[str] = None
 
             for attempt in range(max_retries):
                 try:
@@ -1139,7 +1192,7 @@ class IllustrationGenerator:
                     # Add timeout to prevent hanging
                     def generate_with_timeout():
                         return self.client.models.generate_content(
-                            model="gemini-2.5-flash-image-preview",
+                            model=self._image_model_name,
                             contents=contents
                         )
                     
@@ -1153,7 +1206,7 @@ class IllustrationGenerator:
                         except concurrent.futures.TimeoutError:
                             logging.error(f"[ILLUSTRATION] Timeout waiting for Gemini API response for base generation")
                             future.cancel()
-                            raise Exception("API call timed out after 120 seconds")
+                            raise TimeoutError("API call timed out after 120 seconds")
 
                     image_generated = False
                     if response and hasattr(response, 'candidates') and response.candidates:
@@ -1171,22 +1224,24 @@ class IllustrationGenerator:
                         generated_path = str(image_filepath)
                         break
 
-                    # Fallback: store prompt JSON
-                    prompt_data = {
-                        "index": i,
-                        "prompt": prompt,
-                        "status": "image_generation_failed",
-                        "note": "Image generation failed. Use this prompt with another service."
-                    }
-                    with open(json_filepath, 'w', encoding='utf-8') as f:
-                        json.dump(prompt_data, f, ensure_ascii=False, indent=2)
-                    generated_path = str(json_filepath)
-                    break
+                    last_failure_reason = "Model returned no image data"
+                    logging.error("[ILLUSTRATION] No image data returned for custom base variant %s (attempt %s)", i + 1, attempt + 1)
                 except Exception as e:
                     logging.error(f"Base-from-prompt attempt {attempt+1} failed: {e}")
+                    last_error = e
                     if attempt == max_retries - 1:
-                        generated_path = None
                         success = False
+
+            if not success:
+                reason_parts = []
+                if last_failure_reason:
+                    reason_parts.append(last_failure_reason)
+                if last_error:
+                    reason_parts.append(str(last_error))
+                reason = "; ".join(part for part in reason_parts if part) or "unknown error"
+                raise TranslationError(
+                    f"Failed to generate base image variant {i + 1} after {max_retries} attempts: {reason}"
+                )
 
             results.append({
                 'index': i,

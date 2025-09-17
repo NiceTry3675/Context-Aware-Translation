@@ -3,6 +3,7 @@ import { useAuth, useClerk } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
 import type { components } from '@/types/api';
 import { StyleData, GlossaryTerm, TranslationSettings } from '../types/ui';
+import type { ApiProvider } from './useApiKey';
 
 // Type aliases for convenience
 type TranslationJob = components['schemas']['TranslationJob'];
@@ -19,6 +20,9 @@ interface FileAnalysisResult {
 interface UseTranslationServiceOptions {
   apiUrl: string;
   apiKey: string;
+  apiProvider: ApiProvider;
+  vertexProjectId?: string;
+  vertexLocation?: string;
   selectedModel: string;
   selectedStyleModel?: string;
   selectedGlossaryModel?: string;
@@ -28,6 +32,9 @@ interface UseTranslationServiceOptions {
 export function useTranslationService({
   apiUrl,
   apiKey,
+  apiProvider,
+  vertexProjectId,
+  vertexLocation,
   selectedModel,
   selectedStyleModel,
   selectedGlossaryModel,
@@ -55,7 +62,11 @@ export function useTranslationService({
     }
     
     if (!apiKey) {
-      throw new Error("API 키를 먼저 입력해주세요.");
+      throw new Error(apiProvider === 'vertex' ? "서비스 계정 JSON을 먼저 입력해주세요." : "API 키를 먼저 입력해주세요.");
+    }
+
+    if (apiProvider === 'vertex' && (!vertexProjectId || !vertexLocation)) {
+      throw new Error("Vertex 프로젝트 ID와 위치를 모두 입력해주세요.");
     }
 
     setIsAnalyzing(true);
@@ -72,6 +83,16 @@ export function useTranslationService({
       const styleFormData = new FormData();
       styleFormData.append('file', file);
       styleFormData.append('api_key', apiKey);
+      styleFormData.append('api_provider', apiProvider);
+      if (apiProvider === 'vertex') {
+        if (vertexProjectId) {
+          styleFormData.append('vertex_project_id', vertexProjectId);
+        }
+        if (vertexLocation) {
+          styleFormData.append('vertex_location', vertexLocation);
+        }
+        styleFormData.append('vertex_service_account', apiKey);
+      }
       styleFormData.append('model_name', selectedStyleModel || selectedModel);
 
       const styleResponse = await fetch(`${apiUrl}/api/v1/analysis/style`, {
@@ -102,6 +123,16 @@ export function useTranslationService({
         const glossaryFormData = new FormData();
         glossaryFormData.append('file', file);
         glossaryFormData.append('api_key', apiKey);
+        glossaryFormData.append('api_provider', apiProvider);
+        if (apiProvider === 'vertex') {
+          if (vertexProjectId) {
+            glossaryFormData.append('vertex_project_id', vertexProjectId);
+          }
+          if (vertexLocation) {
+            glossaryFormData.append('vertex_location', vertexLocation);
+          }
+          glossaryFormData.append('vertex_service_account', apiKey);
+        }
         glossaryFormData.append('model_name', selectedGlossaryModel || selectedModel);
 
         try {
@@ -137,7 +168,19 @@ export function useTranslationService({
     } finally {
       setIsAnalyzing(false);
     }
-  }, [apiUrl, apiKey, selectedModel, isLoaded, isSignedIn, openSignIn]);
+  }, [
+    apiUrl,
+    apiKey,
+    apiProvider,
+    selectedModel,
+    selectedStyleModel,
+    selectedGlossaryModel,
+    vertexProjectId,
+    vertexLocation,
+    isLoaded,
+    isSignedIn,
+    openSignIn
+  ]);
 
   const startTranslation = useCallback(async (
     file: File,
@@ -154,12 +197,30 @@ export function useTranslationService({
       throw new Error("번역을 시작하려면 먼저 로그인해주세요.");
     }
 
+    if (!apiKey) {
+      throw new Error(apiProvider === 'vertex' ? "서비스 계정 JSON을 먼저 입력해주세요." : "API 키를 먼저 입력해주세요.");
+    }
+
+    if (apiProvider === 'vertex' && (!vertexProjectId || !vertexLocation)) {
+      throw new Error("Vertex 프로젝트 ID와 위치를 모두 입력해주세요.");
+    }
+
     setUploading(true);
     setError(null);
 
     const formData = new FormData();
     formData.append("file", file);
     formData.append("api_key", apiKey);
+    formData.append('api_provider', apiProvider);
+    if (apiProvider === 'vertex') {
+      if (vertexProjectId) {
+        formData.append('vertex_project_id', vertexProjectId);
+      }
+      if (vertexLocation) {
+        formData.append('vertex_location', vertexLocation);
+      }
+      formData.append('vertex_service_account', apiKey);
+    }
     formData.append("model_name", selectedModel);
     if (selectedStyleModel && selectedStyleModel !== selectedModel) {
       formData.append("style_model_name", selectedStyleModel);
@@ -230,7 +291,21 @@ export function useTranslationService({
     } finally {
       setUploading(false);
     }
-  }, [apiUrl, apiKey, selectedModel, isLoaded, isSignedIn, getToken, openSignIn, onJobCreated]);
+  }, [
+    apiUrl,
+    apiKey,
+    apiProvider,
+    selectedModel,
+    selectedStyleModel,
+    selectedGlossaryModel,
+    vertexProjectId,
+    vertexLocation,
+    isLoaded,
+    isSignedIn,
+    getToken,
+    openSignIn,
+    onJobCreated
+  ]);
 
   return {
     analyzeFile,

@@ -33,12 +33,19 @@ from core.schemas.illustration import (
     IllustrationStatus,
     CharacterProfile
 )
-from ..analysis import StyleAnalysis, CharacterAnalysis
+from ..analysis import CharacterAnalysis
 from ..shared.model_factory import ModelAPIFactory
 from core.config.loader import load_config
 from .service import IllustrationsService
 
 router = APIRouter(prefix="/illustrations", tags=["illustrations"])
+
+
+def _is_service_account(raw: Optional[str]) -> bool:
+    if not raw:
+        return False
+    stripped = raw.strip()
+    return stripped.startswith('{') and '"type"' in stripped and '"private_key"' in stripped
 
 
 @router.post("/{job_id}/generate")
@@ -64,7 +71,16 @@ async def generate_illustrations(
     body = await request.json()
     config = IllustrationConfig(**body.get('config', {}))
     api_key = body.get('api_key')
+    vertex_service_account = body.get('vertex_service_account')
+    vertex_project_id = body.get('vertex_project_id')
+    vertex_location = body.get('vertex_location')
+    api_provider = body.get('api_provider')
     max_illustrations = body.get('max_illustrations')
+
+    if not vertex_service_account and _is_service_account(api_key):
+        vertex_service_account = api_key
+    if not api_provider and (vertex_service_account or _is_service_account(api_key)):
+        api_provider = 'vertex'
     
     if not api_key:
         raise HTTPException(status_code=400, detail="API key is required")
@@ -117,6 +133,10 @@ async def generate_illustrations(
             "job_id": job_id,
             "config_dict": config.dict(),
             "api_key": api_key,
+            "api_provider": api_provider,
+            "vertex_project_id": vertex_project_id,
+            "vertex_location": vertex_location,
+            "vertex_service_account": vertex_service_account,
             "max_illustrations": max_illustrations,
         },
     )
@@ -126,7 +146,11 @@ async def generate_illustrations(
             "job_id": job_id,
             "config_dict": config.dict(),
             "api_key": api_key,
-            "max_illustrations": max_illustrations,
+            "api_provider": api_provider,
+            "vertex_project_id": vertex_project_id,
+            "vertex_location": vertex_location,
+            "vertex_service_account": vertex_service_account,
+        "max_illustrations": max_illustrations,
         },
         task_id=task_id,
     )
@@ -145,9 +169,13 @@ async def generate_illustrations(
 async def generate_character_bases(
     job_id: int,
     request: Request,
-    api_key: str = Form(..., description="API key for Gemini"),
+    api_key: str = Form(..., description="API key or Vertex service account"),
     reference_image: UploadFile | None = File(default=None),
     profile_json: str | None = Form(default=None),
+    api_provider: Optional[str] = Form(default=None),
+    vertex_project_id: Optional[str] = Form(default=None),
+    vertex_location: Optional[str] = Form(default=None),
+    vertex_service_account: Optional[str] = Form(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_required_user)
 ):
@@ -174,8 +202,25 @@ async def generate_character_bases(
             body = await request.json()
             profile_model = CharacterProfile(**body)
             profile_data = profile_model.dict()
+            api_provider = body.get('api_provider', api_provider)
+            vertex_project_id = body.get('vertex_project_id', vertex_project_id)
+            vertex_location = body.get('vertex_location', vertex_location)
+            vertex_service_account = body.get('vertex_service_account', vertex_service_account)
 
-        generator = IllustrationGenerator(api_key=api_key, job_id=job_id, enable_caching=False)
+        if not vertex_service_account and _is_service_account(api_key):
+            vertex_service_account = api_key
+        if not api_provider and (vertex_service_account or _is_service_account(api_key)):
+            api_provider = 'vertex'
+
+        generator = IllustrationGenerator(
+            api_key=api_key,
+            job_id=job_id,
+            enable_caching=False,
+            api_provider=api_provider,
+            vertex_project_id=vertex_project_id,
+            vertex_location=vertex_location,
+            vertex_service_account=vertex_service_account,
+        )
 
         ref_tuple = None
         if reference_image is not None:
@@ -185,21 +230,10 @@ async def generate_character_bases(
 
         # Ensure protagonist name from core narrative style if none provided
         if not profile_data.get('name'):
-            # Prefer existing stored profile name
             if job.character_profile and job.character_profile.get('name'):
                 profile_data['name'] = job.character_profile.get('name')
             else:
-                # Try extracting using style analysis
-                try:
-                    style_svc = StyleAnalysis()
-                    protagonist = style_svc.extract_protagonist_name(
-                        filepath=job.filepath,
-                        api_key=api_key,
-                        model_name='gemini-2.5-flash'
-                    )
-                    profile_data['name'] = protagonist or Path(job.filepath).stem
-                except Exception:
-                    profile_data['name'] = Path(job.filepath).stem
+                profile_data['name'] = Path(job.filepath).stem
 
         # Read sample source text to guide minimal world hints
         sample_text = None
@@ -255,9 +289,18 @@ async def analyze_character_appearance(
     api_key = body.get('api_key')
     protagonist_name = body.get('protagonist_name')
     model_name = body.get('model_name', 'gemini-2.5-flash')
-    
+    api_provider = body.get('api_provider')
+    vertex_project_id = body.get('vertex_project_id')
+    vertex_location = body.get('vertex_location')
+    vertex_service_account = body.get('vertex_service_account')
+
     if not api_key:
         raise HTTPException(status_code=400, detail="API key is required")
+
+    if not vertex_service_account and _is_service_account(api_key):
+        vertex_service_account = api_key
+    if not api_provider and (vertex_service_account or _is_service_account(api_key)):
+        api_provider = 'vertex'
     
     job = db.query(TranslationJob).filter(
         TranslationJob.id == job_id,
@@ -270,7 +313,15 @@ async def analyze_character_appearance(
     try:
         # Create model API and configure analysis service
         config = load_config()
-        model_api = ModelAPIFactory.create(api_key, model_name, config)
+        model_api = ModelAPIFactory.create(
+            api_key,
+            model_name,
+            config,
+            api_provider=api_provider,
+            vertex_project_id=vertex_project_id,
+            vertex_location=vertex_location,
+            vertex_service_account=vertex_service_account,
+        )
 
         svc = CharacterAnalysis()
         svc.set_model_api(model_api)
@@ -294,11 +345,15 @@ async def analyze_character_appearance(
 async def generate_base_from_prompt(
     job_id: int,
     request: Request,
-    api_key: str = Form(..., description="API key for Gemini"),
+    api_key: str = Form(..., description="API key or Vertex service account"),
     reference_image: UploadFile | None = File(default=None),
     prompts_json: str | None = Form(default=None),
     prompt: str | None = Form(default=None),
     num_variations: int = Form(3, ge=1, le=10, description="How many variants to generate when a single prompt is provided"),
+    api_provider: Optional[str] = Form(default=None),
+    vertex_project_id: Optional[str] = Form(default=None),
+    vertex_location: Optional[str] = Form(default=None),
+    vertex_service_account: Optional[str] = Form(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_required_user)
 ):
@@ -322,6 +377,10 @@ async def generate_base_from_prompt(
             prompts = [str(p) for p in body['prompts'] if isinstance(p, str) and p.strip()]
         elif 'prompt' in body and isinstance(body['prompt'], str):
             prompts = [body['prompt']]
+        api_provider = body.get('api_provider', api_provider)
+        vertex_project_id = body.get('vertex_project_id', vertex_project_id)
+        vertex_location = body.get('vertex_location', vertex_location)
+        vertex_service_account = body.get('vertex_service_account', vertex_service_account)
     else:
         if prompts_json:
             try:
@@ -337,8 +396,21 @@ async def generate_base_from_prompt(
     if not prompts:
         raise HTTPException(status_code=400, detail="No prompt(s) provided")
 
+    if not vertex_service_account and _is_service_account(api_key):
+        vertex_service_account = api_key
+    if not api_provider and (vertex_service_account or _is_service_account(api_key)):
+        api_provider = 'vertex'
+
     try:
-        generator = IllustrationGenerator(api_key=api_key, job_id=job_id, enable_caching=False)
+        generator = IllustrationGenerator(
+            api_key=api_key,
+            job_id=job_id,
+            enable_caching=False,
+            api_provider=api_provider,
+            vertex_project_id=vertex_project_id,
+            vertex_location=vertex_location,
+            vertex_service_account=vertex_service_account,
+        )
 
         ref_tuple = None
         if reference_image is not None:
@@ -671,6 +743,10 @@ async def regenerate_illustration_prompt(
     body = await request.json()
     api_key = body.get('api_key')
     style_hints = body.get('style_hints')
+    api_provider = body.get('api_provider')
+    vertex_project_id = body.get('vertex_project_id')
+    vertex_location = body.get('vertex_location')
+    vertex_service_account = body.get('vertex_service_account')
     
     if not api_key:
         raise HTTPException(status_code=400, detail="API key is required")
@@ -695,11 +771,20 @@ async def regenerate_illustration_prompt(
         raise HTTPException(status_code=404, detail=f"Segment {segment_index} not found")
     
     # Start regeneration using Celery
+    if not vertex_service_account and _is_service_account(api_key):
+        vertex_service_account = api_key
+    if not api_provider and (vertex_service_account or _is_service_account(api_key)):
+        api_provider = 'vertex'
+
     regenerate_single_illustration.delay(
         job_id=job_id,
         segment_index=segment_index,
         style_hints=style_hints,
-        api_key=api_key
+        api_key=api_key,
+        api_provider=api_provider,
+        vertex_project_id=vertex_project_id,
+        vertex_location=vertex_location,
+        vertex_service_account=vertex_service_account,
     )
     
     return {
@@ -713,7 +798,11 @@ def _legacy_generate_illustrations_task(
     job_id: int,
     config: IllustrationConfig,
     api_key: str,
-    max_illustrations: Optional[int]
+    max_illustrations: Optional[int],
+    api_provider: Optional[str] = None,
+    vertex_project_id: Optional[str] = None,
+    vertex_location: Optional[str] = None,
+    vertex_service_account: Optional[str] = None,
 ):
     """
     Background task to generate illustrations for a translation job.
@@ -743,7 +832,11 @@ def _legacy_generate_illustrations_task(
         generator = IllustrationGenerator(
             api_key=api_key,
             job_id=job_id,
-            enable_caching=config.cache_enabled
+            enable_caching=config.cache_enabled,
+            api_provider=api_provider,
+            vertex_project_id=vertex_project_id,
+            vertex_location=vertex_location,
+            vertex_service_account=vertex_service_account,
         )
         
         print(f"--- [ILLUSTRATIONS TASK] Generator initialized ---")

@@ -38,7 +38,18 @@ export function useCanvasState() {
   const { jobs, addJob, refreshJobs, refreshJobPublic } = useTranslationJobs({ apiUrl: API_URL });
   
   // Translation setup states
-  const { apiKey, setApiKey, apiProvider, setApiProvider, selectedModel, setSelectedModel } = useApiKey();
+  const {
+    apiKey,
+    setApiKey,
+    apiProvider,
+    setApiProvider,
+    selectedModel,
+    setSelectedModel,
+    vertexProjectId,
+    setVertexProjectId,
+    vertexLocation,
+    setVertexLocation
+  } = useApiKey();
   const [taskModelOverrides, setTaskModelOverrides] = useState<{ styleModel?: string | null; glossaryModel?: string | null }>({});
   const [taskOverridesEnabled, setTaskOverridesEnabled] = useState<boolean>(false);
   const [file, setFile] = useState<File | null>(null);
@@ -70,6 +81,9 @@ export function useCanvasState() {
   } = useTranslationService({
     apiUrl: API_URL,
     apiKey,
+    apiProvider,
+    vertexProjectId,
+    vertexLocation,
     selectedModel,
     selectedStyleModel: taskOverridesEnabled ? (taskModelOverrides.styleModel || selectedModel) : undefined,
     selectedGlossaryModel: taskOverridesEnabled ? (taskModelOverrides.glossaryModel || selectedModel) : undefined,
@@ -151,6 +165,9 @@ export function useCanvasState() {
   } = useJobActions({
     apiUrl: API_URL,
     apiKey,
+    apiProvider,
+    vertexProjectId,
+    vertexLocation,
     onSuccess: () => {
       if (jobId) {
         refreshJobPublic(parseInt(jobId, 10));
@@ -411,6 +428,10 @@ export function useCanvasState() {
     setApiProvider,
     selectedModel,
     setSelectedModel,
+    vertexProjectId,
+    setVertexProjectId,
+    vertexLocation,
+    setVertexLocation,
     taskOverridesEnabled,
     setTaskOverridesEnabled,
     taskModelOverrides,

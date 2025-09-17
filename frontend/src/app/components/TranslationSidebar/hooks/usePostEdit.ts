@@ -3,18 +3,22 @@
 import { useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../../../utils/authToken';
-import { triggerPostEdit } from '../../../utils/api';
+import { triggerPostEdit, type CredentialPayload } from '../../../utils/api';
+import type { ApiProvider } from '../../../hooks/useApiKey';
 
 interface UsePostEditProps {
   jobId: string;
   onRefresh?: () => void;
   selectedCases?: Record<number, boolean[]>;
   modifiedCases?: Record<number, Array<{ reason?: string; recommend_korean_sentence?: string }>>;
-  apiProvider?: 'gemini' | 'openrouter';
+  apiProvider?: ApiProvider;
+  apiKey?: string;
+  vertexProjectId?: string;
+  vertexLocation?: string;
   defaultModelName?: string;
 }
 
-export function usePostEdit({ jobId, onRefresh, selectedCases, modifiedCases, apiProvider, defaultModelName }: UsePostEditProps) {
+export function usePostEdit({ jobId, onRefresh, selectedCases, modifiedCases, apiProvider, apiKey, vertexProjectId, vertexLocation, defaultModelName }: UsePostEditProps) {
   const [postEditDialogOpen, setPostEditDialogOpen] = useState(false);
   // Structured-only: issue types removed
   const [modelName, setModelName] = useState<string>(defaultModelName || '');
@@ -35,7 +39,21 @@ export function usePostEdit({ jobId, onRefresh, selectedCases, modifiedCases, ap
         model_name: modelName || defaultModelName,
         default_select_all: true,
       } as any;
-      await triggerPostEdit(jobId, token || undefined, body);
+      const credentials: CredentialPayload | undefined = apiKey
+        ? {
+            api_key: apiKey,
+            api_provider: apiProvider,
+            ...(apiProvider === 'vertex'
+              ? {
+                  vertex_project_id: vertexProjectId,
+                  vertex_location: vertexLocation,
+                  vertex_service_account: apiKey,
+                }
+              : {}),
+          }
+        : undefined;
+
+      await triggerPostEdit(jobId, token || undefined, body, credentials);
       setPostEditDialogOpen(false);
       // Lightweight UI kick: public single-job refresh (no JWT)
       onRefresh?.();

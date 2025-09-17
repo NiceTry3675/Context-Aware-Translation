@@ -96,6 +96,9 @@ export const openRouterModelOptions: ModelOption[] = [
   },
 ];
 
-export function getDefaultModel(apiProvider: 'gemini' | 'openrouter'): string {
-  return apiProvider === 'gemini' ? geminiModelOptions[0].value : openRouterModelOptions[0].value;
+export function getDefaultModel(apiProvider: 'gemini' | 'vertex' | 'openrouter'): string {
+  if (apiProvider === 'openrouter') {
+    return openRouterModelOptions[0].value;
+  }
+  return geminiModelOptions[0].value;
 }

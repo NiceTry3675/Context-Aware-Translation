@@ -4,17 +4,29 @@ import React, { useEffect, useState } from 'react';
 import { Box, Button, Card, CardMedia, CardContent, Typography, Stack, Radio, CircularProgress, Alert, TextField } from '@mui/material';
 import { useAuth } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
-import { getCharacterBases, generateCharacterBases, selectCharacterBase, CharacterProfileBody, analyzeCharacterAppearance, generateBasesFromPrompt } from '../utils/api';
+import {
+  getCharacterBases,
+  generateCharacterBases,
+  selectCharacterBase,
+  CharacterProfileBody,
+  analyzeCharacterAppearance,
+  generateBasesFromPrompt,
+  type CredentialPayload
+} from '../utils/api';
+import type { ApiProvider } from '../hooks/useApiKey';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface CharacterBaseSelectorProps {
   jobId: string;
-  apiKey?: string; // required to generate bases
+  apiKey?: string;
+  apiProvider?: ApiProvider;
+  vertexProjectId?: string;
+  vertexLocation?: string;
   onChange?: () => void; // called after selection or generation
 }
 
-export default function CharacterBaseSelector({ jobId, apiKey, onChange }: CharacterBaseSelectorProps) {
+export default function CharacterBaseSelector({ jobId, apiKey, apiProvider, vertexProjectId, vertexLocation, onChange }: CharacterBaseSelectorProps) {
   const { getToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [bases, setBases] = useState<any[]>([]);
@@ -26,6 +38,24 @@ export default function CharacterBaseSelector({ jobId, apiKey, onChange }: Chara
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [appearancePrompts, setAppearancePrompts] = useState<string[]>([]);
+
+  const buildCredentials = (): CredentialPayload | undefined => {
+    if (!apiKey) return undefined;
+    const payload: CredentialPayload = {
+      api_key: apiKey,
+      api_provider: apiProvider,
+    };
+    if (apiProvider === 'vertex') {
+      if (vertexProjectId) {
+        payload.vertex_project_id = vertexProjectId;
+      }
+      if (vertexLocation) {
+        payload.vertex_location = vertexLocation;
+      }
+      payload.vertex_service_account = apiKey;
+    }
+    return payload;
+  };
 
   const load = async () => {
     setLoading(true);
@@ -69,7 +99,11 @@ export default function CharacterBaseSelector({ jobId, apiKey, onChange }: Chara
 
   const handleGenerate = async () => {
     if (!apiKey) {
-      setError('API Key가 필요합니다. 설정에서 API 키를 입력하세요.');
+      setError(apiProvider === 'vertex' ? '서비스 계정 JSON이 필요합니다. 설정에서 Vertex 정보를 입력하세요.' : 'API Key가 필요합니다. 설정에서 API 키를 입력하세요.');
+      return;
+    }
+    if (apiProvider === 'vertex' && (!vertexProjectId || !vertexLocation)) {
+      setError('Vertex 프로젝트 ID와 위치가 필요합니다. 설정에서 Vertex 정보를 입력하세요.');
       return;
     }
     setLoading(true);
@@ -83,7 +117,7 @@ export default function CharacterBaseSelector({ jobId, apiKey, onChange }: Chara
         style: profile?.style || 'digital_art',
         extra_style_hints: profile?.extra_style_hints || 'clean linework, soft lighting'
       };
-      await generateCharacterBases(jobId, apiKey, token || undefined, defaultProfile, referenceFile || undefined);
+      await generateCharacterBases(jobId, buildCredentials(), token || undefined, defaultProfile, referenceFile || undefined);
       await load();
       onChange?.();
     } catch (e: any) {
@@ -95,14 +129,18 @@ export default function CharacterBaseSelector({ jobId, apiKey, onChange }: Chara
 
   const handleAnalyzeAppearance = async () => {
     if (!apiKey) {
-      setError('API Key가 필요합니다. 설정에서 API 키를 입력하세요.');
+      setError(apiProvider === 'vertex' ? '서비스 계정 JSON이 필요합니다. 설정에서 Vertex 정보를 입력하세요.' : 'API Key가 필요합니다. 설정에서 API 키를 입력하세요.');
+      return;
+    }
+    if (apiProvider === 'vertex' && (!vertexProjectId || !vertexLocation)) {
+      setError('Vertex 프로젝트 ID와 위치가 필요합니다. 설정에서 Vertex 정보를 입력하세요.');
       return;
     }
     setLoading(true);
     setError(null);
     try {
       const token = await getCachedClerkToken(getToken);
-      const res = await analyzeCharacterAppearance(jobId, apiKey, token || undefined, nameInput || undefined);
+      const res = await analyzeCharacterAppearance(jobId, buildCredentials(), token || undefined, nameInput || undefined);
       setAppearancePrompts(res.prompts || []);
     } catch (e: any) {
       setError(e?.message || '외형 분석에 실패했습니다.');
@@ -113,14 +151,18 @@ export default function CharacterBaseSelector({ jobId, apiKey, onChange }: Chara
 
   const handleGenerateFromPrompt = async (promptText: string) => {
     if (!apiKey) {
-      setError('API Key가 필요합니다. 설정에서 API 키를 입력하세요.');
+      setError(apiProvider === 'vertex' ? '서비스 계정 JSON이 필요합니다. 설정에서 Vertex 정보를 입력하세요.' : 'API Key가 필요합니다. 설정에서 API 키를 입력하세요.');
+      return;
+    }
+    if (apiProvider === 'vertex' && (!vertexProjectId || !vertexLocation)) {
+      setError('Vertex 프로젝트 ID와 위치가 필요합니다. 설정에서 Vertex 정보를 입력하세요.');
       return;
     }
     setLoading(true);
     setError(null);
     try {
       const token = await getCachedClerkToken(getToken);
-      await generateBasesFromPrompt(jobId, apiKey, token || undefined, [promptText], referenceFile || undefined);
+      await generateBasesFromPrompt(jobId, buildCredentials(), token || undefined, [promptText], referenceFile || undefined);
       await load();
       onChange?.();
     } catch (e: any) {

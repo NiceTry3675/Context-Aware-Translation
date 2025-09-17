@@ -19,6 +19,10 @@ class PostEditRequest(BaseModel):
     default_select_all: bool = True
     model_name: Optional[str] = None
     api_key: Optional[str] = None
+    api_provider: Optional[str] = None
+    vertex_project_id: Optional[str] = None
+    vertex_location: Optional[str] = None
+    vertex_service_account: Optional[str] = None
 
 
 class PostEditSegment(BaseModel):

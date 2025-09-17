@@ -1,8 +1,7 @@
 import React from 'react';
 import { Box, Typography, Divider, FormControlLabel, Switch } from '@mui/material';
 import ModelSelector from '../translation/ModelSelector';
-
-type Provider = 'gemini' | 'openrouter';
+import type { ApiProvider } from '../../hooks/useApiKey';
 
 export interface TaskModelOverrides {
   styleModel?: string | null;
@@ -10,7 +9,7 @@ export interface TaskModelOverrides {
 }
 
 interface TaskModelOverridesProps {
-  apiProvider: Provider;
+  apiProvider: ApiProvider;
   values: TaskModelOverrides;
   onChange: (values: TaskModelOverrides) => void;
   enabled: boolean;

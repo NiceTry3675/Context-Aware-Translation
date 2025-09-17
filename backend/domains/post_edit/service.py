@@ -90,7 +90,11 @@ class PostEditDomainService(DomainServiceBase):
         session: Session,
         job_id: int,
         api_key: str,
-        model_name: str = "gemini-2.0-flash-exp"
+        model_name: str = "gemini-2.5-flash-lite",
+        api_provider: Optional[str] = None,
+        vertex_project_id: Optional[str] = None,
+        vertex_location: Optional[str] = None,
+        vertex_service_account: Optional[str] = None,
     ) -> Tuple[PostEditEngine, TranslationDocument, str]:
         """
         Prepare the post-editor and translation job for post-editing.
@@ -121,7 +125,14 @@ class PostEditDomainService(DomainServiceBase):
             raise FileNotFoundError(f"Translated file not found: {translated_path}")
         
         # Initialize post-editor with the model API
-        model_api = self.validate_and_create_model(api_key, model_name)
+        model_api = self.validate_and_create_model(
+            api_key,
+            model_name,
+            api_provider=api_provider,
+            vertex_project_id=vertex_project_id,
+            vertex_location=vertex_location,
+            vertex_service_account=vertex_service_account,
+        )
         post_editor = PostEditEngine(model_api)
         
         # Create translation document for post-editing
@@ -393,7 +404,7 @@ class PostEditDomainService(DomainServiceBase):
         session: Session,
         job_id: int,
         api_key: str,
-        model_name: str = "gemini-2.0-flash-exp",
+        model_name: str = "gemini-2.5-flash-lite",
         selected_cases: Optional[Dict[str, Any]] = None,
         modified_cases: Optional[Dict[str, Any]] = None,
         default_select_all: bool = True,

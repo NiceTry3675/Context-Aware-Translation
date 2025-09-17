@@ -2,7 +2,7 @@
 
 import os
 from fastapi import HTTPException, UploadFile
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from ..shared.service_base import ServiceBase
 from .style_analysis import StyleAnalysis
@@ -21,7 +21,11 @@ class AnalysisService(ServiceBase):
         self,
         file: UploadFile,
         api_key: str,
-        model_name: str = "gemini-2.5-flash-lite"
+        model_name: str = "gemini-2.5-flash-lite",
+        api_provider: Optional[str] = None,
+        vertex_project_id: Optional[str] = None,
+        vertex_location: Optional[str] = None,
+        vertex_service_account: Optional[str] = None
     ) -> StyleAnalysisResponse:
         """
         Analyze the narrative style of a document.
@@ -37,7 +41,14 @@ class AnalysisService(ServiceBase):
         Raises:
             HTTPException: If API key invalid or analysis fails
         """
-        model_api = self.validate_and_create_model(api_key, model_name)
+        model_api = self.validate_and_create_model(
+            api_key,
+            model_name,
+            api_provider=api_provider,
+            vertex_project_id=vertex_project_id,
+            vertex_location=vertex_location,
+            vertex_service_account=vertex_service_account,
+        )
         
         try:
             # Save uploaded file temporarily
@@ -69,7 +80,11 @@ class AnalysisService(ServiceBase):
         self,
         file: UploadFile,
         api_key: str,
-        model_name: str = "gemini-2.5-flash-lite"
+        model_name: str = "gemini-2.5-flash-lite",
+        api_provider: Optional[str] = None,
+        vertex_project_id: Optional[str] = None,
+        vertex_location: Optional[str] = None,
+        vertex_service_account: Optional[str] = None
     ) -> GlossaryAnalysisResponse:
         """
         Extract glossary terms from a document.
@@ -85,7 +100,14 @@ class AnalysisService(ServiceBase):
         Raises:
             HTTPException: If API key invalid or extraction fails
         """
-        model_api = self.validate_and_create_model(api_key, model_name)
+        model_api = self.validate_and_create_model(
+            api_key,
+            model_name,
+            api_provider=api_provider,
+            vertex_project_id=vertex_project_id,
+            vertex_location=vertex_location,
+            vertex_service_account=vertex_service_account,
+        )
         
         try:
             # Save uploaded file temporarily
@@ -119,7 +141,11 @@ class AnalysisService(ServiceBase):
         self,
         file: UploadFile,
         api_key: str,
-        model_name: str = "gemini-2.5-flash-lite"
+        model_name: str = "gemini-2.5-flash-lite",
+        api_provider: Optional[str] = None,
+        vertex_project_id: Optional[str] = None,
+        vertex_location: Optional[str] = None,
+        vertex_service_account: Optional[str] = None
     ) -> CharacterAnalysisResponse:
         """
         Analyze characters in a document.
@@ -135,7 +161,14 @@ class AnalysisService(ServiceBase):
         Raises:
             HTTPException: If API key invalid or analysis fails
         """
-        model_api = self.validate_and_create_model(api_key, model_name)
+        model_api = self.validate_and_create_model(
+            api_key,
+            model_name,
+            api_provider=api_provider,
+            vertex_project_id=vertex_project_id,
+            vertex_location=vertex_location,
+            vertex_service_account=vertex_service_account,
+        )
         
         try:
             # Save uploaded file temporarily

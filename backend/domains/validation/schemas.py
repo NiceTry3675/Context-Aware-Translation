@@ -16,6 +16,10 @@ class ValidationRequest(BaseModel):
     validation_sample_rate: float = 1.0  # 0.0 to 1.0
     model_name: Optional[str] = None
     api_key: Optional[str] = None
+    api_provider: Optional[str] = None
+    vertex_project_id: Optional[str] = None
+    vertex_location: Optional[str] = None
+    vertex_service_account: Optional[str] = None
 
 
 class StructuredValidationReport(BaseModel):

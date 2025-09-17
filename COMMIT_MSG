@@ -1,0 +1,21 @@
+feat: Vertex AI API 제공자 통합 및 기능 개선
+
+Vertex AI를 새로운 API 제공자로 통합하여 서비스 계정 기반의 인증을 지원합니다. 이번 변경으로 기존 Gemini, OpenRouter 방식에 더해 Google Cloud 환경에서의 모델 사용성이 향상되었습니다.
+
+주요 변경 사항:
+- **Vertex AI 지원**:
+  - 백엔드 모델 팩토리(`ModelAPIFactory`)를 리팩토링하여 `gemini`, `openrouter`, `vertex` 세 가지 제공자를 동적으로 처리하도록 개선했습니다.
+  - Vertex AI 인증을 위한 서비스 계정, 프로젝트 ID, 위치 정보를 처리하는 로직을 추가했습니다.
+  - FastAPI 라우트 및 Celery 작업 전반에 `api_provider`, `vertex_project_id` 등 관련 파라미터를 추가했습니다.
+- **프론트엔드 개선**:
+  - API 설정 UI에 'Vertex Gemini' 옵션을 추가하고, 관련 인증 정보(프로젝트 ID, 위치, 서비스 계정 JSON)를 입력받을 수 있도록 개편했습니다.
+  - `useApiKey` 훅을 리팩토링하여 여러 API 제공자의 인증 정보를 독립적으로 관리하도록 개선했습니다.
+- **용어집 기능 추가**:
+  - 번역 작업 완료 후 생성된 용어집을 JSON 파일로 다운로드하는 기능을 추가했습니다.
+  - 용어집 편집기에서 JSON 파일을 가져와 기존 용어집에 병합하는 기능을 추가했습니다.
+- **기타**:
+  - 기본 번역 모델을 `gemini-1.5-pro`에서 `gemini-2.5-flash-lite`로 변경했습니다.
+  - `.gitignore`에 `.codex/` 디렉토리를 추가했습니다.
+
+**알려진 문제**:
+- Vertex AI를 API 제공자로 사용할 경우, 현재 삽화 생성 기능에 오류가 발생합니다. 이 문제는 추후 수정될 예정입니다.

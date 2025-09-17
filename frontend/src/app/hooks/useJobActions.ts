@@ -3,15 +3,19 @@ import { components } from '../../types/api';
 import { useAuth, useClerk } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
 import { triggerIllustrationGeneration, generateCharacterBases, selectCharacterBase } from '../utils/api';
+import type { ApiProvider } from './useApiKey';
 
 interface UseJobActionsOptions {
   apiUrl: string;
   apiKey?: string;
+  apiProvider?: ApiProvider;
+  vertexProjectId?: string;
+  vertexLocation?: string;
   onError?: (error: string) => void;
   onSuccess?: () => void;
 }
 
-export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActionsOptions) {
+export function useJobActions({ apiUrl, apiKey, apiProvider, vertexProjectId, vertexLocation, onError, onSuccess }: UseJobActionsOptions) {
   const { getToken, isSignedIn } = useAuth();
   const { openSignIn } = useClerk();
   const [loading, setLoading] = useState(false);
@@ -57,7 +61,30 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
     }
   }, [isSignedIn, getToken, openSignIn, onError, onSuccess]);
 
-  
+
+  const buildCredentialPayload = useCallback((overrideKey?: string) => {
+    const keyToUse = overrideKey ?? apiKey;
+    if (!keyToUse) {
+      return {};
+    }
+    const payload: Record<string, unknown> = {
+      api_key: keyToUse,
+    };
+    if (apiProvider) {
+      payload.api_provider = apiProvider;
+      if (apiProvider === 'vertex') {
+        if (vertexProjectId) {
+          payload.vertex_project_id = vertexProjectId;
+        }
+        if (vertexLocation) {
+          payload.vertex_location = vertexLocation;
+        }
+        payload.vertex_service_account = keyToUse;
+      }
+    }
+    return payload;
+  }, [apiKey, apiProvider, vertexProjectId, vertexLocation]);
+
 
   const handleTriggerValidation = useCallback(async (
     jobId: number,
@@ -73,8 +100,8 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        // Add api_key inline to ensure backend uses user-provided key
-        body: JSON.stringify({ ...(body as any), api_key: apiKey }),
+        // Add credential payload inline to ensure backend uses user-provided key
+        body: JSON.stringify({ ...(body as any), ...buildCredentialPayload() }),
       });
       
       if (response.ok) {
@@ -93,7 +120,7 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
     } finally {
       setLoading(false);
     }
-  }, [apiUrl, getToken, onError, onSuccess]);
+  }, [apiUrl, buildCredentialPayload, getToken, onError, onSuccess]);
 
   const handleTriggerPostEdit = useCallback(async (
     jobId: number,
@@ -109,8 +136,8 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        // Pass api_key so post-edit does not rely on server env
-        body: JSON.stringify({ ...(body as any), api_key: apiKey }),
+        // Pass credential payload so post-edit does not rely on server env
+        body: JSON.stringify({ ...(body as any), ...buildCredentialPayload() }),
       });
       
       if (response.ok) {
@@ -129,7 +156,7 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
     } finally {
       setLoading(false);
     }
-  }, [apiUrl, getToken, onError, onSuccess]);
+  }, [apiUrl, buildCredentialPayload, getToken, onError, onSuccess]);
 
   const handleDownloadValidationReport = useCallback(async (jobId: number) => {
     await handleDownload(
@@ -165,7 +192,7 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
 
   const handleTriggerIllustration = useCallback(async (
     jobId: number,
-    apiKey: string,
+    overrideApiKey?: string,
     config?: {
       style?: string;
       style_hints?: string;
@@ -181,7 +208,7 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
       const token = await getCachedClerkToken(getToken);
       await triggerIllustrationGeneration(
         jobId.toString(),
-        apiKey,
+        buildCredentialPayload(overrideApiKey),
         token || undefined,
         config,
         maxIllustrations
@@ -195,19 +222,24 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
     } finally {
       setLoading(false);
     }
-  }, [getToken, onError, onSuccess]);
+  }, [buildCredentialPayload, getToken, onError, onSuccess]);
 
   return {
     handleDownload,
     handleTriggerValidation,
     handleTriggerPostEdit,
     handleTriggerIllustration,
-    async handleGenerateCharacterBases(jobId: number, apiKey: string, profile: any) {
+    async handleGenerateCharacterBases(jobId: number, overrideApiKey: string, profile: any) {
       setLoading(true);
       setError(null);
       try {
         const token = await getCachedClerkToken(getToken);
-        await generateCharacterBases(jobId.toString(), apiKey, token || undefined, profile);
+        await generateCharacterBases(
+          jobId.toString(),
+          buildCredentialPayload(overrideApiKey),
+          token || undefined,
+          profile
+        );
         onSuccess?.();
       } catch (error) {
         const msg = error instanceof Error ? error.message : 'An unknown error occurred';

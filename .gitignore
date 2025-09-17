@@ -18,6 +18,7 @@ ngrok.exe
 .idea/
 .gemini/
 .qwen/
+.codex/
 CLAUDE.md
 docs/TODO.md
 GEMINI.md

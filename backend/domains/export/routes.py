@@ -31,6 +31,18 @@ async def download_file(
     return FileResponse(path=file_path, filename=filename, media_type=media_type)
 
 
+async def get_job_glossary(
+    job_id: int,
+    structured: bool = True,
+    user: User = Depends(get_required_user),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """Return the glossary generated for a completed translation job."""
+
+    service = ExportDomainService(db)
+    return await service.get_job_glossary(user, job_id, structured=structured)
+
+
 async def export_job(
     job_id: int,
     format: str = "pdf",

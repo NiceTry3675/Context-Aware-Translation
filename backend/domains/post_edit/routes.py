@@ -88,11 +88,15 @@ async def post_edit_job(
         kwargs={
             "job_id": job_id,
             "api_key": request.api_key,
-            "model_name": request.model_name or "gemini-2.0-flash-exp",
+            "model_name": request.model_name or "gemini-2.5-flash-lite",
             "selected_cases": request.selected_cases,
             "modified_cases": request.modified_cases,
             "default_select_all": request.default_select_all,
             "user_id": user.id,
+            "api_provider": request.api_provider,
+            "vertex_project_id": request.vertex_project_id,
+            "vertex_location": request.vertex_location,
+            "vertex_service_account": request.vertex_service_account,
         },
     )
 
@@ -100,11 +104,15 @@ async def post_edit_job(
         kwargs={
             "job_id": job_id,
             "api_key": request.api_key,
-            "model_name": request.model_name or "gemini-2.0-flash-exp",
+            "model_name": request.model_name or "gemini-2.5-flash-lite",
             "selected_cases": request.selected_cases,
             "modified_cases": request.modified_cases,
             "default_select_all": request.default_select_all,
             "user_id": user.id,
+            "api_provider": request.api_provider,
+            "vertex_project_id": request.vertex_project_id,
+            "vertex_location": request.vertex_location,
+            "vertex_service_account": request.vertex_service_account,
         },
         task_id=task_id,
     )

@@ -53,7 +53,11 @@ class ValidationDomainService(DomainServiceBase):
         session: Session,
         job_id: int,
         api_key: str,
-        model_name: str = "gemini-2.0-flash-exp"
+        model_name: str = "gemini-2.5-flash-lite",
+        api_provider: Optional[str] = None,
+        vertex_project_id: Optional[str] = None,
+        vertex_location: Optional[str] = None,
+        vertex_service_account: Optional[str] = None,
     ) -> Tuple[TranslationValidator, TranslationDocument, str]:
         """
         Prepare the validator and translation job for validation.
@@ -100,7 +104,14 @@ class ValidationDomainService(DomainServiceBase):
         # Initialize validator with the model API
         try:
             logger.info(f"[VALIDATION PREP] Creating model API with validate_and_create_model...")
-            model_api = self.validate_and_create_model(api_key, model_name)
+            model_api = self.validate_and_create_model(
+                api_key,
+                model_name,
+                api_provider=api_provider,
+                vertex_project_id=vertex_project_id,
+                vertex_location=vertex_location,
+                vertex_service_account=vertex_service_account,
+            )
             logger.info(f"[VALIDATION PREP] Model API created: {type(model_api)}")
             validator = TranslationValidator(model_api)
             logger.info(f"[VALIDATION PREP] Validator initialized")
@@ -351,7 +362,7 @@ class ValidationDomainService(DomainServiceBase):
         session: Session,
         job_id: int,
         api_key: str,
-        model_name: str = "gemini-2.0-flash-exp",
+        model_name: str = "gemini-2.5-flash-lite",
         sample_rate: float = 1.0,
         quick_mode: bool = False,
         progress_callback: Optional[Callable[[int], None]] = None

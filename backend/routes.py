@@ -105,6 +105,12 @@ router.add_api_route(
     tags=["export"]
 )
 router.add_api_route(
+    "/jobs/{job_id}/glossary",
+    export_routes.get_job_glossary,
+    methods=["GET"],
+    tags=["export"]
+)
+router.add_api_route(
     "/export/{job_id}", 
     export_routes.export_job, 
     methods=["POST"],

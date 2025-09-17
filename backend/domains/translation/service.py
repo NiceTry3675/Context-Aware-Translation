@@ -369,6 +369,10 @@ class TranslationDomainService(DomainServiceBase):
         job: TranslationJob,  # Pass the full job object
         api_key: str,
         model_name: str,
+        api_provider: Optional[str] = None,
+        vertex_project_id: Optional[str] = None,
+        vertex_location: Optional[str] = None,
+        vertex_service_account: Optional[str] = None,
         style_data: Optional[str] = None,
         glossary_data: Optional[str] = None,
         translation_model_name: Optional[str] = None,
@@ -382,9 +386,16 @@ class TranslationDomainService(DomainServiceBase):
         glossary_model_name = glossary_model_name or model_name
 
         # Create per-task model APIs using inherited method
-        model_api = self.validate_and_create_model(api_key, translation_model_name)
-        style_model_api = self.validate_and_create_model(api_key, style_model_name) if style_model_name else model_api
-        glossary_model_api = self.validate_and_create_model(api_key, glossary_model_name) if glossary_model_name else model_api
+        provider_kwargs = {
+            "api_provider": api_provider,
+            "vertex_project_id": vertex_project_id,
+            "vertex_location": vertex_location,
+            "vertex_service_account": vertex_service_account,
+        }
+
+        model_api = self.validate_and_create_model(api_key, translation_model_name, **provider_kwargs)
+        style_model_api = self.validate_and_create_model(api_key, style_model_name, **provider_kwargs) if style_model_name else model_api
+        glossary_model_api = self.validate_and_create_model(api_key, glossary_model_name, **provider_kwargs) if glossary_model_name else model_api
         
         # Create storage handler for core integration
         storage_handler = create_storage_handler()
@@ -404,7 +415,7 @@ class TranslationDomainService(DomainServiceBase):
         try:
             print(f"--- Analyzing style for Job ID: {job_id} ---")
             # Create model API for style analysis
-            style_model_api_for_analysis = self.validate_and_create_model(api_key, style_model_name)
+            style_model_api_for_analysis = self.validate_and_create_model(api_key, style_model_name, **provider_kwargs)
             
             # Create StyleAnalysis instance with model API
             style_service = StyleAnalysis()
@@ -439,7 +450,7 @@ class TranslationDomainService(DomainServiceBase):
                 print(f"--- Extracting automatic glossary for Job ID: {job_id} ---")
             
             # Create model API for glossary analysis
-            glossary_model_api_for_analysis = self.validate_and_create_model(api_key, glossary_model_name)
+            glossary_model_api_for_analysis = self.validate_and_create_model(api_key, glossary_model_name, **provider_kwargs)
             
             # Create GlossaryAnalysis instance with model API
             glossary_service = GlossaryAnalysis()
@@ -544,6 +555,10 @@ class TranslationDomainService(DomainServiceBase):
         user: User,
         file: UploadFile,
         api_key: str,
+        api_provider: Optional[str] = None,
+        vertex_project_id: Optional[str] = None,
+        vertex_location: Optional[str] = None,
+        vertex_service_account: Optional[str] = None,
         model_name: str = "gemini-2.5-flash-lite",
         translation_model_name: Optional[str] = None,
         style_model_name: Optional[str] = None,
@@ -584,7 +599,14 @@ class TranslationDomainService(DomainServiceBase):
         """
         # Validate API key using inherited method
         # This will raise HTTPException if invalid
-        self.validate_and_create_model(api_key, model_name)
+        self.validate_and_create_model(
+            api_key,
+            model_name,
+            api_provider=api_provider,
+            vertex_project_id=vertex_project_id,
+            vertex_location=vertex_location,
+            vertex_service_account=vertex_service_account,
+        )
         
         # Create job
         job_with_id = self.create_translation_job(
@@ -634,7 +656,11 @@ class TranslationDomainService(DomainServiceBase):
             translation_model_name=translation_model_name,
             style_model_name=style_model_name,
             glossary_model_name=glossary_model_name,
-            user_id=user_id
+            user_id=user_id,
+            api_provider=api_provider,
+            vertex_project_id=vertex_project_id,
+            vertex_location=vertex_location,
+            vertex_service_account=vertex_service_account,
         )
         
         # Fetch the job again and convert to Pydantic schema

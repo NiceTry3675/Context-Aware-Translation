@@ -1,4 +1,5 @@
 import time
+from typing import Optional
 from google import genai
 from google.api_core import exceptions as google_exceptions
 from shared.errors import ProhibitedException
@@ -9,12 +10,24 @@ try:
 except Exception:  # pragma: no cover
     genai_types = None
 
+RATE_LIMIT_BASE_DELAY = 5
+RATE_LIMIT_MAX_DELAY = 60
+
+
 class GeminiModel:
     """
     A wrapper class for the Google Gemini API to handle text generation,
     including configuration, API calls, and retry logic.
     """
-    def __init__(self, api_key: str, model_name: str, safety_settings: list, generation_config: dict, enable_soft_retry: bool = True):
+    def __init__(
+        self,
+        api_key: Optional[str],
+        model_name: str,
+        safety_settings: list,
+        generation_config: dict,
+        enable_soft_retry: bool = True,
+        client: Optional[genai.Client] = None
+    ):
         """
         Initializes the Gemini model client.
         
@@ -25,10 +38,10 @@ class GeminiModel:
             generation_config: Generation configuration
             enable_soft_retry: Whether to enable retry with softer prompts for ProhibitedException
         """
-        if not api_key:
-            raise ValueError("API key cannot be empty.")
+        if not api_key and client is None:
+            raise ValueError("API key or client must be provided.")
         # google-genai client (unified Gemini API)
-        self.client = genai.Client(api_key=api_key)
+        self.client = client or genai.Client(api_key=api_key)
         self.model_name = model_name
         self.safety_settings = safety_settings
         self.generation_config = generation_config
@@ -240,7 +253,19 @@ class GeminiModel:
             except ProhibitedException:
                 # Re-raise ProhibitedException without retrying
                 raise
-                
+            except google_exceptions.ResourceExhausted as e:
+                wait_seconds = min(RATE_LIMIT_MAX_DELAY, RATE_LIMIT_BASE_DELAY * (2 ** attempt))
+                print(
+                    f"\nGemini API rate limit hit (ResourceExhausted). "
+                    f"Attempt {attempt + 1}/{max_retries}. Waiting {wait_seconds}s before retry."
+                )
+                if attempt < max_retries - 1:
+                    time.sleep(wait_seconds)
+                    continue
+                raise Exception(
+                    "Gemini API quota exceeded. Please retry later or reduce parallel requests."
+                ) from e
+
             except (google_exceptions.PermissionDenied, google_exceptions.InvalidArgument) as e:
                 # Check if this is actually a content safety block
                 error_str = str(e).upper()

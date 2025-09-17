@@ -1,6 +1,7 @@
 import { ValidationCase } from '@/core-schemas';
 import type { components } from '@/types/api';
 import { fetchWithRetry } from './fetchWithRetry';
+import type { ApiProvider } from '../hooks/useApiKey';
 
 // Type aliases for generated API types - exported for use in components
 export type GlossaryAnalysisResponse = components['schemas']['GlossaryAnalysisResponse'];
@@ -45,6 +46,33 @@ export interface StructuredPostEditLog {
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+export interface CredentialPayload {
+  api_key?: string;
+  api_provider?: ApiProvider;
+  vertex_project_id?: string;
+  vertex_location?: string;
+  vertex_service_account?: string;
+}
+
+function appendCredentialsToFormData(form: FormData, credentials?: CredentialPayload) {
+  if (!credentials) return;
+  if (credentials.api_key) {
+    form.append('api_key', credentials.api_key);
+  }
+  if (credentials.api_provider) {
+    form.append('api_provider', credentials.api_provider);
+  }
+  if (credentials.vertex_project_id) {
+    form.append('vertex_project_id', credentials.vertex_project_id);
+  }
+  if (credentials.vertex_location) {
+    form.append('vertex_location', credentials.vertex_location);
+  }
+  if (credentials.vertex_service_account) {
+    form.append('vertex_service_account', credentials.vertex_service_account);
+  }
+}
 
 export interface ValidationReport {
   summary: {
@@ -303,9 +331,10 @@ export async function fetchTranslationSegments(
 }
 
 export async function triggerValidation(
-  jobId: string,
+  jobId: string, 
   token: string | undefined,
   body: components['schemas']['ValidationRequest'],
+  credentials?: CredentialPayload,
 ): Promise<void> {
   const url = `${API_BASE_URL}/api/v1/jobs/${jobId}/validation`;
   
@@ -319,7 +348,7 @@ export async function triggerValidation(
   const response = await fetch(url, {
     method: 'PUT',
     headers,
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...(body as any), ...(credentials || {}) }),
   });
   
   console.log('Response status:', response.status, 'Response OK:', response.ok);
@@ -337,6 +366,7 @@ export async function triggerPostEdit(
   jobId: string, 
   token: string | undefined,
   body: components['schemas']['PostEditRequest'],
+  credentials?: CredentialPayload,
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/v1/post-edit/${jobId}`, {
     method: 'POST',
@@ -344,7 +374,7 @@ export async function triggerPostEdit(
       'Authorization': token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(body as any),
+    body: JSON.stringify({ ...(body as any), ...(credentials || {}) }),
   });
 
   if (!response.ok) {
@@ -355,7 +385,7 @@ export async function triggerPostEdit(
 
 export async function triggerIllustrationGeneration(
   jobId: string,
-  apiKey: string,
+  credentials: CredentialPayload | undefined,
   token: string | undefined,
   config?: {
     style?: string;
@@ -373,7 +403,7 @@ export async function triggerIllustrationGeneration(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      api_key: apiKey,
+      ...(credentials || {}),
       max_illustrations: maxIllustrations || null,
       config: {
         enabled: true,
@@ -415,14 +445,14 @@ export interface CharacterProfileBody {
 
 export async function generateCharacterBases(
   jobId: string,
-  apiKey: string,
+  credentials: CredentialPayload | undefined,
   token: string | undefined,
   profile: CharacterProfileBody,
   referenceImage?: File
 ): Promise<{ bases: any[]; directory?: string }> {
   // Always use FormData since backend expects it
   const form = new FormData();
-  form.append('api_key', apiKey);
+  appendCredentialsToFormData(form, credentials);
   form.append('profile_json', JSON.stringify(profile));
   if (referenceImage) {
     form.append('reference_image', referenceImage, referenceImage.name);
@@ -443,7 +473,7 @@ export async function generateCharacterBases(
 
 export async function analyzeCharacterAppearance(
   jobId: string,
-  apiKey: string,
+  credentials: CredentialPayload | undefined,
   token: string | undefined,
   protagonistName?: string
 ): Promise<{ prompts: string[]; protagonist_name?: string }> {
@@ -454,7 +484,7 @@ export async function analyzeCharacterAppearance(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      api_key: apiKey,
+      ...(credentials || {}),
       protagonist_name: protagonistName,
       model_name: 'gemini-2.5-flash'
     }),
@@ -468,14 +498,14 @@ export async function analyzeCharacterAppearance(
 
 export async function generateBasesFromPrompt(
   jobId: string,
-  apiKey: string,
+  credentials: CredentialPayload | undefined,
   token: string | undefined,
   prompts: string[],
   referenceImage?: File
 ): Promise<{ bases: any[]; directory?: string }> {
   // Always use FormData since backend expects it
   const form = new FormData();
-  form.append('api_key', apiKey);
+  appendCredentialsToFormData(form, credentials);
   form.append('prompts_json', JSON.stringify(prompts));
   form.append('num_variations', '3');
   if (referenceImage) {

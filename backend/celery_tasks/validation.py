@@ -39,11 +39,15 @@ def process_validation_task(
     self,
     job_id: int,
     api_key: str,
-    model_name: str = "gemini-1.5-pro",
+    model_name: str = "gemini-2.5-flash-lite",
     validation_mode: str = "comprehensive",
     sample_rate: float = 1.0,
     user_id: Optional[int] = None,
-    autotrigger_post_edit: bool = False
+    autotrigger_post_edit: bool = False,
+    api_provider: Optional[str] = None,
+    vertex_project_id: Optional[str] = None,
+    vertex_location: Optional[str] = None,
+    vertex_service_account: Optional[str] = None,
 ):
     """
     Process a validation task using Celery.
@@ -133,7 +137,11 @@ def process_validation_task(
                 session=db,
                 job_id=job_id,
                 api_key=api_key,
-                model_name=model_name
+                model_name=model_name,
+                api_provider=api_provider,
+                vertex_project_id=vertex_project_id,
+                vertex_location=vertex_location,
+                vertex_service_account=vertex_service_account,
             )
             task_logger.info(f"[VALIDATION TASK] Validation components prepared successfully")
             task_logger.info(f"[VALIDATION TASK] Translated file path: {translated_path}")
@@ -224,7 +232,11 @@ def process_validation_task(
                         api_key=api_key,
                         model_name=model_name,
                         default_select_all=True,
-                        user_id=user_id
+                        user_id=user_id,
+                        api_provider=api_provider,
+                        vertex_project_id=vertex_project_id,
+                        vertex_location=vertex_location,
+                        vertex_service_account=vertex_service_account,
                     )
                     task_logger.info(f"[VALIDATION TASK] Queued post-edit task for Job ID: {job_id}")
             except Exception as e:
@@ -284,7 +296,7 @@ def process_validation_task(
 def run_validation_in_background(
     job_id: int,
     api_key: str,
-    model_name: str = "gemini-1.5-pro",
+    model_name: str = "gemini-2.5-flash-lite",
     validation_mode: str = "comprehensive",
     sample_rate: float = 1.0
 ):

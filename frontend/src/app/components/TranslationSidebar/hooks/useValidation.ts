@@ -3,16 +3,20 @@
 import { useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../../../utils/authToken';
-import { triggerValidation } from '../../../utils/api';
+import { triggerValidation, type CredentialPayload } from '../../../utils/api';
+import type { ApiProvider } from '../../../hooks/useApiKey';
 
 interface UseValidationProps {
   jobId: string;
   onRefresh?: () => void;
-  apiProvider?: 'gemini' | 'openrouter';
+  apiProvider?: ApiProvider;
+  apiKey?: string;
+  vertexProjectId?: string;
+  vertexLocation?: string;
   defaultModelName?: string;
 }
 
-export function useValidation({ jobId, onRefresh, apiProvider, defaultModelName }: UseValidationProps) {
+export function useValidation({ jobId, onRefresh, apiProvider, apiKey, vertexProjectId, vertexLocation, defaultModelName }: UseValidationProps) {
   const [validationDialogOpen, setValidationDialogOpen] = useState(false);
   const [quickValidation, setQuickValidation] = useState(false);
   const [validationSampleRate, setValidationSampleRate] = useState(100);
@@ -39,7 +43,21 @@ export function useValidation({ jobId, onRefresh, apiProvider, defaultModelName 
         validation_sample_rate: validationSampleRate / 100,
         model_name: modelName || defaultModelName,
       };
-      await triggerValidation(jobId, token || undefined, body);
+      const credentials: CredentialPayload | undefined = apiKey
+        ? {
+            api_key: apiKey,
+            api_provider: apiProvider,
+            ...(apiProvider === 'vertex'
+              ? {
+                  vertex_project_id: vertexProjectId,
+                  vertex_location: vertexLocation,
+                  vertex_service_account: apiKey,
+                }
+              : {}),
+          }
+        : undefined;
+
+      await triggerValidation(jobId, token || undefined, body, credentials);
       console.log('Validation triggered successfully');
       
       setValidationDialogOpen(false);

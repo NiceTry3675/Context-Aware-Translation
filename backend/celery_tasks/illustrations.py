@@ -19,6 +19,13 @@ from core.translation.illustration_generator import IllustrationGenerator
 from core.schemas.illustration import IllustrationConfig
 
 
+def _looks_like_service_account(raw: Optional[str]) -> bool:
+    if not raw:
+        return False
+    stripped = raw.strip()
+    return stripped.startswith('{') and '"type"' in stripped and '"private_key"' in stripped
+
+
 @celery_app.task(
     bind=True,
     base=TrackedTask,
@@ -34,7 +41,11 @@ def generate_illustrations_task(
     job_id: int,
     config_dict: dict,
     api_key: str,
-    max_illustrations: Optional[int] = None
+    api_provider: Optional[str] = None,
+    vertex_project_id: Optional[str] = None,
+    vertex_location: Optional[str] = None,
+    vertex_service_account: Optional[str] = None,
+    max_illustrations: Optional[int] = None,
 ):
     """
     Generate illustration prompts for a translation job.
@@ -76,12 +87,21 @@ def generate_illustrations_task(
         config = IllustrationConfig(**config_dict)
         print(f"[ILLUSTRATIONS TASK] Config cache_enabled: {config.cache_enabled}")
         
+        if not vertex_service_account and _looks_like_service_account(api_key):
+            vertex_service_account = api_key
+        if not api_provider and (vertex_service_account or _looks_like_service_account(api_key)):
+            api_provider = 'vertex'
+
         # Initialize illustration generator
         try:
             generator = IllustrationGenerator(
                 api_key=api_key,
                 job_id=job_id,
-                enable_caching=config.cache_enabled
+                enable_caching=config.cache_enabled,
+                api_provider=api_provider,
+                vertex_project_id=vertex_project_id,
+                vertex_location=vertex_location,
+                vertex_service_account=vertex_service_account,
             )
             print(f"[ILLUSTRATIONS TASK] Generator initialized successfully")
         except Exception as e:
@@ -344,7 +364,11 @@ def regenerate_single_illustration(
     job_id: int,
     segment_index: int,
     style_hints: Optional[str],
-    api_key: str
+    api_key: str,
+    api_provider: Optional[str] = None,
+    vertex_project_id: Optional[str] = None,
+    vertex_location: Optional[str] = None,
+    vertex_service_account: Optional[str] = None,
 ):
     """
     Regenerate a single illustration prompt.
@@ -374,11 +398,20 @@ def regenerate_single_illustration(
         if not job:
             raise ValueError(f"Job {job_id} not found")
         
+        if not vertex_service_account and _looks_like_service_account(api_key):
+            vertex_service_account = api_key
+        if not api_provider and (vertex_service_account or _looks_like_service_account(api_key)):
+            api_provider = 'vertex'
+
         # Initialize illustration generator
         generator = IllustrationGenerator(
             api_key=api_key,
             job_id=job_id,
-            enable_caching=False  # Don't use cache for regeneration
+            enable_caching=False,
+            api_provider=api_provider,
+            vertex_project_id=vertex_project_id,
+            vertex_location=vertex_location,
+            vertex_service_account=vertex_service_account,
         )
         
         # Get the segment

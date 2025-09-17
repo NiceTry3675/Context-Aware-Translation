@@ -1,20 +1,22 @@
 import { Box, Typography, ToggleButtonGroup, ToggleButton, Chip, Alert } from '@mui/material';
 import { geminiModelOptions, openRouterModelOptions, type ModelOption } from '../../utils/constants/models';
+import type { ApiProvider } from '../../hooks/useApiKey';
 
 interface ModelSelectorProps {
-  apiProvider: 'gemini' | 'openrouter';
+  apiProvider: ApiProvider;
   selectedModel: string;
   onModelChange: (model: string) => void;
   hideTitle?: boolean;
 }
 
 export default function ModelSelector({ apiProvider, selectedModel, onModelChange, hideTitle = false }: ModelSelectorProps) {
-  const models = apiProvider === 'gemini' ? geminiModelOptions : openRouterModelOptions;
+  const isGeminiFamily = apiProvider === 'gemini' || apiProvider === 'vertex';
+  const models = isGeminiFamily ? geminiModelOptions : openRouterModelOptions;
 
   const handleModelChange = (_: React.MouseEvent<HTMLElement>, newValue: string) => {
     if (!newValue) return;
 
-    if (apiProvider === 'gemini' && newValue === 'gemini-2.5-pro') {
+    if (isGeminiFamily && newValue === 'gemini-2.5-pro') {
       const confirmation = window.confirm(
         "⚠️ Pro 모델 경고 ⚠️\n\n" +
         "Pro 모델은 최고의 번역 품질을 제공하지만, 다음과 같은 단점이 있을 수 있습니다:\n\n" +
