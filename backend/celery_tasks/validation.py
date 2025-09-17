@@ -39,7 +39,7 @@ def process_validation_task(
     self,
     job_id: int,
     api_key: str,
-    model_name: str = "gemini-1.5-pro",
+    model_name: str = "gemini-2.5-flash-lite",
     validation_mode: str = "comprehensive",
     sample_rate: float = 1.0,
     user_id: Optional[int] = None,
@@ -285,7 +285,7 @@ def process_validation_task(
 def run_validation_in_background(
     job_id: int,
     api_key: str,
-    model_name: str = "gemini-1.5-pro",
+    model_name: str = "gemini-2.5-flash-lite",
     validation_mode: str = "comprehensive",
     sample_rate: float = 1.0
 ):

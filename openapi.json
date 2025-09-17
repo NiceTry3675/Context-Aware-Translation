@@ -405,7 +405,7 @@
           "post-edit"
         ],
         "summary": "Post Edit Job",
-        "description": "Trigger post-editing on a validated translation job.\n\nArgs:\n    job_id: Job ID\n    request: Post-edit request parameters\n    user: Current authenticated user\n    service: Post-edit domain service\n    \nReturns:\n    Task information for the post-edit job",
+        "description": "Trigger post-editing on a validated translation job.\n\nArgs:\n    job_id: Job ID\n    request: Post-edit request parameters\n    user: Current authenticated user\nReturns:\n    Task information for the post-edit job",
         "operationId": "post_edit_job_api_v1_post_edit__job_id__post",
         "parameters": [
           {
@@ -456,7 +456,7 @@
           "post-edit"
         ],
         "summary": "Get Post Edit Status",
-        "description": "Get the post-edit report for a job.\n\nArgs:\n    job_id: Job ID\n    user: Current authenticated user\n    service: Post-edit domain service\n    \nReturns:\n    Post-edit report with changes and statistics",
+        "description": "Get the post-edit report for a job.\n\nArgs:\n    job_id: Job ID\n    user: Current authenticated user\nReturns:\n    Post-edit report with changes and statistics",
         "operationId": "get_post_edit_status_api_v1_post_edit__job_id__status_get",
         "parameters": [
           {

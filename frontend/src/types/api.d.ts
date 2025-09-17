@@ -227,8 +227,6 @@ export interface paths {
          *         job_id: Job ID
          *         request: Post-edit request parameters
          *         user: Current authenticated user
-         *         service: Post-edit domain service
-         *
          *     Returns:
          *         Task information for the post-edit job
          */
@@ -253,8 +251,6 @@ export interface paths {
          *     Args:
          *         job_id: Job ID
          *         user: Current authenticated user
-         *         service: Post-edit domain service
-         *
          *     Returns:
          *         Post-edit report with changes and statistics
          */

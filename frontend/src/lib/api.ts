@@ -79,10 +79,16 @@ export const endpoints = {
   },
   
   // Post-editing
-  async postEditTranslation(jobId: number) {
+  async postEditTranslation(
+    jobId: number,
+    body?: Partial<paths['/api/v1/post-edit/{job_id}']['post']['requestBody']['content']['application/json']>
+  ) {
     return api.POST('/api/v1/post-edit/{job_id}', {
       params: { path: { job_id: jobId } },
-      body: {}
+      body: {
+        default_select_all: true,
+        ...(body as any),
+      },
     });
   },
   

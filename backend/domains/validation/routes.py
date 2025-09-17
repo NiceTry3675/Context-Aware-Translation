@@ -92,7 +92,7 @@ async def validate_job(
         kwargs={
             "job_id": job_id,
             "api_key": request.api_key,
-            "model_name": request.model_name or "gemini-2.0-flash-exp",
+            "model_name": request.model_name or "gemini-2.5-flash-lite",
             "validation_mode": validation_mode,
             "sample_rate": request.validation_sample_rate,
             "user_id": user.id,
@@ -104,7 +104,7 @@ async def validate_job(
         kwargs={
             "job_id": job_id,
             "api_key": request.api_key,
-            "model_name": request.model_name or "gemini-2.0-flash-exp",
+            "model_name": request.model_name or "gemini-2.5-flash-lite",
             "validation_mode": validation_mode,
             "sample_rate": request.validation_sample_rate,
             "user_id": user.id,

@@ -35,7 +35,7 @@ def process_post_edit_task(
     self,
     job_id: int,
     api_key: str,
-    model_name: str = "gemini-1.5-pro",
+    model_name: str = "gemini-2.5-flash-lite",
     selected_cases: Optional[dict] = None,
     modified_cases: Optional[dict] = None,
     default_select_all: bool = True,
@@ -208,7 +208,7 @@ def process_post_edit_task(
 def run_post_edit_in_background(
     job_id: int,
     api_key: str,
-    model_name: str = "gemini-1.5-pro"
+    model_name: str = "gemini-2.5-flash-lite"
 ):
     """
     Backward compatibility wrapper for existing code.
