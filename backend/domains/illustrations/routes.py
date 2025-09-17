@@ -25,7 +25,7 @@ from ...celery_app import celery_app
 from celery.result import AsyncResult
 from ...celery_tasks.base import create_task_execution
 import uuid
-from core.translation.illustration_generator import IllustrationGenerator
+from core.translation.illustration import IllustrationGenerator
 from core.schemas.illustration import (
     IllustrationConfig, 
     IllustrationData, 

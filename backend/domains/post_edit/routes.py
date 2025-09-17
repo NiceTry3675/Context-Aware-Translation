@@ -1,8 +1,7 @@
 """
 Post-edit domain routes - thin routing layer.
 
-This module provides a thin routing layer for post-editing operations,
-delegating all business logic to the PostEditDomainService.
+This module provides a thin routing layer for post-editing operations.
 """
 
 from fastapi import Depends, HTTPException
@@ -14,7 +13,6 @@ import uuid
 from backend.config.dependencies import get_db, get_required_user
 from backend.domains.user.models import User
 from backend.domains.post_edit.schemas import PostEditRequest
-from backend.domains.post_edit.service import PostEditDomainService
 from backend.celery_tasks.post_edit import process_post_edit_task
 from backend.domains.translation.repository import SqlAlchemyTranslationJobRepository
 from backend.domains.tasks.models import TaskKind
@@ -22,11 +20,6 @@ from backend.domains.tasks.repository import TaskRepository
 from backend.celery_app import celery_app
 from celery.result import AsyncResult
 from backend.celery_tasks.base import create_task_execution
-
-
-def get_post_edit_service(db: Session = Depends(get_db)) -> PostEditDomainService:
-    """Dependency injection for PostEditDomainService."""
-    return PostEditDomainService(lambda: db)
 
 
 async def post_edit_job(
@@ -42,8 +35,6 @@ async def post_edit_job(
         job_id: Job ID
         request: Post-edit request parameters
         user: Current authenticated user
-        service: Post-edit domain service
-        
     Returns:
         Task information for the post-edit job
     """
@@ -88,7 +79,7 @@ async def post_edit_job(
         kwargs={
             "job_id": job_id,
             "api_key": request.api_key,
-            "model_name": request.model_name or "gemini-2.0-flash-exp",
+            "model_name": request.model_name or "gemini-2.5-flash-lite",
             "selected_cases": request.selected_cases,
             "modified_cases": request.modified_cases,
             "default_select_all": request.default_select_all,
@@ -100,7 +91,7 @@ async def post_edit_job(
         kwargs={
             "job_id": job_id,
             "api_key": request.api_key,
-            "model_name": request.model_name or "gemini-2.0-flash-exp",
+            "model_name": request.model_name or "gemini-2.5-flash-lite",
             "selected_cases": request.selected_cases,
             "modified_cases": request.modified_cases,
             "default_select_all": request.default_select_all,
@@ -127,8 +118,6 @@ async def get_post_edit_status(
     Args:
         job_id: Job ID
         user: Current authenticated user
-        service: Post-edit domain service
-        
     Returns:
         Post-edit report with changes and statistics
     """

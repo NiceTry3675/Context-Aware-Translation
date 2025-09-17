@@ -5,7 +5,7 @@ This module defines the unified SegmentInfo model used throughout the translatio
 to eliminate code duplication and provide a single source of truth for segment data.
 """
 
-from typing import Optional
+from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 
@@ -38,6 +38,11 @@ class SegmentInfo(BaseModel):
     illustration_status: Optional[str] = Field(
         default=None,
         description="Status of illustration generation (pending, generated, failed)"
+    )
+    # World atmosphere analysis for enhanced context
+    world_atmosphere: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="World and atmosphere analysis data for this segment"
     )
     
     class Config:

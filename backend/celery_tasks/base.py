@@ -4,7 +4,7 @@ Base task class for Celery tasks with common functionality.
 from celery import Task
 from celery.signals import task_prerun, task_postrun, task_failure
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence
 import logging
 import uuid
 
@@ -13,6 +13,29 @@ from ..domains.tasks.models import TaskExecution, TaskStatus, TaskKind
 from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_job_id(
+    task_execution: Optional[TaskExecution],
+    args: Optional[Sequence[Any]],
+    kwargs: Optional[Dict[str, Any]]
+) -> Optional[int]:
+    """Derive job_id from task execution context and invocation arguments."""
+
+    if task_execution and getattr(task_execution, "job_id", None):
+        return task_execution.job_id
+
+    if kwargs:
+        job_id = kwargs.get("job_id")
+        if isinstance(job_id, int):
+            return job_id
+
+    if args:
+        first_arg = args[0]
+        if isinstance(first_arg, int):
+            return first_arg
+
+    return None
 
 
 class DatabaseTask(Task):
@@ -82,12 +105,9 @@ def task_prerun_handler(sender=None, task_id=None, task=None, args=None, kwargs=
                 attempts=1
             )
             
-            # Extract job_id if present in kwargs
-            if 'job_id' in kwargs:
-                task_execution.job_id = kwargs['job_id']
-            elif args and isinstance(args[0], int):
-                # Assume first arg is job_id for backward compatibility
-                task_execution.job_id = args[0]
+            extracted_job_id = _extract_job_id(None, args, kwargs)
+            if extracted_job_id is not None:
+                task_execution.job_id = extracted_job_id
             
             # Extract user_id if present
             if 'user_id' in kwargs:
@@ -112,15 +132,16 @@ def task_prerun_handler(sender=None, task_id=None, task=None, args=None, kwargs=
 
 @task_postrun.connect
 def task_postrun_handler(sender=None, task_id=None, task=None, args=None, kwargs=None, retval=None, state=None, **kw):
-    """Handle task completion - update task execution record."""
+    """Handle task completion - update task execution record and persist to S3."""
     if not isinstance(task, TrackedTask):
         return
-    
+
+    db_session = None
     try:
         db_session = SessionLocal()
-        
+
         task_execution = db_session.query(TaskExecution).filter_by(id=task_id).first()
-        
+
         if task_execution:
             if state == 'SUCCESS':
                 task_execution.status = TaskStatus.SUCCESS
@@ -130,16 +151,46 @@ def task_postrun_handler(sender=None, task_id=None, task=None, args=None, kwargs
                 task_execution.status = TaskStatus.FAILURE
             else:
                 task_execution.status = TaskStatus.SUCCESS  # Default to success
-            
+
             task_execution.end_time = datetime.utcnow()
-            
+
             # Store result if it's serializable
             if retval and isinstance(retval, (dict, list, str, int, float, bool)):
                 task_execution.result = retval
-            
+
             db_session.commit()
             logger.info(f"Task {task_id} ({task.name}) completed with state {state}")
-        
+
+            # Persist task outputs to S3 if configured and task succeeded
+            if state == 'SUCCESS':
+                try:
+                    from backend.services.aws_task_output_service import get_task_output_service
+
+                    job_id = _extract_job_id(task_execution, args, kwargs)
+
+                    if job_id is not None:
+                        service = get_task_output_service()
+                        if service.enabled:
+                            # Run S3 persistence in background to not block task completion
+                            persist_result = service.persist_job_outputs(
+                                job_id=job_id,
+                                task_id=task_id,
+                                task_name=task.name
+                            )
+
+                            if persist_result.get('success'):
+                                logger.info(
+                                    f"Persisted outputs to S3 for job {job_id}: "
+                                    f"{persist_result.get('uploaded_count', 0)} files, "
+                                    f"{persist_result.get('total_size', 0):,} bytes"
+                                )
+                            elif persist_result.get('reason') != 'S3 persistence not enabled or configured':
+                                logger.warning(f"Failed to persist outputs to S3: {persist_result}")
+
+                except Exception as e:
+                    # Don't let S3 persistence failures affect task completion
+                    logger.error(f"Error during S3 persistence for task {task_id}: {e}")
+
     except Exception as e:
         logger.error(f"Failed to update task postrun status: {e}")
     finally:

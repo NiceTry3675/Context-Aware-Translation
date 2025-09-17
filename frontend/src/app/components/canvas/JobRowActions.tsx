@@ -66,10 +66,15 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
   };
 
   const onConfirmPostEdit = () => {
+    const selectedTotal = Object.values(selectedCases || {}).reduce(
+      (acc, arr) => acc + (arr?.filter(Boolean).length || 0),
+      0
+    );
     handleTriggerPostEdit(job.id, {
       selected_cases: selectedCases || {},
       model_name: postEditModelName || defaultModelName,
-    });
+      default_select_all: selectedTotal === 0,
+    } as any);
     setPostEditDialogOpen(false);
   };
 

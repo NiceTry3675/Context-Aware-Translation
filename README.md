@@ -112,6 +112,23 @@ Context-Aware-Translation/
 └── logs/                        # 📁 로그 파일
 ```
 
+## 💾 데이터 저장 방식
+
+백엔드는 **하이브리드 스토리지 접근법**을 사용하여 데이터를 관리합니다:
+
+### 데이터베이스 (`database.db` 또는 PostgreSQL)
+- **작업 메타데이터**: 상태, 사용자 ID, 타임스탬프, API 키
+- **사용자 관리**: Clerk 통합을 통한 인증
+- **커뮤니티 기능**: 게시글, 댓글, 공지사항
+- **작업 추적**: Celery 작업 실행 이력
+
+### 파일시스템 (`logs/` 디렉토리)
+- **번역 출력**: `logs/jobs/{job_id}/output/translated.txt`
+- **세그먼트 데이터**: `logs/jobs/{job_id}/output/segments.json`
+- **디버그 로그**: `logs/debug_prompts/`
+- **검증 보고서**: `logs/validation_logs/`
+- **포스트에디트 로그**: `logs/postedit_logs/`
+
 ## 🏗️ 프론트엔드 아키텍처
 
 - **Next.js 15 App Router**: 최신 React 서버 컴포넌트 활용

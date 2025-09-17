@@ -27,10 +27,10 @@ from backend.domains.user.models import User
 from backend.domains.translation.models import TranslationJob, TranslationUsageLog
 from backend.domains.community.models import Announcement, PostCategory, Post, Comment
 
-# Get database URL from environment
-# Use absolute path to ensure consistency regardless of where alembic is run
-project_root = Path(__file__).parent.parent.parent
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{project_root}/database.db")
+# Get database URL from centralized settings
+from backend.config.settings import get_settings
+settings = get_settings()
+SQLALCHEMY_DATABASE_URL = settings.database_url
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

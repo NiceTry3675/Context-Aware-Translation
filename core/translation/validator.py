@@ -9,7 +9,9 @@ frontend and post-edit modules (no legacy arrays, no raw_response).
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Tuple, Any
+import json
+import time
+from typing import Dict, List, Tuple, Any, Optional
 
 from core.schemas.validation import ValidationCase, ValidationResult, make_validation_response_schema
 from core.prompts.manager import PromptManager
@@ -19,9 +21,10 @@ from core.prompts.manager import PromptManager
 class TranslationValidator:
     """Structured-output based validator (no legacy regex)."""
 
-    def __init__(self, ai_model, verbose: bool = False):
+    def __init__(self, ai_model, verbose: bool = False, logger=None):
         self.ai_model = ai_model
         self.verbose = verbose
+        self.logger = logger  # Optional TranslationLogger instance
 
     def validate_segment(
         self,
@@ -32,6 +35,9 @@ class TranslationValidator:
         segment_index: int,
         quick_mode: bool = False,
     ) -> ValidationResult:
+        # Track validation time
+        start_time = time.time()
+
         # Create ValidationResult using Pydantic model
         result = ValidationResult(
             segment_index=segment_index,
@@ -87,6 +93,43 @@ class TranslationValidator:
         except Exception as e:
             print(f"Warning: Structured validation failed for segment {segment_index}: {e}")
             result.status = "ERROR"
+
+        # Log segment validation I/O if logger is available
+        if self.logger:
+            validation_time = time.time() - start_time
+            metadata = {
+                "validation_mode": "quick" if quick_mode else "comprehensive",
+                "validation_time": validation_time,
+                "glossary_used": contextual_glossary,
+                "status": result.status,
+                "issues_found": len(result.structured_cases) if result.structured_cases else 0
+            }
+
+            # Include issue details if any
+            if result.structured_cases:
+                metadata["issues"] = [
+                    {
+                        "dimension": case.dimension,
+                        "severity": case.severity,
+                        "description": case.description,
+                        "location": case.location
+                    }
+                    for case in result.structured_cases
+                ]
+
+            # For validation, the "translated_text" in log_segment_io represents the validation result
+            validation_output = {
+                "status": result.status,
+                "issues": len(result.structured_cases) if result.structured_cases else 0,
+                "translated_text": translated_text  # Keep the translated text for reference
+            }
+
+            self.logger.log_segment_io(
+                segment_index=segment_index,
+                source_text=source_text,
+                translated_text=json.dumps(validation_output, ensure_ascii=False),
+                metadata=metadata
+            )
 
         return result
 

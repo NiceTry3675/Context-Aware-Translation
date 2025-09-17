@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from core.translation.post_editor import PostEditEngine
 from core.translation.document import TranslationDocument
+from shared.utils.logging import get_logger
 from backend.domains.translation.models import TranslationJob
 from backend.domains.translation.repository import TranslationJobRepository, SqlAlchemyTranslationJobRepository
 from backend.domains.shared.service_base import DomainServiceBase
@@ -90,8 +91,8 @@ class PostEditDomainService(DomainServiceBase):
         session: Session,
         job_id: int,
         api_key: str,
-        model_name: str = "gemini-2.0-flash-exp"
-    ) -> Tuple[PostEditEngine, TranslationDocument, str]:
+        model_name: str = "gemini-2.5-flash-lite"
+    ) -> Tuple[PostEditEngine, TranslationDocument, str, Any]:
         """
         Prepare the post-editor and translation job for post-editing.
         
@@ -102,8 +103,8 @@ class PostEditDomainService(DomainServiceBase):
             model_name: Name of the model to use for post-editing
             
         Returns:
-            Tuple of (post_editor, translation_document, translated_path)
-            
+            Tuple of (post_editor, translation_document, translated_path, segment_logger)
+
         Raises:
             ValueError: If job not found or translation segments invalid
             FileNotFoundError: If translated file not found
@@ -120,9 +121,17 @@ class PostEditDomainService(DomainServiceBase):
         if not self.file_manager.file_exists(translated_path):
             raise FileNotFoundError(f"Translated file not found: {translated_path}")
         
-        # Initialize post-editor with the model API
+        # Create a logger for segment I/O
+        segment_logger = get_logger(
+            job_id=job_id,
+            filename=job.filename,
+            task_type="post_edit"
+        )
+        segment_logger.initialize_session()
+
+        # Initialize post-editor with the model API and logger
         model_api = self.validate_and_create_model(api_key, model_name)
-        post_editor = PostEditEngine(model_api)
+        post_editor = PostEditEngine(model_api, logger=segment_logger)
         
         # Create translation document for post-editing
         translation_document = TranslationDocument(
@@ -167,7 +176,7 @@ class PostEditDomainService(DomainServiceBase):
                 f"translated={len(translation_document.translated_segments)})."
             )
         
-        return post_editor, translation_document, translated_path
+        return post_editor, translation_document, translated_path, segment_logger
     
     def run_post_edit(
         self,
@@ -179,7 +188,8 @@ class PostEditDomainService(DomainServiceBase):
         modified_cases: Optional[Dict[str, Any]] = None,
         default_select_all: bool = True,
         progress_callback: Optional[Callable[[int], None]] = None,
-        job_id: Optional[int] = None
+        job_id: Optional[int] = None,
+        segment_logger=None
     ) -> List[str]:
         """
         Run the post-editing process and overwrite the translated file.
@@ -239,7 +249,14 @@ class PostEditDomainService(DomainServiceBase):
         except IOError as e:
             print(f"--- [POST-EDIT] Error writing to translated file: {e} ---")
             raise e
-        
+
+        # Log completion if logger is available
+        if segment_logger:
+            segment_logger.log_completion(
+                total_segments=len(edited_segments),
+                total_time=None
+            )
+
         return edited_segments
 
     def _normalize_selected_cases_from_report(
@@ -393,7 +410,7 @@ class PostEditDomainService(DomainServiceBase):
         session: Session,
         job_id: int,
         api_key: str,
-        model_name: str = "gemini-2.0-flash-exp",
+        model_name: str = "gemini-2.5-flash-lite",
         selected_cases: Optional[Dict[str, Any]] = None,
         modified_cases: Optional[Dict[str, Any]] = None,
         default_select_all: bool = True,

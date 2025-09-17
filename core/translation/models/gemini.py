@@ -319,19 +319,23 @@ class GeminiModel:
                 )
                 
                 # If using Pydantic models, use the parsed response
-                if is_pydantic and hasattr(response, 'parsed') and response.parsed is not None:
-                    return response.parsed
-                
-                # Otherwise, parse JSON as before (backward compatibility)
+                if is_pydantic:
+                    if hasattr(response, 'parsed') and response.parsed is not None:
+                        return response.parsed
+                    else:
+                        # For Pydantic models, parsed response is required
+                        raise ValueError("Structured output failed: No parsed response available. This may indicate the response was truncated or malformed.")
+
+                # Only for dict schemas (backward compatibility)
                 import json as _json
                 response_text = None
-                
+
                 if response and hasattr(response, 'text'):
                     if callable(response.text):
                         response_text = response.text()
                     else:
                         response_text = response.text
-                
+
                 # If no text directly available, try to extract from candidates
                 if not response_text:
                     try:
@@ -339,7 +343,7 @@ class GeminiModel:
                         response_text = ''.join(getattr(p, 'text', '') for p in parts)
                     except Exception:
                         pass
-                
+
                 if response_text:
                     # Strip markdown code block formatting if present
                     cleaned_text = response_text.strip()
@@ -350,34 +354,16 @@ class GeminiModel:
                     if cleaned_text.endswith('```'):
                         cleaned_text = cleaned_text[:-3]  # Remove ``` suffix
                     cleaned_text = cleaned_text.strip()
-                    
+
                     try:
                         return _json.loads(cleaned_text)
                     except _json.JSONDecodeError as e:
-                        # Log the problematic JSON for debugging
+                        # For dict schemas, we still fail on JSON errors
                         print(f"JSON parsing error: {e}")
                         print(f"Response text length: {len(cleaned_text)}")
-                        
-                        # Check if this looks like a truncation issue
-                        if "Unterminated string" in str(e) and cleaned_text.strip()[-1] not in ['}', ']']:
-                            print("Warning: Response appears to be truncated. Attempting to repair...")
-                            # Try to repair truncated JSON
-                            repaired = self._attempt_json_repair(cleaned_text)
-                            if repaired:
-                                try:
-                                    return _json.loads(repaired)
-                                except _json.JSONDecodeError:
-                                    print("Failed to repair truncated JSON")
-                        
-                        # Log problematic section for other errors
-                        if hasattr(e, 'pos'):
-                            start = max(0, e.pos - 100)
-                            end = min(len(cleaned_text), e.pos + 100)
-                            print(f"Problematic section around position {e.pos}:")
-                            print(repr(cleaned_text[start:end]))
                         raise ValueError(f"Failed to parse JSON response: {e}")
-                
-                raise ValueError("Structured API returned an empty or unparseable response.")
+
+                raise ValueError("Structured API returned an empty response.")
 
             except (google_exceptions.PermissionDenied, google_exceptions.InvalidArgument) as e:
                 # Bad key/arguments are not retriable

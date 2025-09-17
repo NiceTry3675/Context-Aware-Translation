@@ -71,7 +71,7 @@
           "jobs"
         ],
         "summary": "Create Job",
-        "description": "Create a new translation job.\n\nArgs:\n    file: File to translate\n    api_key: API key for translation service\n    model_name: Default model name\n    translation_model_name: Optional override for translation model\n    style_model_name: Optional override for style model\n    glossary_model_name: Optional override for glossary model\n    style_data: Optional style data\n    glossary_data: Optional glossary data\n    segment_size: Segment size for translation\n    user: Current authenticated user\n    service: Translation domain service\n    \nReturns:\n    Created translation job",
+        "description": "Create a new translation job.\n\nArgs:\n    file: File to translate\n    api_key: API key for translation service\n    model_name: Default model name\n    translation_model_name: Optional override for translation model\n    style_model_name: Optional override for style model\n    glossary_model_name: Optional override for glossary model\n    style_data: Optional style data\n    glossary_data: Optional glossary data\n    segment_size: Segment size for translation\n    enable_validation: Whether to run validation automatically after translation\n    quick_validation: Whether to use quick validation mode\n    validation_sample_rate: Portion of segments to validate (0.0-1.0)\n    enable_post_edit: Whether to run post-edit automatically after validation\n    user: Current authenticated user\n    service: Translation domain service\n    \nReturns:\n    Created translation job",
         "operationId": "create_job_api_v1_jobs_post",
         "requestBody": {
           "required": true,
@@ -405,7 +405,7 @@
           "post-edit"
         ],
         "summary": "Post Edit Job",
-        "description": "Trigger post-editing on a validated translation job.\n\nArgs:\n    job_id: Job ID\n    request: Post-edit request parameters\n    user: Current authenticated user\n    service: Post-edit domain service\n    \nReturns:\n    Task information for the post-edit job",
+        "description": "Trigger post-editing on a validated translation job.\n\nArgs:\n    job_id: Job ID\n    request: Post-edit request parameters\n    user: Current authenticated user\nReturns:\n    Task information for the post-edit job",
         "operationId": "post_edit_job_api_v1_post_edit__job_id__post",
         "parameters": [
           {
@@ -456,7 +456,7 @@
           "post-edit"
         ],
         "summary": "Get Post Edit Status",
-        "description": "Get the post-edit report for a job.\n\nArgs:\n    job_id: Job ID\n    user: Current authenticated user\n    service: Post-edit domain service\n    \nReturns:\n    Post-edit report with changes and statistics",
+        "description": "Get the post-edit report for a job.\n\nArgs:\n    job_id: Job ID\n    user: Current authenticated user\nReturns:\n    Post-edit report with changes and statistics",
         "operationId": "get_post_edit_status_api_v1_post_edit__job_id__status_get",
         "parameters": [
           {
@@ -2283,6 +2283,26 @@
             "type": "integer",
             "title": "Segment Size",
             "default": 15000
+          },
+          "enable_validation": {
+            "type": "boolean",
+            "title": "Enable Validation",
+            "default": false
+          },
+          "quick_validation": {
+            "type": "boolean",
+            "title": "Quick Validation",
+            "default": false
+          },
+          "validation_sample_rate": {
+            "type": "number",
+            "title": "Validation Sample Rate",
+            "default": 1.0
+          },
+          "enable_post_edit": {
+            "type": "boolean",
+            "title": "Enable Post Edit",
+            "default": false
           }
         },
         "type": "object",
@@ -2904,6 +2924,23 @@
               }
             ],
             "title": "Selected Cases"
+          },
+          "modified_cases": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Modified Cases"
+          },
+          "default_select_all": {
+            "type": "boolean",
+            "title": "Default Select All",
+            "default": true
           },
           "model_name": {
             "anyOf": [

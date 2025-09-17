@@ -39,7 +39,7 @@ def process_validation_task(
     self,
     job_id: int,
     api_key: str,
-    model_name: str = "gemini-1.5-pro",
+    model_name: str = "gemini-2.5-flash-lite",
     validation_mode: str = "comprehensive",
     sample_rate: float = 1.0,
     user_id: Optional[int] = None,
@@ -129,7 +129,7 @@ def process_validation_task(
         # Prepare validation components
         try:
             task_logger.info(f"[VALIDATION TASK] Preparing validation components...")
-            validator, validation_document, translated_path = validation_service.prepare_validation(
+            validator, validation_document, translated_path, segment_logger = validation_service.prepare_validation(
                 session=db,
                 job_id=job_id,
                 api_key=api_key,
@@ -164,7 +164,8 @@ def process_validation_task(
                 validation_document=validation_document,
                 sample_rate=sample_rate,
                 quick_mode=quick_mode,
-                progress_callback=update_progress
+                progress_callback=update_progress,
+                segment_logger=segment_logger
             )
             task_logger.info(f"[VALIDATION TASK] Validation run completed, result: {validation_result is not None}")
         except Exception as e:
@@ -284,7 +285,7 @@ def process_validation_task(
 def run_validation_in_background(
     job_id: int,
     api_key: str,
-    model_name: str = "gemini-1.5-pro",
+    model_name: str = "gemini-2.5-flash-lite",
     validation_mode: str = "comprehensive",
     sample_rate: float = 1.0
 ):

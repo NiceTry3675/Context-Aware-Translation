@@ -141,7 +141,11 @@ class NarrativeElements(BaseModel):
 
 class WorldAtmosphereAnalysis(BaseModel):
     """Comprehensive world and atmosphere analysis for a text segment."""
-    
+
+    segment_summary: str = Field(
+        ...,
+        description="Concise narrative summary (1-3 sentences) capturing main events, actions, and character interactions"
+    )
     physical_world: PhysicalWorld = Field(
         ...,
         description="Physical world and setting details"
@@ -179,6 +183,7 @@ class WorldAtmosphereAnalysis(BaseModel):
     def to_illustration_context(self) -> Dict[str, Any]:
         """Format for use in illustration generation."""
         return {
+            "summary": self.segment_summary,
             "setting": self.physical_world.location,
             "setting_details": [
                 self.physical_world.architecture_landscape,
@@ -281,6 +286,10 @@ def make_world_atmosphere_schema() -> Dict[str, Any]:
     return {
         "type": "object",
         "properties": {
+            "segment_summary": {
+                "type": "string",
+                "description": "Concise narrative summary (1-3 sentences) capturing main events, actions, and character interactions"
+            },
             "physical_world": {
                 "type": "object",
                 "properties": {
@@ -361,7 +370,7 @@ def make_world_atmosphere_schema() -> Dict[str, Any]:
                 "required": ["point_of_focus", "dramatic_weight", "scene_role"]
             }
         },
-        "required": ["physical_world", "atmosphere", "visual_mood", "cultural_context", "narrative_elements"]
+        "required": ["segment_summary", "physical_world", "atmosphere", "visual_mood", "cultural_context", "narrative_elements"]
     }
 
 

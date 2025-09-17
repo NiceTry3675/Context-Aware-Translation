@@ -16,7 +16,7 @@ from .models.openrouter import OpenRouterModel
 from .document import TranslationDocument
 from .style_analyzer import StyleAnalyzer
 from .progress_tracker import ProgressTracker
-from .illustration_generator import IllustrationGenerator
+from .illustration import IllustrationGenerator
 from ..prompts.builder import PromptBuilder
 from ..prompts.manager import PromptManager
 from ..prompts.sanitizer import PromptSanitizer
@@ -175,7 +175,11 @@ class TranslationPipeline:
             updated_glossary, updated_styles, style_deviation, world_atmosphere = self._build_dynamic_guides(
                 document, segment_info, segment_index, core_narrative_style, previous_context
             )
-            
+
+            # Save world_atmosphere to segment_info for later use (e.g., illustrations)
+            if world_atmosphere:
+                segment_info.world_atmosphere = world_atmosphere.model_dump()
+
             # Prepare context for translation
             contextual_glossary = self._get_contextual_glossary(updated_glossary, segment_info.text)
             immediate_context_source = get_segment_ending(document.get_previous_segment(i), max_chars=1500)
@@ -201,20 +205,44 @@ class TranslationPipeline:
             self.logger.log_segment_context(segment_index, context_data)
             self.logger.log_translation_prompt(segment_index, prompt)
             
+            # Track segment translation time
+            segment_start_time = time.time()
+
             # Translate segment with retries
             translated_text = self._translate_segment_with_retries(
-                prompt, segment_info, segment_index, document, 
+                prompt, segment_info, segment_index, document,
                 contextual_glossary, style_deviation
             )
-            
+
+            # Calculate translation time
+            segment_translation_time = time.time() - segment_start_time
+
+            # Log segment input/output
+            if self.logger:
+                metadata = {
+                    "world_atmosphere": world_atmosphere.model_dump() if world_atmosphere else None,
+                    "glossary_used": contextual_glossary,
+                    "style_deviation": style_deviation,
+                    "translation_time": segment_translation_time,
+                    "chapter_title": segment_info.chapter_title,
+                    "chapter_filename": segment_info.chapter_filename
+                }
+                self.logger.log_segment_io(
+                    segment_index=segment_index,
+                    source_text=segment_info.text,
+                    translated_text=translated_text,
+                    metadata=metadata
+                )
+
             # Append translation and save progress
             document.append_translated_segment(translated_text, segment_info)
             
             # Generate illustration if enabled
             if self.illustration_generator and self._should_generate_illustration(segment_info, i):
                 self._generate_segment_illustration(
-                    segment_info, i, document.glossary, 
-                    core_narrative_style, style_deviation, world_atmosphere
+                    segment_info, i, document.glossary,
+                    core_narrative_style, style_deviation, world_atmosphere,
+                    character_styles=updated_styles
                 )
             
             document.save_partial_output()
@@ -387,14 +415,38 @@ class TranslationPipeline:
             print("Attempting minimal prompt as last resort...")
             minimal_prompt = PromptSanitizer.create_minimal_prompt(segment_info.text, "Korean")
             model_response = self.gemini_api.generate_text(minimal_prompt)
-            return _extract_translation_from_response(model_response)
+            translated_text = _extract_translation_from_response(model_response)
+
+            # Log segment with error recovery info
+            if self.logger:
+                metadata = {
+                    "error_recovered": True,
+                    "error_type": "ProhibitedContent",
+                    "error_message": str(e),
+                    "soft_retry_attempts": soft_retry_attempts,
+                    "used_minimal_prompt": True
+                }
+                self.logger.log_segment_io(
+                    segment_index=segment_index,
+                    source_text=segment_info.text,
+                    translated_text=translated_text,
+                    metadata=metadata
+                )
+
+            return translated_text
         except Exception as final_e:
             print(f"Minimal prompt also failed: {final_e}")
-            
-            # Log the final failure
+
+            # Log segment failure
             if self.logger:
+                self.logger.log_segment_io(
+                    segment_index=segment_index,
+                    source_text=segment_info.text,
+                    translated_text=None,
+                    error=f"Unrecoverable error: {str(final_e)}"
+                )
                 self.logger.log_error(final_e, segment_index, "minimal_prompt_failed")
-            
+
             raise e from final_e
     
     def _should_generate_illustration(self, segment_info: Any, segment_index: int) -> bool:
@@ -413,7 +465,7 @@ class TranslationPipeline:
         
         # Check maximum illustrations limit
         if self.illustration_config.max_illustrations:
-            current_count = len(self.illustration_generator.cache) if self.illustration_generator else 0
+            current_count = len(self.illustration_generator.cache_manager.cache) if self.illustration_generator and self.illustration_generator.cache_manager.cache else 0
             if current_count >= self.illustration_config.max_illustrations:
                 return False
         
@@ -438,10 +490,11 @@ class TranslationPipeline:
     
     def _generate_segment_illustration(self, segment_info: Any, segment_index: int,
                                      glossary: Dict[str, str], core_style: str,
-                                     style_deviation: str, world_atmosphere=None):
+                                     style_deviation: str, world_atmosphere=None,
+                                     character_styles: Optional[Dict[str, str]] = None):
         """
         Generate an illustration for the current segment.
-        
+
         Args:
             segment_info: The segment information
             segment_index: Index of the current segment
@@ -449,6 +502,7 @@ class TranslationPipeline:
             core_style: Core narrative style
             style_deviation: Style deviation for this segment
             world_atmosphere: World and atmosphere analysis for the segment
+            character_styles: Optional character styles dictionary
         """
         if not self.illustration_generator:
             return
@@ -465,7 +519,8 @@ class TranslationPipeline:
                 segment_index=segment_index,
                 style_hints=style_hints,
                 glossary=glossary,
-                world_atmosphere=world_atmosphere
+                world_atmosphere=world_atmosphere,
+                character_styles=character_styles
             )
             
             if illustration_path:

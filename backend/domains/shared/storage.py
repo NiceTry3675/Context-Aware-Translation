@@ -387,9 +387,8 @@ class LocalStorage(Storage):
 class S3Storage(Storage):
     """
     AWS S3 storage implementation.
-    To be implemented when S3 support is needed.
     """
-    
+
     def __init__(
         self,
         bucket: str,
@@ -399,7 +398,47 @@ class S3Storage(Storage):
         endpoint_url: Optional[str] = None
     ):
         """Initialize S3 storage."""
-        raise NotImplementedError("S3Storage will be implemented when needed")
+        try:
+            import boto3
+            from botocore.config import Config
+        except ImportError:
+            raise ImportError("boto3 is required for S3 storage. Install with: pip install boto3")
+
+        self.bucket = bucket
+        self.region = region
+
+        # Create S3 client with optional credentials
+        client_config = Config(
+            region_name=region,
+            signature_version='v4',
+            retries={'max_attempts': 3, 'mode': 'adaptive'}
+        )
+
+        session_kwargs = {}
+        if access_key and secret_key:
+            session_kwargs = {
+                'aws_access_key_id': access_key,
+                'aws_secret_access_key': secret_key
+            }
+
+        session = boto3.Session(**session_kwargs)
+
+        self.s3_client = session.client(
+            's3',
+            config=client_config,
+            endpoint_url=endpoint_url
+        )
+
+        # Verify bucket exists
+        try:
+            self.s3_client.head_bucket(Bucket=self.bucket)
+        except Exception as e:
+            logger.error(f"Failed to verify S3 bucket {bucket}: {e}")
+            raise ValueError(
+                f"S3 bucket '{bucket}' is not accessible or does not exist."
+            ) from e
+
+        logger.info(f"Initialized S3Storage with bucket {bucket} in region {region}")
     
     async def save_file(
         self,

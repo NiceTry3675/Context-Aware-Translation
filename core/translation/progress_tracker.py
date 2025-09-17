@@ -102,16 +102,35 @@ class ProgressTracker:
             # Update glossary
             crud.update_job_final_glossary(self.db, self.job_id, glossary)
             
-            # Save translation segments for segment view
+            # Save translation segments for segment view with enhanced metadata
             segments_data = []
             for i, (source_segment, translated_segment) in enumerate(
                 zip(segments, translated_segments)
             ):
-                segments_data.append({
+                segment_data = {
                     "segment_index": i,
                     "source_text": source_segment.text,
-                    "translated_text": translated_segment
-                })
+                    "translated_text": translated_segment,
+                    "chapter_title": source_segment.chapter_title,
+                    "chapter_filename": source_segment.chapter_filename,
+                }
+
+                # Include world_atmosphere data if available
+                if hasattr(source_segment, 'world_atmosphere') and source_segment.world_atmosphere:
+                    segment_data["world_atmosphere"] = source_segment.world_atmosphere
+
+                    # Extract segment_summary from world_atmosphere for quick access
+                    if isinstance(source_segment.world_atmosphere, dict):
+                        segment_data["segment_summary"] = source_segment.world_atmosphere.get("segment_summary", "")
+
+                # Include illustration data if available
+                if hasattr(source_segment, 'illustration_path') and source_segment.illustration_path:
+                    segment_data["illustration_path"] = source_segment.illustration_path
+                    segment_data["illustration_prompt"] = source_segment.illustration_prompt
+                    segment_data["illustration_status"] = source_segment.illustration_status
+
+                segments_data.append(segment_data)
+
             crud.update_job_translation_segments(self.db, self.job_id, segments_data)
             
         except ImportError:

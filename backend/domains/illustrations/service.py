@@ -8,7 +8,7 @@ import os
 from ..translation.models import TranslationJob
 from ..user.models import User
 from ..shared.service_base import ServiceBase
-from core.translation.illustration_generator import IllustrationGenerator
+from core.translation.illustration import IllustrationGenerator
 from core.schemas.illustration import (
     IllustrationConfig,
     IllustrationData,
