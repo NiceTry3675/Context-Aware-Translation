@@ -105,19 +105,20 @@ export default function InfiniteScrollTranslationViewer({
   // Merge translated text from loaded segments
   const mergedTranslatedText = React.useMemo(() => {
     if (loadedSegments.length > 0) {
+      const segmentsSortedByIndex = loadedSegments
+        .slice()
+        .sort((a, b) => a.segment_index - b.segment_index);
       // Check if segments have post-edit data (edited_translation field)
-      const firstSegment = loadedSegments[0];
+      const firstSegment = segmentsSortedByIndex[0];
       const hasPostEditData = 'edited_translation' in firstSegment || 'original_translation' in firstSegment;
-      
+
       if (hasPostEditData) {
-        return loadedSegments
-          .sort((a, b) => a.segment_index - b.segment_index)
+        return segmentsSortedByIndex
           .map(segment => segment.edited_translation || segment.original_translation || segment.translated_text)
           .join('\n');
       }
-      
-      return loadedSegments
-        .sort((a, b) => a.segment_index - b.segment_index)
+
+      return segmentsSortedByIndex
         .map(segment => segment.translated_text)
         .join('\n');
     }
@@ -148,6 +149,7 @@ export default function InfiniteScrollTranslationViewer({
     
     if (loadedSegments.length > 0 && loadedSegments[0].source_text !== undefined) {
       return loadedSegments
+        .slice()
         .sort((a, b) => a.segment_index - b.segment_index)
         .map(segment => segment.source_text)
         .join('\n');
