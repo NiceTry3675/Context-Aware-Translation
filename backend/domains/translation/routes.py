@@ -58,6 +58,8 @@ def create_job(
     quick_validation: bool = Form(False),
     validation_sample_rate: float = Form(1.0),  # 0.0 - 1.0
     enable_post_edit: bool = Form(False),
+    api_provider: str = Form("gemini"),
+    provider_config: Optional[str] = Form(None),
     user: User = Depends(get_required_user),
     service: TranslationDomainService = Depends(get_translation_service)
 ) -> TranslationJob:
@@ -98,7 +100,9 @@ def create_job(
         enable_validation=enable_validation,
         quick_validation=quick_validation,
         validation_sample_rate=validation_sample_rate,
-        enable_post_edit=enable_post_edit
+        enable_post_edit=enable_post_edit,
+        api_provider=api_provider,
+        provider_config=provider_config,
     )
 
 

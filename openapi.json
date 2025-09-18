@@ -1579,6 +1579,58 @@
         }
       }
     },
+    "/api/v1/community/categories": {
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "List Categories",
+        "description": "Return all community categories.",
+        "operationId": "list_categories_api_v1_community_categories_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PostCategory"
+                  },
+                  "type": "array",
+                  "title": "Response List Categories Api V1 Community Categories Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/community/categories/overview": {
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "List Categories Overview",
+        "description": "Return categories with aggregated statistics and recent posts.",
+        "operationId": "list_categories_overview_api_v1_community_categories_overview_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryOverview"
+                  },
+                  "type": "array",
+                  "title": "Response List Categories Overview Api V1 Community Categories Overview Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/posts": {
       "get": {
         "tags": [
@@ -2151,6 +2203,22 @@
             "type": "string",
             "title": "Model Name",
             "default": "gemini-2.5-flash-lite"
+          },
+          "api_provider": {
+            "type": "string",
+            "title": "Api Provider",
+            "default": "gemini"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config"
           }
         },
         "type": "object",
@@ -2175,6 +2243,22 @@
             "type": "string",
             "title": "Model Name",
             "default": "gemini-2.5-flash-lite"
+          },
+          "api_provider": {
+            "type": "string",
+            "title": "Api Provider",
+            "default": "gemini"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config"
           }
         },
         "type": "object",
@@ -2199,6 +2283,22 @@
             "type": "string",
             "title": "Model Name",
             "default": "gemini-2.5-flash-lite"
+          },
+          "api_provider": {
+            "type": "string",
+            "title": "Api Provider",
+            "default": "gemini"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config"
           }
         },
         "type": "object",
@@ -2303,6 +2403,22 @@
             "type": "boolean",
             "title": "Enable Post Edit",
             "default": false
+          },
+          "api_provider": {
+            "type": "string",
+            "title": "Api Provider",
+            "default": "gemini"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config"
           }
         },
         "type": "object",
@@ -2404,6 +2520,75 @@
           "api_key"
         ],
         "title": "Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post"
+      },
+      "CategoryOverview": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "is_admin_only": {
+            "type": "boolean",
+            "title": "Is Admin Only",
+            "default": false
+          },
+          "order": {
+            "type": "integer",
+            "title": "Order",
+            "default": 0
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "total_posts": {
+            "type": "integer",
+            "title": "Total Posts"
+          },
+          "can_post": {
+            "type": "boolean",
+            "title": "Can Post"
+          },
+          "recent_posts": {
+            "items": {
+              "$ref": "#/components/schemas/PostSummary"
+            },
+            "type": "array",
+            "title": "Recent Posts",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "display_name",
+          "id",
+          "created_at",
+          "total_posts",
+          "can_post"
+        ],
+        "title": "CategoryOverview",
+        "description": "Extended category information for overview responses."
       },
       "CharacterAnalysisResponse": {
         "properties": {
@@ -2963,11 +3148,100 @@
               }
             ],
             "title": "Api Key"
+          },
+          "api_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Provider"
+          },
+          "provider_config": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config"
           }
         },
         "type": "object",
         "title": "PostEditRequest",
         "description": "Request schema for post-editing operations."
+      },
+      "PostSummary": {
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "author": {
+            "$ref": "#/components/schemas/User"
+          },
+          "is_pinned": {
+            "type": "boolean",
+            "title": "Is Pinned"
+          },
+          "is_private": {
+            "type": "boolean",
+            "title": "Is Private"
+          },
+          "view_count": {
+            "type": "integer",
+            "title": "View Count"
+          },
+          "comment_count": {
+            "type": "integer",
+            "title": "Comment Count",
+            "default": 0
+          },
+          "images": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Images",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "created_at",
+          "id",
+          "title",
+          "author",
+          "is_pinned",
+          "is_private",
+          "view_count"
+        ],
+        "title": "PostSummary",
+        "description": "Compact representation of a post for category overviews."
       },
       "StyleAnalysisResponse": {
         "properties": {
@@ -3863,6 +4137,26 @@
               }
             ],
             "title": "Api Key"
+          },
+          "api_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Provider"
+          },
+          "provider_config": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config"
           }
         },
         "type": "object",

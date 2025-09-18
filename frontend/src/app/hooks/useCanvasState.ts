@@ -38,7 +38,16 @@ export function useCanvasState() {
   const { jobs, addJob, refreshJobs, refreshJobPublic } = useTranslationJobs({ apiUrl: API_URL });
   
   // Translation setup states
-  const { apiKey, setApiKey, apiProvider, setApiProvider, selectedModel, setSelectedModel } = useApiKey();
+  const {
+    apiKey,
+    setApiKey,
+    providerConfig,
+    setProviderConfig,
+    apiProvider,
+    setApiProvider,
+    selectedModel,
+    setSelectedModel,
+  } = useApiKey();
   const [taskModelOverrides, setTaskModelOverrides] = useState<{ styleModel?: string | null; glossaryModel?: string | null }>({});
   const [taskOverridesEnabled, setTaskOverridesEnabled] = useState<boolean>(false);
   const [file, setFile] = useState<File | null>(null);
@@ -69,7 +78,9 @@ export function useCanvasState() {
     setError: setTranslationError
   } = useTranslationService({
     apiUrl: API_URL,
+    apiProvider,
     apiKey,
+    providerConfig,
     selectedModel,
     selectedStyleModel: taskOverridesEnabled ? (taskModelOverrides.styleModel || selectedModel) : undefined,
     selectedGlossaryModel: taskOverridesEnabled ? (taskModelOverrides.glossaryModel || selectedModel) : undefined,
@@ -150,7 +161,9 @@ export function useCanvasState() {
     error: jobActionError,
   } = useJobActions({
     apiUrl: API_URL,
+    apiProvider,
     apiKey,
+    providerConfig,
     onSuccess: () => {
       if (jobId) {
         refreshJobPublic(parseInt(jobId, 10));
@@ -192,10 +205,19 @@ export function useCanvasState() {
   };
 
   const onConfirmIllustration = () => {
-    if (!jobId || !apiKey) return;
+    if (!jobId) return;
+    const credential = apiProvider === 'vertex' ? '' : apiKey;
+    if (apiProvider !== 'vertex' && !credential) {
+      setTranslationError('일러스트 생성을 위해 API 키가 필요합니다.');
+      return;
+    }
+    if (apiProvider === 'vertex' && (!providerConfig || !providerConfig.trim())) {
+      setTranslationError('일러스트 생성을 위해 Vertex 서비스 계정 JSON이 필요합니다.');
+      return;
+    }
     handleTriggerIllustration(
       parseInt(jobId, 10),
-      apiKey,
+      credential,
       {
         style: illustrationStyle,
         style_hints: illustrationStyleHints,
@@ -407,6 +429,8 @@ export function useCanvasState() {
     // Translation setup state
     apiKey,
     setApiKey,
+    providerConfig,
+    setProviderConfig,
     apiProvider,
     setApiProvider,
     selectedModel,

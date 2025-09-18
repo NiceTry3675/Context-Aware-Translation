@@ -44,12 +44,15 @@ class IllustrationGenerator:
     - Character-specific illustration generation
     """
 
-    def __init__(self,
-                 api_key: str,
-                 job_id: Optional[int] = None,
-                 output_dir: str = "logs/jobs",
-                 enable_caching: bool = True,
-                 model_name: str = "gemini-2.5-flash-image-preview"):
+    def __init__(
+        self,
+        api_key: Optional[str],
+        job_id: Optional[int] = None,
+        output_dir: str = "logs/jobs",
+        enable_caching: bool = True,
+        model_name: str = "gemini-2.5-flash-image-preview",
+        client: Optional[genai.Client] = None,
+    ):
         """
         Initialize the illustration generator.
 
@@ -64,17 +67,20 @@ class IllustrationGenerator:
             raise ImportError("google-genai package is required for illustration generation. "
                             "Please install it with: pip install google-genai")
 
-        if not api_key:
-            raise ValueError("API key is required for illustration generation")
+        if client is not None:
+            self.client = client
+            logging.info("[ILLUSTRATION] Reusing provided GenAI client instance")
+        else:
+            if not api_key:
+                raise ValueError("API key or Vertex client is required for illustration generation")
 
-        # Initialize Gemini client
-        logging.info(f"[ILLUSTRATION] Initializing GenAI client with API key: {api_key[:10]}...")
-        try:
-            self.client = genai.Client(api_key=api_key)
-            logging.info("[ILLUSTRATION] GenAI client initialized successfully")
-        except Exception as e:
-            logging.error(f"[ILLUSTRATION] Failed to initialize GenAI client: {e}")
-            raise
+            logging.info(f"[ILLUSTRATION] Initializing GenAI client with API key: {api_key[:10]}...")
+            try:
+                self.client = genai.Client(api_key=api_key)
+                logging.info("[ILLUSTRATION] GenAI client initialized successfully")
+            except Exception as e:
+                logging.error(f"[ILLUSTRATION] Failed to initialize GenAI client: {e}")
+                raise
 
         self.job_id = job_id
         self.output_dir = output_dir

@@ -36,6 +36,27 @@ class PostCategory(PostCategoryBase):
     class Config:
         from_attributes = True
 
+
+class PostSummary(KSTTimezoneBase):
+    """Compact representation of a post for category overviews."""
+
+    id: int
+    title: str
+    author: 'User'
+    is_pinned: bool
+    is_private: bool
+    view_count: int
+    comment_count: int = 0
+    images: list[str] = []
+
+
+class CategoryOverview(PostCategory):
+    """Extended category information for overview responses."""
+
+    total_posts: int
+    can_post: bool
+    recent_posts: List[PostSummary] = []
+
 # --- Post Schemas ---
 class PostBase(BaseModel):
     title: str
@@ -95,6 +116,12 @@ class Comment(CommentBase, KSTTimezoneBase):
 def rebuild_models():
     """Rebuild models with resolved forward references."""
     from backend.domains.user.schemas import User
+    PostSummary.model_rebuild()
+    CategoryOverview.model_rebuild()
     Comment.model_rebuild()
     Post.model_rebuild()
     PostList.model_rebuild()
+
+
+# Ensure forward references are resolved at import time
+rebuild_models()

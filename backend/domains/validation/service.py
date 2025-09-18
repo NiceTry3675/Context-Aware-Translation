@@ -20,6 +20,7 @@ from backend.domains.translation.models import TranslationJob
 from backend.domains.translation.repository import TranslationJobRepository, SqlAlchemyTranslationJobRepository
 from backend.domains.shared.uow import SqlAlchemyUoW
 from backend.domains.shared.events import DomainEvent, EventType
+from backend.domains.shared.provider_context import ProviderContext
 from backend.domains.shared.service_base import DomainServiceBase
 from backend.config.settings import get_settings
 
@@ -53,8 +54,9 @@ class ValidationDomainService(DomainServiceBase):
         self,
         session: Session,
         job_id: int,
-        api_key: str,
-        model_name: str = "gemini-2.5-flash-lite"
+        api_key: Optional[str],
+        model_name: str = "gemini-2.5-flash-lite",
+        provider_context: Optional[ProviderContext] = None,
     ) -> Tuple[TranslationValidator, TranslationDocument, str, Any]:
         """
         Prepare the validator and translation job for validation.
@@ -101,7 +103,11 @@ class ValidationDomainService(DomainServiceBase):
         # Initialize validator with the model API and logger
         try:
             logger.info(f"[VALIDATION PREP] Creating model API with validate_and_create_model...")
-            model_api = self.validate_and_create_model(api_key, model_name)
+            model_api = self.validate_and_create_model(
+                api_key,
+                model_name,
+                provider_context=provider_context,
+            )
             logger.info(f"[VALIDATION PREP] Model API created: {type(model_api)}")
 
             # Create a logger for segment I/O

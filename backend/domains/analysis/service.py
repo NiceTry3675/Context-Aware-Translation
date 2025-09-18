@@ -2,7 +2,7 @@
 
 import os
 from fastapi import HTTPException, UploadFile
-from typing import Dict, Any
+from typing import Any, Dict, Tuple
 
 from ..shared.service_base import ServiceBase
 from .style_analysis import StyleAnalysis
@@ -17,11 +17,45 @@ class AnalysisService(ServiceBase):
     def __init__(self):
         super().__init__()
     
+    def _prepare_model(
+        self,
+        api_key: str,
+        model_name: str,
+        api_provider: str,
+        provider_config: Any,
+    ) -> Tuple[Any, Any, str]:
+        """Parse provider context and instantiate the model API."""
+
+        provider_context = self.build_provider_context(api_provider, provider_config)
+        # Use provider-specific default models
+        fallback_model = "gemini-2.5-flash-lite"
+        if provider_context and provider_context.name == "vertex":
+            fallback_model = "gemini-2.5-flash"
+        elif provider_context and provider_context.name == "openrouter":
+            fallback_model = "google/gemini-2.5-flash-lite"
+
+        resolved_model = (
+            model_name
+            or provider_context.default_model
+            or self.config.get("default_model", fallback_model)
+        )
+
+        model_api = self.validate_and_create_model(
+            api_key,
+            resolved_model,
+            provider_context=provider_context,
+        )
+
+        return model_api, provider_context, resolved_model
+
     async def analyze_style(
         self,
         file: UploadFile,
         api_key: str,
-        model_name: str = "gemini-2.5-flash-lite"
+        model_name: str = "gemini-2.5-flash-lite",
+        *,
+        api_provider: str = "gemini",
+        provider_config: Any = None,
     ) -> StyleAnalysisResponse:
         """
         Analyze the narrative style of a document.
@@ -37,7 +71,12 @@ class AnalysisService(ServiceBase):
         Raises:
             HTTPException: If API key invalid or analysis fails
         """
-        model_api = self.validate_and_create_model(api_key, model_name)
+        model_api, _, _ = self._prepare_model(
+            api_key,
+            model_name,
+            api_provider,
+            provider_config,
+        )
         
         try:
             # Save uploaded file temporarily
@@ -69,7 +108,10 @@ class AnalysisService(ServiceBase):
         self,
         file: UploadFile,
         api_key: str,
-        model_name: str = "gemini-2.5-flash-lite"
+        model_name: str = "gemini-2.5-flash-lite",
+        *,
+        api_provider: str = "gemini",
+        provider_config: Any = None,
     ) -> GlossaryAnalysisResponse:
         """
         Extract glossary terms from a document.
@@ -85,7 +127,12 @@ class AnalysisService(ServiceBase):
         Raises:
             HTTPException: If API key invalid or extraction fails
         """
-        model_api = self.validate_and_create_model(api_key, model_name)
+        model_api, _, _ = self._prepare_model(
+            api_key,
+            model_name,
+            api_provider,
+            provider_config,
+        )
         
         try:
             # Save uploaded file temporarily
@@ -119,7 +166,10 @@ class AnalysisService(ServiceBase):
         self,
         file: UploadFile,
         api_key: str,
-        model_name: str = "gemini-2.5-flash-lite"
+        model_name: str = "gemini-2.5-flash-lite",
+        *,
+        api_provider: str = "gemini",
+        provider_config: Any = None,
     ) -> CharacterAnalysisResponse:
         """
         Analyze characters in a document.
@@ -135,7 +185,12 @@ class AnalysisService(ServiceBase):
         Raises:
             HTTPException: If API key invalid or analysis fails
         """
-        model_api = self.validate_and_create_model(api_key, model_name)
+        model_api, _, _ = self._prepare_model(
+            api_key,
+            model_name,
+            api_provider,
+            provider_config,
+        )
         
         try:
             # Save uploaded file temporarily

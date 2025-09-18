@@ -35,6 +35,7 @@ import InfiniteScrollTranslationViewer from '../InfiniteScrollTranslationViewer'
 import SegmentViewer from './SegmentViewer';
 import IllustrationViewer from '../IllustrationViewer';
 import CharacterBaseSelector from '../CharacterBaseSelector';
+import type { ApiProvider } from '../../hooks/useApiKey';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -63,6 +64,8 @@ interface ResultsViewProps {
   tabValue: number;
   viewMode: 'full' | 'segment';
   apiKey?: string;
+  apiProvider: ApiProvider;
+  providerConfig?: string;
   errorFilters: {
     critical: boolean;
     missingContent: boolean;
@@ -115,6 +118,8 @@ export default function ResultsView({
   tabValue,
   viewMode,
   apiKey,
+  apiProvider,
+  providerConfig,
   errorFilters,
   isPolling,
   dataLoading,
@@ -358,7 +363,12 @@ export default function ResultsView({
           
           <TabPanel value={tabValue} index={3}>
             {jobId && (
-              <CharacterBaseSelector jobId={jobId} apiKey={apiKey} />
+              <CharacterBaseSelector
+                jobId={jobId}
+                apiProvider={apiProvider}
+                apiKey={apiKey}
+                providerConfig={providerConfig}
+              />
             )}
             {selectedJob?.illustrations_enabled ? (
               <IllustrationViewer

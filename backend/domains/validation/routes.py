@@ -15,6 +15,7 @@ from backend.config.dependencies import get_db, get_required_user
 from backend.domains.user.models import User
 from backend.domains.validation.schemas import ValidationRequest
 from backend.domains.validation.service import ValidationDomainService
+from backend.domains.shared.provider_context import provider_context_to_payload
 from backend.celery_tasks.validation import process_validation_task
 from backend.domains.translation.repository import SqlAlchemyTranslationJobRepository
 from backend.domains.tasks.models import TaskKind
@@ -33,7 +34,8 @@ async def validate_job(
     job_id: int,
     request: ValidationRequest,
     user: User = Depends(get_required_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    service: ValidationDomainService = Depends(get_validation_service),
 ):
     """
     Trigger validation on a completed translation job.
@@ -71,6 +73,32 @@ async def validate_job(
                 raise HTTPException(status_code=409, detail="Validation is already in progress for this job")
         # No active task found; fall through and re-queue a new one
 
+    provider_context = service.build_provider_context(
+        request.api_provider or "gemini",
+        request.provider_config,
+    )
+    # Use provider-specific default models
+    fallback_model = "gemini-2.5-flash-lite"
+    if provider_context and provider_context.name == "vertex":
+        fallback_model = "gemini-2.5-flash"
+    elif provider_context and provider_context.name == "openrouter":
+        fallback_model = "google/gemini-2.5-flash-lite"
+
+    model_name = (
+        request.model_name
+        or provider_context.default_model
+        or service.config.get("default_model", fallback_model)
+    )
+
+    if not service.validate_api_key(
+        request.api_key,
+        model_name,
+        provider_context=provider_context,
+    ):
+        service.raise_invalid_api_key()
+
+    provider_payload = provider_context_to_payload(provider_context)
+
     # Update validation status to IN_PROGRESS immediately (idempotent)
     repo.update_validation_status(
         job_id,
@@ -92,11 +120,12 @@ async def validate_job(
         kwargs={
             "job_id": job_id,
             "api_key": request.api_key,
-            "model_name": request.model_name or "gemini-2.5-flash-lite",
+            "model_name": model_name,
             "validation_mode": validation_mode,
             "sample_rate": request.validation_sample_rate,
             "user_id": user.id,
             "autotrigger_post_edit": False,
+            "provider_context": provider_payload,
         },
     )
 
@@ -104,11 +133,12 @@ async def validate_job(
         kwargs={
             "job_id": job_id,
             "api_key": request.api_key,
-            "model_name": request.model_name or "gemini-2.5-flash-lite",
+            "model_name": model_name,
             "validation_mode": validation_mode,
             "sample_rate": request.validation_sample_rate,
             "user_id": user.id,
             "autotrigger_post_edit": False,
+            "provider_context": provider_payload,
         },
         task_id=task_id,
     )

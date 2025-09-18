@@ -16,6 +16,11 @@ from .base import TrackedTask
 from ..config.database import SessionLocal
 from ..config.settings import get_settings
 from backend.domains.translation.models import TranslationJob
+from backend.domains.shared.provider_context import (
+    build_vertex_client,
+    provider_context_from_payload,
+    vertex_model_resource_name,
+)
 from core.translation.illustration import IllustrationGenerator
 from core.schemas.illustration import IllustrationConfig
 
@@ -68,8 +73,9 @@ def generate_illustrations_task(
     self,
     job_id: int,
     config_dict: dict,
-    api_key: str,
-    max_illustrations: Optional[int] = None
+    api_key: Optional[str],
+    max_illustrations: Optional[int] = None,
+    provider_context: Optional[Dict[str, object]] = None,
 ):
     """
     Generate illustration prompts for a translation job.
@@ -105,20 +111,33 @@ def generate_illustrations_task(
             raise ValueError(f"Job {job_id} not found")
         
         print(f"[ILLUSTRATIONS TASK] Job found, initializing generator")
+        context = provider_context_from_payload(provider_context)
+        provider_name = context.name if context else "gemini"
+        print(f"[ILLUSTRATIONS TASK] Provider: {provider_name}")
         print(f"[ILLUSTRATIONS TASK] API key provided: {api_key[:10] if api_key else 'None'}...")
-        
+
         # Reconstruct config from dict
         config = IllustrationConfig(**config_dict)
         print(f"[ILLUSTRATIONS TASK] Config cache_enabled: {config.cache_enabled}")
-        
+
         # Initialize illustration generator
         try:
             settings = get_settings()
+            client = None
+            model_name = settings.illustration_model
+
+            if context and context.name == "vertex":
+                client = build_vertex_client(context)
+                model_name = vertex_model_resource_name(model_name, context)
+            elif not api_key:
+                raise ValueError("API key is required for illustration generation")
+
             generator = IllustrationGenerator(
                 api_key=api_key,
                 job_id=job_id,
                 enable_caching=config.cache_enabled,
-                model_name=settings.illustration_model
+                model_name=model_name,
+                client=client,
             )
             print(f"[ILLUSTRATIONS TASK] Generator initialized successfully with model: {settings.illustration_model}")
         except Exception as e:
@@ -445,7 +464,8 @@ def regenerate_single_illustration(
     job_id: int,
     segment_index: int,
     style_hints: Optional[str],
-    api_key: str
+    api_key: Optional[str],
+    provider_context: Optional[Dict[str, object]] = None,
 ):
     """
     Regenerate a single illustration prompt.
@@ -477,11 +497,24 @@ def regenerate_single_illustration(
         
         # Initialize illustration generator
         settings = get_settings()
+        context = provider_context_from_payload(provider_context)
+        provider_name = context.name if context else "gemini"
+
+        client = None
+        model_name = settings.illustration_model
+
+        if context and context.name == "vertex":
+            client = build_vertex_client(context)
+            model_name = vertex_model_resource_name(model_name, context)
+        elif not api_key:
+            raise ValueError("API key is required for illustration regeneration")
+
         generator = IllustrationGenerator(
             api_key=api_key,
             job_id=job_id,
             enable_caching=False,  # Don't use cache for regeneration
-            model_name=settings.illustration_model
+            model_name=model_name,
+            client=client,
         )
         
         # Get the segment

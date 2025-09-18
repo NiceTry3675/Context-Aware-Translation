@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ModelSelector from '../translation/ModelSelector';
+import type { ApiProvider } from '../../hooks/useApiKey';
 
 interface ValidationDialogProps {
   open: boolean;
@@ -27,7 +28,7 @@ interface ValidationDialogProps {
   validationSampleRate: number;
   onValidationSampleRateChange: (rate: number) => void;
   loading: boolean;
-  apiProvider?: 'gemini' | 'openrouter';
+  apiProvider?: ApiProvider;
   modelName?: string;
   onModelNameChange?: (model: string) => void;
 }

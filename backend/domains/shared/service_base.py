@@ -9,7 +9,7 @@ import os
 import json
 import traceback
 import logging
-from typing import Dict, Any, Union, Optional, TypeVar, Type
+from typing import Any, Dict, Optional, Type, TypeVar, Union
 from pathlib import Path
 from contextlib import contextmanager
 from functools import wraps
@@ -19,6 +19,7 @@ from core.config.loader import load_config
 from core.translation.models.gemini import GeminiModel
 from core.translation.models.openrouter import OpenRouterModel
 from backend.domains.shared.model_factory import ModelAPIFactory
+from backend.domains.shared.provider_context import ProviderContext, parse_provider_context
 from backend.domains.shared.utils.file_manager import FileManager
 
 # Type variable for repository classes
@@ -59,9 +60,10 @@ class ServiceBase:
         return self._logger
     
     def create_model_api(
-        self, 
-        api_key: str, 
-        model_name: str
+        self,
+        api_key: Optional[str],
+        model_name: str,
+        provider_context: Optional[ProviderContext] = None,
     ) -> Union[GeminiModel, OpenRouterModel]:
         """
         Create a model API instance using the factory.
@@ -73,9 +75,19 @@ class ServiceBase:
         Returns:
             Model API instance
         """
-        return ModelAPIFactory.create(api_key, model_name, self.config)
-    
-    def validate_api_key(self, api_key: str, model_name: str) -> bool:
+        return ModelAPIFactory.create(
+            api_key=api_key,
+            model_name=model_name,
+            config=self.config,
+            provider_context=provider_context,
+        )
+
+    def validate_api_key(
+        self,
+        api_key: Optional[str],
+        model_name: str,
+        provider_context: Optional[ProviderContext] = None,
+    ) -> bool:
         """
         Validate API key using the factory.
         
@@ -86,12 +98,17 @@ class ServiceBase:
         Returns:
             True if valid, False otherwise
         """
-        return ModelAPIFactory.validate_api_key(api_key, model_name)
-    
+        return ModelAPIFactory.validate_api_key(
+            api_key=api_key,
+            model_name=model_name,
+            provider_context=provider_context,
+        )
+
     def validate_and_create_model(
-        self, 
-        api_key: str, 
-        model_name: str
+        self,
+        api_key: Optional[str],
+        model_name: str,
+        provider_context: Optional[ProviderContext] = None,
     ) -> Union[GeminiModel, OpenRouterModel]:
         """
         Validate API key and create model in one step.
@@ -106,9 +123,22 @@ class ServiceBase:
         Raises:
             HTTPException: If API key is invalid
         """
-        if not self.validate_api_key(api_key, model_name):
-            self.raise_invalid_api_key()
-        return self.create_model_api(api_key, model_name)
+        try:
+            if not self.validate_api_key(api_key, model_name, provider_context=provider_context):
+                self.raise_invalid_api_key()
+        except ValueError as exc:
+            self.raise_validation_error(str(exc))
+        return self.create_model_api(api_key, model_name, provider_context=provider_context)
+
+    def build_provider_context(
+        self,
+        provider: Optional[str],
+        provider_payload: Any,
+    ) -> ProviderContext:
+        """Parse the incoming provider payload into a ProviderContext."""
+
+        provider_name = provider or "gemini"
+        return parse_provider_context(provider_name, provider_payload)
     
     def raise_invalid_api_key(self):
         """Raise standardized invalid API key exception."""

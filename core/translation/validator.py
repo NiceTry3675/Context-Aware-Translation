@@ -111,8 +111,11 @@ class TranslationValidator:
                     {
                         "dimension": case.dimension,
                         "severity": case.severity,
-                        "description": case.description,
-                        "location": case.location
+                        "reason": case.reason,
+                        "current_sentence": case.current_korean_sentence,
+                        "source_sentence": case.problematic_source_sentence,
+                        "recommendation": case.recommend_korean_sentence,
+                        "tags": case.tags or [],
                     }
                     for case in result.structured_cases
                 ]

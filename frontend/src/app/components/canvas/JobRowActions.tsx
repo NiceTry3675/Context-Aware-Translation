@@ -20,18 +20,20 @@ import ValidationDialog from '../TranslationSidebar/ValidationDialog';
 import PostEditDialog from '../TranslationSidebar/PostEditDialog';
 import { useJobActions } from '../../hooks/useJobActions';
 import { fetchValidationReport, ValidationReport, fetchJobTasks } from '../../utils/api';
+import type { ApiProvider } from '../../hooks/useApiKey';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
 interface JobRowActionsProps {
   job: Job;
   onRefresh: (jobId: number) => void | Promise<void>;
   compact?: boolean;
-  apiProvider?: 'gemini' | 'openrouter';
+  apiProvider?: ApiProvider;
   defaultModelName?: string;
   apiKey?: string;
+  providerConfig?: string;
 }
 
-export default function JobRowActions({ job, onRefresh, compact = false, apiProvider, defaultModelName, apiKey }: JobRowActionsProps) {
+export default function JobRowActions({ job, onRefresh, compact = false, apiProvider, defaultModelName, apiKey, providerConfig }: JobRowActionsProps) {
   const onRowRefresh = () => onRefresh(job.id);
   const jobId = job.id.toString();
   
@@ -51,7 +53,9 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
 
   const { handleTriggerValidation, handleTriggerPostEdit } = useJobActions({
     apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+    apiProvider: apiProvider || 'gemini',
     apiKey,
+    providerConfig,
     onSuccess: onRowRefresh,
     onError: (error) => console.error(error),
   });

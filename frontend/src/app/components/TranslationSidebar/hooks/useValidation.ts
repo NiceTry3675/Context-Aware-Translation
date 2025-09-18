@@ -4,15 +4,18 @@ import { useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../../../utils/authToken';
 import { triggerValidation } from '../../../utils/api';
+import type { ApiProvider } from '../../../hooks/useApiKey';
 
 interface UseValidationProps {
   jobId: string;
   onRefresh?: () => void;
-  apiProvider?: 'gemini' | 'openrouter';
+  apiProvider?: ApiProvider;
+  apiKey?: string;
   defaultModelName?: string;
+  providerConfig?: string;
 }
 
-export function useValidation({ jobId, onRefresh, apiProvider, defaultModelName }: UseValidationProps) {
+export function useValidation({ jobId, onRefresh, apiProvider, apiKey, providerConfig, defaultModelName }: UseValidationProps) {
   const [validationDialogOpen, setValidationDialogOpen] = useState(false);
   const [quickValidation, setQuickValidation] = useState(false);
   const [validationSampleRate, setValidationSampleRate] = useState(100);
@@ -33,13 +36,30 @@ export function useValidation({ jobId, onRefresh, apiProvider, defaultModelName 
     try {
       const token = await getCachedClerkToken(getToken);
       console.log('Got token:', !!token);
+      if ((apiProvider || 'gemini') !== 'vertex' && !apiKey) {
+        setError('검증을 실행하려면 API 키가 필요합니다.');
+        setLoading(false);
+        return;
+      }
+      if ((apiProvider || 'gemini') === 'vertex' && (!providerConfig || !providerConfig.trim())) {
+        setError('검증을 실행하려면 Vertex 서비스 계정 JSON이 필요합니다.');
+        setLoading(false);
+        return;
+      }
       
       const body = {
         quick_validation: quickValidation,
         validation_sample_rate: validationSampleRate / 100,
         model_name: modelName || defaultModelName,
       };
-      await triggerValidation(jobId, token || undefined, body);
+      await triggerValidation({
+        jobId,
+        token: token || undefined,
+        body,
+        apiProvider: apiProvider || 'gemini',
+        apiKey: apiProvider === 'vertex' ? '' : apiKey,
+        providerConfig: apiProvider === 'vertex' ? providerConfig : undefined,
+      });
       console.log('Validation triggered successfully');
       
       setValidationDialogOpen(false);

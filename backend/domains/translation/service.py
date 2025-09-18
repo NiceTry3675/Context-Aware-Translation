@@ -23,6 +23,10 @@ from core.translation.document import TranslationDocument
 from core.translation.translation_pipeline import TranslationPipeline
 from .storage_adapter import create_storage_handler
 from core.config.builder import DynamicConfigBuilder
+from backend.domains.shared.provider_context import (
+    ProviderContext,
+    provider_context_to_payload,
+)
 from backend.domains.shared.service_base import DomainServiceBase
 from backend.domains.analysis import StyleAnalysis, GlossaryAnalysis
 from backend.domains.shared import (
@@ -367,13 +371,14 @@ class TranslationDomainService(DomainServiceBase):
         self,
         job_id: int,
         job: TranslationJob,  # Pass the full job object
-        api_key: str,
+        api_key: Optional[str],
         model_name: str,
         style_data: Optional[str] = None,
         glossary_data: Optional[str] = None,
         translation_model_name: Optional[str] = None,
         style_model_name: Optional[str] = None,
         glossary_model_name: Optional[str] = None,
+        provider_context: Optional[ProviderContext] = None,
     ) -> Dict[str, Any]:
         """Prepare all the necessary components for a translation job."""
         # Fallbacks: if specific per-task models are not provided, use the top-level model_name
@@ -382,9 +387,19 @@ class TranslationDomainService(DomainServiceBase):
         glossary_model_name = glossary_model_name or model_name
 
         # Create per-task model APIs using inherited method
-        model_api = self.validate_and_create_model(api_key, translation_model_name)
-        style_model_api = self.validate_and_create_model(api_key, style_model_name) if style_model_name else model_api
-        glossary_model_api = self.validate_and_create_model(api_key, glossary_model_name) if glossary_model_name else model_api
+        model_api = self.validate_and_create_model(
+            api_key,
+            translation_model_name,
+            provider_context=provider_context,
+        )
+        style_model_api = (
+            self.validate_and_create_model(api_key, style_model_name, provider_context=provider_context)
+            if style_model_name else model_api
+        )
+        glossary_model_api = (
+            self.validate_and_create_model(api_key, glossary_model_name, provider_context=provider_context)
+            if glossary_model_name else model_api
+        )
         
         # Create storage handler for core integration
         storage_handler = create_storage_handler()
@@ -404,7 +419,9 @@ class TranslationDomainService(DomainServiceBase):
         try:
             print(f"--- Analyzing style for Job ID: {job_id} ---")
             # Create model API for style analysis
-            style_model_api_for_analysis = self.validate_and_create_model(api_key, style_model_name)
+            style_model_api_for_analysis = self.validate_and_create_model(
+                api_key, style_model_name, provider_context=provider_context
+            )
             
             # Create StyleAnalysis instance with model API
             style_service = StyleAnalysis()
@@ -439,7 +456,9 @@ class TranslationDomainService(DomainServiceBase):
                 print(f"--- Extracting automatic glossary for Job ID: {job_id} ---")
             
             # Create model API for glossary analysis
-            glossary_model_api_for_analysis = self.validate_and_create_model(api_key, glossary_model_name)
+            glossary_model_api_for_analysis = self.validate_and_create_model(
+                api_key, glossary_model_name, provider_context=provider_context
+            )
             
             # Create GlossaryAnalysis instance with model API
             glossary_service = GlossaryAnalysis()
@@ -543,7 +562,7 @@ class TranslationDomainService(DomainServiceBase):
         self,
         user: User,
         file: UploadFile,
-        api_key: str,
+        api_key: Optional[str],
         model_name: str = "gemini-2.5-flash-lite",
         translation_model_name: Optional[str] = None,
         style_model_name: Optional[str] = None,
@@ -556,6 +575,8 @@ class TranslationDomainService(DomainServiceBase):
         quick_validation: bool = False,
         validation_sample_rate: float = 1.0,
         enable_post_edit: bool = False,
+        api_provider: str = "gemini",
+        provider_config: Optional[str] = None,
     ) -> TranslationJobSchema:
         """
         Create a new translation job with file upload.
@@ -563,7 +584,7 @@ class TranslationDomainService(DomainServiceBase):
         Args:
             user: Current user
             file: Uploaded file
-            api_key: API key for translation service
+            api_key: API key for translation service (ignored for Vertex)
             model_name: Default model name
             translation_model_name: Optional override for translation model
             style_model_name: Optional override for style model
@@ -575,6 +596,8 @@ class TranslationDomainService(DomainServiceBase):
             quick_validation: Whether to use quick validation mode
             validation_sample_rate: Portion of segments to validate (0.0-1.0)
             enable_post_edit: Whether to run post-edit automatically after validation
+            api_provider: Selected provider identifier ('gemini', 'vertex', 'openrouter')
+            provider_config: Raw provider payload (JSON string/dict) for Vertex credentials
             
         Returns:
             Created translation job
@@ -582,9 +605,25 @@ class TranslationDomainService(DomainServiceBase):
         Raises:
             HTTPException: If API key is invalid or file save fails
         """
-        # Validate API key using inherited method
-        # This will raise HTTPException if invalid
-        self.validate_and_create_model(api_key, model_name)
+        provider_context = self.build_provider_context(api_provider, provider_config)
+
+        # Use provider-specific default models
+        fallback_model = "gemini-2.5-flash-lite"
+        if provider_context and provider_context.name == "vertex":
+            fallback_model = "gemini-2.5-flash"
+        elif provider_context and provider_context.name == "openrouter":
+            fallback_model = "google/gemini-2.5-flash-lite"
+
+        model_name = model_name or provider_context.default_model or self.config.get(
+            "default_model", fallback_model
+        )
+
+        # Validate credentials using inherited helper (raises if invalid)
+        self.validate_and_create_model(
+            api_key,
+            model_name,
+            provider_context=provider_context,
+        )
         
         # Create job
         job_with_id = self.create_translation_job(
@@ -625,6 +664,8 @@ class TranslationDomainService(DomainServiceBase):
         # Import here to avoid circular dependency
         from backend.celery_tasks.translation import process_translation_task
         
+        provider_payload = provider_context_to_payload(provider_context)
+
         process_translation_task.delay(
             job_id=job_id,
             api_key=api_key,
@@ -634,7 +675,8 @@ class TranslationDomainService(DomainServiceBase):
             translation_model_name=translation_model_name,
             style_model_name=style_model_name,
             glossary_model_name=glossary_model_name,
-            user_id=user_id
+            user_id=user_id,
+            provider_context=provider_payload,
         )
         
         # Fetch the job again and convert to Pydantic schema

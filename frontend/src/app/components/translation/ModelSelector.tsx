@@ -1,15 +1,20 @@
 import { Box, Typography, ToggleButtonGroup, ToggleButton, Chip, Alert } from '@mui/material';
-import { geminiModelOptions, openRouterModelOptions, type ModelOption } from '../../utils/constants/models';
+import { geminiModelOptions, openRouterModelOptions, vertexModelOptions, type ModelOption } from '../../utils/constants/models';
+import type { ApiProvider } from '../../hooks/useApiKey';
 
 interface ModelSelectorProps {
-  apiProvider: 'gemini' | 'openrouter';
+  apiProvider: ApiProvider;
   selectedModel: string;
   onModelChange: (model: string) => void;
   hideTitle?: boolean;
 }
 
 export default function ModelSelector({ apiProvider, selectedModel, onModelChange, hideTitle = false }: ModelSelectorProps) {
-  const models = apiProvider === 'gemini' ? geminiModelOptions : openRouterModelOptions;
+  const models: ModelOption[] = apiProvider === 'openrouter'
+    ? openRouterModelOptions
+    : apiProvider === 'vertex'
+      ? vertexModelOptions
+      : geminiModelOptions;
 
   const handleModelChange = (_: React.MouseEvent<HTMLElement>, newValue: string) => {
     if (!newValue) return;
@@ -61,6 +66,11 @@ export default function ModelSelector({ apiProvider, selectedModel, onModelChang
       {apiProvider === 'openrouter' && (
         <Alert severity="info" sx={{ mb: 4 }}>
           <strong>참고:</strong> 현재 프롬프트는 Gemini 모델에 최적화되어 설계되었습니다. DEEPSEEK 모델은 무료!지만 많이 느립니다.
+        </Alert>
+      )}
+      {apiProvider === 'vertex' && (
+        <Alert severity="info" sx={{ mb: 4 }}>
+          <strong>Vertex AI:</strong> Vertex 모델은 프로젝트와 지역을 기준으로 호출됩니다. 아래에서 입력한 JSON 구성에 맞춰 {selectedModel} 모델이 자동으로 연결됩니다.
         </Alert>
       )}
     </>
