@@ -3,7 +3,7 @@ Celery tasks for translation processing.
 """
 import traceback
 import gc
-from typing import Optional
+from typing import Dict, Optional
 from celery import current_task
 from celery.exceptions import SoftTimeLimitExceeded
 import logging
@@ -14,6 +14,7 @@ from ..config.database import SessionLocal
 from ..domains.translation.service import TranslationDomainService
 from ..domains.tasks.models import TaskKind
 from ..domains.translation.repository import SqlAlchemyTranslationJobRepository
+from ..domains.shared.provider_context import provider_context_from_payload
 from ..domains.shared.uow import SqlAlchemyUoW
 
 logger = logging.getLogger(__name__)
@@ -42,7 +43,8 @@ def process_translation_task(
     translation_model_name: Optional[str] = None,
     style_model_name: Optional[str] = None,
     glossary_model_name: Optional[str] = None,
-    user_id: Optional[int] = None
+    user_id: Optional[int] = None,
+    provider_context: Optional[Dict[str, object]] = None,
 ):
     """
     Process a translation job using Celery.
@@ -91,6 +93,7 @@ def process_translation_task(
         # Prepare translation components
         from backend.config.database import SessionLocal
         translation_service = TranslationDomainService(SessionLocal)
+        context = provider_context_from_payload(provider_context)
         components = translation_service.prepare_translation_job(
             job_id=job_id,
             job=job,
@@ -101,6 +104,7 @@ def process_translation_task(
             translation_model_name=translation_model_name,
             style_model_name=style_model_name,
             glossary_model_name=glossary_model_name,
+            provider_context=context,
         )
         
         # Update progress
@@ -155,7 +159,8 @@ def process_translation_task(
                     validation_mode=validation_mode,
                     sample_rate=sample_rate,
                     user_id=user_id,
-                    autotrigger_post_edit=True
+                    autotrigger_post_edit=True,
+                    provider_context=provider_context,
                 )
                 logger.info(f"Queued validation task for Job ID: {job_id} (mode={validation_mode}, sample_rate={sample_rate})")
         except Exception as e:
@@ -216,6 +221,7 @@ def run_translation_in_background(
     translation_model_name: Optional[str] = None,
     style_model_name: Optional[str] = None,
     glossary_model_name: Optional[str] = None,
+    provider_context: Optional[Dict[str, object]] = None,
 ):
     """
     Backward compatibility wrapper for existing code.
@@ -229,7 +235,8 @@ def run_translation_in_background(
         glossary_data=glossary_data,
         translation_model_name=translation_model_name,
         style_model_name=style_model_name,
-        glossary_model_name=glossary_model_name
+        glossary_model_name=glossary_model_name,
+        provider_context=provider_context,
     )
     
     logger.info(f"Launched translation task {task.id} for job {job_id}")

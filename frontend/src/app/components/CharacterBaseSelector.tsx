@@ -5,16 +5,19 @@ import { Box, Button, Card, CardMedia, CardContent, Typography, Stack, Radio, Ci
 import { useAuth } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
 import { getCharacterBases, generateCharacterBases, selectCharacterBase, CharacterProfileBody, analyzeCharacterAppearance, generateBasesFromPrompt } from '../utils/api';
+import type { ApiProvider } from '../hooks/useApiKey';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 interface CharacterBaseSelectorProps {
   jobId: string;
+  apiProvider: ApiProvider;
   apiKey?: string; // required to generate bases
+  providerConfig?: string;
   onChange?: () => void; // called after selection or generation
 }
 
-export default function CharacterBaseSelector({ jobId, apiKey, onChange }: CharacterBaseSelectorProps) {
+export default function CharacterBaseSelector({ jobId, apiProvider, apiKey, providerConfig, onChange }: CharacterBaseSelectorProps) {
   const { getToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const [bases, setBases] = useState<any[]>([]);
@@ -68,8 +71,12 @@ export default function CharacterBaseSelector({ jobId, apiKey, onChange }: Chara
   }, [jobId]);
 
   const handleGenerate = async () => {
-    if (!apiKey) {
+    if (apiProvider !== 'vertex' && !apiKey) {
       setError('API Key가 필요합니다. 설정에서 API 키를 입력하세요.');
+      return;
+    }
+    if (apiProvider === 'vertex' && (!providerConfig || !providerConfig.trim())) {
+      setError('Vertex 서비스 계정 JSON이 필요합니다. 설정에서 JSON을 입력하세요.');
       return;
     }
     setLoading(true);
@@ -83,7 +90,15 @@ export default function CharacterBaseSelector({ jobId, apiKey, onChange }: Chara
         style: profile?.style || 'digital_art',
         extra_style_hints: profile?.extra_style_hints || 'clean linework, soft lighting'
       };
-      await generateCharacterBases(jobId, apiKey, token || undefined, defaultProfile, referenceFile || undefined);
+      await generateCharacterBases({
+        jobId,
+        token: token || undefined,
+        profile: defaultProfile,
+        referenceImage: referenceFile || undefined,
+        apiProvider,
+        apiKey,
+        providerConfig,
+      });
       await load();
       onChange?.();
     } catch (e: any) {
@@ -94,15 +109,26 @@ export default function CharacterBaseSelector({ jobId, apiKey, onChange }: Chara
   };
 
   const handleAnalyzeAppearance = async () => {
-    if (!apiKey) {
+    if (apiProvider !== 'vertex' && !apiKey) {
       setError('API Key가 필요합니다. 설정에서 API 키를 입력하세요.');
+      return;
+    }
+    if (apiProvider === 'vertex' && (!providerConfig || !providerConfig.trim())) {
+      setError('Vertex 서비스 계정 JSON이 필요합니다.');
       return;
     }
     setLoading(true);
     setError(null);
     try {
       const token = await getCachedClerkToken(getToken);
-      const res = await analyzeCharacterAppearance(jobId, apiKey, token || undefined, nameInput || undefined);
+      const res = await analyzeCharacterAppearance({
+        jobId,
+        token: token || undefined,
+        protagonistName: nameInput || undefined,
+        apiProvider,
+        apiKey,
+        providerConfig,
+      });
       setAppearancePrompts(res.prompts || []);
     } catch (e: any) {
       setError(e?.message || '외형 분석에 실패했습니다.');
@@ -112,15 +138,27 @@ export default function CharacterBaseSelector({ jobId, apiKey, onChange }: Chara
   };
 
   const handleGenerateFromPrompt = async (promptText: string) => {
-    if (!apiKey) {
+    if (apiProvider !== 'vertex' && !apiKey) {
       setError('API Key가 필요합니다. 설정에서 API 키를 입력하세요.');
+      return;
+    }
+    if (apiProvider === 'vertex' && (!providerConfig || !providerConfig.trim())) {
+      setError('Vertex 서비스 계정 JSON이 필요합니다.');
       return;
     }
     setLoading(true);
     setError(null);
     try {
       const token = await getCachedClerkToken(getToken);
-      await generateBasesFromPrompt(jobId, apiKey, token || undefined, [promptText], referenceFile || undefined);
+      await generateBasesFromPrompt({
+        jobId,
+        token: token || undefined,
+        prompts: [promptText],
+        referenceImage: referenceFile || undefined,
+        apiProvider,
+        apiKey,
+        providerConfig,
+      });
       await load();
       onChange?.();
     } catch (e: any) {

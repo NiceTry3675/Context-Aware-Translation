@@ -4,17 +4,20 @@ import { useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../../../utils/authToken';
 import { triggerPostEdit } from '../../../utils/api';
+import type { ApiProvider } from '../../../hooks/useApiKey';
 
 interface UsePostEditProps {
   jobId: string;
   onRefresh?: () => void;
   selectedCases?: Record<number, boolean[]>;
   modifiedCases?: Record<number, Array<{ reason?: string; recommend_korean_sentence?: string }>>;
-  apiProvider?: 'gemini' | 'openrouter';
+  apiProvider?: ApiProvider;
+  apiKey?: string;
+  providerConfig?: string;
   defaultModelName?: string;
 }
 
-export function usePostEdit({ jobId, onRefresh, selectedCases, modifiedCases, apiProvider, defaultModelName }: UsePostEditProps) {
+export function usePostEdit({ jobId, onRefresh, selectedCases, modifiedCases, apiProvider, apiKey, providerConfig, defaultModelName }: UsePostEditProps) {
   const [postEditDialogOpen, setPostEditDialogOpen] = useState(false);
   // Structured-only: issue types removed
   const [modelName, setModelName] = useState<string>(defaultModelName || '');
@@ -35,7 +38,24 @@ export function usePostEdit({ jobId, onRefresh, selectedCases, modifiedCases, ap
         model_name: modelName || defaultModelName,
         default_select_all: true,
       } as any;
-      await triggerPostEdit(jobId, token || undefined, body);
+      if ((apiProvider || 'gemini') !== 'vertex' && !apiKey) {
+        setError('포스트 에디팅을 실행하려면 API 키가 필요합니다.');
+        setLoading(false);
+        return;
+      }
+      if ((apiProvider || 'gemini') === 'vertex' && (!providerConfig || !providerConfig.trim())) {
+        setError('Vertex 서비스 계정 JSON이 필요합니다.');
+        setLoading(false);
+        return;
+      }
+      await triggerPostEdit({
+        jobId,
+        token: token || undefined,
+        body,
+        apiProvider: apiProvider || 'gemini',
+        apiKey: apiProvider === 'vertex' ? '' : apiKey,
+        providerConfig: apiProvider === 'vertex' ? providerConfig : undefined,
+      });
       setPostEditDialogOpen(false);
       // Lightweight UI kick: public single-job refresh (no JWT)
       onRefresh?.();

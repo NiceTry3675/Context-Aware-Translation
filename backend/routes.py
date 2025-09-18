@@ -19,7 +19,7 @@ from backend.domains.illustrations import routes as illustrations
 from backend.domains.translation.schemas import TranslationJob
 from backend.domains.validation.schemas import StructuredValidationReport
 from backend.domains.post_edit.schemas import StructuredPostEditLog
-from backend.domains.community.schemas import Post, Comment
+from backend.domains.community.schemas import Post, Comment, PostCategory, CategoryOverview
 from backend.domains.user.schemas import User, Announcement
 from backend.domains.tasks.schemas import TaskExecutionResponse, TaskExecutionListResponse, TaskStatsSimple
 from backend.domains.analysis.schemas import StyleAnalysisResponse, GlossaryAnalysisResponse, CharacterAnalysisResponse
@@ -141,6 +141,20 @@ router.include_router(illustrations.router)
 router.include_router(tasks.router)
 
 # Community endpoints
+router.add_api_route(
+    "/community/categories",
+    community.list_categories,
+    methods=["GET"],
+    response_model=List[PostCategory],
+    tags=["community"]
+)
+router.add_api_route(
+    "/community/categories/overview",
+    community.list_categories_overview,
+    methods=["GET"],
+    response_model=List[CategoryOverview],
+    tags=["community"]
+)
 router.add_api_route(
     "/posts", 
     community.list_posts, 

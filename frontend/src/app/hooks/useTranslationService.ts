@@ -3,6 +3,7 @@ import { useAuth, useClerk } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
 import type { components } from '@/types/api';
 import { StyleData, GlossaryTerm, TranslationSettings } from '../types/ui';
+import type { ApiProvider } from './useApiKey';
 
 // Type aliases for convenience
 type TranslationJob = components['schemas']['TranslationJob'];
@@ -18,7 +19,9 @@ interface FileAnalysisResult {
 
 interface UseTranslationServiceOptions {
   apiUrl: string;
+  apiProvider: ApiProvider;
   apiKey: string;
+  providerConfig: string;
   selectedModel: string;
   selectedStyleModel?: string;
   selectedGlossaryModel?: string;
@@ -27,7 +30,9 @@ interface UseTranslationServiceOptions {
 
 export function useTranslationService({
   apiUrl,
+  apiProvider,
   apiKey,
+  providerConfig,
   selectedModel,
   selectedStyleModel,
   selectedGlossaryModel,
@@ -54,8 +59,11 @@ export function useTranslationService({
       throw new Error("번역을 시작하려면 먼저 로그인해주세요.");
     }
     
-    if (!apiKey) {
+    if (apiProvider !== 'vertex' && !apiKey) {
       throw new Error("API 키를 먼저 입력해주세요.");
+    }
+    if (apiProvider === 'vertex' && !providerConfig.trim()) {
+      throw new Error("Vertex 서비스 계정 JSON을 입력해주세요.");
     }
 
     setIsAnalyzing(true);
@@ -71,8 +79,14 @@ export function useTranslationService({
       // Analyze Style
       const styleFormData = new FormData();
       styleFormData.append('file', file);
-      styleFormData.append('api_key', apiKey);
       styleFormData.append('model_name', selectedStyleModel || selectedModel);
+      styleFormData.append('api_provider', apiProvider);
+      if (apiProvider === 'vertex') {
+        styleFormData.append('api_key', '');
+        styleFormData.append('provider_config', providerConfig);
+      } else {
+        styleFormData.append('api_key', apiKey);
+      }
 
       const styleResponse = await fetch(`${apiUrl}/api/v1/analysis/style`, {
         method: 'POST',
@@ -101,8 +115,14 @@ export function useTranslationService({
         setIsAnalyzingGlossary(true);
         const glossaryFormData = new FormData();
         glossaryFormData.append('file', file);
-        glossaryFormData.append('api_key', apiKey);
         glossaryFormData.append('model_name', selectedGlossaryModel || selectedModel);
+        glossaryFormData.append('api_provider', apiProvider);
+        if (apiProvider === 'vertex') {
+          glossaryFormData.append('api_key', '');
+          glossaryFormData.append('provider_config', providerConfig);
+        } else {
+          glossaryFormData.append('api_key', apiKey);
+        }
 
         try {
           const glossaryResponse = await fetch(`${apiUrl}/api/v1/analysis/glossary`, {
@@ -137,7 +157,7 @@ export function useTranslationService({
     } finally {
       setIsAnalyzing(false);
     }
-  }, [apiUrl, apiKey, selectedModel, isLoaded, isSignedIn, openSignIn]);
+  }, [apiUrl, apiProvider, apiKey, providerConfig, selectedModel, selectedStyleModel, selectedGlossaryModel, isLoaded, isSignedIn, openSignIn]);
 
   const startTranslation = useCallback(async (
     file: File,
@@ -159,8 +179,14 @@ export function useTranslationService({
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("api_key", apiKey);
     formData.append("model_name", selectedModel);
+    formData.append("api_provider", apiProvider);
+    if (apiProvider === 'vertex') {
+      formData.append("api_key", '');
+      formData.append("provider_config", providerConfig);
+    } else {
+      formData.append("api_key", apiKey);
+    }
     if (selectedStyleModel && selectedStyleModel !== selectedModel) {
       formData.append("style_model_name", selectedStyleModel);
     }
@@ -230,7 +256,20 @@ export function useTranslationService({
     } finally {
       setUploading(false);
     }
-  }, [apiUrl, apiKey, selectedModel, isLoaded, isSignedIn, getToken, openSignIn, onJobCreated]);
+  }, [
+    apiUrl,
+    apiProvider,
+    apiKey,
+    providerConfig,
+    selectedModel,
+    selectedStyleModel,
+    selectedGlossaryModel,
+    isLoaded,
+    isSignedIn,
+    getToken,
+    openSignIn,
+    onJobCreated,
+  ]);
 
   return {
     analyzeFile,

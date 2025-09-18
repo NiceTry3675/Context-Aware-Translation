@@ -2,7 +2,7 @@
 Celery tasks for translation validation.
 """
 import traceback
-from typing import Optional
+from typing import Dict, Optional
 from celery import current_task
 from celery.exceptions import SoftTimeLimitExceeded
 import logging
@@ -15,6 +15,7 @@ from ..config.database import SessionLocal
 from ..domains.validation.service import ValidationDomainService
 from ..domains.tasks.models import TaskKind
 from ..domains.translation.repository import SqlAlchemyTranslationJobRepository
+from ..domains.shared.provider_context import provider_context_from_payload
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,8 @@ def process_validation_task(
     validation_mode: str = "comprehensive",
     sample_rate: float = 1.0,
     user_id: Optional[int] = None,
-    autotrigger_post_edit: bool = False
+    autotrigger_post_edit: bool = False,
+    provider_context: Optional[Dict[str, object]] = None,
 ):
     """
     Process a validation task using Celery.
@@ -82,18 +84,28 @@ def process_validation_task(
     task_logger.info(f"[VALIDATION TASK START] ========================================")
 
     try:
+        context = provider_context_from_payload(provider_context)
+        provider_name = context.name if context else "gemini"
+
         task_logger.info(f"[VALIDATION TASK] Starting validation task for job_id={job_id}")
         api_key_display = f"{api_key[:8]}..." if api_key else "None"
-        task_logger.info(f"[VALIDATION TASK] Parameters: api_key={api_key_display}, model={model_name}, mode={validation_mode}, sample_rate={sample_rate}")
+        task_logger.info(
+            f"[VALIDATION TASK] Parameters: api_key={api_key_display}, model={model_name}, mode={validation_mode}, sample_rate={sample_rate}, provider={provider_name}"
+        )
         
-        # Check if API key is provided, use default from settings if not
-        if not api_key:
-            task_logger.info(f"[VALIDATION TASK] No API key provided, using default Gemini API key from settings")
+        # Check if API key is provided when required
+        if not api_key and provider_name != "vertex":
+            task_logger.info(
+                "[VALIDATION TASK] No API key provided; attempting to use default Gemini API key from settings"
+            )
             from backend.config.settings import get_settings
+
             settings = get_settings()
             api_key = settings.gemini_api_key
             if not api_key:
-                task_logger.error(f"[VALIDATION TASK] No API key provided and no default Gemini API key in settings")
+                task_logger.error(
+                    "[VALIDATION TASK] No API key provided and no default Gemini API key in settings"
+                )
                 raise ValueError("API key is required for validation")
         
         # Get database session
@@ -133,7 +145,8 @@ def process_validation_task(
                 session=db,
                 job_id=job_id,
                 api_key=api_key,
-                model_name=model_name
+                model_name=model_name,
+                provider_context=context,
             )
             task_logger.info(f"[VALIDATION TASK] Validation components prepared successfully")
             task_logger.info(f"[VALIDATION TASK] Translated file path: {translated_path}")
@@ -225,7 +238,8 @@ def process_validation_task(
                         api_key=api_key,
                         model_name=model_name,
                         default_select_all=True,
-                        user_id=user_id
+                        user_id=user_id,
+                        provider_context=provider_context,
                     )
                     task_logger.info(f"[VALIDATION TASK] Queued post-edit task for Job ID: {job_id}")
             except Exception as e:

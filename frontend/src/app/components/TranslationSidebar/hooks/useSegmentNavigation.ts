@@ -68,9 +68,52 @@ export function useSegmentNavigation({
   // Calculate segments with errors based on filters
   const segmentsWithErrors = useMemo(() => {
     if (!validationReport) return [];
-    
+
+    const normalizeSeverity = (severity: unknown) => {
+      if (typeof severity === 'number') {
+        return Math.max(1, Math.min(3, severity));
+      }
+      if (typeof severity === 'string') {
+        const lowered = severity.toLowerCase();
+        if (['critical', 'high', 'severe'].includes(lowered)) return 3;
+        if (['major', 'medium', 'moderate', 'important'].includes(lowered)) return 2;
+        if (['minor', 'low', 'trivial'].includes(lowered)) return 1;
+        const parsed = parseInt(severity, 10);
+        if (!Number.isNaN(parsed)) {
+          return Math.max(1, Math.min(3, parsed));
+        }
+      }
+      return 2;
+    };
+
     return validationReport.detailed_results
-      .filter((result) => result.status === 'FAIL' && Array.isArray((result as any).structured_cases) && (result as any).structured_cases.length > 0)
+      .filter((result) => {
+        const cases = (result as any).structured_cases || [];
+        if (!Array.isArray(cases) || cases.length === 0) return false;
+
+        const hasCritical = cases.some((c: any) => normalizeSeverity(c?.severity) === 3);
+        const hasMissing = cases.some((c: any) => {
+          const dimension = (c?.dimension || '').toLowerCase();
+          return dimension.includes('missing') || /누락/.test(c?.reason || '');
+        });
+        const hasAdded = cases.some((c: any) => {
+          const dimension = (c?.dimension || '').toLowerCase();
+          return dimension.includes('added') || /추가/.test(c?.reason || '');
+        });
+        const hasName = cases.some((c: any) => {
+          const dimension = (c?.dimension || '').toLowerCase();
+          return dimension.includes('name') || /이름|고유명/.test(c?.reason || '');
+        });
+
+        const relevant = (
+          (errorFilters.critical && hasCritical) ||
+          (errorFilters.missingContent && hasMissing) ||
+          (errorFilters.addedContent && hasAdded) ||
+          (errorFilters.nameInconsistencies && hasName)
+        );
+
+        return result.status === 'FAIL' && relevant;
+      })
       .map((result) => result.segment_index)
       .sort((a: number, b: number) => a - b);
   }, [validationReport, errorFilters]);

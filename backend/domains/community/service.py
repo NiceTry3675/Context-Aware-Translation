@@ -14,7 +14,8 @@ from backend.domains.community.models import Post, Comment, PostCategory, Announ
 from backend.domains.community.schemas import (
     PostCreate, PostUpdate, PostList,
     CommentCreate, CommentUpdate,
-    PostCategoryCreate
+    PostCategoryCreate,
+    CategoryOverview, PostSummary
 )
 from backend.domains.user.schemas import AnnouncementCreate
 from backend.domains.community.repository import (
@@ -601,57 +602,59 @@ class CommunityService:
     def get_categories_with_stats(
         self,
         user: Optional[User] = None
-    ) -> List[dict]:
-        """
-        Get categories with post counts and recent posts.
-        
-        Args:
-            user: User requesting the overview
-            
-        Returns:
-            List of category dictionaries with stats
-        """
+    ) -> List[CategoryOverview]:
+        """Return categories enriched with post counts and recent posts."""
+
         categories = self.category_repo.list_ordered()
-        result = []
-        
+        overview: List[CategoryOverview] = []
+
         for category in categories:
-            # Get recent posts in this category
             posts, total = self.post_repo.list_by_category(
                 category_id=category.id,
                 limit=5,
-                include_private=user and user.role == "admin"
+                include_private=bool(user and user.role == "admin")
             )
-            
-            # Filter based on permissions
-            visible_posts = []
+
+            recent_posts: List[PostSummary] = []
             for post in posts:
-                if check_policy(Action.VIEW, post, user):
-                    visible_posts.append({
-                        'id': post.id,
-                        'title': post.title,
-                        'author': post.author.name if post.author else 'Unknown',
-                        'created_at': post.created_at.isoformat(),
-                        'view_count': post.view_count,
-                        'comment_count': len(post.comments) if post.comments else 0,
-                        'is_pinned': post.is_pinned,
-                        'is_private': post.is_private
-                    })
-            
-            result.append({
-                'id': category.id,
-                'name': category.name,
-                'description': category.description,
-                'is_admin_only': category.is_admin_only,
-                'post_count': total,
-                'recent_posts': visible_posts[:3],  # Limit to 3 most recent
-                'can_post': check_policy(
-                    Action.CREATE,
-                    parent=category,
-                    user=user
-                ).allowed
-            })
-        
-        return result
+                if not check_policy(Action.VIEW, post, user):
+                    continue
+
+                recent_posts.append(
+                    PostSummary(
+                        id=post.id,
+                        title=post.title,
+                        author=post.author,
+                        is_pinned=post.is_pinned,
+                        is_private=post.is_private,
+                        view_count=post.view_count,
+                        comment_count=len(post.comments) if post.comments else 0,
+                        images=post.images or [],
+                        created_at=post.created_at,
+                        updated_at=post.updated_at
+                    )
+                )
+
+            overview.append(
+                CategoryOverview(
+                    id=category.id,
+                    name=category.name,
+                    display_name=category.display_name,
+                    description=category.description,
+                    is_admin_only=category.is_admin_only,
+                    order=category.order,
+                    created_at=category.created_at,
+                    total_posts=total,
+                    can_post=check_policy(
+                        Action.CREATE,
+                        parent=category,
+                        user=user
+                    ).allowed,
+                    recent_posts=recent_posts[:3]
+                )
+            )
+
+        return overview
     
     # Announcement operations
     

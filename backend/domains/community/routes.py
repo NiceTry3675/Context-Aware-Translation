@@ -12,7 +12,9 @@ from backend.domains.community.schemas import (
     PostCreate,
     PostList,
     Comment as CommentSchema,
-    CommentCreate
+    CommentCreate,
+    PostCategory as PostCategorySchema,
+    CategoryOverview
 )
 from backend.domains.community.service import CommunityService
 
@@ -54,6 +56,30 @@ async def list_posts(
         # Convert to response model
         return [PostList.from_orm(post) for post in posts]
         
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def list_categories(
+    service: CommunityService = Depends(get_community_service)
+) -> List[PostCategorySchema]:
+    """Return all community categories."""
+
+    try:
+        categories = service.get_categories()
+        return [PostCategorySchema.from_orm(category) for category in categories]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def list_categories_overview(
+    current_user: Optional[User] = Depends(get_optional_user),
+    service: CommunityService = Depends(get_community_service)
+) -> List[CategoryOverview]:
+    """Return categories with aggregated statistics and recent posts."""
+
+    try:
+        return service.get_categories_with_stats(user=current_user)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -41,6 +41,7 @@ import {
 } from '@mui/icons-material';
 import { Job } from '../../types/ui';
 import JobRowActions from './JobRowActions';
+import type { ApiProvider } from '../../hooks/useApiKey';
 
 interface JobSidebarProps {
   jobs: Job[];
@@ -50,9 +51,10 @@ interface JobSidebarProps {
   onNewTranslation: () => void;
   onRefreshJobs: (jobId: number) => void | Promise<void>;
   loading?: boolean;
-  apiProvider?: 'gemini' | 'openrouter';
+  apiProvider?: ApiProvider;
   defaultModelName?: string;
   apiKey?: string;
+  providerConfig?: string;
 }
 
 const getStatusIcon = (status: string) => {
@@ -112,6 +114,7 @@ export default function JobSidebar({
   apiProvider,
   defaultModelName,
   apiKey,
+  providerConfig,
 }: JobSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const { getToken } = useAuth();
@@ -248,6 +251,7 @@ export default function JobSidebar({
                             apiProvider={apiProvider}
                             defaultModelName={defaultModelName}
                             apiKey={apiKey}
+                            providerConfig={providerConfig}
                           />
                           <Tooltip title="다운로드">
                             <IconButton

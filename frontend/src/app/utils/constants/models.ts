@@ -96,6 +96,38 @@ export const openRouterModelOptions: ModelOption[] = [
   },
 ];
 
-export function getDefaultModel(apiProvider: 'gemini' | 'openrouter'): string {
-  return apiProvider === 'gemini' ? geminiModelOptions[0].value : openRouterModelOptions[0].value;
+export const vertexModelOptions: ModelOption[] = [
+  {
+    value: "gemini-2.5-flash-lite",
+    label: "Flash Lite",
+    description: "가장 저렴한 Vertex Gemini 옵션으로 빠른 번역과 검수를 위한 기본 선택입니다.",
+    chip: "속도",
+    chipColor: "primary",
+  },
+  {
+    value: "gemini-2.5-flash",
+    label: "Flash",
+    description: "품질과 속도의 균형이 좋은 Vertex Gemini 2.5 Flash 모델입니다.",
+    chip: "균형",
+    chipColor: "info",
+  },
+  {
+    value: "gemini-2.5-pro",
+    label: "Pro",
+    description: "최고 수준의 번역 품질을 제공하지만 비용과 지연이 더 큰 Pro 모델입니다.",
+    chip: "품질",
+    chipColor: "error",
+  },
+];
+
+export function getDefaultModel(apiProvider: 'gemini' | 'vertex' | 'openrouter'): string {
+  switch (apiProvider) {
+    case 'openrouter':
+      return openRouterModelOptions[0].value;
+    case 'vertex':
+      return vertexModelOptions[0].value;
+    case 'gemini':
+    default:
+      return geminiModelOptions[0].value;
+  }
 }

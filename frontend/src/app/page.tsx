@@ -70,6 +70,8 @@ function CanvasContent() {
           loading={state.dataLoading}
           apiProvider={state.apiProvider}
           defaultModelName={state.selectedModel}
+          apiKey={state.apiKey}
+          providerConfig={state.providerConfig}
         />
         
         <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -92,6 +94,7 @@ function CanvasContent() {
                 jobId={state.jobId}
                 apiProvider={state.apiProvider}
                 apiKey={state.apiKey}
+                providerConfig={state.providerConfig}
                 selectedModel={state.selectedModel}
                 taskModelOverrides={state.taskModelOverrides}
                 taskOverridesEnabled={state.taskOverridesEnabled}
@@ -106,6 +109,7 @@ function CanvasContent() {
                 glossaryAnalysisError={state.glossaryAnalysisError}
                 onProviderChange={state.setApiProvider}
                 onApiKeyChange={state.setApiKey}
+                onProviderConfigChange={state.setProviderConfig}
                 onModelChange={state.setSelectedModel}
                 onTaskModelOverridesChange={state.setTaskModelOverrides}
                 onTaskOverridesEnabledChange={state.setTaskOverridesEnabled}
@@ -124,6 +128,8 @@ function CanvasContent() {
                 tabValue={state.tabValue}
                 viewMode={state.viewMode}
                 apiKey={state.apiKey}
+                apiProvider={state.apiProvider}
+                providerConfig={state.providerConfig}
                 errorFilters={state.errorFilters}
                 isPolling={state.isPolling}
                 dataLoading={state.dataLoading}

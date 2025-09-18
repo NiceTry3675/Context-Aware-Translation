@@ -771,6 +771,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/community/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Categories
+         * @description Return all community categories.
+         */
+        get: operations["list_categories_api_v1_community_categories_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/community/categories/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Categories Overview
+         * @description Return categories with aggregated statistics and recent posts.
+         */
+        get: operations["list_categories_overview_api_v1_community_categories_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/posts": {
         parameters: {
             query?: never;
@@ -1074,6 +1114,13 @@ export interface components {
              * @default gemini-2.5-flash-lite
              */
             model_name: string;
+            /**
+             * Api Provider
+             * @default gemini
+             */
+            api_provider: string;
+            /** Provider Config */
+            provider_config?: string | null;
         };
         /** Body_analyze_glossary_api_v1_analysis_glossary_post */
         Body_analyze_glossary_api_v1_analysis_glossary_post: {
@@ -1089,6 +1136,13 @@ export interface components {
              * @default gemini-2.5-flash-lite
              */
             model_name: string;
+            /**
+             * Api Provider
+             * @default gemini
+             */
+            api_provider: string;
+            /** Provider Config */
+            provider_config?: string | null;
         };
         /** Body_analyze_style_api_v1_analysis_style_post */
         Body_analyze_style_api_v1_analysis_style_post: {
@@ -1104,6 +1158,13 @@ export interface components {
              * @default gemini-2.5-flash-lite
              */
             model_name: string;
+            /**
+             * Api Provider
+             * @default gemini
+             */
+            api_provider: string;
+            /** Provider Config */
+            provider_config?: string | null;
         };
         /** Body_create_job_api_v1_jobs_post */
         Body_create_job_api_v1_jobs_post: {
@@ -1154,6 +1215,13 @@ export interface components {
              * @default false
              */
             enable_post_edit: boolean;
+            /**
+             * Api Provider
+             * @default gemini
+             */
+            api_provider: string;
+            /** Provider Config */
+            provider_config?: string | null;
         };
         /** Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post */
         Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post: {
@@ -1186,6 +1254,44 @@ export interface components {
             reference_image?: string | null;
             /** Profile Json */
             profile_json?: string | null;
+        };
+        /**
+         * CategoryOverview
+         * @description Extended category information for overview responses.
+         */
+        CategoryOverview: {
+            /** Name */
+            name: string;
+            /** Display Name */
+            display_name: string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Is Admin Only
+             * @default false
+             */
+            is_admin_only: boolean;
+            /**
+             * Order
+             * @default 0
+             */
+            order: number;
+            /** Id */
+            id: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Total Posts */
+            total_posts: number;
+            /** Can Post */
+            can_post: boolean;
+            /**
+             * Recent Posts
+             * @default []
+             */
+            recent_posts: components["schemas"]["PostSummary"][];
         };
         /**
          * CharacterAnalysisResponse
@@ -1465,6 +1571,44 @@ export interface components {
             model_name?: string | null;
             /** Api Key */
             api_key?: string | null;
+            /** Api Provider */
+            api_provider?: string | null;
+            /** Provider Config */
+            provider_config?: unknown | null;
+        };
+        /**
+         * PostSummary
+         * @description Compact representation of a post for category overviews.
+         */
+        PostSummary: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            author: components["schemas"]["User"];
+            /** Is Pinned */
+            is_pinned: boolean;
+            /** Is Private */
+            is_private: boolean;
+            /** View Count */
+            view_count: number;
+            /**
+             * Comment Count
+             * @default 0
+             */
+            comment_count: number;
+            /**
+             * Images
+             * @default []
+             */
+            images: string[];
         };
         /**
          * StyleAnalysisResponse
@@ -1757,6 +1901,10 @@ export interface components {
             model_name?: string | null;
             /** Api Key */
             api_key?: string | null;
+            /** Api Provider */
+            api_provider?: string | null;
+            /** Provider Config */
+            provider_config?: unknown | null;
         };
     };
     responses: never;
@@ -2807,6 +2955,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_categories_api_v1_community_categories_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostCategory"][];
+                };
+            };
+        };
+    };
+    list_categories_overview_api_v1_community_categories_overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryOverview"][];
                 };
             };
         };

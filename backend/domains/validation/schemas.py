@@ -16,6 +16,8 @@ class ValidationRequest(BaseModel):
     validation_sample_rate: float = 1.0  # 0.0 to 1.0
     model_name: Optional[str] = None
     api_key: Optional[str] = None
+    api_provider: Optional[str] = None
+    provider_config: Optional[Any] = None
 
 
 class StructuredValidationReport(BaseModel):

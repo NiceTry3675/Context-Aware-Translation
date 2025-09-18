@@ -35,6 +35,7 @@ from core.schemas.illustration import (
 )
 from ..analysis import StyleAnalysis, CharacterAnalysis
 from ..shared.model_factory import ModelAPIFactory
+from ..shared.provider_context import provider_context_to_payload
 from core.config.loader import load_config
 from .service import IllustrationsService
 
@@ -65,8 +66,14 @@ async def generate_illustrations(
     config = IllustrationConfig(**body.get('config', {}))
     api_key = body.get('api_key')
     max_illustrations = body.get('max_illustrations')
-    
-    if not api_key:
+    api_provider = body.get('api_provider', 'gemini')
+    provider_config = body.get('provider_config')
+
+    service = IllustrationsService(db)
+    provider_context = service.build_provider_context(api_provider, provider_config)
+    provider_payload = provider_context_to_payload(provider_context)
+
+    if not api_key and provider_context.name != 'vertex':
         raise HTTPException(status_code=400, detail="API key is required")
     
     # Get the translation job
@@ -118,6 +125,7 @@ async def generate_illustrations(
             "config_dict": config.dict(),
             "api_key": api_key,
             "max_illustrations": max_illustrations,
+            "provider_context": provider_payload,
         },
     )
 
@@ -127,6 +135,7 @@ async def generate_illustrations(
             "config_dict": config.dict(),
             "api_key": api_key,
             "max_illustrations": max_illustrations,
+            "provider_context": provider_payload,
         },
         task_id=task_id,
     )
@@ -671,8 +680,14 @@ async def regenerate_illustration_prompt(
     body = await request.json()
     api_key = body.get('api_key')
     style_hints = body.get('style_hints')
+    api_provider = body.get('api_provider', 'gemini')
+    provider_config = body.get('provider_config')
     
-    if not api_key:
+    service = IllustrationsService(db)
+    provider_context = service.build_provider_context(api_provider, provider_config)
+    provider_payload = provider_context_to_payload(provider_context)
+
+    if not api_key and provider_context.name != 'vertex':
         raise HTTPException(status_code=400, detail="API key is required")
     
     # Get the translation job
@@ -699,7 +714,8 @@ async def regenerate_illustration_prompt(
         job_id=job_id,
         segment_index=segment_index,
         style_hints=style_hints,
-        api_key=api_key
+        api_key=api_key,
+        provider_context=provider_payload,
     )
     
     return {

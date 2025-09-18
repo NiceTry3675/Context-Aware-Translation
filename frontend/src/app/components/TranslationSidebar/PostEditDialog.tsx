@@ -20,6 +20,7 @@ import {
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { ValidationReport } from '../../utils/api';
 import ModelSelector from '../translation/ModelSelector';
+import type { ApiProvider } from '../../hooks/useApiKey';
 
 interface PostEditDialogProps {
   open: boolean;
@@ -30,7 +31,7 @@ interface PostEditDialogProps {
   selectedCounts?: {
     total: number;
   };
-  apiProvider?: 'gemini' | 'openrouter';
+  apiProvider?: ApiProvider;
   modelName?: string;
   onModelNameChange?: (model: string) => void;
 }

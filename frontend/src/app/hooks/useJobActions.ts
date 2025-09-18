@@ -3,19 +3,50 @@ import { components } from '../../types/api';
 import { useAuth, useClerk } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
 import { triggerIllustrationGeneration, generateCharacterBases, selectCharacterBase } from '../utils/api';
+import type { ApiProvider } from './useApiKey';
 
 interface UseJobActionsOptions {
   apiUrl: string;
+  apiProvider: ApiProvider;
   apiKey?: string;
+  providerConfig?: string;
   onError?: (error: string) => void;
   onSuccess?: () => void;
 }
 
-export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActionsOptions) {
+export function useJobActions({ apiUrl, apiProvider, apiKey, providerConfig, onError, onSuccess }: UseJobActionsOptions) {
   const { getToken, isSignedIn } = useAuth();
   const { openSignIn } = useClerk();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const ensureCredentials = (actionLabel: string) => {
+    if (apiProvider === 'vertex') {
+      if (!providerConfig || !providerConfig.trim()) {
+        const message = `Vertex ${actionLabel}을(를) 실행하려면 서비스 계정 JSON이 필요합니다.`;
+        setError(message);
+        onError?.(message);
+        return false;
+      }
+    } else if (!apiKey) {
+      const message = `${actionLabel}을(를) 실행하려면 API 키가 필요합니다.`;
+      setError(message);
+      onError?.(message);
+      return false;
+    }
+    return true;
+  };
+
+  const buildCredentialPayload = () => {
+    const payload: Record<string, unknown> = {
+      api_provider: apiProvider,
+      api_key: apiProvider === 'vertex' ? '' : apiKey,
+    };
+    if (apiProvider === 'vertex' && providerConfig) {
+      payload.provider_config = providerConfig;
+    }
+    return payload;
+  };
 
   const handleDownload = useCallback(async (url: string, filename: string) => {
     if (!isSignedIn) {
@@ -65,6 +96,10 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
   ) => {
     setLoading(true);
     setError(null);
+    if (!ensureCredentials('검증')) {
+      setLoading(false);
+      return;
+    }
     try {
       const token = await getCachedClerkToken(getToken);
       const response = await fetch(`${apiUrl}/api/v1/validate/${jobId}`, {
@@ -73,8 +108,10 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        // Add api_key inline to ensure backend uses user-provided key
-        body: JSON.stringify({ ...(body as any), api_key: apiKey }),
+        body: JSON.stringify({
+          ...(body as any),
+          ...buildCredentialPayload(),
+        }),
       });
       
       if (response.ok) {
@@ -93,7 +130,7 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
     } finally {
       setLoading(false);
     }
-  }, [apiUrl, getToken, onError, onSuccess]);
+  }, [apiUrl, apiProvider, apiKey, providerConfig, getToken, onError, onSuccess]);
 
   const handleTriggerPostEdit = useCallback(async (
     jobId: number,
@@ -101,6 +138,10 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
   ) => {
     setLoading(true);
     setError(null);
+    if (!ensureCredentials('포스트 에디팅')) {
+      setLoading(false);
+      return;
+    }
     try {
       const token = await getCachedClerkToken(getToken);
       const response = await fetch(`${apiUrl}/api/v1/post-edit/${jobId}`, {
@@ -109,8 +150,10 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        // Pass api_key so post-edit does not rely on server env
-        body: JSON.stringify({ ...(body as any), api_key: apiKey }),
+        body: JSON.stringify({
+          ...(body as any),
+          ...buildCredentialPayload(),
+        }),
       });
       
       if (response.ok) {
@@ -129,7 +172,7 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
     } finally {
       setLoading(false);
     }
-  }, [apiUrl, getToken, onError, onSuccess]);
+  }, [apiUrl, apiProvider, apiKey, providerConfig, getToken, onError, onSuccess]);
 
   const handleDownloadValidationReport = useCallback(async (jobId: number) => {
     await handleDownload(
@@ -165,7 +208,7 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
 
   const handleTriggerIllustration = useCallback(async (
     jobId: number,
-    apiKey: string,
+    keyOverride: string,
     config?: {
       style?: string;
       style_hints?: string;
@@ -177,14 +220,22 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
   ) => {
     setLoading(true);
     setError(null);
+    if (!ensureCredentials('일러스트 생성')) {
+      setLoading(false);
+      return;
+    }
     try {
       const token = await getCachedClerkToken(getToken);
       await triggerIllustrationGeneration(
-        jobId.toString(),
-        apiKey,
-        token || undefined,
-        config,
-        maxIllustrations
+        {
+          jobId: jobId.toString(),
+          token: token || undefined,
+          apiProvider,
+          apiKey: apiProvider === 'vertex' ? '' : (keyOverride || apiKey || ''),
+          providerConfig,
+          config,
+          maxIllustrations,
+        }
       );
       onSuccess?.();
     } catch (error) {
@@ -195,19 +246,30 @@ export function useJobActions({ apiUrl, apiKey, onError, onSuccess }: UseJobActi
     } finally {
       setLoading(false);
     }
-  }, [getToken, onError, onSuccess]);
+  }, [apiProvider, apiKey, providerConfig, getToken, onError, onSuccess]);
 
   return {
     handleDownload,
     handleTriggerValidation,
     handleTriggerPostEdit,
     handleTriggerIllustration,
-    async handleGenerateCharacterBases(jobId: number, apiKey: string, profile: any) {
+    async handleGenerateCharacterBases(jobId: number, keyOverride: string, profile: any) {
       setLoading(true);
       setError(null);
+      if (!ensureCredentials('캐릭터 베이스 생성')) {
+        setLoading(false);
+        return;
+      }
       try {
         const token = await getCachedClerkToken(getToken);
-        await generateCharacterBases(jobId.toString(), apiKey, token || undefined, profile);
+        await generateCharacterBases({
+          jobId: jobId.toString(),
+          token: token || undefined,
+          profile,
+          apiProvider,
+          apiKey: apiProvider === 'vertex' ? '' : (keyOverride || apiKey || ''),
+          providerConfig,
+        });
         onSuccess?.();
       } catch (error) {
         const msg = error instanceof Error ? error.message : 'An unknown error occurred';

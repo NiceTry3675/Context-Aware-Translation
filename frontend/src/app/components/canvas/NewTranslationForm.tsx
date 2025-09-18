@@ -16,13 +16,13 @@ import FileUploadSection from '../FileUpload/FileUploadSection';
 import TranslationSettings from '../AdvancedSettings/TranslationSettings';
 import StyleConfigForm from '../StyleConfiguration/StyleConfigForm';
 import { StyleData, GlossaryTerm, TranslationSettings as TSettings } from '../../types/ui';
-
-type ApiProvider = 'gemini' | 'openrouter';
+import type { ApiProvider } from '../../hooks/useApiKey';
 
 interface NewTranslationFormProps {
   jobId: string | null;
   apiProvider: ApiProvider;
   apiKey: string;
+  providerConfig: string;
   selectedModel: string;
   taskModelOverrides?: TaskModelOverridesType;
   taskOverridesEnabled?: boolean;
@@ -37,6 +37,7 @@ interface NewTranslationFormProps {
   glossaryAnalysisError: string;
   onProviderChange: (provider: ApiProvider) => void;
   onApiKeyChange: (key: string) => void;
+  onProviderConfigChange: (value: string) => void;
   onModelChange: (model: string) => void;
   onTaskModelOverridesChange?: (overrides: TaskModelOverridesType) => void;
   onTaskOverridesEnabledChange?: (enabled: boolean) => void;
@@ -53,6 +54,7 @@ export default function NewTranslationForm({
   jobId,
   apiProvider,
   apiKey,
+  providerConfig,
   selectedModel,
   taskModelOverrides,
   taskOverridesEnabled,
@@ -67,6 +69,7 @@ export default function NewTranslationForm({
   glossaryAnalysisError,
   onProviderChange,
   onApiKeyChange,
+  onProviderConfigChange,
   onModelChange,
   onTaskModelOverridesChange,
   onTaskOverridesEnabledChange,
@@ -93,9 +96,11 @@ export default function NewTranslationForm({
           <ApiSetup
             apiProvider={apiProvider}
             apiKey={apiKey}
+            providerConfig={providerConfig}
             selectedModel={selectedModel}
             onProviderChange={onProviderChange}
             onApiKeyChange={onApiKeyChange}
+            onProviderConfigChange={onProviderConfigChange}
             onModelChange={onModelChange}
           />
 

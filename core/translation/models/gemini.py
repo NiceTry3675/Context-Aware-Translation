@@ -1,20 +1,84 @@
 import time
+from typing import Optional, Tuple
+
 from google import genai
-from google.api_core import exceptions as google_exceptions
+from google.genai import errors as genai_errors
 from shared.errors import ProhibitedException
 from ...utils.retry import retry_with_softer_prompt
+
 try:
     # Prefer typed helpers from the new google-genai package
     from google.genai import types as genai_types
 except Exception:  # pragma: no cover
     genai_types = None
 
+try:  # Backwards-compat when google-api-core is still available
+    from google.api_core import exceptions as google_api_exceptions
+except ImportError:  # pragma: no cover - optional dependency only in older stacks
+    google_api_exceptions = None
+
+API_ERROR_TYPES: Tuple[type[BaseException], ...] = (genai_errors.APIError,)
+if google_api_exceptions is not None:  # pragma: no branch - tuple concat only if present
+    API_ERROR_TYPES = API_ERROR_TYPES + (google_api_exceptions.GoogleAPIError,)
+
+
+def _error_code(exc: Exception) -> Optional[int]:
+    code = getattr(exc, "code", None)
+    try:
+        return int(code) if code is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _error_status(exc: Exception) -> str:
+    for attr in ("status", "reason"):
+        value = getattr(exc, attr, None)
+        if isinstance(value, str):
+            return value.upper()
+    return ""
+
+
+def _error_message(exc: Exception) -> str:
+    message = getattr(exc, "message", None)
+    return message if isinstance(message, str) and message else str(exc)
+
+
+def _is_permission_denied_error(exc: Exception) -> bool:
+    if google_api_exceptions and isinstance(exc, google_api_exceptions.PermissionDenied):
+        return True
+    code = _error_code(exc)
+    if code == 403:
+        return True
+    return "PERMISSION_DENIED" in _error_status(exc)
+
+
+def _is_invalid_argument_error(exc: Exception) -> bool:
+    if google_api_exceptions and isinstance(exc, google_api_exceptions.InvalidArgument):
+        return True
+    code = _error_code(exc)
+    if code == 400:
+        return True
+    return "INVALID_ARGUMENT" in _error_status(exc)
+
+
+def _looks_like_safety_block(exc: Exception) -> bool:
+    candidate = f"{_error_message(exc)}".upper()
+    return any(token in candidate for token in ("PROHIBITED", "SAFETY", "BLOCK"))
+
 class GeminiModel:
     """
     A wrapper class for the Google Gemini API to handle text generation,
     including configuration, API calls, and retry logic.
     """
-    def __init__(self, api_key: str, model_name: str, safety_settings: list, generation_config: dict, enable_soft_retry: bool = True):
+    def __init__(
+        self,
+        api_key: str | None,
+        model_name: str,
+        safety_settings: list,
+        generation_config: dict,
+        enable_soft_retry: bool = True,
+        client: genai.Client | None = None,
+    ):
         """
         Initializes the Gemini model client.
         
@@ -25,10 +89,15 @@ class GeminiModel:
             generation_config: Generation configuration
             enable_soft_retry: Whether to enable retry with softer prompts for ProhibitedException
         """
-        if not api_key:
-            raise ValueError("API key cannot be empty.")
-        # google-genai client (unified Gemini API)
-        self.client = genai.Client(api_key=api_key)
+        if client is not None:
+            self.client = client
+            self.api_key = None
+        else:
+            if not api_key:
+                raise ValueError("API key or Vertex credentials required.")
+            # google-genai client (unified Gemini API)
+            self.client = genai.Client(api_key=api_key)
+            self.api_key = api_key
         self.model_name = model_name
         self.safety_settings = safety_settings
         self.generation_config = generation_config
@@ -154,6 +223,14 @@ class GeminiModel:
         
         return repair
 
+    def _retry_or_raise(self, error: Exception, attempt: int, max_retries: int, label: str) -> None:
+        print(f"\nRetriable {label} failed on attempt {attempt + 1}/{max_retries}. Error: {error}")
+        if attempt < max_retries - 1:
+            print("Retrying in 5 seconds...")
+            time.sleep(5)
+        else:
+            raise Exception(f"All {max_retries} {label} attempts failed. Last error: {error}") from error
+
     @staticmethod
     def validate_api_key(api_key: str, model_name: str = "gemini-2.5-flash-lite") -> bool:
         """
@@ -164,21 +241,27 @@ class GeminiModel:
             return False
         try:
             client = genai.Client(api_key=api_key)
-            # Try a metadata fetch first (no content generation)
+            return GeminiModel.validate_with_client(client, model_name)
+        except API_ERROR_TYPES:
+            # Permission or invalid argument for bad keys, NotFound for invalid models.
+            return False
+        except Exception:
+            # Conservatively return False on other errors.
+            return False
+
+    @staticmethod
+    def validate_with_client(client: genai.Client, model_name: str) -> bool:
+        """Validate model access using an existing google-genai client."""
+        try:
             try:
-                # google-genai supports models.get(); param name may vary across versions,
-                # but this call will raise if unauthorized/unknown.
                 client.models.get(model=model_name)
                 return True
             except Exception:
-                # Fallback to a minimal generate call to validate access
                 client.models.generate_content(model=model_name, contents="ping")
                 return True
-        except (google_exceptions.PermissionDenied, google_exceptions.InvalidArgument, google_exceptions.NotFound):
-            # PermissionDenied/InvalidArgument for bad keys, NotFound for invalid model names
+        except API_ERROR_TYPES:
             return False
         except Exception:
-            # Conservatively return False on other errors
             return False
 
     def generate_text(self, prompt: str, max_retries: int = 3) -> str:
@@ -238,32 +321,22 @@ class GeminiModel:
                 raise ValueError("API returned an empty or invalid response.")
 
             except ProhibitedException:
-                # Re-raise ProhibitedException without retrying
                 raise
-                
-            except (google_exceptions.PermissionDenied, google_exceptions.InvalidArgument) as e:
-                # Check if this is actually a content safety block
-                error_str = str(e).upper()
-                if "PROHIBITED" in error_str or "SAFETY" in error_str or "BLOCKED" in error_str:
-                    raise ProhibitedException(
-                        message=str(e),
-                        prompt=prompt,
-                        api_call_type="text_generation"
-                    )
-                # Other non-retriable errors: Invalid API key, bad request.
-                # We should not retry these.
-                print(f"\nNon-retriable API error: {e}")
-                raise e # Re-raise the exception to be caught by the translation engine
+
+            except API_ERROR_TYPES as e:
+                if _is_permission_denied_error(e) or _is_invalid_argument_error(e):
+                    if _looks_like_safety_block(e):
+                        raise ProhibitedException(
+                            message=_error_message(e),
+                            prompt=prompt,
+                            api_call_type="text_generation"
+                        )
+                    print(f"\nNon-retriable API error: {e}")
+                    raise e
+                self._retry_or_raise(e, attempt, max_retries, "API call")
 
             except Exception as e:
-                # Retriable errors: Server errors, network issues, etc.
-                print(f"\nRetriable API call failed on attempt {attempt + 1}/{max_retries}. Error: {e}")
-                if attempt < max_retries - 1:
-                    print("Retrying in 5 seconds...")
-                    time.sleep(5)
-                else:
-                    # After all retries, re-raise the last exception with more context
-                    raise Exception(f"All {max_retries} API call attempts failed. Last error: {e}") from e
+                self._retry_or_raise(e, attempt, max_retries, "API call")
         
         return ""  # Should not be reached
     
@@ -365,16 +438,12 @@ class GeminiModel:
 
                 raise ValueError("Structured API returned an empty response.")
 
-            except (google_exceptions.PermissionDenied, google_exceptions.InvalidArgument) as e:
-                # Bad key/arguments are not retriable
-                print(f"\nNon-retriable structured API error: {e}")
-                raise e
+            except API_ERROR_TYPES as e:
+                if _is_permission_denied_error(e) or _is_invalid_argument_error(e):
+                    print(f"\nNon-retriable structured API error: {e}")
+                    raise e
+                self._retry_or_raise(e, attempt, max_retries, "structured API call")
             except Exception as e:
-                print(f"\nRetriable structured API call failed on attempt {attempt + 1}/{max_retries}. Error: {e}")
-                if attempt < max_retries - 1:
-                    print("Retrying in 5 seconds...")
-                    time.sleep(5)
-                else:
-                    raise Exception(f"All {max_retries} structured API call attempts failed. Last error: {e}") from e
+                self._retry_or_raise(e, attempt, max_retries, "structured API call")
 
         return {} if not is_pydantic else None

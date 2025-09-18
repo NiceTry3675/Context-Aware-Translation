@@ -302,11 +302,18 @@ export async function fetchTranslationSegments(
   }
 }
 
-export async function triggerValidation(
-  jobId: string,
-  token: string | undefined,
-  body: components['schemas']['ValidationRequest'],
-): Promise<void> {
+export async function triggerValidation({
+  jobId,
+  token,
+  body,
+  apiProvider,
+  apiKey,
+  providerConfig,
+}: {
+  jobId: string;
+  token?: string;
+  body: components['schemas']['ValidationRequest'];
+} & CredentialledParams): Promise<void> {
   const url = `${API_BASE_URL}/api/v1/jobs/${jobId}/validation`;
   
   const headers = {
@@ -319,7 +326,12 @@ export async function triggerValidation(
   const response = await fetch(url, {
     method: 'PUT',
     headers,
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      ...body,
+      api_provider: apiProvider,
+      api_key: apiProvider === 'vertex' ? '' : apiKey,
+      ...(apiProvider === 'vertex' && providerConfig ? { provider_config: providerConfig } : {}),
+    }),
   });
   
   console.log('Response status:', response.status, 'Response OK:', response.ok);
@@ -333,18 +345,30 @@ export async function triggerValidation(
   console.log('Validation triggered successfully');
 }
 
-export async function triggerPostEdit(
-  jobId: string, 
-  token: string | undefined,
-  body: components['schemas']['PostEditRequest'],
-): Promise<void> {
+export async function triggerPostEdit({
+  jobId,
+  token,
+  body,
+  apiProvider,
+  apiKey,
+  providerConfig,
+}: {
+  jobId: string;
+  token?: string;
+  body: components['schemas']['PostEditRequest'];
+} & CredentialledParams): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/v1/post-edit/${jobId}`, {
     method: 'POST',
     headers: {
       'Authorization': token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(body as any),
+    body: JSON.stringify({
+      ...(body as any),
+      api_provider: apiProvider,
+      api_key: apiProvider === 'vertex' ? '' : apiKey,
+      ...(apiProvider === 'vertex' && providerConfig ? { provider_config: providerConfig } : {}),
+    }),
   });
 
   if (!response.ok) {
@@ -353,39 +377,58 @@ export async function triggerPostEdit(
   }
 }
 
-export async function triggerIllustrationGeneration(
-  jobId: string,
-  apiKey: string,
-  token: string | undefined,
+export interface IllustrationGenerationParams {
+  jobId: string;
+  token?: string;
+  apiProvider: 'gemini' | 'vertex' | 'openrouter';
+  apiKey?: string;
+  providerConfig?: string;
   config?: {
     style?: string;
     style_hints?: string;
     min_segment_length?: number;
     skip_dialogue_heavy?: boolean;
     cache_enabled?: boolean;
-  },
-  maxIllustrations?: number
-): Promise<void> {
+  };
+  maxIllustrations?: number;
+}
+
+export async function triggerIllustrationGeneration({
+  jobId,
+  token,
+  apiProvider,
+  apiKey,
+  providerConfig,
+  config,
+  maxIllustrations,
+}: IllustrationGenerationParams): Promise<void> {
+  const payload: Record<string, unknown> = {
+    api_provider: apiProvider,
+    api_key: apiProvider === 'vertex' ? '' : apiKey,
+    max_illustrations: maxIllustrations ?? null,
+    config: {
+      enabled: true,
+      style: config?.style || 'digital_art',
+      style_hints: config?.style_hints || '',
+      segments_per_illustration: 1,
+      max_illustrations: maxIllustrations ?? null,
+      min_segment_length: config?.min_segment_length || 100,
+      skip_dialogue_heavy: config?.skip_dialogue_heavy || false,
+      cache_enabled: config?.cache_enabled !== false,
+    },
+  };
+
+  if (apiProvider === 'vertex' && providerConfig) {
+    payload.provider_config = providerConfig;
+  }
+
   const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/generate`, {
     method: 'POST',
     headers: {
       'Authorization': token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      api_key: apiKey,
-      max_illustrations: maxIllustrations || null,
-      config: {
-        enabled: true,
-        style: config?.style || 'digital_art',
-        style_hints: config?.style_hints || '',
-        segments_per_illustration: 1,
-        max_illustrations: maxIllustrations || null,
-        min_segment_length: config?.min_segment_length || 100,
-        skip_dialogue_heavy: config?.skip_dialogue_heavy || false,
-        cache_enabled: config?.cache_enabled !== false,
-      }
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
@@ -413,16 +456,37 @@ export interface CharacterProfileBody {
   extra_style_hints?: string;
 }
 
-export async function generateCharacterBases(
-  jobId: string,
-  apiKey: string,
-  token: string | undefined,
-  profile: CharacterProfileBody,
-  referenceImage?: File
-): Promise<{ bases: any[]; directory?: string }> {
+interface CredentialledParams {
+  apiProvider: 'gemini' | 'vertex' | 'openrouter';
+  apiKey?: string;
+  providerConfig?: string;
+}
+
+export async function generateCharacterBases({
+  jobId,
+  token,
+  profile,
+  referenceImage,
+  apiProvider,
+  apiKey,
+  providerConfig,
+}: {
+  jobId: string;
+  token?: string;
+  profile: CharacterProfileBody;
+  referenceImage?: File;
+} & CredentialledParams): Promise<{ bases: any[]; directory?: string }> {
   // Always use FormData since backend expects it
   const form = new FormData();
-  form.append('api_key', apiKey);
+  form.append('api_provider', apiProvider);
+  if (apiProvider === 'vertex') {
+    form.append('api_key', '');
+    if (providerConfig) {
+      form.append('provider_config', providerConfig);
+    }
+  } else {
+    form.append('api_key', apiKey || '');
+  }
   form.append('profile_json', JSON.stringify(profile));
   if (referenceImage) {
     form.append('reference_image', referenceImage, referenceImage.name);
@@ -441,12 +505,18 @@ export async function generateCharacterBases(
   return await response.json();
 }
 
-export async function analyzeCharacterAppearance(
-  jobId: string,
-  apiKey: string,
-  token: string | undefined,
-  protagonistName?: string
-): Promise<{ prompts: string[]; protagonist_name?: string }> {
+export async function analyzeCharacterAppearance({
+  jobId,
+  token,
+  protagonistName,
+  apiProvider,
+  apiKey,
+  providerConfig,
+}: {
+  jobId: string;
+  token?: string;
+  protagonistName?: string;
+} & CredentialledParams): Promise<{ prompts: string[]; protagonist_name?: string }> {
   const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/appearance/analyze`, {
     method: 'POST',
     headers: {
@@ -454,7 +524,9 @@ export async function analyzeCharacterAppearance(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      api_key: apiKey,
+      api_provider: apiProvider,
+      api_key: apiProvider === 'vertex' ? '' : apiKey,
+      ...(apiProvider === 'vertex' && providerConfig ? { provider_config: providerConfig } : {}),
       protagonist_name: protagonistName,
       model_name: 'gemini-2.5-flash'
     }),
@@ -466,16 +538,31 @@ export async function analyzeCharacterAppearance(
   return await response.json();
 }
 
-export async function generateBasesFromPrompt(
-  jobId: string,
-  apiKey: string,
-  token: string | undefined,
-  prompts: string[],
-  referenceImage?: File
-): Promise<{ bases: any[]; directory?: string }> {
+export async function generateBasesFromPrompt({
+  jobId,
+  token,
+  prompts,
+  referenceImage,
+  apiProvider,
+  apiKey,
+  providerConfig,
+}: {
+  jobId: string;
+  token?: string;
+  prompts: string[];
+  referenceImage?: File;
+} & CredentialledParams): Promise<{ bases: any[]; directory?: string }> {
   // Always use FormData since backend expects it
   const form = new FormData();
-  form.append('api_key', apiKey);
+  form.append('api_provider', apiProvider);
+  if (apiProvider === 'vertex') {
+    form.append('api_key', '');
+    if (providerConfig) {
+      form.append('provider_config', providerConfig);
+    }
+  } else {
+    form.append('api_key', apiKey || '');
+  }
   form.append('prompts_json', JSON.stringify(prompts));
   form.append('num_variations', '3');
   if (referenceImage) {

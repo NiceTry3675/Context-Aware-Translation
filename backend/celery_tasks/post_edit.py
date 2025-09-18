@@ -3,7 +3,7 @@ Celery tasks for post-edit processing.
 """
 import traceback
 import os
-from typing import Optional
+from typing import Dict, Optional
 from celery import current_task
 from celery.exceptions import SoftTimeLimitExceeded
 import logging
@@ -14,6 +14,7 @@ from ..config.database import SessionLocal
 from ..domains.post_edit.service import PostEditDomainService
 from ..domains.tasks.models import TaskKind
 from ..domains.translation.repository import SqlAlchemyTranslationJobRepository
+from ..domains.shared.provider_context import provider_context_from_payload
 
 logger = logging.getLogger(__name__)
 
@@ -34,12 +35,13 @@ class PostEditTask(TrackedTask):
 def process_post_edit_task(
     self,
     job_id: int,
-    api_key: str,
+    api_key: Optional[str],
     model_name: str = "gemini-2.5-flash-lite",
     selected_cases: Optional[dict] = None,
     modified_cases: Optional[dict] = None,
     default_select_all: bool = True,
-    user_id: Optional[int] = None
+    user_id: Optional[int] = None,
+    provider_context: Optional[Dict[str, object]] = None,
 ):
     """
     Process a post-edit task using Celery.
@@ -67,7 +69,20 @@ def process_post_edit_task(
         repo.set_status(job_id, "POST_EDITING")
         repo.update_post_edit_status(job_id, "IN_PROGRESS", progress=0)
         db.commit()
-        logger.info(f"Starting post-edit for Job ID: {job_id}, Model: {model_name}")
+        context = provider_context_from_payload(provider_context)
+        provider_name = context.name if context else "gemini"
+
+        logger.info(
+            f"Starting post-edit for Job ID: {job_id}, Model: {model_name}, Provider: {provider_name}"
+        )
+
+        if not api_key and provider_name != "vertex":
+            from backend.config.settings import get_settings
+
+            settings = get_settings()
+            api_key = settings.gemini_api_key
+            if not api_key:
+                raise ValueError("API key is required for post-editing")
         
         # Update task progress
         current_task.update_state(
@@ -83,7 +98,8 @@ def process_post_edit_task(
             session=db,
             job_id=job_id,
             api_key=api_key,
-            model_name=model_name
+            model_name=model_name,
+            provider_context=context,
         )
         
         # Get validation report path from job (stored in database)

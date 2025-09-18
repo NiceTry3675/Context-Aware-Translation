@@ -23,17 +23,31 @@ import type { components } from '@/types/api';
 
 // Type aliases for convenience
 type PostCategory = components['schemas']['PostCategory'];
-type Post = components['schemas']['Post'];
 type User = components['schemas']['User'];
+
+interface RecentPostSummary {
+  id: number;
+  title: string;
+  author: User;
+  is_pinned: boolean;
+  is_private: boolean;
+  view_count: number;
+  comment_count: number;
+  images: string[];
+  created_at: string;
+  updated_at?: string | null;
+}
 
 // Custom interface for category overview (not in generated types)
 interface CategoryOverview extends PostCategory {
-  recent_posts: Post[];
+  recent_posts: RecentPostSummary[];
   total_posts: number;
+  can_post: boolean;
 }
 
 const categoryIcons: { [key: string]: React.ReactNode } = {
   notice: <AnnouncementIcon sx={{ fontSize: 40 }} />,
+  announcement: <AnnouncementIcon sx={{ fontSize: 40 }} />,
   suggestion: <LightbulbIcon sx={{ fontSize: 40 }} />,
   qna: <QuestionAnswerIcon sx={{ fontSize: 40 }} />,
   free: <ForumIcon sx={{ fontSize: 40 }} />
@@ -41,6 +55,7 @@ const categoryIcons: { [key: string]: React.ReactNode } = {
 
 const categoryColors: { [key: string]: string } = {
   notice: theme.palette.error.main,
+  announcement: theme.palette.error.main,
   suggestion: theme.palette.success.main,
   qna: theme.palette.info.main,
   free: theme.palette.primary.main
@@ -258,14 +273,14 @@ export default function CommunityPage() {
                             key={post.id} 
                             sx={{ 
                               px: 0, 
-                              cursor: post.title.includes('🔒') ? 'not-allowed' : 'pointer',
+                              cursor: post.is_private ? 'not-allowed' : 'pointer',
                               '&:hover': {
-                                backgroundColor: post.title.includes('🔒') ? 'transparent' : 'action.hover',
+                                backgroundColor: post.is_private ? 'transparent' : 'action.hover',
                                 borderRadius: 1
                               }
                             }}
                             onClick={() => {
-                              if (!post.title.includes('🔒')) {
+                              if (!post.is_private) {
                                 router.push(`/community/${category.name}/${post.id}`)
                               }
                             }}
@@ -295,7 +310,7 @@ export default function CommunityPage() {
                                     조회 {post.view_count}
                                   </Typography>
                                   <Typography variant="caption" color="text.secondary">
-                                    댓글 {post.comments?.length || 0}
+                                    댓글 {post.comment_count ?? 0}
                                   </Typography>
                                   <Typography variant="caption" color="text.secondary">
                                     {formatDate(post.created_at)}

@@ -17,6 +17,7 @@ from core.translation.document import TranslationDocument
 from shared.utils.logging import get_logger
 from backend.domains.translation.models import TranslationJob
 from backend.domains.translation.repository import TranslationJobRepository, SqlAlchemyTranslationJobRepository
+from backend.domains.shared.provider_context import ProviderContext
 from backend.domains.shared.service_base import DomainServiceBase
 from backend.domains.shared.uow import SqlAlchemyUoW
 from backend.domains.shared.events import DomainEvent, EventType
@@ -90,8 +91,9 @@ class PostEditDomainService(DomainServiceBase):
         self,
         session: Session,
         job_id: int,
-        api_key: str,
-        model_name: str = "gemini-2.5-flash-lite"
+        api_key: Optional[str],
+        model_name: str = "gemini-2.5-flash-lite",
+        provider_context: Optional[ProviderContext] = None,
     ) -> Tuple[PostEditEngine, TranslationDocument, str, Any]:
         """
         Prepare the post-editor and translation job for post-editing.
@@ -130,7 +132,11 @@ class PostEditDomainService(DomainServiceBase):
         segment_logger.initialize_session()
 
         # Initialize post-editor with the model API and logger
-        model_api = self.validate_and_create_model(api_key, model_name)
+        model_api = self.validate_and_create_model(
+            api_key,
+            model_name,
+            provider_context=provider_context,
+        )
         post_editor = PostEditEngine(model_api, logger=segment_logger)
         
         # Create translation document for post-editing
