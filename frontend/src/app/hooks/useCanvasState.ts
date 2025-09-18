@@ -224,12 +224,14 @@ export function useCanvasState() {
     }
     if (postEditLog?.segments) {
       return postEditLog.segments
+        .slice()
         .sort((a, b) => a.segment_index - b.segment_index)
         .map(segment => segment.source_text)
         .join('\n');
     }
     if (translationSegments?.segments && translationSegments.segments.length > 0) {
       return translationSegments.segments
+        .slice()
         .sort((a, b) => a.segment_index - b.segment_index)
         .map(segment => segment.source_text)
         .join('\n');
