@@ -41,9 +41,8 @@ def upgrade() -> None:
                 ondelete='SET NULL',
             )
 
-    existing_indexes = {
-        row[1] for row in bind.execute(sa.text("PRAGMA index_list('translation_usage_logs')"))
-    }
+    inspector = sa.inspect(bind)
+    existing_indexes = {index['name'] for index in inspector.get_indexes('translation_usage_logs')}
     if 'ix_translation_usage_logs_user_id' not in existing_indexes:
         op.create_index(
             'ix_translation_usage_logs_user_id',
