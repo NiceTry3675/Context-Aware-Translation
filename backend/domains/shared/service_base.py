@@ -9,7 +9,7 @@ import os
 import json
 import traceback
 import logging
-from typing import Any, Dict, Optional, Type, TypeVar, Union
+from typing import Any, Callable, Dict, Optional, Type, TypeVar, Union
 from pathlib import Path
 from contextlib import contextmanager
 from functools import wraps
@@ -18,6 +18,7 @@ from fastapi import HTTPException
 from core.config.loader import load_config
 from core.translation.models.gemini import GeminiModel
 from core.translation.models.openrouter import OpenRouterModel
+from core.translation.usage_tracker import UsageEvent
 from backend.domains.shared.model_factory import ModelAPIFactory
 from backend.domains.shared.provider_context import ProviderContext, parse_provider_context
 from backend.domains.shared.utils.file_manager import FileManager
@@ -64,6 +65,7 @@ class ServiceBase:
         api_key: Optional[str],
         model_name: str,
         provider_context: Optional[ProviderContext] = None,
+        usage_callback: Callable[[UsageEvent], None] | None = None,
     ) -> Union[GeminiModel, OpenRouterModel]:
         """
         Create a model API instance using the factory.
@@ -80,6 +82,7 @@ class ServiceBase:
             model_name=model_name,
             config=self.config,
             provider_context=provider_context,
+            usage_callback=usage_callback,
         )
 
     def validate_api_key(
@@ -109,6 +112,7 @@ class ServiceBase:
         api_key: Optional[str],
         model_name: str,
         provider_context: Optional[ProviderContext] = None,
+        usage_callback: Callable[[UsageEvent], None] | None = None,
     ) -> Union[GeminiModel, OpenRouterModel]:
         """
         Validate API key and create model in one step.
@@ -128,7 +132,12 @@ class ServiceBase:
                 self.raise_invalid_api_key()
         except ValueError as exc:
             self.raise_validation_error(str(exc))
-        return self.create_model_api(api_key, model_name, provider_context=provider_context)
+        return self.create_model_api(
+            api_key,
+            model_name,
+            provider_context=provider_context,
+            usage_callback=usage_callback,
+        )
 
     def build_provider_context(
         self,

@@ -1,7 +1,7 @@
 """User domain schemas."""
 
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import datetime
 
 # Import shared base schemas from the shared domain
@@ -26,11 +26,15 @@ class User(UserBase, KSTTimezoneBase):
 # --- TranslationUsageLog Schemas ---
 class TranslationUsageLogBase(BaseModel):
     job_id: int
+    user_id: Optional[int] = None
     original_length: int
     translated_length: int
     translation_duration_seconds: int
     model_used: str
     error_type: Optional[str] = None
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
 
 class TranslationUsageLogCreate(TranslationUsageLogBase):
     pass
@@ -41,6 +45,22 @@ class TranslationUsageLog(TranslationUsageLogBase):
 
     class Config:
         from_attributes = True
+
+
+class TokenUsageTotals(BaseModel):
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+
+
+class ModelTokenUsage(TokenUsageTotals):
+    model: str
+
+
+class TokenUsageDashboard(BaseModel):
+    total: TokenUsageTotals
+    per_model: List[ModelTokenUsage]
+    last_updated: Optional[datetime.datetime] = None
 
 # --- Announcement Schemas ---
 class AnnouncementBase(BaseModel):

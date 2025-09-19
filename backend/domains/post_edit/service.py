@@ -94,7 +94,7 @@ class PostEditDomainService(DomainServiceBase):
         api_key: Optional[str],
         model_name: str = "gemini-2.5-flash-lite",
         provider_context: Optional[ProviderContext] = None,
-    ) -> Tuple[PostEditEngine, TranslationDocument, str, Any]:
+    ) -> Tuple[PostEditEngine, TranslationDocument, str, Any, Any]:
         """
         Prepare the post-editor and translation job for post-editing.
         
@@ -132,10 +132,13 @@ class PostEditDomainService(DomainServiceBase):
         segment_logger.initialize_session()
 
         # Initialize post-editor with the model API and logger
+        from core.translation.usage_tracker import TokenUsageCollector
+        usage_collector = TokenUsageCollector()
         model_api = self.validate_and_create_model(
             api_key,
             model_name,
             provider_context=provider_context,
+            usage_callback=usage_collector.record_event,
         )
         post_editor = PostEditEngine(model_api, logger=segment_logger)
         
@@ -182,7 +185,7 @@ class PostEditDomainService(DomainServiceBase):
                 f"translated={len(translation_document.translated_segments)})."
             )
         
-        return post_editor, translation_document, translated_path, segment_logger
+        return post_editor, translation_document, translated_path, segment_logger, usage_collector
     
     def run_post_edit(
         self,
@@ -453,7 +456,7 @@ class PostEditDomainService(DomainServiceBase):
         
         try:
             # Prepare post-edit
-            post_editor, translation_document, translated_path = self.prepare_post_edit(
+            post_editor, translation_document, translated_path, segment_logger, usage_collector = self.prepare_post_edit(
                 session, job_id, api_key, model_name
             )
             

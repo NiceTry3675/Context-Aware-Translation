@@ -17,6 +17,7 @@ from .document import TranslationDocument
 from .style_analyzer import StyleAnalyzer
 from .progress_tracker import ProgressTracker
 from .illustration import IllustrationGenerator
+from .usage_tracker import TokenUsageCollector
 from ..prompts.builder import PromptBuilder
 from ..prompts.manager import PromptManager
 from ..prompts.sanitizer import PromptSanitizer
@@ -68,7 +69,8 @@ class TranslationPipeline:
                  initial_core_style: Optional[str] = None,
                  style_model_api: Optional[GeminiModel | OpenRouterModel] = None,
                  illustration_config: Optional[IllustrationConfig] = None,
-                 illustration_api_key: Optional[str] = None):
+                 illustration_api_key: Optional[str] = None,
+                 usage_collector: Optional[TokenUsageCollector] = None):
         """
         Initialize the translation pipeline.
         
@@ -89,6 +91,7 @@ class TranslationPipeline:
         self.style_analyzer = StyleAnalyzer(style_model_api or gemini_api, job_id)
         self.progress_tracker = ProgressTracker(db, job_id)
         self.initial_core_style = initial_core_style
+        self.usage_collector = usage_collector
         
         # Logger will be initialized with document filename later
         self.job_id = job_id
@@ -131,9 +134,11 @@ class TranslationPipeline:
             raise e
         finally:
             model_name = getattr(self.gemini_api, 'model_name', 'unknown_model')
+            token_events = self.usage_collector.events() if self.usage_collector else None
             self.progress_tracker.record_usage_log(
-                original_text, translated_text_final, 
-                model_name, error_type
+                original_text, translated_text_final,
+                model_name, error_type,
+                token_events=token_events
             )
     
     def _translate_document_internal(self, document: TranslationDocument):

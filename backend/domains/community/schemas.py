@@ -1,7 +1,7 @@
 """Community domain schemas."""
 
 from __future__ import annotations
-from pydantic import BaseModel, field_serializer
+from pydantic import BaseModel, field_serializer, Field
 from typing import Optional, List, TYPE_CHECKING
 import datetime
 
@@ -47,7 +47,7 @@ class PostSummary(KSTTimezoneBase):
     is_private: bool
     view_count: int
     comment_count: int = 0
-    images: list[str] = []
+    images: list[str] = Field(default_factory=list)
 
 
 class CategoryOverview(PostCategory):
@@ -55,7 +55,7 @@ class CategoryOverview(PostCategory):
 
     total_posts: int
     can_post: bool
-    recent_posts: List[PostSummary] = []
+    recent_posts: List[PostSummary] = Field(default_factory=list)
 
 # --- Post Schemas ---
 class PostBase(BaseModel):
@@ -64,7 +64,7 @@ class PostBase(BaseModel):
     category_id: int
     is_pinned: bool = False
     is_private: bool = False
-    images: list[str] = []  # List of image URLs
+    images: list[str] = Field(default_factory=list)  # List of image URLs
 
 class PostCreate(PostBase):
     pass
@@ -72,6 +72,7 @@ class PostCreate(PostBase):
 class PostUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
+    is_private: Optional[bool] = None
     is_pinned: Optional[bool] = None
     images: Optional[list[str]] = None
 
@@ -85,7 +86,8 @@ class CommentCreate(CommentBase):
     post_id: int
 
 class CommentUpdate(BaseModel):
-    content: str
+    content: Optional[str] = None
+    is_private: Optional[bool] = None
 
 # Forward references will be updated after all imports
 class PostList(KSTTimezoneBase):
@@ -96,7 +98,7 @@ class PostList(KSTTimezoneBase):
     is_pinned: bool
     is_private: bool
     view_count: int
-    images: list[str] = []
+    images: list[str] = Field(default_factory=list)
     comment_count: int = 0
 
 class Post(PostBase, KSTTimezoneBase):
@@ -104,13 +106,13 @@ class Post(PostBase, KSTTimezoneBase):
     author: 'User'
     category: PostCategory
     view_count: int
-    comments: List['Comment'] = []
+    comments: List['Comment'] = Field(default_factory=list)
 
 class Comment(CommentBase, KSTTimezoneBase):
     id: int
     author: 'User'
     post_id: int
-    replies: List['Comment'] = []
+    replies: List['Comment'] = Field(default_factory=list)
 
 # Rebuild models after circular import resolution
 def rebuild_models():

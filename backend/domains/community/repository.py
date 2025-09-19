@@ -77,7 +77,8 @@ class SqlAlchemyPostRepository(SqlAlchemyRepository[Post]):
         return self.session.query(Post).options(
             joinedload(Post.author),
             joinedload(Post.category),
-            joinedload(Post.comments)
+            joinedload(Post.comments).joinedload(Comment.author),
+            joinedload(Post.comments).joinedload(Comment.replies).joinedload(Comment.author)
         ).filter(Post.id == id).first()
     
     def list_by_category(

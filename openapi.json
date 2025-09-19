@@ -1631,14 +1631,14 @@
         }
       }
     },
-    "/api/v1/posts": {
+    "/api/v1/community/posts": {
       "get": {
         "tags": [
           "community"
         ],
         "summary": "List Posts",
         "description": "Get posts with filtering and pagination.",
-        "operationId": "list_posts_api_v1_posts_get",
+        "operationId": "list_posts_api_v1_community_posts_get",
         "parameters": [
           {
             "name": "category",
@@ -1726,9 +1726,9 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Post"
+                    "$ref": "#/components/schemas/PostList"
                   },
-                  "title": "Response List Posts Api V1 Posts Get"
+                  "title": "Response List Posts Api V1 Community Posts Get"
                 }
               }
             }
@@ -1751,7 +1751,7 @@
         ],
         "summary": "Create Post",
         "description": "Create a new post.",
-        "operationId": "create_post_api_v1_posts_post",
+        "operationId": "create_post_api_v1_community_posts_post",
         "requestBody": {
           "required": true,
           "content": {
@@ -1786,14 +1786,14 @@
         }
       }
     },
-    "/api/v1/posts/{post_id}": {
+    "/api/v1/community/posts/{post_id}": {
       "get": {
         "tags": [
           "community"
         ],
         "summary": "Get Post",
         "description": "Get a specific post with comments.",
-        "operationId": "get_post_api_v1_posts__post_id__get",
+        "operationId": "get_post_api_v1_community_posts__post_id__get",
         "parameters": [
           {
             "name": "post_id",
@@ -1827,16 +1827,101 @@
             }
           }
         }
+      },
+      "put": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Update Post",
+        "description": "Update an existing post.",
+        "operationId": "update_post_api_v1_community_posts__post_id__put",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Post Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Delete Post",
+        "description": "Delete a post.",
+        "operationId": "delete_post_api_v1_community_posts__post_id__delete",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Post Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
-    "/api/v1/posts/{post_id}/comments": {
+    "/api/v1/community/posts/{post_id}/comments": {
       "post": {
         "tags": [
           "community"
         ],
         "summary": "Create Comment",
         "description": "Create a comment on a post.",
-        "operationId": "create_comment_api_v1_posts__post_id__comments_post",
+        "operationId": "create_comment_api_v1_community_posts__post_id__comments_post",
         "parameters": [
           {
             "name": "post_id",
@@ -1880,6 +1965,225 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "List Post Comments",
+        "description": "Get comments for a specific post.",
+        "operationId": "list_post_comments_api_v1_community_posts__post_id__comments_get",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Post Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Comment"
+                  },
+                  "title": "Response List Post Comments Api V1 Community Posts  Post Id  Comments Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/community/posts/{post_id}/view": {
+      "post": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Increment Post View",
+        "description": "Increment the view count for a post.",
+        "operationId": "increment_post_view_api_v1_community_posts__post_id__view_post",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Post Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "integer"
+                  },
+                  "title": "Response Increment Post View Api V1 Community Posts  Post Id  View Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/community/comments/{comment_id}": {
+      "put": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Update Comment",
+        "description": "Update an existing comment.",
+        "operationId": "update_comment_api_v1_community_comments__comment_id__put",
+        "parameters": [
+          {
+            "name": "comment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Comment Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comment"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Delete Comment",
+        "description": "Delete a comment.",
+        "operationId": "delete_comment_api_v1_community_comments__comment_id__delete",
+        "parameters": [
+          {
+            "name": "comment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Comment Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/community/upload-image": {
+      "post": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Upload Image",
+        "description": "Handle community image uploads.",
+        "operationId": "upload_image_api_v1_community_upload_image_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_image_api_v1_community_upload_image_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/users/me": {
@@ -1897,6 +2201,28 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/me/token-usage": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Get Token Usage",
+        "description": "Return the authenticated user's token usage summary.",
+        "operationId": "get_token_usage_api_v1_users_me_token_usage_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenUsageDashboard"
                 }
               }
             }
@@ -2521,6 +2847,20 @@
         ],
         "title": "Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post"
       },
+      "Body_upload_image_api_v1_community_upload_image_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_image_api_v1_community_upload_image_post"
+      },
       "CategoryOverview": {
         "properties": {
           "name": {
@@ -2574,8 +2914,7 @@
               "$ref": "#/components/schemas/PostSummary"
             },
             "type": "array",
-            "title": "Recent Posts",
-            "default": []
+            "title": "Recent Posts"
           }
         },
         "type": "object",
@@ -2717,8 +3056,7 @@
               "$ref": "#/components/schemas/Comment"
             },
             "type": "array",
-            "title": "Replies",
-            "default": []
+            "title": "Replies"
           }
         },
         "type": "object",
@@ -2764,6 +3102,34 @@
           "post_id"
         ],
         "title": "CommentCreate"
+      },
+      "CommentUpdate": {
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "is_private": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Private"
+          }
+        },
+        "type": "object",
+        "title": "CommentUpdate"
       },
       "DialogueAnalysisResult": {
         "properties": {
@@ -2861,6 +3227,34 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "ModelTokenUsage": {
+        "properties": {
+          "input_tokens": {
+            "type": "integer",
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "title": "Output Tokens"
+          },
+          "total_tokens": {
+            "type": "integer",
+            "title": "Total Tokens"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input_tokens",
+          "output_tokens",
+          "total_tokens",
+          "model"
+        ],
+        "title": "ModelTokenUsage"
       },
       "NarrationStyle": {
         "properties": {
@@ -2966,8 +3360,7 @@
               "type": "string"
             },
             "type": "array",
-            "title": "Images",
-            "default": []
+            "title": "Images"
           },
           "id": {
             "type": "integer",
@@ -2988,8 +3381,7 @@
               "$ref": "#/components/schemas/Comment"
             },
             "type": "array",
-            "title": "Comments",
-            "default": []
+            "title": "Comments"
           }
         },
         "type": "object",
@@ -3084,8 +3476,7 @@
               "type": "string"
             },
             "type": "array",
-            "title": "Images",
-            "default": []
+            "title": "Images"
           }
         },
         "type": "object",
@@ -3174,6 +3565,77 @@
         "title": "PostEditRequest",
         "description": "Request schema for post-editing operations."
       },
+      "PostList": {
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "author": {
+            "$ref": "#/components/schemas/User"
+          },
+          "category": {
+            "$ref": "#/components/schemas/PostCategory"
+          },
+          "is_pinned": {
+            "type": "boolean",
+            "title": "Is Pinned"
+          },
+          "is_private": {
+            "type": "boolean",
+            "title": "Is Private"
+          },
+          "view_count": {
+            "type": "integer",
+            "title": "View Count"
+          },
+          "images": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Images"
+          },
+          "comment_count": {
+            "type": "integer",
+            "title": "Comment Count",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "created_at",
+          "id",
+          "title",
+          "author",
+          "category",
+          "is_pinned",
+          "is_private",
+          "view_count"
+        ],
+        "title": "PostList"
+      },
       "PostSummary": {
         "properties": {
           "created_at": {
@@ -3226,8 +3688,7 @@
               "type": "string"
             },
             "type": "array",
-            "title": "Images",
-            "default": []
+            "title": "Images"
           }
         },
         "type": "object",
@@ -3242,6 +3703,70 @@
         ],
         "title": "PostSummary",
         "description": "Compact representation of a post for category overviews."
+      },
+      "PostUpdate": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "is_private": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Private"
+          },
+          "is_pinned": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Pinned"
+          },
+          "images": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Images"
+          }
+        },
+        "type": "object",
+        "title": "PostUpdate"
       },
       "StyleAnalysisResponse": {
         "properties": {
@@ -3656,6 +4181,61 @@
         ],
         "title": "TaskStatus",
         "description": "Task execution status."
+      },
+      "TokenUsageDashboard": {
+        "properties": {
+          "total": {
+            "$ref": "#/components/schemas/TokenUsageTotals"
+          },
+          "per_model": {
+            "items": {
+              "$ref": "#/components/schemas/ModelTokenUsage"
+            },
+            "type": "array",
+            "title": "Per Model"
+          },
+          "last_updated": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Updated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "per_model"
+        ],
+        "title": "TokenUsageDashboard"
+      },
+      "TokenUsageTotals": {
+        "properties": {
+          "input_tokens": {
+            "type": "integer",
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "title": "Output Tokens"
+          },
+          "total_tokens": {
+            "type": "integer",
+            "title": "Total Tokens"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input_tokens",
+          "output_tokens",
+          "total_tokens"
+        ],
+        "title": "TokenUsageTotals"
       },
       "TranslatedTerm": {
         "properties": {

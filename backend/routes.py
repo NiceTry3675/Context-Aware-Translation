@@ -1,7 +1,7 @@
 """Consolidated API router for all domain endpoints."""
 
 from fastapi import APIRouter
-from typing import List
+from typing import List, Dict
 
 # Import domain route modules
 from backend.domains.translation import routes as translation
@@ -19,8 +19,8 @@ from backend.domains.illustrations import routes as illustrations
 from backend.domains.translation.schemas import TranslationJob
 from backend.domains.validation.schemas import StructuredValidationReport
 from backend.domains.post_edit.schemas import StructuredPostEditLog
-from backend.domains.community.schemas import Post, Comment, PostCategory, CategoryOverview
-from backend.domains.user.schemas import User, Announcement
+from backend.domains.community.schemas import Post, PostList, Comment, PostCategory, CategoryOverview
+from backend.domains.user.schemas import User, Announcement, TokenUsageDashboard
 from backend.domains.tasks.schemas import TaskExecutionResponse, TaskExecutionListResponse, TaskStatsSimple
 from backend.domains.analysis.schemas import StyleAnalysisResponse, GlossaryAnalysisResponse, CharacterAnalysisResponse
 
@@ -156,31 +156,79 @@ router.add_api_route(
     tags=["community"]
 )
 router.add_api_route(
-    "/posts", 
-    community.list_posts, 
+    "/community/posts",
+    community.list_posts,
     methods=["GET"],
-    response_model=List[Post],
+    response_model=List[PostList],
     tags=["community"]
 )
 router.add_api_route(
-    "/posts", 
-    community.create_post, 
+    "/community/posts",
+    community.create_post,
     methods=["POST"],
     response_model=Post,
     tags=["community"]
 )
 router.add_api_route(
-    "/posts/{post_id}", 
-    community.get_post, 
+    "/community/posts/{post_id}",
+    community.get_post,
     methods=["GET"],
     response_model=Post,
     tags=["community"]
 )
 router.add_api_route(
-    "/posts/{post_id}/comments",
+    "/community/posts/{post_id}",
+    community.update_post,
+    methods=["PUT"],
+    response_model=Post,
+    tags=["community"]
+)
+router.add_api_route(
+    "/community/posts/{post_id}",
+    community.delete_post,
+    methods=["DELETE"],
+    status_code=204,
+    tags=["community"]
+)
+router.add_api_route(
+    "/community/posts/{post_id}/comments",
     community.create_comment,
     methods=["POST"],
     response_model=Comment,
+    tags=["community"]
+)
+router.add_api_route(
+    "/community/posts/{post_id}/comments",
+    community.list_post_comments,
+    methods=["GET"],
+    response_model=List[Comment],
+    tags=["community"]
+)
+router.add_api_route(
+    "/community/posts/{post_id}/view",
+    community.increment_post_view,
+    methods=["POST"],
+    response_model=Dict[str, int],
+    tags=["community"]
+)
+router.add_api_route(
+    "/community/comments/{comment_id}",
+    community.update_comment,
+    methods=["PUT"],
+    response_model=Comment,
+    tags=["community"]
+)
+router.add_api_route(
+    "/community/comments/{comment_id}",
+    community.delete_comment,
+    methods=["DELETE"],
+    status_code=204,
+    tags=["community"]
+)
+router.add_api_route(
+    "/community/upload-image",
+    community.upload_image,
+    methods=["POST"],
     tags=["community"]
 )
 
@@ -190,6 +238,13 @@ router.add_api_route(
     user.get_current_user, 
     methods=["GET"],
     response_model=User,
+    tags=["users"]
+)
+router.add_api_route(
+    "/users/me/token-usage",
+    user.get_token_usage,
+    methods=["GET"],
+    response_model=TokenUsageDashboard,
     tags=["users"]
 )
 router.add_api_route(

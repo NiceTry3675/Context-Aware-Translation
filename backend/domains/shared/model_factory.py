@@ -9,7 +9,7 @@ Refactored from backend/services/base/model_factory.py
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Tuple, Union
+from typing import Callable, Dict, Optional, Tuple, Union
 
 from google import genai
 from google.genai import errors as genai_errors
@@ -74,6 +74,7 @@ def _is_permission_denied_error(exc: Exception) -> bool:
 from core.config.loader import load_config
 from core.translation.models.gemini import GeminiModel
 from core.translation.models.openrouter import OpenRouterModel
+from core.translation.usage_tracker import UsageEvent
 from backend.domains.shared.provider_context import (
     ProviderContext,
     build_vertex_client,
@@ -90,6 +91,7 @@ class ModelAPIFactory:
         model_name: str,
         config: dict | None = None,
         provider_context: ProviderContext | None = None,
+        usage_callback: Callable[[UsageEvent], None] | None = None,
     ) -> Union[GeminiModel, OpenRouterModel]:
         """
         Factory method to create the correct model API instance.
@@ -118,6 +120,7 @@ class ModelAPIFactory:
                 safety_settings=config['safety_settings'],
                 generation_config=config['generation_config'],
                 enable_soft_retry=config.get('enable_soft_retry', True),
+                usage_callback=usage_callback,
             )
 
         if not api_key:
@@ -128,7 +131,8 @@ class ModelAPIFactory:
             return OpenRouterModel(
                 api_key=api_key,
                 model_name=model_name,
-                enable_soft_retry=config.get('enable_soft_retry', True)
+                enable_soft_retry=config.get('enable_soft_retry', True),
+                usage_callback=usage_callback,
             )
         elif api_key.startswith("AIza") or len(api_key) == 39 or (provider_context and provider_context.name == "gemini"):
             print(f"--- [API] Using Gemini model: {model_name} ---")
@@ -137,7 +141,8 @@ class ModelAPIFactory:
                 model_name=model_name,
                 safety_settings=config['safety_settings'],
                 generation_config=config['generation_config'],
-                enable_soft_retry=config.get('enable_soft_retry', True)
+                enable_soft_retry=config.get('enable_soft_retry', True),
+                usage_callback=usage_callback,
             )
         else:
             raise ValueError(f"Unsupported API key format: {api_key[:10]}...")

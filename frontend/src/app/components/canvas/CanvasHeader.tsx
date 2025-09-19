@@ -16,6 +16,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import { Job } from '../../types/ui';
 
 interface CanvasHeaderProps {
@@ -60,6 +61,11 @@ export default function CanvasHeader({
               <Tooltip title="새로고침">
                 <IconButton aria-label="새로고침" onClick={onRefresh}>
                   <RefreshIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="토큰 사용량">
+                <IconButton aria-label="토큰 사용량" onClick={() => router.push('/usage')}>
+                  <BarChartIcon />
                 </IconButton>
               </Tooltip>
               <Tooltip title="정보">

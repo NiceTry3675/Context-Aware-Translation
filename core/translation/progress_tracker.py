@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from ..schemas import SegmentInfo
 from shared.utils.logging import TranslationLogger
+from .usage_tracker import UsageEvent
 
 
 class ProgressTracker:
@@ -137,8 +138,14 @@ class ProgressTracker:
             # Backend not available (e.g., running in core-only mode)
             pass
     
-    def record_usage_log(self, original_text: str, translated_text: str, 
-                        model_name: str, error_type: Optional[str] = None):
+    def record_usage_log(
+        self,
+        original_text: str,
+        translated_text: str,
+        model_name: str,
+        error_type: Optional[str] = None,
+        token_events: Optional[List[UsageEvent]] = None,
+    ):
         """
         Record usage statistics to the database.
         
@@ -166,20 +173,58 @@ class ProgressTracker:
         if not self.db or not self.job_id:
             return
         
+        events = list(token_events or [])
+        if not events:
+            events.append(UsageEvent(model_name=model_name))
+
         try:
-            from backend import crud, schemas
-            
-            log_data = schemas.TranslationUsageLogCreate(
-                job_id=self.job_id,
-                original_length=len(original_text),
-                translated_length=len(translated_text),
-                translation_duration_seconds=duration,
-                model_used=model_name,
-                error_type=error_type
-            )
-            crud.create_translation_usage_log(self.db, log_data)
-            print("\n--- Usage log has been recorded. ---")
-            
+            from backend.domains.translation.models import TranslationJob, TranslationUsageLog
         except ImportError:
             # Backend not available (e.g., running in core-only mode)
-            pass
+            return
+
+        job = self.db.query(TranslationJob).filter(TranslationJob.id == self.job_id).first()
+        owner_id: Optional[int] = None
+        if job:
+            owner_id = getattr(job, "owner_id", None)
+            if owner_id is None:
+                owner = getattr(job, "owner", None)
+                if owner is not None:
+                    owner_id = getattr(owner, "id", None)
+
+        if owner_id is None:
+            print(
+                f"[ProgressTracker] No owner associated with job {self.job_id}; "
+                "skipping token usage logging."
+            )
+            return
+
+        log_entries: List[TranslationUsageLog] = []
+        for event in events:
+            normalized = event.normalized()
+            log_entries.append(
+                TranslationUsageLog(
+                    job_id=self.job_id,
+                    user_id=owner_id,
+                    original_length=len(original_text),
+                    translated_length=len(translated_text),
+                    translation_duration_seconds=duration,
+                    model_used=normalized.model_name or model_name,
+                    error_type=error_type,
+                    prompt_tokens=normalized.prompt_tokens,
+                    completion_tokens=normalized.completion_tokens,
+                    total_tokens=normalized.total_tokens,
+                )
+            )
+
+        if not log_entries:
+            return
+
+        try:
+            for entry in log_entries:
+                self.db.add(entry)
+            self.db.commit()
+            print("\n--- Token usage log has been recorded. ---")
+        except Exception as exc:  # pragma: no cover - defensive
+            self.db.rollback()
+            print(f"[ProgressTracker] Failed to persist usage logs: {exc}")

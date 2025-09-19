@@ -458,14 +458,61 @@ class UserService:
         )
         
         result = query.first()
-        
+
         return {
             'period_days': days,
-            'total_requests': result.total_requests or 0,
-            'total_tokens': result.total_tokens or 0,
-            'total_prompt_tokens': result.total_prompt_tokens or 0,
-            'total_completion_tokens': result.total_completion_tokens or 0,
+            'total_requests': int(result.total_requests or 0),
+            'total_tokens': int(result.total_tokens or 0),
+            'total_prompt_tokens': int(result.total_prompt_tokens or 0),
+            'total_completion_tokens': int(result.total_completion_tokens or 0),
             'avg_tokens_per_request': float(result.avg_tokens_per_request or 0)
+        }
+
+    def get_token_usage_dashboard(self, user_id: int) -> dict:
+        """Return aggregated token usage totals for the dashboard."""
+
+        usage_rows = self.session.query(
+            TranslationUsageLog.model_used.label('model'),
+            func.sum(TranslationUsageLog.prompt_tokens).label('input_tokens'),
+            func.sum(TranslationUsageLog.completion_tokens).label('output_tokens'),
+            func.sum(TranslationUsageLog.total_tokens).label('total_tokens'),
+            func.max(TranslationUsageLog.created_at).label('last_used_at'),
+        ).filter(
+            TranslationUsageLog.user_id == user_id
+        ).group_by(
+            TranslationUsageLog.model_used
+        ).all()
+
+        per_model: list[dict] = []
+        total_input = 0
+        total_output = 0
+        total_tokens = 0
+        last_updated = None
+
+        for row in usage_rows:
+            input_tokens = int(row.input_tokens or 0)
+            output_tokens = int(row.output_tokens or 0)
+            model_total = int(row.total_tokens or (input_tokens + output_tokens))
+            per_model.append({
+                'model': row.model,
+                'input_tokens': input_tokens,
+                'output_tokens': output_tokens,
+                'total_tokens': model_total,
+            })
+            total_input += input_tokens
+            total_output += output_tokens
+            total_tokens += model_total
+            if row.last_used_at and (last_updated is None or row.last_used_at > last_updated):
+                last_updated = row.last_used_at
+
+        return {
+            'total': {
+                'input_tokens': total_input,
+                'output_tokens': total_output,
+                'total_tokens': total_tokens,
+            },
+            'per_model': per_model,
+            'last_updated': last_updated,
         }
     
     # Announcement operations (admin only)

@@ -94,7 +94,7 @@ def process_post_edit_task(
         post_edit_service = PostEditDomainService()
         
         # Prepare post-editing components
-        post_editor, translation_document, translated_path, segment_logger = post_edit_service.prepare_post_edit(
+        post_editor, translation_document, translated_path, segment_logger, usage_collector = post_edit_service.prepare_post_edit(
             session=db,
             job_id=job_id,
             api_key=api_key,
@@ -143,6 +143,24 @@ def process_post_edit_task(
             'log_path': post_edit_service.get_post_edit_log_path(job)
         }
         
+        # Save token usage from post-editing
+        try:
+            from core.translation.progress_tracker import ProgressTracker
+            events = usage_collector.events() if usage_collector else []
+            if events:
+                progress_tracker = ProgressTracker(db=db, job_id=job_id, filename=job.filename)
+                progress_tracker.record_usage_log(
+                    original_text="post_edit_process",
+                    translated_text="post_edit_completed",
+                    model_name=model_name,
+                    token_events=events,
+                )
+                logger.info(f"[POST_EDIT TASK] Recorded {len(events)} token usage events")
+            else:
+                logger.warning(f"[POST_EDIT TASK] No token usage events found")
+        except Exception as e:
+            logger.error(f"[POST_EDIT TASK] Failed to record token usage: {e}")
+
         # Store post-edit results
         if post_edit_result:
             # Update job with post-edit results
