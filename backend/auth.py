@@ -143,7 +143,8 @@ async def get_required_user(
         name = (
             claims_dict.get('name') or claims_dict.get('full_name') or
             f"{claims_dict.get('first_name', '')} {claims_dict.get('last_name', '')}".strip() or
-            (email_address.split('@')[0] if email_address else None)
+            (email_address.split('@')[0] if email_address else None) or
+            f"user_{claims_dict.get('sub', 'unknown')[-8:]}"  # Fallback to user ID suffix
         )
         return name, email_address
 
@@ -217,9 +218,10 @@ async def get_optional_user(
         try:
             email_address = claims.get('primary_email_address') or claims.get('email')
             name = (
-                claims.get('name') or claims.get('full_name') or 
+                claims.get('name') or claims.get('full_name') or
                 f"{claims.get('first_name', '')} {claims.get('last_name', '')}".strip() or
-                (email_address.split('@')[0] if email_address else None)
+                (email_address.split('@')[0] if email_address else None) or
+                f"user_{claims.get('sub', 'unknown')[-8:]}"  # Fallback to user ID suffix
             )
             new_user_data = user_schemas.UserCreate(
                 clerk_user_id=clerk_user_id,

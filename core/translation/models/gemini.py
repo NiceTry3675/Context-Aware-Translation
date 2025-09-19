@@ -1,10 +1,12 @@
 import time
-from typing import Optional, Tuple
+from datetime import datetime
+from typing import Callable, Optional, Tuple
 
 from google import genai
 from google.genai import errors as genai_errors
 from shared.errors import ProhibitedException
 from ...utils.retry import retry_with_softer_prompt
+from ..usage_tracker import UsageEvent
 
 try:
     # Prefer typed helpers from the new google-genai package
@@ -78,6 +80,7 @@ class GeminiModel:
         generation_config: dict,
         enable_soft_retry: bool = True,
         client: genai.Client | None = None,
+        usage_callback: Callable[[UsageEvent], None] | None = None,
     ):
         """
         Initializes the Gemini model client.
@@ -102,8 +105,62 @@ class GeminiModel:
         self.safety_settings = safety_settings
         self.generation_config = generation_config
         self.enable_soft_retry = enable_soft_retry
+        self.usage_callback = usage_callback
+        self.last_usage: UsageEvent | None = None
         print(f"GeminiModel initialized with model: {model_name}, soft_retry: {enable_soft_retry}")
-    
+
+    def _emit_usage_event(self, response) -> None:
+        """Extract usage metadata from a response and notify listeners."""
+        event = self._extract_usage_event(response)
+        if not event:
+            return
+        self.last_usage = event
+        if self.usage_callback:
+            try:
+                self.usage_callback(event)
+            except Exception as exc:  # pragma: no cover - best effort logging
+                print(f"[GeminiModel] Failed to emit usage event: {exc}")
+
+    def _extract_usage_event(self, response) -> UsageEvent | None:
+        metadata = getattr(response, "usage_metadata", None)
+        if metadata is None:
+            return None
+
+        # Extract token counts with proper field name mapping
+        prompt = getattr(metadata, "prompt_token_count", None)
+        if prompt is None:
+            prompt = getattr(metadata, "input_token_count", None)
+
+        # The correct field name for output tokens is 'candidates_token_count'
+        completion = getattr(metadata, "candidates_token_count", None)
+        if completion is None:
+            completion = getattr(metadata, "output_token_count", None)
+        if completion is None:
+            completion = getattr(metadata, "completion_token_count", None)
+
+        total = getattr(metadata, "total_token_count", None)
+
+        try:
+            prompt_tokens = int(prompt) if prompt is not None else 0
+        except (TypeError, ValueError):
+            prompt_tokens = 0
+        try:
+            completion_tokens = int(completion) if completion is not None else 0
+        except (TypeError, ValueError):
+            completion_tokens = 0
+        try:
+            total_tokens = int(total) if total is not None else prompt_tokens + completion_tokens
+        except (TypeError, ValueError):
+            total_tokens = prompt_tokens + completion_tokens
+
+        return UsageEvent(
+            model_name=self.model_name,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            timestamp=datetime.utcnow(),
+        )
+
     def _build_generation_config(self, overrides: dict | None = None):
         """Merge base generation_config with overrides and embed safety settings.
 
@@ -304,6 +361,7 @@ class GeminiModel:
                         response_text = None
 
                 if response_text:
+                    self._emit_usage_event(response)
                     return str(response_text).strip()
 
                 # Safety block detection
@@ -394,6 +452,7 @@ class GeminiModel:
                 # If using Pydantic models, use the parsed response
                 if is_pydantic:
                     if hasattr(response, 'parsed') and response.parsed is not None:
+                        self._emit_usage_event(response)
                         return response.parsed
                     else:
                         # For Pydantic models, parsed response is required
@@ -429,7 +488,9 @@ class GeminiModel:
                     cleaned_text = cleaned_text.strip()
 
                     try:
-                        return _json.loads(cleaned_text)
+                        parsed_response = _json.loads(cleaned_text)
+                        self._emit_usage_event(response)
+                        return parsed_response
                     except _json.JSONDecodeError as e:
                         # For dict schemas, we still fail on JSON errors
                         print(f"JSON parsing error: {e}")

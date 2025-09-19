@@ -123,7 +123,8 @@ def process_translation_task(
             protagonist_name=components['protagonist_name'],
             initial_glossary=components['initial_glossary'],
             initial_core_style_text=components['initial_core_style_text'],
-            db=db
+            db=db,
+            usage_collector=components.get('usage_collector'),
         )
         
         # Mark as completed

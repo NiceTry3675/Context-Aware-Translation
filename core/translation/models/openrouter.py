@@ -2,9 +2,11 @@ import os
 import requests
 import json
 import time
-from typing import Dict, Any, List
+from datetime import datetime
+from typing import Any, Callable, Dict, List, Optional
 from ...utils.retry import retry_with_softer_prompt
 from shared.errors import ProhibitedException
+from ..usage_tracker import UsageEvent
 
 class OpenRouterModel:
     """
@@ -13,7 +15,14 @@ class OpenRouterModel:
     """
     BASE_URL = "https://openrouter.ai/api/v1"
 
-    def __init__(self, api_key: str, model_name: str, **kwargs):
+    def __init__(
+        self,
+        api_key: str,
+        model_name: str,
+        *,
+        usage_callback: Callable[[UsageEvent], None] | None = None,
+        **kwargs,
+    ):
         """
         Initializes the OpenRouter model client.
 
@@ -33,6 +42,44 @@ class OpenRouterModel:
         }
         # For compatibility with existing config structure
         self.enable_soft_retry = kwargs.get('enable_soft_retry', True)
+        self.usage_callback = usage_callback
+        self.last_usage: UsageEvent | None = None
+
+    def _emit_usage_event(self, result: Dict[str, Any]) -> None:
+        usage = result.get('usage') if isinstance(result, dict) else None
+        if not isinstance(usage, dict):
+            return
+
+        prompt = usage.get('prompt_tokens', usage.get('input_tokens', 0))
+        completion = usage.get('completion_tokens', usage.get('output_tokens', 0))
+        total = usage.get('total_tokens')
+
+        try:
+            prompt_tokens = int(prompt) if prompt is not None else 0
+        except (TypeError, ValueError):
+            prompt_tokens = 0
+        try:
+            completion_tokens = int(completion) if completion is not None else 0
+        except (TypeError, ValueError):
+            completion_tokens = 0
+        try:
+            total_tokens = int(total) if total is not None else prompt_tokens + completion_tokens
+        except (TypeError, ValueError):
+            total_tokens = prompt_tokens + completion_tokens
+
+        event = UsageEvent(
+            model_name=self.model_name,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+            timestamp=datetime.utcnow(),
+        )
+        self.last_usage = event
+        if self.usage_callback:
+            try:
+                self.usage_callback(event)
+            except Exception as exc:  # pragma: no cover
+                print(f"[OpenRouterModel] Failed to emit usage event: {exc}")
 
     def generate_text(self, prompt: str, max_retries: int = 3) -> str:
         """
@@ -88,6 +135,7 @@ class OpenRouterModel:
                 response.raise_for_status()  # Raise an exception for bad status codes
                 
                 result = response.json()
+                self._emit_usage_event(result)
                 content = result['choices'][0]['message']['content']
                 return content
 

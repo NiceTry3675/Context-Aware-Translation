@@ -348,7 +348,7 @@ function PostDetailPageContent() {
               whiteSpace: 'pre-wrap',
               minHeight: '200px',
               lineHeight: 1.8,
-              mb: post.images?.length > 0 ? 3 : 0
+              mb: (post.images?.length ?? 0) > 0 ? 3 : 0
             }}
           >
             {post.content}

@@ -57,7 +57,7 @@ class ValidationDomainService(DomainServiceBase):
         api_key: Optional[str],
         model_name: str = "gemini-2.5-flash-lite",
         provider_context: Optional[ProviderContext] = None,
-    ) -> Tuple[TranslationValidator, TranslationDocument, str, Any]:
+    ) -> Tuple[TranslationValidator, TranslationDocument, str, Any, Any]:
         """
         Prepare the validator and translation job for validation.
         
@@ -102,11 +102,15 @@ class ValidationDomainService(DomainServiceBase):
         
         # Initialize validator with the model API and logger
         try:
+            from core.translation.usage_tracker import TokenUsageCollector
+
             logger.info(f"[VALIDATION PREP] Creating model API with validate_and_create_model...")
+            usage_collector = TokenUsageCollector()
             model_api = self.validate_and_create_model(
                 api_key,
                 model_name,
                 provider_context=provider_context,
+                usage_callback=usage_collector.record_event,
             )
             logger.info(f"[VALIDATION PREP] Model API created: {type(model_api)}")
 
@@ -212,7 +216,7 @@ class ValidationDomainService(DomainServiceBase):
                 else job.final_glossary
             )
         
-        return validator, validation_document, translated_path, segment_logger
+        return validator, validation_document, translated_path, segment_logger, usage_collector
     
     def run_validation(
         self,
@@ -410,7 +414,7 @@ class ValidationDomainService(DomainServiceBase):
         
         try:
             # Prepare validation
-            validator, validation_document, translated_path = self.prepare_validation(
+            validator, validation_document, translated_path, segment_logger, usage_collector = self.prepare_validation(
                 session, job_id, api_key, model_name
             )
             

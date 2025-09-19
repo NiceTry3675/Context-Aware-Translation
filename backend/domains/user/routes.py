@@ -16,7 +16,8 @@ from backend.domains.user.schemas import (
     User as UserSchema,
     Announcement as AnnouncementSchema,
     UserCreate,
-    UserUpdate
+    UserUpdate,
+    TokenUsageDashboard,
 )
 from backend.domains.user.service import UserService
 from backend.domains.user.repository import SqlAlchemyUserRepository
@@ -150,5 +151,14 @@ async def handle_clerk_webhook(
         if db_user:
             db.delete(db_user)
             db.commit()
-    
+
     return {"status": "success"}
+
+
+async def get_token_usage(
+    current_user: User = Depends(get_required_user),
+    service: UserService = Depends(get_user_service),
+) -> TokenUsageDashboard:
+    """Return the authenticated user's token usage summary."""
+    summary = service.get_token_usage_dashboard(current_user.id)
+    return TokenUsageDashboard.model_validate(summary)

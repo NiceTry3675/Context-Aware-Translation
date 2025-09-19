@@ -141,7 +141,7 @@ def process_validation_task(
         # Prepare validation components
         try:
             task_logger.info(f"[VALIDATION TASK] Preparing validation components...")
-            validator, validation_document, translated_path, segment_logger = validation_service.prepare_validation(
+            validator, validation_document, translated_path, segment_logger, usage_collector = validation_service.prepare_validation(
                 session=db,
                 job_id=job_id,
                 api_key=api_key,
@@ -199,6 +199,24 @@ def process_validation_task(
                 report=validation_result
             )
             
+            # Save token usage from validation
+            try:
+                from core.translation.progress_tracker import ProgressTracker
+                events = usage_collector.events() if usage_collector else []
+                if events:
+                    progress_tracker = ProgressTracker(db=db, job_id=job_id, filename=job.filename)
+                    progress_tracker.record_usage_log(
+                        original_text="validation_process",
+                        translated_text="validation_completed",
+                        model_name=model_name,
+                        token_events=events,
+                    )
+                    task_logger.info(f"[VALIDATION TASK] Recorded {len(events)} token usage events")
+                else:
+                    task_logger.warning(f"[VALIDATION TASK] No token usage events found")
+            except Exception as e:
+                task_logger.error(f"[VALIDATION TASK] Failed to record token usage: {e}")
+
             # Update job with validation results
             job.validation_completed = True
             job.validation_report_path = report_path

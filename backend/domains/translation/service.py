@@ -21,6 +21,7 @@ from fastapi.responses import FileResponse
 
 from core.translation.document import TranslationDocument
 from core.translation.translation_pipeline import TranslationPipeline
+from core.translation.usage_tracker import TokenUsageCollector
 from .storage_adapter import create_storage_handler
 from core.config.builder import DynamicConfigBuilder
 from backend.domains.shared.provider_context import (
@@ -386,18 +387,32 @@ class TranslationDomainService(DomainServiceBase):
         style_model_name = style_model_name or model_name
         glossary_model_name = glossary_model_name or model_name
 
+        # Track token usage for all downstream model calls
+        usage_collector = TokenUsageCollector()
+
         # Create per-task model APIs using inherited method
         model_api = self.validate_and_create_model(
             api_key,
             translation_model_name,
             provider_context=provider_context,
+            usage_callback=usage_collector.record_event,
         )
         style_model_api = (
-            self.validate_and_create_model(api_key, style_model_name, provider_context=provider_context)
+            self.validate_and_create_model(
+                api_key,
+                style_model_name,
+                provider_context=provider_context,
+                usage_callback=usage_collector.record_event,
+            )
             if style_model_name else model_api
         )
         glossary_model_api = (
-            self.validate_and_create_model(api_key, glossary_model_name, provider_context=provider_context)
+            self.validate_and_create_model(
+                api_key,
+                glossary_model_name,
+                provider_context=provider_context,
+                usage_callback=usage_collector.record_event,
+            )
             if glossary_model_name else model_api
         )
         
@@ -420,7 +435,10 @@ class TranslationDomainService(DomainServiceBase):
             print(f"--- Analyzing style for Job ID: {job_id} ---")
             # Create model API for style analysis
             style_model_api_for_analysis = self.validate_and_create_model(
-                api_key, style_model_name, provider_context=provider_context
+                api_key,
+                style_model_name,
+                provider_context=provider_context,
+                usage_callback=usage_collector.record_event,
             )
             
             # Create StyleAnalysis instance with model API
@@ -457,7 +475,10 @@ class TranslationDomainService(DomainServiceBase):
             
             # Create model API for glossary analysis
             glossary_model_api_for_analysis = self.validate_and_create_model(
-                api_key, glossary_model_name, provider_context=provider_context
+                api_key,
+                glossary_model_name,
+                provider_context=provider_context,
+                usage_callback=usage_collector.record_event,
             )
             
             # Create GlossaryAnalysis instance with model API
@@ -484,9 +505,10 @@ class TranslationDomainService(DomainServiceBase):
             'glossary_model_api': glossary_model_api,
             'protagonist_name': protagonist_name,
             'initial_glossary': initial_glossary,
-            'initial_core_style_text': initial_core_style_text
+            'initial_core_style_text': initial_core_style_text,
+            'usage_collector': usage_collector,
         }
-    
+
     @staticmethod
     def run_translation(
         job_id: int,
@@ -497,7 +519,8 @@ class TranslationDomainService(DomainServiceBase):
         protagonist_name: str,
         initial_glossary: Optional[dict],
         initial_core_style_text: Optional[str],
-        db: Session
+        db: Session,
+        usage_collector: TokenUsageCollector | None = None,
     ):
         """Execute the translation process."""
         # Always use structured output for configuration extraction
@@ -520,8 +543,9 @@ class TranslationDomainService(DomainServiceBase):
             job_id=job_id,
             initial_core_style=initial_core_style_text,
             style_model_api=style_model_api,
+            usage_collector=usage_collector,
         )
-        
+
         pipeline.translate_document(translation_document)
     
     def list_jobs(

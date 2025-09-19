@@ -7,13 +7,7 @@ from .repository import (
     AnnouncementRepository,
     SqlAlchemyAnnouncementRepository,
 )
-from .service import (
-    CommunityService,
-    PostCreatedEvent,
-    PostUpdatedEvent,
-    PostDeletedEvent,
-    CommentCreatedEvent,
-)
+from .service import CommunityService
 from .policy import (
     CommunityPolicy,
     PostPolicy,
@@ -38,10 +32,6 @@ __all__ = [
     "SqlAlchemyAnnouncementRepository",
     # Service
     "CommunityService",
-    "PostCreatedEvent",
-    "PostUpdatedEvent",
-    "PostDeletedEvent",
-    "CommentCreatedEvent",
     # Policy
     "CommunityPolicy",
     "PostPolicy",

@@ -73,6 +73,10 @@ class SqlAlchemyUoW:
     def collect_event(self, event: Any):
         """Collect a domain event to be dispatched after commit."""
         self._events.append(event)
+
+    def add_event(self, event: Any):
+        """Alias for collect_event for backward compatibility."""
+        self.collect_event(event)
     
     def _dispatch_events(self):
         """Dispatch collected events after successful commit."""

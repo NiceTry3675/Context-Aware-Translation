@@ -2,7 +2,7 @@
 
 from typing import List, Optional
 
-from fastapi import Depends, HTTPException, Query
+from fastapi import Depends, HTTPException, Query, UploadFile, File, Response, status
 from sqlalchemy.orm import Session
 
 from backend.config.dependencies import get_db, get_required_user, get_optional_user
@@ -10,9 +10,11 @@ from backend.domains.user.models import User
 from backend.domains.community.schemas import (
     Post as PostSchema,
     PostCreate,
+    PostUpdate,
     PostList,
     Comment as CommentSchema,
     CommentCreate,
+    CommentUpdate,
     PostCategory as PostCategorySchema,
     CategoryOverview
 )
@@ -25,6 +27,7 @@ def get_community_service(db: Session = Depends(get_db)) -> CommunityService:
 
 
 async def list_posts(
+    response: Response,
     category: Optional[str] = Query(None, description="Category name to filter by"),
     category_id: Optional[int] = Query(None, description="Category ID to filter by"),
     search: Optional[str] = Query(None, description="Search query"),
@@ -54,6 +57,7 @@ async def list_posts(
         )
         
         # Convert to response model
+        response.headers["X-Total-Count"] = str(total)
         return [PostList.from_orm(post) for post in posts]
         
     except Exception as e:
@@ -116,6 +120,75 @@ async def get_post(
         raise HTTPException(status_code=403, detail=str(e))
 
 
+async def update_post(
+    post_id: int,
+    post_update: PostUpdate,
+    current_user: User = Depends(get_required_user),
+    service: CommunityService = Depends(get_community_service)
+) -> PostSchema:
+    """Update an existing post."""
+    try:
+        post = await service.update_post(post_id, post_update, current_user)
+        return PostSchema.from_orm(post)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def delete_post(
+    post_id: int,
+    current_user: User = Depends(get_required_user),
+    service: CommunityService = Depends(get_community_service)
+) -> Response:
+    """Delete a post."""
+    try:
+        await service.delete_post(post_id, current_user)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def increment_post_view(
+    post_id: int,
+    current_user: Optional[User] = Depends(get_optional_user),
+    service: CommunityService = Depends(get_community_service)
+):
+    """Increment the view count for a post."""
+    try:
+        post = service.increment_view_count(post_id, current_user)
+        return {"view_count": post.view_count}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def list_post_comments(
+    post_id: int,
+    current_user: Optional[User] = Depends(get_optional_user),
+    service: CommunityService = Depends(get_community_service)
+) -> List[CommentSchema]:
+    """Get comments for a specific post."""
+    try:
+        comments = service.get_comments_for_post(post_id, current_user)
+        return [CommentSchema.from_orm(comment) for comment in comments]
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 async def create_comment(
     post_id: int,
     comment_data: CommentCreate,
@@ -132,3 +205,58 @@ async def create_comment(
         raise HTTPException(status_code=404, detail=str(e))
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
+
+
+async def update_comment(
+    comment_id: int,
+    comment_update: CommentUpdate,
+    current_user: User = Depends(get_required_user),
+    service: CommunityService = Depends(get_community_service)
+) -> CommentSchema:
+    """Update an existing comment."""
+    try:
+        comment = await service.update_comment(comment_id, comment_update, current_user)
+        return CommentSchema.from_orm(comment)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def delete_comment(
+    comment_id: int,
+    current_user: User = Depends(get_required_user),
+    service: CommunityService = Depends(get_community_service)
+) -> Response:
+    """Delete a comment."""
+    try:
+        await service.delete_comment(comment_id, current_user)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def upload_image(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_required_user),
+    service: CommunityService = Depends(get_community_service)
+):
+    """Handle community image uploads."""
+    try:
+        content_type = file.content_type or ""
+        file_bytes = await file.read()
+        service.validate_image_upload(file_bytes, content_type)
+        service.init_upload_directory()
+        filename = file.filename or "upload"
+        saved = service.save_uploaded_image(file_bytes, filename)
+        return saved
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

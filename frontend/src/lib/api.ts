@@ -29,8 +29,11 @@ export function setAuthToken(token: string) {
 // Export types from the generated API for convenience
 export type Job = paths['/api/v1/jobs']['get']['responses']['200']['content']['application/json'][0];
 export type JobCreate = paths['/api/v1/jobs']['post']['requestBody']['content']['multipart/form-data'];
-export type Post = paths['/api/v1/posts']['get']['responses']['200']['content']['application/json'][0];
-export type Comment = paths['/api/v1/posts/{post_id}/comments']['post']['responses']['200']['content']['application/json'];
+export type Post = paths['/api/v1/community/posts/{post_id}']['get']['responses']['200']['content']['application/json'];
+export type PostList = paths['/api/v1/community/posts']['get']['responses']['200']['content']['application/json'][0];
+export type Comment = paths['/api/v1/community/posts/{post_id}/comments']['post']['responses']['200']['content']['application/json'];
+export type PostCategory = paths['/api/v1/community/categories']['get']['responses']['200']['content']['application/json'][0];
+export type CategoryOverview = paths['/api/v1/community/categories/overview']['get']['responses']['200']['content']['application/json'][0];
 export type ValidationResponse = paths['/api/v1/validate/{job_id}']['post']['responses']['200']['content']['application/json'];
 export type PostEditResponse = paths['/api/v1/post-edit/{job_id}']['post']['responses']['200']['content']['application/json'];
 
@@ -93,32 +96,45 @@ export const endpoints = {
   },
   
   // Community
-  async getPosts(params?: { 
-    category?: string; 
-    search?: string; 
-    page?: number; 
-    page_size?: number 
+  async getPosts(params?: {
+    category?: string;
+    search?: string;
+    skip?: number;
+    limit?: number;
   }) {
-    return api.GET('/api/v1/posts', { 
-      params: { query: params } 
+    return api.GET('/api/v1/community/posts', {
+      params: { query: params }
     });
   },
-  
+
   async createPost(data: any) {
-    return api.POST('/api/v1/posts', { 
-      body: data 
+    return api.POST('/api/v1/community/posts', {
+      body: data
     });
   },
-  
-  async getComments(postId: number) {
-    // Comments are included in post response in current API; implement when backend adds GET endpoint
-    return api.GET('/api/v1/posts/{post_id}', {
+
+  async getPost(postId: number) {
+    return api.GET('/api/v1/community/posts/{post_id}', {
       params: { path: { post_id: postId } }
     });
   },
+
+  async getCategories() {
+    return api.GET('/api/v1/community/categories');
+  },
+
+  async getCategoriesOverview() {
+    return api.GET('/api/v1/community/categories/overview');
+  },
   
+  async getComments(postId: number) {
+    return api.GET('/api/v1/community/posts/{post_id}/comments', {
+      params: { path: { post_id: postId } }
+    });
+  },
+
   async createComment(postId: number, data: any) {
-    return api.POST('/api/v1/posts/{post_id}/comments', {
+    return api.POST('/api/v1/community/posts/{post_id}/comments', {
       params: { path: { post_id: postId } },
       body: data
     });

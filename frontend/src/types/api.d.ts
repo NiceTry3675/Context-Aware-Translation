@@ -811,7 +811,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/posts": {
+    "/api/v1/community/posts": {
         parameters: {
             query?: never;
             header?: never;
@@ -822,20 +822,20 @@ export interface paths {
          * List Posts
          * @description Get posts with filtering and pagination.
          */
-        get: operations["list_posts_api_v1_posts_get"];
+        get: operations["list_posts_api_v1_community_posts_get"];
         put?: never;
         /**
          * Create Post
          * @description Create a new post.
          */
-        post: operations["create_post_api_v1_posts_post"];
+        post: operations["create_post_api_v1_community_posts_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/posts/{post_id}": {
+    "/api/v1/community/posts/{post_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -846,16 +846,48 @@ export interface paths {
          * Get Post
          * @description Get a specific post with comments.
          */
-        get: operations["get_post_api_v1_posts__post_id__get"];
-        put?: never;
+        get: operations["get_post_api_v1_community_posts__post_id__get"];
+        /**
+         * Update Post
+         * @description Update an existing post.
+         */
+        put: operations["update_post_api_v1_community_posts__post_id__put"];
         post?: never;
+        /**
+         * Delete Post
+         * @description Delete a post.
+         */
+        delete: operations["delete_post_api_v1_community_posts__post_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/community/posts/{post_id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Post Comments
+         * @description Get comments for a specific post.
+         */
+        get: operations["list_post_comments_api_v1_community_posts__post_id__comments_get"];
+        put?: never;
+        /**
+         * Create Comment
+         * @description Create a comment on a post.
+         */
+        post: operations["create_comment_api_v1_community_posts__post_id__comments_post"];
         delete?: never;
         options?: never;
         head?: never;
         patch?: never;
         trace?: never;
     };
-    "/api/v1/posts/{post_id}/comments": {
+    "/api/v1/community/posts/{post_id}/view": {
         parameters: {
             query?: never;
             header?: never;
@@ -865,10 +897,54 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create Comment
-         * @description Create a comment on a post.
+         * Increment Post View
+         * @description Increment the view count for a post.
          */
-        post: operations["create_comment_api_v1_posts__post_id__comments_post"];
+        post: operations["increment_post_view_api_v1_community_posts__post_id__view_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/community/comments/{comment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Comment
+         * @description Update an existing comment.
+         */
+        put: operations["update_comment_api_v1_community_comments__comment_id__put"];
+        post?: never;
+        /**
+         * Delete Comment
+         * @description Delete a comment.
+         */
+        delete: operations["delete_comment_api_v1_community_comments__comment_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/community/upload-image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload Image
+         * @description Handle community image uploads.
+         */
+        post: operations["upload_image_api_v1_community_upload_image_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -887,6 +963,26 @@ export interface paths {
          * @description Get the current user's profile.
          */
         get: operations["get_current_user_api_v1_users_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/token-usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Token Usage
+         * @description Return the authenticated user's token usage summary.
+         */
+        get: operations["get_token_usage_api_v1_users_me_token_usage_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1255,6 +1351,14 @@ export interface components {
             /** Profile Json */
             profile_json?: string | null;
         };
+        /** Body_upload_image_api_v1_community_upload_image_post */
+        Body_upload_image_api_v1_community_upload_image_post: {
+            /**
+             * File
+             * Format: binary
+             */
+            file: string;
+        };
         /**
          * CategoryOverview
          * @description Extended category information for overview responses.
@@ -1287,11 +1391,8 @@ export interface components {
             total_posts: number;
             /** Can Post */
             can_post: boolean;
-            /**
-             * Recent Posts
-             * @default []
-             */
-            recent_posts: components["schemas"]["PostSummary"][];
+            /** Recent Posts */
+            recent_posts?: components["schemas"]["PostSummary"][];
         };
         /**
          * CharacterAnalysisResponse
@@ -1347,11 +1448,8 @@ export interface components {
             author: components["schemas"]["User"];
             /** Post Id */
             post_id: number;
-            /**
-             * Replies
-             * @default []
-             */
-            replies: components["schemas"]["Comment"][];
+            /** Replies */
+            replies?: components["schemas"]["Comment"][];
         };
         /** CommentCreate */
         CommentCreate: {
@@ -1366,6 +1464,13 @@ export interface components {
             is_private: boolean;
             /** Post Id */
             post_id: number;
+        };
+        /** CommentUpdate */
+        CommentUpdate: {
+            /** Content */
+            content?: string | null;
+            /** Is Private */
+            is_private?: boolean | null;
         };
         /**
          * DialogueAnalysisResult
@@ -1416,6 +1521,17 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** ModelTokenUsage */
+        ModelTokenUsage: {
+            /** Input Tokens */
+            input_tokens: number;
+            /** Output Tokens */
+            output_tokens: number;
+            /** Total Tokens */
+            total_tokens: number;
+            /** Model */
+            model: string;
         };
         /**
          * NarrationStyle
@@ -1482,22 +1598,16 @@ export interface components {
              * @default false
              */
             is_private: boolean;
-            /**
-             * Images
-             * @default []
-             */
-            images: string[];
+            /** Images */
+            images?: string[];
             /** Id */
             id: number;
             author: components["schemas"]["User"];
             category: components["schemas"]["PostCategory"];
             /** View Count */
             view_count: number;
-            /**
-             * Comments
-             * @default []
-             */
-            comments: components["schemas"]["Comment"][];
+            /** Comments */
+            comments?: components["schemas"]["Comment"][];
         };
         /** PostCategory */
         PostCategory: {
@@ -1543,11 +1653,8 @@ export interface components {
              * @default false
              */
             is_private: boolean;
-            /**
-             * Images
-             * @default []
-             */
-            images: string[];
+            /** Images */
+            images?: string[];
         };
         /**
          * PostEditRequest
@@ -1575,6 +1682,35 @@ export interface components {
             api_provider?: string | null;
             /** Provider Config */
             provider_config?: unknown | null;
+        };
+        /** PostList */
+        PostList: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            author: components["schemas"]["User"];
+            category: components["schemas"]["PostCategory"];
+            /** Is Pinned */
+            is_pinned: boolean;
+            /** Is Private */
+            is_private: boolean;
+            /** View Count */
+            view_count: number;
+            /** Images */
+            images?: string[];
+            /**
+             * Comment Count
+             * @default 0
+             */
+            comment_count: number;
         };
         /**
          * PostSummary
@@ -1604,11 +1740,21 @@ export interface components {
              * @default 0
              */
             comment_count: number;
-            /**
-             * Images
-             * @default []
-             */
-            images: string[];
+            /** Images */
+            images?: string[];
+        };
+        /** PostUpdate */
+        PostUpdate: {
+            /** Title */
+            title?: string | null;
+            /** Content */
+            content?: string | null;
+            /** Is Private */
+            is_private?: boolean | null;
+            /** Is Pinned */
+            is_pinned?: boolean | null;
+            /** Images */
+            images?: string[] | null;
         };
         /**
          * StyleAnalysisResponse
@@ -1750,6 +1896,23 @@ export interface components {
          * @enum {string}
          */
         TaskStatus: "pending" | "started" | "retry" | "success" | "failure" | "revoked" | "running";
+        /** TokenUsageDashboard */
+        TokenUsageDashboard: {
+            total: components["schemas"]["TokenUsageTotals"];
+            /** Per Model */
+            per_model: components["schemas"]["ModelTokenUsage"][];
+            /** Last Updated */
+            last_updated?: string | null;
+        };
+        /** TokenUsageTotals */
+        TokenUsageTotals: {
+            /** Input Tokens */
+            input_tokens: number;
+            /** Output Tokens */
+            output_tokens: number;
+            /** Total Tokens */
+            total_tokens: number;
+        };
         /**
          * TranslatedTerm
          * @description Single term translation pair.
@@ -2999,7 +3162,7 @@ export interface operations {
             };
         };
     };
-    list_posts_api_v1_posts_get: {
+    list_posts_api_v1_community_posts_get: {
         parameters: {
             query?: {
                 /** @description Category name to filter by */
@@ -3023,7 +3186,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Post"][];
+                    "application/json": components["schemas"]["PostList"][];
                 };
             };
             /** @description Validation Error */
@@ -3037,7 +3200,7 @@ export interface operations {
             };
         };
     };
-    create_post_api_v1_posts_post: {
+    create_post_api_v1_community_posts_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3070,7 +3233,7 @@ export interface operations {
             };
         };
     };
-    get_post_api_v1_posts__post_id__get: {
+    get_post_api_v1_community_posts__post_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -3101,7 +3264,102 @@ export interface operations {
             };
         };
     };
-    create_comment_api_v1_posts__post_id__comments_post: {
+    update_post_api_v1_community_posts__post_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PostUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Post"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_post_api_v1_community_posts__post_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_post_comments_api_v1_community_posts__post_id__comments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comment"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_comment_api_v1_community_posts__post_id__comments_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3136,6 +3394,136 @@ export interface operations {
             };
         };
     };
+    increment_post_view_api_v1_community_posts__post_id__view_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_comment_api_v1_community_comments__comment_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Comment"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_comment_api_v1_community_comments__comment_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_image_api_v1_community_upload_image_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_image_api_v1_community_upload_image_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_current_user_api_v1_users_me_get: {
         parameters: {
             query?: never;
@@ -3152,6 +3540,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["User"];
+                };
+            };
+        };
+    };
+    get_token_usage_api_v1_users_me_token_usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenUsageDashboard"];
                 };
             };
         };
