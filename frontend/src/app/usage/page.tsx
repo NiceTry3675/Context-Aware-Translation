@@ -246,17 +246,11 @@ export default function TokenUsagePage() {
                     )}
                   </Stack>
                   {data ? (
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} sm={4}>
-                        <UsageMetricCard label="입력 토큰" value={data.total.input_tokens} />
-                      </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <UsageMetricCard label="출력 토큰" value={data.total.output_tokens} />
-                      </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <UsageMetricCard label="총 토큰" value={data.total.total_tokens} highlight />
-                      </Grid>
-                    </Grid>
+                    <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: 'repeat(3, 1fr)' }} gap={2}>
+                      <UsageMetricCard label="입력 토큰" value={data.total.input_tokens} />
+                      <UsageMetricCard label="출력 토큰" value={data.total.output_tokens} />
+                      <UsageMetricCard label="총 토큰" value={data.total.total_tokens} highlight />
+                    </Box>
                   ) : (
                     <Typography variant="body2" color="text.secondary">
                       아직 사용량 데이터가 없습니다.
@@ -273,13 +267,11 @@ export default function TokenUsagePage() {
                     모델별 사용량
                   </Typography>
                   {data && data.per_model.length > 0 ? (
-                    <Grid container spacing={2}>
+                    <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: 'repeat(2, 1fr)' }} gap={2}>
                       {data.per_model.map(modelUsage => (
-                        <Grid item xs={12} sm={6} key={modelUsage.model}>
-                          <ModelUsageCard usage={modelUsage} />
-                        </Grid>
+                        <ModelUsageCard key={modelUsage.model} usage={modelUsage} />
                       ))}
-                    </Grid>
+                    </Box>
                   ) : (
                     <Alert severity="info" sx={{ borderRadius: 2 }}>
                       {hasUsage

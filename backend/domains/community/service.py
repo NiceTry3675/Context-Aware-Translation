@@ -58,7 +58,7 @@ class CommunityService:
         user: User
     ) -> Post:
         """Create a new post."""
-        with SqlAlchemyUoW(self.session) as uow:
+        with SqlAlchemyUoW(lambda: self.session) as uow:
             category = self.category_repo.get(post_data.category_id)
             if not category:
                 raise ValueError(f"Category {post_data.category_id} not found")
@@ -108,7 +108,7 @@ class CommunityService:
         user: User
     ) -> Post:
         """Update an existing post."""
-        with SqlAlchemyUoW(self.session) as uow:
+        with SqlAlchemyUoW(lambda: self.session) as uow:
             post = self.post_repo.get(post_id)
             if not post:
                 raise ValueError(f"Post {post_id} not found")
@@ -172,7 +172,7 @@ class CommunityService:
 
     async def delete_post(self, post_id: int, user: User) -> None:
         """Delete a post."""
-        with SqlAlchemyUoW(self.session) as uow:
+        with SqlAlchemyUoW(lambda: self.session) as uow:
             post = self.post_repo.get(post_id)
             if not post:
                 raise ValueError(f"Post {post_id} not found")
@@ -287,7 +287,7 @@ class CommunityService:
         user: User
     ) -> Comment:
         """Create a new comment."""
-        with SqlAlchemyUoW(self.session) as uow:
+        with SqlAlchemyUoW(lambda: self.session) as uow:
             post = self.post_repo.get(comment_data.post_id)
             if not post:
                 raise ValueError(f"Post {comment_data.post_id} not found")
@@ -339,7 +339,7 @@ class CommunityService:
         user: User
     ) -> Comment:
         """Update a comment."""
-        with SqlAlchemyUoW(self.session) as uow:
+        with SqlAlchemyUoW(lambda: self.session) as uow:
             comment = self.comment_repo.get(comment_id)
             if not comment:
                 raise ValueError(f"Comment {comment_id} not found")
@@ -370,7 +370,7 @@ class CommunityService:
 
     async def delete_comment(self, comment_id: int, user: User) -> None:
         """Delete a comment."""
-        with SqlAlchemyUoW(self.session) as uow:
+        with SqlAlchemyUoW(lambda: self.session) as uow:
             comment = self.comment_repo.get(comment_id)
             if not comment:
                 raise ValueError(f"Comment {comment_id} not found")
@@ -496,7 +496,7 @@ class CommunityService:
             metadata={'resource_type': 'announcement'}
         )
 
-        with SqlAlchemyUoW(self.session) as uow:
+        with SqlAlchemyUoW(lambda: self.session) as uow:
             announcement = self.announcement_repo.create(
                 message=announcement_data.message,
                 is_active=announcement_data.is_active
@@ -512,7 +512,7 @@ class CommunityService:
             metadata={'resource_type': 'announcement'}
         )
 
-        with SqlAlchemyUoW(self.session) as uow:
+        with SqlAlchemyUoW(lambda: self.session) as uow:
             announcement = self.announcement_repo.get(announcement_id)
             if not announcement:
                 raise ValueError(f"Announcement {announcement_id} not found")

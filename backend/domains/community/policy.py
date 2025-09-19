@@ -424,8 +424,11 @@ class CommunityPolicy:
                 return self.category.can_delete(resource, user)
         
         elif resource is None and action == Action.CREATE:
-            # Handle creation without a specific resource (e.g., creating categories)
-            if context.metadata and context.metadata.get('resource_type') == 'announcement':
+            # Handle creation without a specific resource
+            if context.parent_resource and isinstance(context.parent_resource, PostCategory):
+                # Creating a post in a category
+                return self.post.can_create(context.parent_resource, user)
+            elif context.metadata and context.metadata.get('resource_type') == 'announcement':
                 return self.announcement.can_create(user)
             elif context.metadata and context.metadata.get('resource_type') == 'category':
                 return self.category.can_create(user)
