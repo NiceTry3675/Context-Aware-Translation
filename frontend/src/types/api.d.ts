@@ -771,6 +771,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/community/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Posts
+         * @description Get posts with filtering and pagination.
+         */
+        get: operations["list_posts_api_v1_community_posts_get"];
+        put?: never;
+        /**
+         * Create Post
+         * @description Create a new post.
+         */
+        post: operations["create_post_api_v1_community_posts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/community/categories": {
         parameters: {
             query?: never;
@@ -811,30 +835,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/community/posts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Posts
-         * @description Get posts with filtering and pagination.
-         */
-        get: operations["list_posts_api_v1_community_posts_get"];
-        put?: never;
-        /**
-         * Create Post
-         * @description Create a new post.
-         */
-        post: operations["create_post_api_v1_community_posts_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/community/posts/{post_id}": {
         parameters: {
             query?: never;
@@ -863,6 +863,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/community/posts/{post_id}/view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Increment Post View
+         * @description Increment the view count for a post.
+         */
+        post: operations["increment_post_view_api_v1_community_posts__post_id__view_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/community/posts/{post_id}/comments": {
         parameters: {
             query?: never;
@@ -881,26 +901,6 @@ export interface paths {
          * @description Create a comment on a post.
          */
         post: operations["create_comment_api_v1_community_posts__post_id__comments_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/community/posts/{post_id}/view": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Increment Post View
-         * @description Increment the view count for a post.
-         */
-        post: operations["increment_post_view_api_v1_community_posts__post_id__view_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -931,7 +931,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/community/upload-image": {
+    "/api/v1/community/images": {
         parameters: {
             query?: never;
             header?: never;
@@ -944,7 +944,7 @@ export interface paths {
          * Upload Image
          * @description Handle community image uploads.
          */
-        post: operations["upload_image_api_v1_community_upload_image_post"];
+        post: operations["upload_image_api_v1_community_images_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1351,8 +1351,8 @@ export interface components {
             /** Profile Json */
             profile_json?: string | null;
         };
-        /** Body_upload_image_api_v1_community_upload_image_post */
-        Body_upload_image_api_v1_community_upload_image_post: {
+        /** Body_upload_image_api_v1_community_images_post */
+        Body_upload_image_api_v1_community_images_post: {
             /**
              * File
              * Format: binary
@@ -3122,46 +3122,6 @@ export interface operations {
             };
         };
     };
-    list_categories_api_v1_community_categories_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PostCategory"][];
-                };
-            };
-        };
-    };
-    list_categories_overview_api_v1_community_categories_overview_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CategoryOverview"][];
-                };
-            };
-        };
-    };
     list_posts_api_v1_community_posts_get: {
         parameters: {
             query?: {
@@ -3214,7 +3174,7 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3229,6 +3189,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_categories_api_v1_community_categories_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostCategory"][];
+                };
+            };
+        };
+    };
+    list_categories_overview_api_v1_community_categories_overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryOverview"][];
                 };
             };
         };
@@ -3328,6 +3328,37 @@ export interface operations {
             };
         };
     };
+    increment_post_view_api_v1_community_posts__post_id__view_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_post_comments_api_v1_community_posts__post_id__comments_get: {
         parameters: {
             query?: never;
@@ -3375,45 +3406,12 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["Comment"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    increment_post_view_api_v1_community_posts__post_id__view_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                post_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: number;
-                    };
                 };
             };
             /** @description Validation Error */
@@ -3491,7 +3489,7 @@ export interface operations {
             };
         };
     };
-    upload_image_api_v1_community_upload_image_post: {
+    upload_image_api_v1_community_images_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3500,12 +3498,12 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["Body_upload_image_api_v1_community_upload_image_post"];
+                "multipart/form-data": components["schemas"]["Body_upload_image_api_v1_community_images_post"];
             };
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };

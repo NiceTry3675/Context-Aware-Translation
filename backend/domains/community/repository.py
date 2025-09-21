@@ -133,7 +133,8 @@ class SqlAlchemyPostRepository(SqlAlchemyRepository[Post]):
         query: str,
         category_id: Optional[int] = None,
         skip: int = 0,
-        limit: int = 20
+        limit: int = 20,
+        include_private: bool = False
     ) -> Tuple[List[Post], int]:
         """
         Search posts by title or content.
@@ -152,10 +153,10 @@ class SqlAlchemyPostRepository(SqlAlchemyRepository[Post]):
         if category_id:
             db_query = db_query.filter(Post.category_id == category_id)
         
-        # Exclude private posts from search
-        db_query = db_query.filter(Post.is_private == False)
+        if not include_private:
+            db_query = db_query.filter(Post.is_private == False)
         
-        db_query = db_query.order_by(desc(Post.created_at))
+        db_query = db_query.order_by(desc(Post.is_pinned), desc(Post.created_at))
         
         total = db_query.count()
         posts = db_query.options(
@@ -385,7 +386,7 @@ class SqlAlchemyCommentRepository(SqlAlchemyRepository[Comment]):
         ).limit(limit).all()
 
 
-class PostCategoryRepository(SqlAlchemyRepository[PostCategory]):
+class PostCategoryRepositoryProtocol(Protocol):
     """Repository for PostCategory operations."""
     
     def __init__(self, session: Session):
@@ -419,6 +420,46 @@ class PostCategoryRepository(SqlAlchemyRepository[PostCategory]):
             return False
         
         return True
+
+
+class SqlAlchemyPostCategoryRepository(SqlAlchemyRepository[PostCategory]):
+    """Repository for PostCategory operations."""
+    
+    def __init__(self, session: Session):
+        """Initialize with a SQLAlchemy session."""
+        super().__init__(session, PostCategory)
+    
+    def get_by_name(self, name: str) -> Optional[PostCategory]:
+        """Get a category by its name."""
+        return self.session.query(PostCategory).filter(
+            PostCategory.name == name
+        ).first()
+    
+    def list_ordered(self) -> List[PostCategory]:
+        """Get all categories ordered by their display order."""
+        return self.session.query(PostCategory).order_by(
+            PostCategory.order,
+            PostCategory.id
+        ).all()
+    
+    def can_user_post(self, category_id: int, user: Optional[User]) -> bool:
+        """Check if a user can post in a specific category."""
+        if not user:
+            return False
+        
+        category = self.get(category_id)
+        if not category:
+            return False
+        
+        # Admin-only categories require admin role
+        if category.is_admin_only and user.role != "admin":
+            return False
+        
+        return True
+
+
+class PostCategoryRepository(PostCategoryRepositoryProtocol):
+    pass
 
 
 class AnnouncementRepository(Protocol):

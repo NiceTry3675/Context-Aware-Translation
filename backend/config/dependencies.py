@@ -2,20 +2,9 @@
 
 import os
 from fastapi import Depends, Header, HTTPException
-from sqlalchemy.orm import Session
 
-from .database import SessionLocal
 from .. import auth
-
-
-def get_db():
-    """Dependency to get a database session for a single request."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
+from .db import get_db
 
 def verify_admin_secret(x_admin_secret: str = Header(...)):
     """Verify admin secret key for admin endpoints."""

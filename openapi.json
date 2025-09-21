@@ -1579,58 +1579,6 @@
         }
       }
     },
-    "/api/v1/community/categories": {
-      "get": {
-        "tags": [
-          "community"
-        ],
-        "summary": "List Categories",
-        "description": "Return all community categories.",
-        "operationId": "list_categories_api_v1_community_categories_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/PostCategory"
-                  },
-                  "type": "array",
-                  "title": "Response List Categories Api V1 Community Categories Get"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/community/categories/overview": {
-      "get": {
-        "tags": [
-          "community"
-        ],
-        "summary": "List Categories Overview",
-        "description": "Return categories with aggregated statistics and recent posts.",
-        "operationId": "list_categories_overview_api_v1_community_categories_overview_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/CategoryOverview"
-                  },
-                  "type": "array",
-                  "title": "Response List Categories Overview Api V1 Community Categories Overview Get"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/community/posts": {
       "get": {
         "tags": [
@@ -1763,7 +1711,7 @@
           }
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -1779,6 +1727,58 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/community/categories": {
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "List Categories",
+        "description": "Return all community categories.",
+        "operationId": "list_categories_api_v1_community_categories_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PostCategory"
+                  },
+                  "type": "array",
+                  "title": "Response List Categories Api V1 Community Categories Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/community/categories/overview": {
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "List Categories Overview",
+        "description": "Return categories with aggregated statistics and recent posts.",
+        "operationId": "list_categories_overview_api_v1_community_categories_overview_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryOverview"
+                  },
+                  "type": "array",
+                  "title": "Response List Categories Overview Api V1 Community Categories Overview Get"
                 }
               }
             }
@@ -1914,14 +1914,14 @@
         }
       }
     },
-    "/api/v1/community/posts/{post_id}/comments": {
+    "/api/v1/community/posts/{post_id}/view": {
       "post": {
         "tags": [
           "community"
         ],
-        "summary": "Create Comment",
-        "description": "Create a comment on a post.",
-        "operationId": "create_comment_api_v1_community_posts__post_id__comments_post",
+        "summary": "Increment Post View",
+        "description": "Increment the view count for a post.",
+        "operationId": "increment_post_view_api_v1_community_posts__post_id__view_post",
         "parameters": [
           {
             "name": "post_id",
@@ -1933,24 +1933,12 @@
             }
           }
         ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CommentCreate"
-              }
-            }
-          }
-        },
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Comment"
-                }
+                "schema": {}
               }
             }
           },
@@ -1965,7 +1953,9 @@
             }
           }
         }
-      },
+      }
+    },
+    "/api/v1/community/posts/{post_id}/comments": {
       "get": {
         "tags": [
           "community"
@@ -2010,16 +2000,14 @@
             }
           }
         }
-      }
-    },
-    "/api/v1/community/posts/{post_id}/view": {
+      },
       "post": {
         "tags": [
           "community"
         ],
-        "summary": "Increment Post View",
-        "description": "Increment the view count for a post.",
-        "operationId": "increment_post_view_api_v1_community_posts__post_id__view_post",
+        "summary": "Create Comment",
+        "description": "Create a comment on a post.",
+        "operationId": "create_comment_api_v1_community_posts__post_id__comments_post",
         "parameters": [
           {
             "name": "post_id",
@@ -2031,17 +2019,23 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentCreate"
+              }
+            }
+          }
+        },
         "responses": {
-          "200": {
+          "201": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "additionalProperties": {
-                    "type": "integer"
-                  },
-                  "title": "Response Increment Post View Api V1 Community Posts  Post Id  View Post"
+                  "$ref": "#/components/schemas/Comment"
                 }
               }
             }
@@ -2146,26 +2140,26 @@
         }
       }
     },
-    "/api/v1/community/upload-image": {
+    "/api/v1/community/images": {
       "post": {
         "tags": [
           "community"
         ],
         "summary": "Upload Image",
         "description": "Handle community image uploads.",
-        "operationId": "upload_image_api_v1_community_upload_image_post",
+        "operationId": "upload_image_api_v1_community_images_post",
         "requestBody": {
           "content": {
             "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/Body_upload_image_api_v1_community_upload_image_post"
+                "$ref": "#/components/schemas/Body_upload_image_api_v1_community_images_post"
               }
             }
           },
           "required": true
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -2847,7 +2841,7 @@
         ],
         "title": "Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post"
       },
-      "Body_upload_image_api_v1_community_upload_image_post": {
+      "Body_upload_image_api_v1_community_images_post": {
         "properties": {
           "file": {
             "type": "string",
@@ -2859,7 +2853,7 @@
         "required": [
           "file"
         ],
-        "title": "Body_upload_image_api_v1_community_upload_image_post"
+        "title": "Body_upload_image_api_v1_community_images_post"
       },
       "CategoryOverview": {
         "properties": {

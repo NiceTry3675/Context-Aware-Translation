@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
-import { buildOptionalAuthHeader } from '../utils/authToken';
+import { buildAuthHeader } from '../utils/authToken';
+import UserDisplayName from '../components/UserDisplayName';
 import {
   Container, Box, Typography, Card, CardContent,
   Button, Alert, CircularProgress, Chip, Divider, List, ListItem, ListItemText, IconButton
@@ -80,7 +81,7 @@ export default function CommunityPage() {
   const fetchCategoriesOverview = async () => {
     try {
       console.log('Fetching categories overview from:', `${API_URL}/api/v1/community/categories/overview`);
-      const response = await fetch(`${API_URL}/api/v1/community/categories/overview`, { headers: buildOptionalAuthHeader() });
+      const response = await fetch(`${API_URL}/api/v1/community/categories/overview`, { headers: await buildAuthHeader(getToken) });
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -304,7 +305,7 @@ export default function CommunityPage() {
                               secondary={
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
                                   <Typography variant="caption" color="text.secondary">
-                                    {post.author.name || '사용자'}
+                                    <UserDisplayName author={post.author} variant="short" />
                                   </Typography>
                                   <Typography variant="caption" color="text.secondary">
                                     조회 {post.view_count}

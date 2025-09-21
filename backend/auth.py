@@ -113,6 +113,17 @@ async def get_current_user_claims(request: Request) -> Optional[dict]:
         # Returning None is safer to prevent accidental access on system failure.
         return None
 
+def _name_email_from_claims(claims_dict: dict) -> tuple[str | None, str | None]:
+    email_address = claims_dict.get('primary_email_address') or claims_dict.get('email')
+    name = (
+        claims_dict.get('name') or claims_dict.get('full_name') or
+        f"{claims_dict.get('first_name', '')} {claims_dict.get('last_name', '')}".strip() or
+        (email_address.split('@')[0] if email_address else None) or
+        f"user_{claims_dict.get('sub', 'unknown')[-8:]}"  # Fallback to user ID suffix
+    )
+    return name, email_address
+
+
 async def get_required_user(
     claims: dict = Depends(get_current_user_claims),
     db: Session = Depends(get_db)
@@ -136,17 +147,6 @@ async def get_required_user(
 
     repo = SqlAlchemyUserRepository(db)
     db_user = repo.get_by_clerk_id(clerk_user_id)
-
-    # Helper: extract preferred name/email from JWT claims
-    def _name_email_from_claims(claims_dict: dict) -> tuple[str | None, str | None]:
-        email_address = claims_dict.get('primary_email_address') or claims_dict.get('email')
-        name = (
-            claims_dict.get('name') or claims_dict.get('full_name') or
-            f"{claims_dict.get('first_name', '')} {claims_dict.get('last_name', '')}".strip() or
-            (email_address.split('@')[0] if email_address else None) or
-            f"user_{claims_dict.get('sub', 'unknown')[-8:]}"  # Fallback to user ID suffix
-        )
-        return name, email_address
 
     if not db_user:
         print(f"--- [INFO] User with Clerk ID {clerk_user_id} not found in DB. Creating from JWT claims. ---")
@@ -174,7 +174,7 @@ async def get_required_user(
         update_data = {}
         if not db_user.name or not db_user.email:
             name, email_address = _name_email_from_claims(claims)
-            if not db_user.name and name:
+            if name and (not db_user.name or db_user.name.startswith("user_")):
                 update_data['name'] = name
             if not db_user.email and email_address:
                 update_data['email'] = email_address
@@ -192,6 +192,7 @@ async def get_required_user(
         db_user = await sync_user_role_from_claims(db, db_user, claims)
 
     return db_user
+
 
 async def get_optional_user(
     claims: Optional[dict] = Depends(get_current_user_claims),
@@ -216,13 +217,7 @@ async def get_optional_user(
     if not db_user:
         print(f"--- [INFO] Optional auth: Creating user for Clerk ID {clerk_user_id} from JWT claims. ---")
         try:
-            email_address = claims.get('primary_email_address') or claims.get('email')
-            name = (
-                claims.get('name') or claims.get('full_name') or
-                f"{claims.get('first_name', '')} {claims.get('last_name', '')}".strip() or
-                (email_address.split('@')[0] if email_address else None) or
-                f"user_{claims.get('sub', 'unknown')[-8:]}"  # Fallback to user ID suffix
-            )
+            name, email_address = _name_email_from_claims(claims)
             new_user_data = user_schemas.UserCreate(
                 clerk_user_id=clerk_user_id,
                 email=email_address,
@@ -241,6 +236,23 @@ async def get_optional_user(
         except Exception as e:
             print(f"--- [ERROR] Failed to create user in optional auth: {e}")
             return None
+    else:
+        # 기존 사용자의 이름/이메일 보강: JWT 클레임 기반으로만 업데이트
+        update_data = {}
+        if not db_user.name or not db_user.email:
+            name, email_address = _name_email_from_claims(claims)
+            if name and (not db_user.name or db_user.name.startswith("user_")):
+                update_data['name'] = name
+            if not db_user.email and email_address:
+                update_data['email'] = email_address
+        if update_data:
+            user_update = user_schemas.UserUpdate(**update_data)
+            if db_user:
+                for key, value in user_update.dict(exclude_unset=True).items():
+                    setattr(db_user, key, value)
+                db.commit()
+                db.refresh(db_user)
+            print(f"--- [INFO] Updated user {db_user.id} with: {update_data} (claims-based). ---")
 
     if db_user:
         db_user = await sync_user_role_from_claims(db, db_user, claims)

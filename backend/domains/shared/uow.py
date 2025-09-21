@@ -51,8 +51,7 @@ class SqlAlchemyUoW:
                     self.rollback()
                     raise
         finally:
-            if self.session:
-                self.session.close()
+            pass
     
     def commit(self):
         """Commit the current transaction and dispatch any collected events."""

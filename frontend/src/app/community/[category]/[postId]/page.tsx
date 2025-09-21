@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, Suspense, useCallback } from 'react';
+import { useEffect, useState, Suspense, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
-import { buildOptionalAuthHeader, getCachedClerkToken } from '../../../utils/authToken';
+import { buildAuthHeader, getCachedClerkToken, buildOptionalAuthHeader } from '../../../utils/authToken';
 import UserDisplayName from '../../../components/UserDisplayName';
 import {
   Container, Box, Typography, Card, CardContent, Button, Alert,
@@ -43,6 +43,7 @@ function PostDetailPageContent() {
   const [commentContent, setCommentContent] = useState('');
   const [commentIsPrivate, setCommentIsPrivate] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
+  const viewCountIncremented = useRef(false);
   
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
@@ -51,7 +52,7 @@ function PostDetailPageContent() {
   const fetchPost = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/api/v1/community/posts/${postId}`, {
-        headers: buildOptionalAuthHeader()
+        headers: await buildAuthHeader(getToken)
       });
       
       if (response.status === 403) {
@@ -72,7 +73,7 @@ function PostDetailPageContent() {
   const fetchComments = useCallback(async () => {
     try {
       const response = await fetch(`${API_URL}/api/v1/community/posts/${postId}/comments`, {
-        headers: buildOptionalAuthHeader()
+        headers: await buildAuthHeader(getToken)
       });
       if (!response.ok) throw new Error('Failed to fetch comments');
       const data = await response.json();
@@ -88,7 +89,8 @@ function PostDetailPageContent() {
         method: 'POST',
         headers: buildOptionalAuthHeader()
       });
-      // No need to refetch here, view count is not critical to be real-time
+      // Refetch the post to display the updated view count immediately
+      fetchPost();
     } catch (err) {
       console.warn('Failed to increment view count:', err);
     }
@@ -104,7 +106,10 @@ function PostDetailPageContent() {
 
     fetchPost();
     fetchComments();
-    incrementViewCount();
+    if (!viewCountIncremented.current) {
+      incrementViewCount();
+      viewCountIncremented.current = true;
+    }
   }, [isLoaded, isSignedIn, router, fetchPost, fetchComments, incrementViewCount]);
 
   const handleDeletePost = async () => {

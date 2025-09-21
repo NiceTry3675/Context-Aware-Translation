@@ -7,7 +7,7 @@ from typing import List, Dict
 from backend.domains.translation import routes as translation
 from backend.domains.validation import routes as validation
 from backend.domains.post_edit import routes as post_edit
-from backend.domains.community import routes as community
+from backend.domains.community.router import router as community_router
 from backend.domains.user import routes as user
 from backend.domains.admin import routes as admin
 from backend.domains.tasks import routes as tasks
@@ -141,96 +141,8 @@ router.include_router(illustrations.router)
 router.include_router(tasks.router)
 
 # Community endpoints
-router.add_api_route(
-    "/community/categories",
-    community.list_categories,
-    methods=["GET"],
-    response_model=List[PostCategory],
-    tags=["community"]
-)
-router.add_api_route(
-    "/community/categories/overview",
-    community.list_categories_overview,
-    methods=["GET"],
-    response_model=List[CategoryOverview],
-    tags=["community"]
-)
-router.add_api_route(
-    "/community/posts",
-    community.list_posts,
-    methods=["GET"],
-    response_model=List[PostList],
-    tags=["community"]
-)
-router.add_api_route(
-    "/community/posts",
-    community.create_post,
-    methods=["POST"],
-    response_model=Post,
-    tags=["community"]
-)
-router.add_api_route(
-    "/community/posts/{post_id}",
-    community.get_post,
-    methods=["GET"],
-    response_model=Post,
-    tags=["community"]
-)
-router.add_api_route(
-    "/community/posts/{post_id}",
-    community.update_post,
-    methods=["PUT"],
-    response_model=Post,
-    tags=["community"]
-)
-router.add_api_route(
-    "/community/posts/{post_id}",
-    community.delete_post,
-    methods=["DELETE"],
-    status_code=204,
-    tags=["community"]
-)
-router.add_api_route(
-    "/community/posts/{post_id}/comments",
-    community.create_comment,
-    methods=["POST"],
-    response_model=Comment,
-    tags=["community"]
-)
-router.add_api_route(
-    "/community/posts/{post_id}/comments",
-    community.list_post_comments,
-    methods=["GET"],
-    response_model=List[Comment],
-    tags=["community"]
-)
-router.add_api_route(
-    "/community/posts/{post_id}/view",
-    community.increment_post_view,
-    methods=["POST"],
-    response_model=Dict[str, int],
-    tags=["community"]
-)
-router.add_api_route(
-    "/community/comments/{comment_id}",
-    community.update_comment,
-    methods=["PUT"],
-    response_model=Comment,
-    tags=["community"]
-)
-router.add_api_route(
-    "/community/comments/{comment_id}",
-    community.delete_comment,
-    methods=["DELETE"],
-    status_code=204,
-    tags=["community"]
-)
-router.add_api_route(
-    "/community/upload-image",
-    community.upload_image,
-    methods=["POST"],
-    tags=["community"]
-)
+router.include_router(community_router, prefix="/community", tags=["community"])
+
 
 # User endpoints
 router.add_api_route(

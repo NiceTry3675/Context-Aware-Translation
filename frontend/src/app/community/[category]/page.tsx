@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
-import { buildOptionalAuthHeader } from '../../utils/authToken';
+import { buildAuthHeader } from '../../utils/authToken';
 import UserDisplayName from '../../components/UserDisplayName';
 import {
   Container, Box, Typography, Button, Alert,
@@ -76,7 +76,7 @@ function CategoryPostsPageContent() {
       const response = await fetch(
         `${API_URL}/api/v1/community/posts?category=${categoryName}&skip=${page * rowsPerPage}&limit=${rowsPerPage}${searchTerm ? `&search=${searchTerm}` : ''}`,
         {
-          headers: buildOptionalAuthHeader()
+          headers: await buildAuthHeader(getToken)
         }
       );
       if (!response.ok) throw new Error('Failed to fetch posts');

@@ -428,6 +428,9 @@ class CommunityPolicy:
             if context.parent_resource and isinstance(context.parent_resource, PostCategory):
                 # Creating a post in a category
                 return self.post.can_create(context.parent_resource, user)
+            elif context.parent_resource and isinstance(context.parent_resource, Post):
+                # Creating a comment on a post
+                return self.comment.can_create(context.parent_resource, user)
             elif context.metadata and context.metadata.get('resource_type') == 'announcement':
                 return self.announcement.can_create(user)
             elif context.metadata and context.metadata.get('resource_type') == 'category':
