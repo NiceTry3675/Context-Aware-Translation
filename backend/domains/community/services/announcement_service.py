@@ -33,11 +33,16 @@ class AnnouncementService:
         """Get only active announcements."""
         return self.announcement_repo.get_active()
 
-    async def create_announcement(self, announcement_data: AnnouncementCreate, user: User) -> Announcement:
-        try:
-            enforce_policy(action=Action.CREATE, user=user, metadata={'resource_type': 'announcement'})
-        except PermissionError as e:
-            raise PermissionDeniedException(str(e))
+    async def create_announcement(self, announcement_data: AnnouncementCreate, user: Optional[User] = None) -> Announcement:
+        # Permission check is now done at the router level
+        if user is not None:
+            try:
+                enforce_policy(action=Action.CREATE, user=user, metadata={'resource_type': 'announcement'})
+            except PermissionError as e:
+                raise PermissionDeniedException(str(e))
+
+        # Deactivate all other announcements first
+        self.deactivate_all_announcements()
 
         with SqlAlchemyUoW(self._create_session) as uow:
             # Use UoW session for repository operations
@@ -49,11 +54,12 @@ class AnnouncementService:
             uow.commit()
             return self.announcement_repo.get(announcement.id)
 
-    async def delete_announcement(self, announcement_id: int, user: User) -> None:
-        try:
-            enforce_policy(action=Action.DELETE, user=user, metadata={'resource_type': 'announcement'})
-        except PermissionError as e:
-            raise PermissionDeniedException(str(e))
+    async def delete_announcement(self, announcement_id: int, user: Optional[User] = None) -> None:
+        if user is not None:
+            try:
+                enforce_policy(action=Action.DELETE, user=user, metadata={'resource_type': 'announcement'})
+            except PermissionError as e:
+                raise PermissionDeniedException(str(e))
 
         with SqlAlchemyUoW(self._create_session) as uow:
             announcement_repo = SqlAlchemyAnnouncementRepository(uow.session)
@@ -69,13 +75,14 @@ class AnnouncementService:
         announcement_id: int,
         message: Optional[str] = None,
         is_active: Optional[bool] = None,
-        user: User = None
+        user: Optional[User] = None
     ) -> Announcement:
         """Update an announcement."""
-        try:
-            enforce_policy(action=Action.EDIT, user=user, metadata={'resource_type': 'announcement'})
-        except PermissionError as e:
-            raise PermissionDeniedException(str(e))
+        if user is not None:
+            try:
+                enforce_policy(action=Action.EDIT, user=user, metadata={'resource_type': 'announcement'})
+            except PermissionError as e:
+                raise PermissionDeniedException(str(e))
 
         with SqlAlchemyUoW(self._create_session) as uow:
             announcement_repo = SqlAlchemyAnnouncementRepository(uow.session)
@@ -93,7 +100,12 @@ class AnnouncementService:
 
     def deactivate_all_announcements(self) -> int:
         """Deactivate all active announcements."""
-        return self.announcement_repo.deactivate_all()
+        with SqlAlchemyUoW(self._create_session) as uow:
+            # Use UoW session for repository operations
+            announcement_repo = SqlAlchemyAnnouncementRepository(uow.session)
+            result = announcement_repo.deactivate_all()
+            uow.commit()
+            return result
 
     def get_active_announcement(self) -> Optional[Announcement]:
         """Get the currently active announcement."""

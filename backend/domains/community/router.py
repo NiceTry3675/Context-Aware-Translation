@@ -334,7 +334,7 @@ async def stream_announcements(
             try:
                 # Get active announcements
                 announcements = announcement_service.get_announcements(active_only=True)
-                announcements_data = [AnnouncementSchema.from_orm(a).dict() for a in announcements]
+                announcements_data = [announcement_service.format_announcement_for_json(a) for a in announcements]
 
                 # Send the announcement data
                 yield f"data: {json.dumps(announcements_data)}\n\n"
@@ -345,12 +345,12 @@ async def stream_announcements(
                 print(f"Error in announcement stream: {e}")
                 break
 
-    return StreamingResponse(event_generator(), media_type="text/plain")
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @router.post("/announcements", response_model=AnnouncementSchema, status_code=status.HTTP_201_CREATED)
 async def create_announcement(
     announcement: AnnouncementCreate,
-    current_user: User = Depends(dependencies.get_required_user),
+    _: str = Depends(dependencies.verify_admin_secret),
     announcement_service: AnnouncementService = Depends(get_announcement_service)
 ) -> AnnouncementSchema:
     """Create a new announcement (admin only)."""
@@ -359,7 +359,7 @@ async def create_announcement(
         announcement_service.deactivate_all_announcements()
 
         # Create the new announcement
-        db_announcement = await announcement_service.create_announcement(announcement, current_user)
+        db_announcement = await announcement_service.create_announcement(announcement)
         return AnnouncementSchema.from_orm(db_announcement)
     except PermissionDeniedException as e:
         raise HTTPException(status_code=403, detail=e.detail)
@@ -368,7 +368,7 @@ async def create_announcement(
 async def update_announcement(
     announcement_id: int,
     announcement: AnnouncementCreate,
-    current_user: User = Depends(dependencies.get_required_user),
+    _: str = Depends(dependencies.verify_admin_secret),
     announcement_service: AnnouncementService = Depends(get_announcement_service)
 ) -> AnnouncementSchema:
     """Update an existing announcement (admin only)."""
@@ -376,8 +376,7 @@ async def update_announcement(
         db_announcement = await announcement_service.update_announcement(
             announcement_id=announcement_id,
             message=announcement.message,
-            is_active=announcement.is_active,
-            user=current_user
+            is_active=announcement.is_active
         )
         return AnnouncementSchema.from_orm(db_announcement)
     except PermissionDeniedException as e:
@@ -388,12 +387,12 @@ async def update_announcement(
 @router.delete("/announcements/{announcement_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_announcement(
     announcement_id: int,
-    current_user: User = Depends(dependencies.get_required_user),
+    _: str = Depends(dependencies.verify_admin_secret),
     announcement_service: AnnouncementService = Depends(get_announcement_service)
 ):
     """Delete an announcement (admin only)."""
     try:
-        await announcement_service.delete_announcement(announcement_id, current_user)
+        await announcement_service.delete_announcement(announcement_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except PermissionDeniedException as e:
         raise HTTPException(status_code=403, detail=e.detail)

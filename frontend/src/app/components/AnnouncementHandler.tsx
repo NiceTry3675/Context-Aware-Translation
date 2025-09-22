@@ -46,14 +46,17 @@ export default function AnnouncementHandler() {
 
     eventSource.onmessage = (event) => {
       try {
-        const data: Announcement = JSON.parse(event.data);
+        const data: Announcement[] = JSON.parse(event.data);
         console.log('📢 새 공지 수신:', data);
-        
-        if (data.is_active) {
-          setAnnouncement(data);
+
+        // Find the first active announcement
+        const activeAnnouncement = data.find(announcement => announcement.is_active);
+
+        if (activeAnnouncement) {
+          setAnnouncement(activeAnnouncement);
           setOpen(true);
         } else {
-          console.log('🔇 공지 비활성화됨:', data.id);
+          console.log('🔇 모든 공지 비활성화됨');
           setOpen(false);
           setTimeout(() => {
             setAnnouncement(null);
