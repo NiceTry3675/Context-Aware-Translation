@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
-import { buildAuthHeader } from '../utils/authToken';
+import { endpoints } from '@/lib/api';
 import UserDisplayName from '../components/UserDisplayName';
 import {
   Container, Box, Typography, Card, CardContent,
@@ -20,31 +20,7 @@ import {
   Home as HomeIcon
 } from '@mui/icons-material';
 import theme from '../../theme';
-import type { components } from '@/types/api';
-
-// Type aliases for convenience
-type PostCategory = components['schemas']['PostCategory'];
-type User = components['schemas']['User'];
-
-interface RecentPostSummary {
-  id: number;
-  title: string;
-  author: User;
-  is_pinned: boolean;
-  is_private: boolean;
-  view_count: number;
-  comment_count: number;
-  images: string[];
-  created_at: string;
-  updated_at?: string | null;
-}
-
-// Custom interface for category overview (not in generated types)
-interface CategoryOverview extends PostCategory {
-  recent_posts: RecentPostSummary[];
-  total_posts: number;
-  can_post: boolean;
-}
+import type { CategoryOverview } from '@/lib/api';
 
 const categoryIcons: { [key: string]: React.ReactNode } = {
   notice: <AnnouncementIcon sx={{ fontSize: 40 }} />,
@@ -69,8 +45,6 @@ export default function CommunityPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
   useEffect(() => {
     if (!isLoaded) return;
 
@@ -80,20 +54,17 @@ export default function CommunityPage() {
 
   const fetchCategoriesOverview = async () => {
     try {
-      console.log('Fetching categories overview from:', `${API_URL}/api/v1/community/categories/overview`);
-      const response = await fetch(`${API_URL}/api/v1/community/categories/overview`, { headers: await buildAuthHeader(getToken) });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Response not OK:', response.status, errorText);
-        throw new Error(`Failed to fetch categories: ${response.status} ${errorText}`);
+      const token = await getToken();
+      const { data, error } = await endpoints.getCategoriesOverview(token || undefined);
+
+      if (error) {
+        throw new Error('Failed to fetch categories');
       }
-      
-      const data = await response.json();
-      console.log('Categories fetched:', data);
-      setCategories(data);
-      
-      if (data.length === 0) {
+
+      console.log('Categories fetched:', categories);
+      setCategories(categories);
+
+      if (categories.length === 0) {
         setError('카테고리가 아직 생성되지 않았습니다. 관리자에게 문의해주세요.');
       }
     } catch (err) {
@@ -263,13 +234,13 @@ export default function CommunityPage() {
                   <Divider sx={{ mb: 2 }} />
 
                   {/* Recent Posts */}
-                  {category.recent_posts.length > 0 ? (
+                  {(category.recent_posts?.length ?? 0) > 0 ? (
                     <Box>
                       <Typography variant="h6" mb={2} color="text.secondary">
                         최근 게시글
                       </Typography>
                       <List sx={{ py: 0 }}>
-                        {category.recent_posts.map((post) => (
+                        {(category.recent_posts || []).map((post) => (
                           <ListItem 
                             key={post.id} 
                             sx={{ 

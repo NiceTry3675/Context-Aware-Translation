@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session
 from backend.domains.user.models import User
 from backend.domains.community.models import Post
 from backend.domains.community.schemas import PostCreate, PostUpdate
-from backend.domains.community.repository import PostRepository, SqlAlchemyPostRepository, SqlAlchemyPostCategoryRepository as PostCategoryRepository
-from backend.domains.community.policy import Action, enforce_policy
+from backend.domains.community.repository import PostRepository, SqlAlchemyPostRepository, PostCategoryRepository
+from backend.domains.community.policy import Action, enforce_policy, check_policy
 from backend.domains.shared.uow import SqlAlchemyUoW
+from backend.config.database import SessionLocal
 from backend.domains.shared.events import (
     PostCreatedEvent as CommunityPostCreatedEvent,
     PostUpdatedEvent as CommunityPostUpdatedEvent,
@@ -24,8 +25,15 @@ class PostService:
         self.post_repo: PostRepository = SqlAlchemyPostRepository(session)
         self.category_repo = PostCategoryRepository(session)
 
+    def _create_session(self):
+        """Create a new session for UoW transactions."""
+        return SessionLocal()
+
+
     async def create_post(self, post_data: PostCreate, user: User) -> Post:
-        with SqlAlchemyUoW(lambda: self.session) as uow:
+        with SqlAlchemyUoW(self._create_session) as uow:
+            # For operations within UoW, use service repos which should be fine for queries
+            # and use uow.session for writes
             category = self.category_repo.get(post_data.category_id)
             if not category:
                 raise CategoryNotFoundException(f"Category {post_data.category_id} not found")
@@ -51,7 +59,7 @@ class PostService:
                 images=post_data.images or []
             )
 
-            self.session.add(post)
+            uow.session.add(post)
             uow.flush()
 
             uow.add_event(CommunityPostCreatedEvent(
@@ -67,11 +75,10 @@ class PostService:
             ))
 
             uow.commit()
-            # self.session.refresh(post)
             return self.post_repo.get_with_details(post.id)
 
     async def update_post(self, post_id: int, post_update: PostUpdate, user: User) -> Post:
-        with SqlAlchemyUoW(lambda: self.session) as uow:
+        with SqlAlchemyUoW(self._create_session) as uow:
             post = self.post_repo.get(post_id)
             if not post:
                 raise PostNotFoundException(f"Post {post_id} not found")
@@ -127,11 +134,11 @@ class PostService:
                 ))
 
             uow.commit()
-            self.session.refresh(post)
+            uow.session.refresh(post)
             return post
 
     async def delete_post(self, post_id: int, user: User) -> None:
-        with SqlAlchemyUoW(lambda: self.session) as uow:
+        with SqlAlchemyUoW(self._create_session) as uow:
             post = self.post_repo.get(post_id)
             if not post:
                 raise PostNotFoundException(f"Post {post_id} not found")
@@ -142,7 +149,7 @@ class PostService:
                 raise PermissionDeniedException(str(e))
 
             # comments are deleted by cascade
-            self.session.delete(post)
+            uow.session.delete(post)
 
             uow.add_event(CommunityPostDeletedEvent(
                 event_id=str(uuid.uuid4()),
@@ -178,34 +185,28 @@ class PostService:
         if not category:
             raise CategoryNotFoundException(f"Category '{category_name}' not found.")
 
-        include_private = bool(user and user.role == "admin")
-
-        # If a user is authenticated, include private posts in the initial query.
-        # They will be filtered by `can_user_view` later.
-        include_private_in_query = user is not None
-
+        # Use repository-level filtering instead of post-processing
         if search_query:
             posts, total = self.post_repo.search(
                 query=search_query,
                 category_id=category.id,
                 skip=skip,
                 limit=limit,
-                include_private=include_private_in_query
+                user=user
             )
         else:
             posts, total = self.post_repo.list_by_category(
                 category_id=category.id,
                 skip=skip,
                 limit=limit,
-                include_private=include_private_in_query
+                user=user
             )
 
-        # Filter posts based on view permissions
-        visible_posts = [p for p in posts if self.post_repo.can_user_view(p.id, user)]
-        return visible_posts, total
+        # No need for post-processing filtering - repository handles it at SQL level
+        return posts, total
 
     async def increment_view_count(self, post_id: int, user: Optional[User] = None) -> Post:
-        with SqlAlchemyUoW(lambda: self.session) as uow:
+        with SqlAlchemyUoW(self._create_session) as uow:
             post = self.post_repo.get(post_id)
             if not post:
                 raise PostNotFoundException(f"Post {post_id} not found")

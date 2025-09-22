@@ -24,9 +24,9 @@ class PostRepository(Protocol):
         category_id: int,
         skip: int = 0,
         limit: int = 20,
-        include_private: bool = False
+        user: Optional[User] = None
     ) -> Tuple[List[Post], int]:
-        """List posts by category with pagination."""
+        """List posts by category with pagination, filtered by user visibility."""
         ...
     
     def list_by_author(
@@ -55,22 +55,43 @@ class PostRepository(Protocol):
     def get_pinned_posts(self, category_id: Optional[int] = None) -> List[Post]:
         """Get all pinned posts, optionally filtered by category."""
         ...
-    
-    def can_user_view(self, post_id: int, user: Optional[User]) -> bool:
-        """Check if a user can view a specific post."""
+
+    def search(
+        self,
+        query: str,
+        category_id: Optional[int] = None,
+        skip: int = 0,
+        limit: int = 20,
+        user: Optional[User] = None
+    ) -> Tuple[List[Post], int]:
+        """Search posts by content/title with pagination, filtered by user visibility."""
         ...
     
-    def can_user_edit(self, post_id: int, user: Optional[User]) -> bool:
-        """Check if a user can edit a specific post."""
-        ...
 
 
 class SqlAlchemyPostRepository(SqlAlchemyRepository[Post]):
     """SQLAlchemy implementation of PostRepository."""
-    
+
     def __init__(self, session: Session):
         """Initialize with a SQLAlchemy session."""
         super().__init__(session, Post)
+
+    def _apply_privacy_filter(self, query, user: Optional[User]):
+        """Apply privacy filtering to a query based on user permissions."""
+        if user is None:
+            # Anonymous users can only see public posts
+            return query.filter(Post.is_private == False)
+        elif user.role == "admin":
+            # Admins can see all posts
+            return query
+        else:
+            # Authenticated users can see public posts and their own private posts
+            return query.filter(
+                or_(
+                    Post.is_private == False,
+                    Post.author_id == user.id
+                )
+            )
     
     def get_with_details(self, id: int) -> Optional[Post]:
         """Get a post with author and category eagerly loaded."""
@@ -86,31 +107,31 @@ class SqlAlchemyPostRepository(SqlAlchemyRepository[Post]):
         category_id: int,
         skip: int = 0,
         limit: int = 20,
-        include_private: bool = False
+        user: Optional[User] = None
     ) -> Tuple[List[Post], int]:
         """
-        List posts by category with pagination.
-        
+        List posts by category with pagination, filtered by user visibility.
+
         Returns:
-            Tuple of (posts, total_count)
+            Tuple of (posts, total_count) - both filtered by user visibility
         """
         query = self.session.query(Post).filter(Post.category_id == category_id)
-        
-        if not include_private:
-            query = query.filter(Post.is_private == False)
-        
+
+        # Apply privacy filtering at the SQL level
+        query = self._apply_privacy_filter(query, user)
+
         # Pinned posts first, then by created_at
         query = query.order_by(
             desc(Post.is_pinned),
             desc(Post.created_at)
         )
-        
+
         total = query.count()
         posts = query.options(
             joinedload(Post.author),
             joinedload(Post.category)
         ).offset(skip).limit(limit).all()
-        
+
         return posts, total
     
     def list_by_author(
@@ -165,7 +186,54 @@ class SqlAlchemyPostRepository(SqlAlchemyRepository[Post]):
         ).offset(skip).limit(limit).all()
         
         return posts, total
-    
+
+    def search(
+        self,
+        query: str,
+        category_id: Optional[int] = None,
+        skip: int = 0,
+        limit: int = 20,
+        user: Optional[User] = None
+    ) -> Tuple[List[Post], int]:
+        """
+        Search posts by content/title with pagination, filtered by user visibility.
+
+        Returns:
+            Tuple of (posts, total_count) - both filtered by user visibility
+        """
+        # Build the search query
+        search_query = self.session.query(Post)
+
+        # Apply text search on title and content
+        search_pattern = f"%{query}%"
+        search_query = search_query.filter(
+            or_(
+                Post.title.ilike(search_pattern),
+                Post.content.ilike(search_pattern)
+            )
+        )
+
+        # Filter by category if specified
+        if category_id:
+            search_query = search_query.filter(Post.category_id == category_id)
+
+        # Apply privacy filtering at the SQL level
+        search_query = self._apply_privacy_filter(search_query, user)
+
+        # Pinned posts first, then by created_at
+        search_query = search_query.order_by(
+            desc(Post.is_pinned),
+            desc(Post.created_at)
+        )
+
+        total = search_query.count()
+        posts = search_query.options(
+            joinedload(Post.author),
+            joinedload(Post.category)
+        ).offset(skip).limit(limit).all()
+
+        return posts, total
+
     def increment_view_count(self, id: int) -> None:
         """Increment the view count for a post."""
         self.session.query(Post).filter(Post.id == id).update(
@@ -188,48 +256,6 @@ class SqlAlchemyPostRepository(SqlAlchemyRepository[Post]):
             joinedload(Post.category)
         ).order_by(desc(Post.created_at)).all()
     
-    def can_user_view(self, post_id: int, user: Optional[User]) -> bool:
-        """Check if a user can view a specific post."""
-        post = self.get(post_id)
-        if not post:
-            return False
-        
-        # Public posts can be viewed by anyone
-        if not post.is_private:
-            return True
-        
-        # Private posts require authentication
-        if not user:
-            return False
-        
-        # Author can view their own posts
-        if post.author_id == user.id:
-            return True
-        
-        # Admins can view all posts
-        if user.role == "admin":
-            return True
-        
-        return False
-    
-    def can_user_edit(self, post_id: int, user: Optional[User]) -> bool:
-        """Check if a user can edit a specific post."""
-        if not user:
-            return False
-        
-        post = self.get(post_id)
-        if not post:
-            return False
-        
-        # Author can edit their own posts
-        if post.author_id == user.id:
-            return True
-        
-        # Admins can edit all posts
-        if user.role == "admin":
-            return True
-        
-        return False
     
     def get_popular_posts(self, days: int = 7, limit: int = 10) -> List[Post]:
         """Get popular posts based on view count within the last N days."""
@@ -263,13 +289,6 @@ class CommentRepository(Protocol):
         """Add a reply to an existing comment."""
         ...
     
-    def can_user_view(self, comment_id: int, user: Optional[User]) -> bool:
-        """Check if a user can view a specific comment."""
-        ...
-    
-    def can_user_edit(self, comment_id: int, user: Optional[User]) -> bool:
-        """Check if a user can edit a specific comment."""
-        ...
 
 
 class SqlAlchemyCommentRepository(SqlAlchemyRepository[Comment]):
@@ -278,6 +297,13 @@ class SqlAlchemyCommentRepository(SqlAlchemyRepository[Comment]):
     def __init__(self, session: Session):
         """Initialize with a SQLAlchemy session."""
         super().__init__(session, Comment)
+
+    def get(self, id: int) -> Optional[Comment]:
+        """Get a comment by ID with all relationships loaded."""
+        return self.session.query(Comment).options(
+            joinedload(Comment.author),
+            joinedload(Comment.replies).joinedload(Comment.author)
+        ).filter(Comment.id == id).first()
     
     def get_by_post(self, post_id: int) -> List[Comment]:
         """Get all comments for a post, organized hierarchically."""
@@ -319,55 +345,6 @@ class SqlAlchemyCommentRepository(SqlAlchemyRepository[Comment]):
         self.session.flush()
         return comment
     
-    def can_user_view(self, comment_id: int, user: Optional[User]) -> bool:
-        """Check if a user can view a specific comment."""
-        comment = self.session.query(Comment).options(
-            joinedload(Comment.post)
-        ).filter(Comment.id == comment_id).first()
-        
-        if not comment:
-            return False
-        
-        # Public comments can be viewed by anyone
-        if not comment.is_private:
-            return True
-        
-        # Private comments require authentication
-        if not user:
-            return False
-        
-        # Comment author can view their own comments
-        if comment.author_id == user.id:
-            return True
-        
-        # Post author can view all comments on their post
-        if comment.post and comment.post.author_id == user.id:
-            return True
-        
-        # Admins can view all comments
-        if user.role == "admin":
-            return True
-        
-        return False
-    
-    def can_user_edit(self, comment_id: int, user: Optional[User]) -> bool:
-        """Check if a user can edit a specific comment."""
-        if not user:
-            return False
-        
-        comment = self.get(comment_id)
-        if not comment:
-            return False
-        
-        # Author can edit their own comments
-        if comment.author_id == user.id:
-            return True
-        
-        # Admins can edit all comments
-        if user.role == "admin":
-            return True
-        
-        return False
     
     def count_by_author(self, author_id: int) -> int:
         """Count total comments by an author."""
@@ -386,80 +363,25 @@ class SqlAlchemyCommentRepository(SqlAlchemyRepository[Comment]):
         ).limit(limit).all()
 
 
-class PostCategoryRepositoryProtocol(Protocol):
+class PostCategoryRepository(SqlAlchemyRepository[PostCategory]):
     """Repository for PostCategory operations."""
-    
+
     def __init__(self, session: Session):
         """Initialize with a SQLAlchemy session."""
         super().__init__(session, PostCategory)
-    
+
     def get_by_name(self, name: str) -> Optional[PostCategory]:
         """Get a category by its name."""
         return self.session.query(PostCategory).filter(
             PostCategory.name == name
         ).first()
-    
+
     def list_ordered(self) -> List[PostCategory]:
         """Get all categories ordered by their display order."""
         return self.session.query(PostCategory).order_by(
             PostCategory.order,
             PostCategory.id
         ).all()
-    
-    def can_user_post(self, category_id: int, user: Optional[User]) -> bool:
-        """Check if a user can post in a specific category."""
-        if not user:
-            return False
-        
-        category = self.get(category_id)
-        if not category:
-            return False
-        
-        # Admin-only categories require admin role
-        if category.is_admin_only and user.role != "admin":
-            return False
-        
-        return True
-
-
-class SqlAlchemyPostCategoryRepository(SqlAlchemyRepository[PostCategory]):
-    """Repository for PostCategory operations."""
-    
-    def __init__(self, session: Session):
-        """Initialize with a SQLAlchemy session."""
-        super().__init__(session, PostCategory)
-    
-    def get_by_name(self, name: str) -> Optional[PostCategory]:
-        """Get a category by its name."""
-        return self.session.query(PostCategory).filter(
-            PostCategory.name == name
-        ).first()
-    
-    def list_ordered(self) -> List[PostCategory]:
-        """Get all categories ordered by their display order."""
-        return self.session.query(PostCategory).order_by(
-            PostCategory.order,
-            PostCategory.id
-        ).all()
-    
-    def can_user_post(self, category_id: int, user: Optional[User]) -> bool:
-        """Check if a user can post in a specific category."""
-        if not user:
-            return False
-        
-        category = self.get(category_id)
-        if not category:
-            return False
-        
-        # Admin-only categories require admin role
-        if category.is_admin_only and user.role != "admin":
-            return False
-        
-        return True
-
-
-class PostCategoryRepository(PostCategoryRepositoryProtocol):
-    pass
 
 
 class AnnouncementRepository(Protocol):
@@ -471,6 +393,14 @@ class AnnouncementRepository(Protocol):
     
     def get_active(self) -> List[Announcement]:
         """Get all active announcements."""
+        ...
+
+    def list(self, limit: int = 10) -> List[Announcement]:
+        """Get announcements with optional limit."""
+        ...
+
+    def deactivate_all(self) -> int:
+        """Deactivate all active announcements."""
         ...
     
     def create(self, message: str, is_active: bool = True) -> Announcement:
@@ -585,3 +515,18 @@ class SqlAlchemyAnnouncementRepository(SqlAlchemyRepository[Announcement]):
         self.session.bulk_save_objects(announcements, return_defaults=True)
         self.session.flush()
         return announcements
+
+    def list(self, limit: int = 10) -> List[Announcement]:
+        """Get announcements with optional limit."""
+        return self.session.query(Announcement).order_by(
+            desc(Announcement.created_at)
+        ).limit(limit).all()
+
+    def deactivate_all(self) -> int:
+        """Deactivate all active announcements."""
+        result = self.session.query(Announcement).filter(
+            Announcement.is_active == True
+        ).update({Announcement.is_active: False})
+
+        self.session.flush()
+        return result

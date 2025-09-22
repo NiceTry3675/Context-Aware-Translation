@@ -14,5 +14,3 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     jobs = relationship("TranslationJob", back_populates="owner")
-    posts = relationship("Post", back_populates="author")
-    comments = relationship("Comment", back_populates="author")

@@ -45,7 +45,7 @@ class Settings(BaseSettings):
         env="CORS_ORIGINS"
     )
     cors_allow_credentials: bool = True
-    cors_allow_methods: List[str] = Field(default_factory=lambda: ["*"])
+    cors_allow_methods: List[str] = Field(default_factory=lambda: ["GET", "POST", "PUT", "DELETE", "OPTIONS"])
     cors_allow_headers: List[str] = Field(default_factory=lambda: ["*"])
     
     # API Keys

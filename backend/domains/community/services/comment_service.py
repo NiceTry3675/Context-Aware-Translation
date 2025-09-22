@@ -9,8 +9,9 @@ from backend.domains.user.models import User
 from backend.domains.community.models import Comment
 from backend.domains.community.schemas import CommentCreate, CommentUpdate
 from backend.domains.community.repository import CommentRepository, SqlAlchemyCommentRepository, PostRepository, SqlAlchemyPostRepository
-from backend.domains.community.policy import Action, enforce_policy
+from backend.domains.community.policy import Action, enforce_policy, check_policy
 from backend.domains.shared.uow import SqlAlchemyUoW
+from backend.config.database import SessionLocal
 from backend.domains.shared.events import CommentAddedEvent, CommentDeletedEvent
 from backend.domains.community.exceptions import PostNotFoundException, CommentNotFoundException, PermissionDeniedException
 
@@ -20,8 +21,12 @@ class CommentService:
         self.comment_repo: CommentRepository = SqlAlchemyCommentRepository(session)
         self.post_repo: PostRepository = SqlAlchemyPostRepository(session)
 
+    def _create_session(self):
+        """Create a new session for UoW transactions."""
+        return SessionLocal()
+
     async def create_comment(self, comment_data: CommentCreate, user: User) -> Comment:
-        with SqlAlchemyUoW(lambda: self.session) as uow:
+        with SqlAlchemyUoW(self._create_session) as uow:
             post = self.post_repo.get(comment_data.post_id)
             if not post:
                 raise PostNotFoundException(f"Post {comment_data.post_id} not found")
@@ -51,7 +56,7 @@ class CommentService:
                 if parent_comment.post_id != comment_data.post_id:
                     raise CommentNotFoundException("Parent comment must be on the same post")
 
-            self.session.add(comment)
+            uow.session.add(comment)
             uow.flush()
 
             uow.add_event(CommentAddedEvent(
@@ -65,11 +70,11 @@ class CommentService:
             ))
 
             uow.commit()
-            self.session.refresh(comment)
-            return comment
+            # Return a fresh copy with all relationships loaded from the main session
+            return self.comment_repo.get(comment.id)
 
     async def update_comment(self, comment_id: int, comment_update: CommentUpdate, user: User) -> Comment:
-        with SqlAlchemyUoW(lambda: self.session) as uow:
+        with SqlAlchemyUoW(self._create_session) as uow:
             comment = self.comment_repo.get(comment_id)
             if not comment:
                 raise CommentNotFoundException(f"Comment {comment_id} not found")
@@ -93,11 +98,11 @@ class CommentService:
             comment.updated_at = datetime.utcnow()
 
             uow.commit()
-            self.session.refresh(comment)
-            return comment
+            # Return a fresh copy with all relationships loaded from the main session
+            return self.comment_repo.get(comment.id)
 
     async def delete_comment(self, comment_id: int, user: User) -> None:
-        with SqlAlchemyUoW(lambda: self.session) as uow:
+        with SqlAlchemyUoW(self._create_session) as uow:
             comment = self.comment_repo.get(comment_id)
             if not comment:
                 raise CommentNotFoundException(f"Comment {comment_id} not found")
@@ -108,7 +113,7 @@ class CommentService:
                 raise PermissionDeniedException(str(e))
 
             # Replies are deleted by cascade
-            self.session.delete(comment)
+            uow.session.delete(comment)
 
             uow.add_event(CommentDeletedEvent(
                 event_id=str(uuid.uuid4()),
@@ -123,6 +128,6 @@ class CommentService:
 
     def get_comments_for_post(self, post_id: int, user: Optional[User] = None) -> List[Comment]:
         comments = self.comment_repo.get_by_post(post_id)
-        # Filter comments based on view permissions
-        visible_comments = [c for c in comments if self.comment_repo.can_user_view(c.id, user)]
+        # Filter comments based on view permissions using policy
+        visible_comments = [c for c in comments if check_policy(Action.VIEW, resource=c, user=user).allowed]
         return visible_comments

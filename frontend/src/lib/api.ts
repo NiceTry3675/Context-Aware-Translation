@@ -16,14 +16,15 @@ export const api = createClient<paths>({
   },
 });
 
-// Helper function to add auth headers
-export function setAuthToken(token: string) {
-  api.use({
-    onRequest({ request }) {
-      request.headers.set('Authorization', `Bearer ${token}`);
-      return request;
-    },
-  });
+// Helper function to create auth headers
+export function createAuthHeaders(token?: string) {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
 }
 
 // Export types from the generated API for convenience
@@ -31,9 +32,11 @@ export type Job = paths['/api/v1/jobs']['get']['responses']['200']['content']['a
 export type JobCreate = paths['/api/v1/jobs']['post']['requestBody']['content']['multipart/form-data'];
 export type Post = paths['/api/v1/community/posts/{post_id}']['get']['responses']['200']['content']['application/json'];
 export type PostList = paths['/api/v1/community/posts']['get']['responses']['200']['content']['application/json'][0];
-export type Comment = paths['/api/v1/community/posts/{post_id}/comments']['post']['responses']['200']['content']['application/json'];
+export type Comment = paths['/api/v1/community/posts/{post_id}/comments']['post']['responses']['201']['content']['application/json'];
 export type PostCategory = paths['/api/v1/community/categories']['get']['responses']['200']['content']['application/json'][0];
 export type CategoryOverview = paths['/api/v1/community/categories/overview']['get']['responses']['200']['content']['application/json'][0];
+export type Announcement = paths['/api/v1/community/announcements']['get']['responses']['200']['content']['application/json'][0];
+export type AnnouncementCreate = paths['/api/v1/community/announcements']['post']['requestBody']['content']['application/json'];
 export type ValidationResponse = paths['/api/v1/validate/{job_id}']['post']['responses']['200']['content']['application/json'];
 export type PostEditResponse = paths['/api/v1/post-edit/{job_id}']['post']['responses']['200']['content']['application/json'];
 
@@ -96,8 +99,8 @@ export const endpoints = {
   },
   
   // Community
-  async getPosts(params?: {
-    category?: string;
+  async getPosts(params: {
+    category: string;
     search?: string;
     skip?: number;
     limit?: number;
@@ -113,9 +116,10 @@ export const endpoints = {
     });
   },
 
-  async getPost(postId: number) {
+  async getPost(postId: number, token?: string) {
     return api.GET('/api/v1/community/posts/{post_id}', {
-      params: { path: { post_id: postId } }
+      params: { path: { post_id: postId } },
+      headers: createAuthHeaders(token)
     });
   },
 
@@ -123,19 +127,43 @@ export const endpoints = {
     return api.GET('/api/v1/community/categories');
   },
 
-  async getCategoriesOverview() {
-    return api.GET('/api/v1/community/categories/overview');
-  },
-  
-  async getComments(postId: number) {
-    return api.GET('/api/v1/community/posts/{post_id}/comments', {
-      params: { path: { post_id: postId } }
+  async getCategoriesOverview(token?: string) {
+    return api.GET('/api/v1/community/categories/overview', {
+      headers: createAuthHeaders(token)
     });
   },
 
-  async createComment(postId: number, data: any) {
+  async getComments(postId: number, token?: string) {
+    return api.GET('/api/v1/community/posts/{post_id}/comments', {
+      params: { path: { post_id: postId } },
+      headers: createAuthHeaders(token)
+    });
+  },
+
+  async createComment(postId: number, data: any, token?: string) {
     return api.POST('/api/v1/community/posts/{post_id}/comments', {
       params: { path: { post_id: postId } },
+      body: data,
+      headers: createAuthHeaders(token)
+    });
+  },
+
+  async incrementPostView(postId: number, token?: string) {
+    return api.POST('/api/v1/community/posts/{post_id}/view', {
+      params: { path: { post_id: postId } },
+      headers: createAuthHeaders(token)
+    });
+  },
+
+  // Announcement endpoints
+  async getAnnouncements(params?: { active_only?: boolean; limit?: number }) {
+    return api.GET('/api/v1/community/announcements', {
+      params: { query: params || {} }
+    });
+  },
+
+  async createAnnouncement(data: any) {
+    return api.POST('/api/v1/community/announcements', {
       body: data
     });
   },

@@ -51,7 +51,28 @@ class SqlAlchemyUoW:
                     self.rollback()
                     raise
         finally:
-            pass
+            if self.session:
+                self.session.close()
+
+    async def __aenter__(self):
+        """Async enter the context manager and create a new session."""
+        self.session = self._session_factory()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async exit the context manager, committing or rolling back as needed."""
+        try:
+            if exc_type:
+                self.rollback()
+            else:
+                try:
+                    self.commit()
+                except Exception:
+                    self.rollback()
+                    raise
+        finally:
+            if self.session:
+                self.session.close()
     
     def commit(self):
         """Commit the current transaction and dispatch any collected events."""

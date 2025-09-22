@@ -14,6 +14,7 @@ from backend.domains.translation.models import TranslationJob, TranslationUsageL
 from backend.domains.community.models import Announcement
 from backend.domains.user.repository import UserRepository, SqlAlchemyUserRepository
 from backend.domains.shared.uow import SqlAlchemyUoW
+from backend.config.database import SessionLocal
 from backend.domains.shared.events import DomainEvent
 from backend.config.settings import get_settings
 
@@ -56,6 +57,10 @@ class UserService:
         self.session = session
         self.user_repo = SqlAlchemyUserRepository(session)
         self.settings = get_settings()
+
+    def _create_session(self):
+        """Create a new session for UoW transactions."""
+        return SessionLocal()
     
     # User operations
     
@@ -102,7 +107,7 @@ class UserService:
         Returns:
             Created or updated user
         """
-        async with SqlAlchemyUoW(self.session) as uow:
+        async with SqlAlchemyUoW(self._create_session) as uow:
             existing_user = self.user_repo.get_by_clerk_id(clerk_user_id)
             is_new = existing_user is None
             
@@ -170,7 +175,7 @@ class UserService:
         if new_role not in ["admin", "user"]:
             raise ValueError(f"Invalid role: {new_role}")
         
-        async with SqlAlchemyUoW(self.session) as uow:
+        async with SqlAlchemyUoW(self._create_session) as uow:
             user = self.user_repo.get(user_id)
             if not user:
                 raise ValueError(f"User {user_id} not found")
@@ -564,7 +569,7 @@ class UserService:
         if not self.is_admin(admin_user):
             raise PermissionError("Only admins can create announcements")
         
-        async with SqlAlchemyUoW(self.session) as uow:
+        async with SqlAlchemyUoW(self._create_session) as uow:
             announcement = Announcement(
                 message=message,
                 is_active=is_active,
@@ -600,7 +605,7 @@ class UserService:
         if not self.is_admin(admin_user):
             raise PermissionError("Only admins can update announcements")
         
-        async with SqlAlchemyUoW(self.session) as uow:
+        async with SqlAlchemyUoW(self._create_session) as uow:
             announcement = self.session.query(Announcement).get(announcement_id)
             if not announcement:
                 raise ValueError(f"Announcement {announcement_id} not found")
@@ -632,7 +637,7 @@ class UserService:
         if not self.is_admin(admin_user):
             raise PermissionError("Only admins can delete announcements")
         
-        async with SqlAlchemyUoW(self.session) as uow:
+        async with SqlAlchemyUoW(self._create_session) as uow:
             announcement = self.session.query(Announcement).get(announcement_id)
             if not announcement:
                 raise ValueError(f"Announcement {announcement_id} not found")

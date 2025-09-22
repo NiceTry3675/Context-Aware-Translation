@@ -8,6 +8,22 @@ from backend.domains.user.models import User
 from backend.domains.community.models import Post, Comment, PostCategory
 
 
+def is_admin(user: Optional[User]) -> bool:
+    """Check if user has admin role."""
+    if not user:
+        return False
+    # For now, rely on the role field which should be synced from JWT claims
+    # The auth.py module handles the complex Clerk API checks
+    return user.role == "admin"
+
+
+def is_author(resource, user: Optional[User]) -> bool:
+    """Check if user is the author of a resource."""
+    if not user or not resource:
+        return False
+    return hasattr(resource, 'author_id') and resource.author_id == user.id
+
+
 class Action(Enum):
     """Enumeration of possible actions on community resources."""
     
@@ -16,7 +32,6 @@ class Action(Enum):
     EDIT = "edit"
     DELETE = "delete"
     PIN = "pin"
-    LOCK = "lock"
     MAKE_PRIVATE = "make_private"
     MODERATE = "moderate"
 
@@ -75,11 +90,11 @@ class PostPolicy:
             return PolicyResult.deny("Authentication required for private posts")
         
         # Author can view their own posts
-        if post.author_id == user.id:
+        if is_author(post, user):
             return PolicyResult.allow("User is the author")
-        
+
         # Admins can view all posts
-        if user.role == "admin":
+        if is_admin(user):
             return PolicyResult.allow("User is an admin")
         
         return PolicyResult.deny("User lacks permission to view private post")
@@ -90,7 +105,7 @@ class PostPolicy:
             return PolicyResult.deny("Authentication required to create posts")
         
         # Admin-only categories require admin role
-        if category.is_admin_only and user.role != "admin":
+        if category.is_admin_only and not is_admin(user):
             return PolicyResult.deny(f"Category '{category.name}' is admin-only")
         
         return PolicyResult.allow("User can create posts in this category")
@@ -101,11 +116,11 @@ class PostPolicy:
             return PolicyResult.deny("Authentication required to edit posts")
         
         # Author can edit their own posts
-        if post.author_id == user.id:
+        if is_author(post, user):
             return PolicyResult.allow("User is the author")
-        
+
         # Admins can edit all posts
-        if user.role == "admin":
+        if is_admin(user):
             return PolicyResult.allow("User is an admin")
         
         return PolicyResult.deny("User lacks permission to edit this post")
@@ -116,11 +131,11 @@ class PostPolicy:
             return PolicyResult.deny("Authentication required to delete posts")
         
         # Author can delete their own posts
-        if post.author_id == user.id:
+        if is_author(post, user):
             return PolicyResult.allow("User is the author")
-        
+
         # Admins can delete all posts
-        if user.role == "admin":
+        if is_admin(user):
             return PolicyResult.allow("User is an admin")
         
         return PolicyResult.deny("User lacks permission to delete this post")
@@ -131,25 +146,11 @@ class PostPolicy:
             return PolicyResult.deny("Authentication required to pin posts")
         
         # Only admins can pin posts
-        if user.role == "admin":
+        if is_admin(user):
             return PolicyResult.allow("User is an admin")
         
         return PolicyResult.deny("Only admins can pin posts")
     
-    def can_lock(self, post: Post, user: Optional[User]) -> PolicyResult:
-        """Check if user can lock/unlock a post for comments."""
-        if not user:
-            return PolicyResult.deny("Authentication required to lock posts")
-        
-        # Post author can lock their own posts
-        if post.author_id == user.id:
-            return PolicyResult.allow("User is the author")
-        
-        # Admins can lock any post
-        if user.role == "admin":
-            return PolicyResult.allow("User is an admin")
-        
-        return PolicyResult.deny("User lacks permission to lock this post")
     
     def can_make_private(self, post: Post, user: Optional[User]) -> PolicyResult:
         """Check if user can change post visibility."""
@@ -157,11 +158,11 @@ class PostPolicy:
             return PolicyResult.deny("Authentication required to change post visibility")
         
         # Post author can change their own post visibility
-        if post.author_id == user.id:
+        if is_author(post, user):
             return PolicyResult.allow("User is the author")
-        
+
         # Admins can change any post visibility
-        if user.role == "admin":
+        if is_admin(user):
             return PolicyResult.allow("User is an admin")
         
         return PolicyResult.deny("User lacks permission to change post visibility")
@@ -181,15 +182,15 @@ class CommentPolicy:
             return PolicyResult.deny("Authentication required for private comments")
         
         # Comment author can view their own comments
-        if comment.author_id == user.id:
+        if is_author(comment, user):
             return PolicyResult.allow("User is the author")
-        
+
         # Post author can view all comments on their post
-        if hasattr(comment, 'post') and comment.post and comment.post.author_id == user.id:
+        if hasattr(comment, 'post') and comment.post and is_author(comment.post, user):
             return PolicyResult.allow("User is the post author")
-        
+
         # Admins can view all comments
-        if user.role == "admin":
+        if is_admin(user):
             return PolicyResult.allow("User is an admin")
         
         return PolicyResult.deny("User lacks permission to view private comment")
@@ -199,11 +200,7 @@ class CommentPolicy:
         if not user:
             return PolicyResult.deny("Authentication required to comment")
         
-        # Check if post is locked
-        if hasattr(post, 'is_locked') and post.is_locked:
-            # Only post author and admins can comment on locked posts
-            if post.author_id != user.id and user.role != "admin":
-                return PolicyResult.deny("Post is locked for comments")
+        # Post locking functionality deferred - no locking checks needed
         
         # Check if post is private
         if post.is_private:
@@ -221,11 +218,11 @@ class CommentPolicy:
             return PolicyResult.deny("Authentication required to edit comments")
         
         # Author can edit their own comments
-        if comment.author_id == user.id:
+        if is_author(comment, user):
             return PolicyResult.allow("User is the author")
-        
+
         # Admins can edit all comments
-        if user.role == "admin":
+        if is_admin(user):
             return PolicyResult.allow("User is an admin")
         
         return PolicyResult.deny("User lacks permission to edit this comment")
@@ -236,15 +233,15 @@ class CommentPolicy:
             return PolicyResult.deny("Authentication required to delete comments")
         
         # Author can delete their own comments
-        if comment.author_id == user.id:
+        if is_author(comment, user):
             return PolicyResult.allow("User is the author")
-        
+
         # Post author can delete comments on their posts
-        if hasattr(comment, 'post') and comment.post and comment.post.author_id == user.id:
+        if hasattr(comment, 'post') and comment.post and is_author(comment.post, user):
             return PolicyResult.allow("User is the post author")
-        
+
         # Admins can delete all comments
-        if user.role == "admin":
+        if is_admin(user):
             return PolicyResult.allow("User is an admin")
         
         return PolicyResult.deny("User lacks permission to delete this comment")
@@ -255,11 +252,11 @@ class CommentPolicy:
             return PolicyResult.deny("Authentication required to change comment visibility")
         
         # Comment author can change their own comment visibility
-        if comment.author_id == user.id:
+        if is_author(comment, user):
             return PolicyResult.allow("User is the author")
-        
+
         # Admins can change any comment visibility
-        if user.role == "admin":
+        if is_admin(user):
             return PolicyResult.allow("User is an admin")
         
         return PolicyResult.deny("User lacks permission to change comment visibility")
@@ -279,7 +276,7 @@ class CategoryPolicy:
             return PolicyResult.deny("Authentication required to create categories")
         
         # Only admins can create categories
-        if user.role == "admin":
+        if is_admin(user):
             return PolicyResult.allow("User is an admin")
         
         return PolicyResult.deny("Only admins can create categories")
@@ -290,7 +287,7 @@ class CategoryPolicy:
             return PolicyResult.deny("Authentication required to edit categories")
         
         # Only admins can edit categories
-        if user.role == "admin":
+        if is_admin(user):
             return PolicyResult.allow("User is an admin")
         
         return PolicyResult.deny("Only admins can edit categories")
@@ -301,7 +298,7 @@ class CategoryPolicy:
             return PolicyResult.deny("Authentication required to delete categories")
         
         # Only admins can delete categories
-        if user.role == "admin":
+        if is_admin(user):
             return PolicyResult.allow("User is an admin")
         
         return PolicyResult.deny("Only admins can delete categories")
@@ -312,7 +309,7 @@ class CategoryPolicy:
             return PolicyResult.deny("Authentication required to post")
         
         # Admin-only categories require admin role
-        if category.is_admin_only and user.role != "admin":
+        if category.is_admin_only and not is_admin(user):
             return PolicyResult.deny(f"Category '{category.name}' is admin-only")
         
         return PolicyResult.allow("User can post in this category")
@@ -332,7 +329,7 @@ class AnnouncementPolicy:
             return PolicyResult.deny("Authentication required to create announcements")
         
         # Only admins can create announcements
-        if user.role == "admin":
+        if is_admin(user):
             return PolicyResult.allow("User is an admin")
         
         return PolicyResult.deny("Only admins can create announcements")
@@ -343,7 +340,7 @@ class AnnouncementPolicy:
             return PolicyResult.deny("Authentication required to edit announcements")
         
         # Only admins can edit announcements
-        if user.role == "admin":
+        if is_admin(user):
             return PolicyResult.allow("User is an admin")
         
         return PolicyResult.deny("Only admins can edit announcements")
@@ -354,7 +351,7 @@ class AnnouncementPolicy:
             return PolicyResult.deny("Authentication required to delete announcements")
         
         # Only admins can delete announcements
-        if user.role == "admin":
+        if is_admin(user):
             return PolicyResult.allow("User is an admin")
         
         return PolicyResult.deny("Only admins can delete announcements")
@@ -393,8 +390,6 @@ class CommunityPolicy:
                 return self.post.can_delete(resource, user)
             elif action == Action.PIN:
                 return self.post.can_pin(resource, user)
-            elif action == Action.LOCK:
-                return self.post.can_lock(resource, user)
             elif action == Action.MAKE_PRIVATE:
                 return self.post.can_make_private(resource, user)
         

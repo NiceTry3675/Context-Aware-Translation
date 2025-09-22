@@ -1591,38 +1591,13 @@
           {
             "name": "category",
             "in": "query",
-            "required": false,
+            "required": true,
             "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
+              "type": "string",
               "description": "Category name to filter by",
               "title": "Category"
             },
             "description": "Category name to filter by"
-          },
-          {
-            "name": "category_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "integer"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Category ID to filter by",
-              "title": "Category Id"
-            },
-            "description": "Category ID to filter by"
           },
           {
             "name": "search",
@@ -1753,6 +1728,46 @@
                   },
                   "type": "array",
                   "title": "Response List Categories Api V1 Community Categories Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Create Category",
+        "description": "Create a new category (admin only).",
+        "operationId": "create_category_api_v1_community_categories_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostCategoryCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostCategory"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -2180,6 +2195,345 @@
         }
       }
     },
+    "/api/v1/community/categories/{category_id}": {
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Get Category",
+        "description": "Get a specific category.",
+        "operationId": "get_category_api_v1_community_categories__category_id__get",
+        "parameters": [
+          {
+            "name": "category_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Category Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostCategory"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Update Category",
+        "description": "Update a category (admin only).",
+        "operationId": "update_category_api_v1_community_categories__category_id__put",
+        "parameters": [
+          {
+            "name": "category_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Category Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostCategoryCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostCategory"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Delete Category",
+        "description": "Delete a category (admin only).",
+        "operationId": "delete_category_api_v1_community_categories__category_id__delete",
+        "parameters": [
+          {
+            "name": "category_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Category Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/community/announcements": {
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "List Announcements",
+        "description": "Get announcements with optional filtering.",
+        "operationId": "list_announcements_api_v1_community_announcements_get",
+        "parameters": [
+          {
+            "name": "active_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Only return active announcements",
+              "default": true,
+              "title": "Active Only"
+            },
+            "description": "Only return active announcements"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum announcements to return",
+              "default": 10,
+              "title": "Limit"
+            },
+            "description": "Maximum announcements to return"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Announcement"
+                  },
+                  "title": "Response List Announcements Api V1 Community Announcements Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Create Announcement",
+        "description": "Create a new announcement (admin only).",
+        "operationId": "create_announcement_api_v1_community_announcements_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnouncementCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Announcement"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/community/announcements/stream": {
+      "get": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Stream Announcements",
+        "description": "Stream announcements via Server-Sent Events (SSE).",
+        "operationId": "stream_announcements_api_v1_community_announcements_stream_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/community/announcements/{announcement_id}": {
+      "put": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Update Announcement",
+        "description": "Update an existing announcement (admin only).",
+        "operationId": "update_announcement_api_v1_community_announcements__announcement_id__put",
+        "parameters": [
+          {
+            "name": "announcement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Announcement Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnouncementCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Announcement"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "community"
+        ],
+        "summary": "Delete Announcement",
+        "description": "Delete an announcement (admin only).",
+        "operationId": "delete_announcement_api_v1_community_announcements__announcement_id__delete",
+        "parameters": [
+          {
+            "name": "announcement_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Announcement Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/users/me": {
       "get": {
         "tags": [
@@ -2224,52 +2578,6 @@
         }
       }
     },
-    "/api/v1/announcements": {
-      "get": {
-        "tags": [
-          "users"
-        ],
-        "summary": "List Announcements",
-        "description": "Get active announcements (public endpoint).",
-        "operationId": "list_announcements_api_v1_announcements_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/Announcement"
-                  },
-                  "type": "array",
-                  "title": "Response List Announcements Api V1 Announcements Get"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/announcements/stream": {
-      "get": {
-        "tags": [
-          "users"
-        ],
-        "summary": "Stream Announcements",
-        "description": "Stream announcements via Server-Sent Events (SSE).",
-        "operationId": "stream_announcements_api_v1_announcements_stream_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/admin/posts/{post_id}": {
       "delete": {
         "tags": [
@@ -2292,48 +2600,6 @@
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/admin/announcements": {
-      "post": {
-        "tags": [
-          "admin"
-        ],
-        "summary": "Create Announcement",
-        "description": "Create a new announcement (requires ANNOUNCEMENT_CREATE permission).",
-        "operationId": "create_announcement_api_v1_admin_announcements_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AnnouncementCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Announcement"
-                }
-              }
-            }
           },
           "422": {
             "description": "Validation Error",
@@ -2507,6 +2773,31 @@
           "message"
         ],
         "title": "AnnouncementCreate"
+      },
+      "AuthorSummary": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "AuthorSummary",
+        "description": "Minimal author information for community content."
       },
       "Body_analyze_characters_api_v1_analysis_characters_post": {
         "properties": {
@@ -3039,7 +3330,7 @@
             "title": "Id"
           },
           "author": {
-            "$ref": "#/components/schemas/User"
+            "$ref": "#/components/schemas/AuthorSummary"
           },
           "post_id": {
             "type": "integer",
@@ -3361,7 +3652,7 @@
             "title": "Id"
           },
           "author": {
-            "$ref": "#/components/schemas/User"
+            "$ref": "#/components/schemas/AuthorSummary"
           },
           "category": {
             "$ref": "#/components/schemas/PostCategory"
@@ -3440,6 +3731,45 @@
           "created_at"
         ],
         "title": "PostCategory"
+      },
+      "PostCategoryCreate": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "is_admin_only": {
+            "type": "boolean",
+            "title": "Is Admin Only",
+            "default": false
+          },
+          "order": {
+            "type": "integer",
+            "title": "Order",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "display_name"
+        ],
+        "title": "PostCategoryCreate"
       },
       "PostCreate": {
         "properties": {
@@ -3587,7 +3917,7 @@
             "title": "Title"
           },
           "author": {
-            "$ref": "#/components/schemas/User"
+            "$ref": "#/components/schemas/AuthorSummary"
           },
           "category": {
             "$ref": "#/components/schemas/PostCategory"
@@ -3658,7 +3988,7 @@
             "title": "Title"
           },
           "author": {
-            "$ref": "#/components/schemas/User"
+            "$ref": "#/components/schemas/AuthorSummary"
           },
           "is_pinned": {
             "type": "boolean",

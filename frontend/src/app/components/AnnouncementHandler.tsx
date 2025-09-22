@@ -35,7 +35,7 @@ export default function AnnouncementHandler() {
     console.log('🔌 공지 시스템 연결 중...', apiUrl);
     setConnectionStatus('connecting');
 
-    const eventSource = new EventSource(`${apiUrl}/api/v1/announcements/stream`);
+    const eventSource = new EventSource(`${apiUrl}/api/v1/community/announcements/stream`);
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {

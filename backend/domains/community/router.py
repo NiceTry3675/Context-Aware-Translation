@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Response, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import traceback
@@ -15,19 +16,23 @@ from backend.domains.community.schemas import (
     CommentCreate,
     CommentUpdate,
     PostCategory as PostCategorySchema,
+    PostCategoryCreate,
     CategoryOverview
 )
+from backend.domains.user.schemas import Announcement as AnnouncementSchema, AnnouncementCreate
 from backend.domains.community.services import (
     PostService,
     CommentService,
     CategoryService,
     ImageService,
+    AnnouncementService,
 )
 from backend.domains.community.exceptions import (
     PostNotFoundException,
     CommentNotFoundException,
     CategoryNotFoundException,
-    PermissionDeniedException
+    PermissionDeniedException,
+    CommunityException
 )
 
 router = APIRouter()
@@ -43,6 +48,9 @@ def get_category_service(db: Session = Depends(get_db)) -> CategoryService:
 
 def get_image_service() -> ImageService:
     return ImageService()
+
+def get_announcement_service(db: Session = Depends(get_db)) -> AnnouncementService:
+    return AnnouncementService(db)
 
 @router.get("/posts", response_model=List[PostList])
 async def list_posts(
@@ -245,3 +253,149 @@ async def upload_image(
         return saved
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+# Category management endpoints
+@router.post("/categories", response_model=PostCategorySchema, status_code=status.HTTP_201_CREATED)
+async def create_category(
+    category: PostCategoryCreate,
+    current_user: User = Depends(dependencies.get_required_user),
+    category_service: CategoryService = Depends(get_category_service)
+) -> PostCategorySchema:
+    """Create a new category (admin only)."""
+    try:
+        db_category = await category_service.create_category(category, current_user)
+        return PostCategorySchema.from_orm(db_category)
+    except PermissionDeniedException as e:
+        raise HTTPException(status_code=403, detail=e.detail)
+
+@router.get("/categories/{category_id}", response_model=PostCategorySchema)
+async def get_category(
+    category_id: int,
+    category_service: CategoryService = Depends(get_category_service)
+) -> PostCategorySchema:
+    """Get a specific category."""
+    category = category_service.get_category(category_id)
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return PostCategorySchema.from_orm(category)
+
+@router.put("/categories/{category_id}", response_model=PostCategorySchema)
+async def update_category(
+    category_id: int,
+    category: PostCategoryCreate,
+    current_user: User = Depends(dependencies.get_required_user),
+    category_service: CategoryService = Depends(get_category_service)
+) -> PostCategorySchema:
+    """Update a category (admin only)."""
+    try:
+        db_category = await category_service.update_category(category_id, category, current_user)
+        return PostCategorySchema.from_orm(db_category)
+    except CategoryNotFoundException:
+        raise HTTPException(status_code=404, detail="Category not found")
+    except PermissionDeniedException as e:
+        raise HTTPException(status_code=403, detail=e.detail)
+
+@router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_category(
+    category_id: int,
+    current_user: User = Depends(dependencies.get_required_user),
+    category_service: CategoryService = Depends(get_category_service)
+):
+    """Delete a category (admin only)."""
+    try:
+        await category_service.delete_category(category_id, current_user)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except CategoryNotFoundException:
+        raise HTTPException(status_code=404, detail="Category not found")
+    except PermissionDeniedException as e:
+        raise HTTPException(status_code=403, detail=e.detail)
+
+# Announcement endpoints
+@router.get("/announcements", response_model=List[AnnouncementSchema])
+async def list_announcements(
+    active_only: bool = Query(True, description="Only return active announcements"),
+    limit: int = Query(10, ge=1, le=100, description="Maximum announcements to return"),
+    announcement_service: AnnouncementService = Depends(get_announcement_service)
+) -> List[AnnouncementSchema]:
+    """Get announcements with optional filtering."""
+    announcements = announcement_service.get_announcements(active_only=active_only, limit=limit)
+    return [AnnouncementSchema.from_orm(a) for a in announcements]
+
+@router.get("/announcements/stream")
+async def stream_announcements(
+    announcement_service: AnnouncementService = Depends(get_announcement_service)
+):
+    """Stream announcements via Server-Sent Events (SSE)."""
+    import asyncio
+    import json
+
+    async def event_generator():
+        while True:
+            try:
+                # Get active announcements
+                announcements = announcement_service.get_announcements(active_only=True)
+                announcements_data = [AnnouncementSchema.from_orm(a).dict() for a in announcements]
+
+                # Send the announcement data
+                yield f"data: {json.dumps(announcements_data)}\n\n"
+
+                # Wait before next update
+                await asyncio.sleep(30)  # Update every 30 seconds
+            except Exception as e:
+                print(f"Error in announcement stream: {e}")
+                break
+
+    return StreamingResponse(event_generator(), media_type="text/plain")
+
+@router.post("/announcements", response_model=AnnouncementSchema, status_code=status.HTTP_201_CREATED)
+async def create_announcement(
+    announcement: AnnouncementCreate,
+    current_user: User = Depends(dependencies.get_required_user),
+    announcement_service: AnnouncementService = Depends(get_announcement_service)
+) -> AnnouncementSchema:
+    """Create a new announcement (admin only)."""
+    try:
+        # Deactivate all other announcements first
+        announcement_service.deactivate_all_announcements()
+
+        # Create the new announcement
+        db_announcement = await announcement_service.create_announcement(announcement, current_user)
+        return AnnouncementSchema.from_orm(db_announcement)
+    except PermissionDeniedException as e:
+        raise HTTPException(status_code=403, detail=e.detail)
+
+@router.put("/announcements/{announcement_id}", response_model=AnnouncementSchema)
+async def update_announcement(
+    announcement_id: int,
+    announcement: AnnouncementCreate,
+    current_user: User = Depends(dependencies.get_required_user),
+    announcement_service: AnnouncementService = Depends(get_announcement_service)
+) -> AnnouncementSchema:
+    """Update an existing announcement (admin only)."""
+    try:
+        db_announcement = await announcement_service.update_announcement(
+            announcement_id=announcement_id,
+            message=announcement.message,
+            is_active=announcement.is_active,
+            user=current_user
+        )
+        return AnnouncementSchema.from_orm(db_announcement)
+    except PermissionDeniedException as e:
+        raise HTTPException(status_code=403, detail=e.detail)
+    except CommunityException as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.delete("/announcements/{announcement_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_announcement(
+    announcement_id: int,
+    current_user: User = Depends(dependencies.get_required_user),
+    announcement_service: AnnouncementService = Depends(get_announcement_service)
+):
+    """Delete an announcement (admin only)."""
+    try:
+        await announcement_service.delete_announcement(announcement_id, current_user)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    except PermissionDeniedException as e:
+        raise HTTPException(status_code=403, detail=e.detail)
+    except CommunityException as e:
+        raise HTTPException(status_code=404, detail=str(e))

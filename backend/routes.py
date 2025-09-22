@@ -159,19 +159,20 @@ router.add_api_route(
     response_model=TokenUsageDashboard,
     tags=["users"]
 )
-router.add_api_route(
-    "/announcements", 
-    user.list_announcements, 
-    methods=["GET"],
-    response_model=List[Announcement],
-    tags=["users"]
-)
-router.add_api_route(
-    "/announcements/stream", 
-    user.stream_announcements, 
-    methods=["GET"],
-    tags=["users"]
-)
+# Announcement endpoints moved to community domain
+# router.add_api_route(
+#     "/announcements",
+#     user.list_announcements,
+#     methods=["GET"],
+#     response_model=List[Announcement],
+#     tags=["users"]
+# )
+# router.add_api_route(
+#     "/announcements/stream",
+#     user.stream_announcements,
+#     methods=["GET"],
+#     tags=["users"]
+# )
 
 # Admin endpoints
 router.add_api_route(
@@ -181,13 +182,14 @@ router.add_api_route(
     status_code=204,
     tags=["admin"]
 )
-router.add_api_route(
-    "/admin/announcements", 
-    admin.create_announcement, 
-    methods=["POST"],
-    response_model=Announcement,
-    tags=["admin"]
-)
+# Announcement endpoints moved to community domain
+# router.add_api_route(
+#     "/admin/announcements",
+#     admin.create_announcement,
+#     methods=["POST"],
+#     response_model=Announcement,
+#     tags=["admin"]
+# )
 
 # Webhooks
 router.add_api_route(

@@ -118,6 +118,7 @@ def _name_email_from_claims(claims_dict: dict) -> tuple[str | None, str | None]:
     name = (
         claims_dict.get('name') or claims_dict.get('full_name') or
         f"{claims_dict.get('first_name', '')} {claims_dict.get('last_name', '')}".strip() or
+        claims_dict.get('username') or  # Try username from Clerk
         (email_address.split('@')[0] if email_address else None) or
         f"user_{claims_dict.get('sub', 'unknown')[-8:]}"  # Fallback to user ID suffix
     )
@@ -172,12 +173,20 @@ async def get_required_user(
     else:
         # 기존 사용자의 이름/이메일 보강: JWT 클레임 기반으로만 업데이트
         update_data = {}
-        if not db_user.name or not db_user.email:
-            name, email_address = _name_email_from_claims(claims)
-            if name and (not db_user.name or db_user.name.startswith("user_")):
-                update_data['name'] = name
-            if not db_user.email and email_address:
-                update_data['email'] = email_address
+        name, email_address = _name_email_from_claims(claims)
+
+        # Update name if we don't have one, or if it's a generated fallback, or if JWT has a better name
+        should_update_name = (
+            not db_user.name or
+            db_user.name.startswith("user_") or
+            (name and not name.startswith("user_") and name != db_user.name)
+        )
+        if name and should_update_name:
+            update_data['name'] = name
+
+        # Update email if we don't have one
+        if not db_user.email and email_address:
+            update_data['email'] = email_address
         if update_data:
             user_update = user_schemas.UserUpdate(**update_data)
             if db_user:
@@ -239,12 +248,20 @@ async def get_optional_user(
     else:
         # 기존 사용자의 이름/이메일 보강: JWT 클레임 기반으로만 업데이트
         update_data = {}
-        if not db_user.name or not db_user.email:
-            name, email_address = _name_email_from_claims(claims)
-            if name and (not db_user.name or db_user.name.startswith("user_")):
-                update_data['name'] = name
-            if not db_user.email and email_address:
-                update_data['email'] = email_address
+        name, email_address = _name_email_from_claims(claims)
+
+        # Update name if we don't have one, or if it's a generated fallback, or if JWT has a better name
+        should_update_name = (
+            not db_user.name or
+            db_user.name.startswith("user_") or
+            (name and not name.startswith("user_") and name != db_user.name)
+        )
+        if name and should_update_name:
+            update_data['name'] = name
+
+        # Update email if we don't have one
+        if not db_user.email and email_address:
+            update_data['email'] = email_address
         if update_data:
             user_update = user_schemas.UserUpdate(**update_data)
             if db_user:

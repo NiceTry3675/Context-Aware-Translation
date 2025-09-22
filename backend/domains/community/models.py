@@ -40,7 +40,7 @@ class Post(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
-    author = relationship("User", back_populates="posts")
+    author = relationship("User")
     category = relationship("PostCategory", back_populates="posts")
     comments = relationship("Comment", back_populates="post", cascade="all, delete-orphan")
 
@@ -56,7 +56,7 @@ class Comment(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
-    author = relationship("User", back_populates="comments")
+    author = relationship("User")
     post = relationship("Post", back_populates="comments")
     parent = relationship("Comment", remote_side=[id])
     replies = relationship("Comment", back_populates="parent", cascade="all, delete-orphan")
