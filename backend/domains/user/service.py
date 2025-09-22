@@ -403,11 +403,21 @@ class UserService:
     
     @staticmethod
     def _extract_name(clerk_data: dict) -> Optional[str]:
-        """Extract full name from Clerk user data."""
+        """
+        Extract a display name from Clerk user data.
+        Prioritizes username, then full name.
+        """
+        # 1. Prioritize username
+        username = clerk_data.get("username")
+        if username:
+            return username
+
+        # 2. Fallback to full name
         first_name = clerk_data.get("first_name", "")
         last_name = clerk_data.get("last_name", "")
         full_name = f"{first_name} {last_name}".strip()
-        return full_name or None
+        
+        return full_name or clerk_data.get("id")
     
     # Usage tracking
     

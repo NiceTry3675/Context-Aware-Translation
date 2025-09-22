@@ -171,11 +171,23 @@ async def get_required_user(
             if not db_user:
                 raise HTTPException(status_code=500, detail="Failed to create or find user after race condition.")
     else:
-        # 기존 사용자의 이름/이메일 보강: JWT 클레임 기반으로만 업데이트
+        # 기존 사용자의 이름/이메일 보강: 우선 JWT 클레임, 부족하면 Clerk Management API 사용 (옵션)
         update_data = {}
         name, email_address = _name_email_from_claims(claims)
 
-        # Update name if we don't have one, or if it's a generated fallback, or if JWT has a better name
+        # If name still missing or looks like fallback, optionally fetch richer info from Clerk
+        if USE_CLERK_MANAGEMENT_API and (not name or name.startswith("user_") or not db_user.name or db_user.name.startswith("user_")):
+            clerk_info = await get_clerk_user_info(db_user.clerk_user_id)
+            if clerk_info:
+                # Prefer Clerk username, then full name
+                enriched_name = clerk_info.get('username') or clerk_info.get('full_name') or name
+                if enriched_name:
+                    name = enriched_name
+                # Prefer Clerk primary email if missing
+                if not email_address and clerk_info.get('email'):
+                    email_address = clerk_info['email']
+
+        # Update name if we don't have one, or if it's a generated fallback, or if we found a better name
         should_update_name = (
             not db_user.name or
             db_user.name.startswith("user_") or
@@ -194,11 +206,24 @@ async def get_required_user(
                     setattr(db_user, key, value)
                 db.commit()
                 db.refresh(db_user)
-            print(f"--- [INFO] Updated user {db_user.id} with: {update_data} (claims-based). ---")
+            print(f"--- [INFO] Updated user {db_user.id} with: {update_data} (claims/Clerk). ---")
 
-    # Sync user role from JWT claims (no external API call)
+    # Sync user role from JWT claims; if absent, optionally use Clerk Management API
     if db_user:
         db_user = await sync_user_role_from_claims(db, db_user, claims)
+        if db_user.role != "admin":
+            # If role still not admin and claims lacked role, try Clerk API when enabled
+            if USE_CLERK_MANAGEMENT_API:
+                try:
+                    clerk_info = await get_clerk_user_info(db_user.clerk_user_id)
+                    clerk_role = (clerk_info or {}).get('public_metadata', {}).get('role') if clerk_info else None
+                    if clerk_role and clerk_role != db_user.role:
+                        db_user.role = clerk_role
+                        db.commit()
+                        db.refresh(db_user)
+                        print(f"--- [INFO] Synced role from Clerk API for user {db_user.id} to '{clerk_role}'. ---")
+                except Exception as e:
+                    print(f"--- [WARN] Clerk API role sync failed for {db_user.clerk_user_id}: {e}")
 
     return db_user
 
@@ -246,11 +271,19 @@ async def get_optional_user(
             print(f"--- [ERROR] Failed to create user in optional auth: {e}")
             return None
     else:
-        # 기존 사용자의 이름/이메일 보강: JWT 클레임 기반으로만 업데이트
+        # 기존 사용자의 이름/이메일 보강: 우선 JWT, 부족하면 Clerk Management API 사용 (옵션)
         update_data = {}
         name, email_address = _name_email_from_claims(claims)
 
-        # Update name if we don't have one, or if it's a generated fallback, or if JWT has a better name
+        if USE_CLERK_MANAGEMENT_API and (not name or name.startswith("user_") or not db_user.name or db_user.name.startswith("user_")):
+            clerk_info = await get_clerk_user_info(db_user.clerk_user_id)
+            if clerk_info:
+                enriched_name = clerk_info.get('username') or clerk_info.get('full_name') or name
+                if enriched_name:
+                    name = enriched_name
+                if not email_address and clerk_info.get('email'):
+                    email_address = clerk_info['email']
+
         should_update_name = (
             not db_user.name or
             db_user.name.startswith("user_") or
@@ -259,7 +292,6 @@ async def get_optional_user(
         if name and should_update_name:
             update_data['name'] = name
 
-        # Update email if we don't have one
         if not db_user.email and email_address:
             update_data['email'] = email_address
         if update_data:
@@ -269,10 +301,21 @@ async def get_optional_user(
                     setattr(db_user, key, value)
                 db.commit()
                 db.refresh(db_user)
-            print(f"--- [INFO] Updated user {db_user.id} with: {update_data} (claims-based). ---")
+            print(f"--- [INFO] Updated user {db_user.id} with: {update_data} (claims/Clerk). ---")
 
     if db_user:
         db_user = await sync_user_role_from_claims(db, db_user, claims)
+        if db_user.role != "admin" and USE_CLERK_MANAGEMENT_API:
+            try:
+                clerk_info = await get_clerk_user_info(db_user.clerk_user_id)
+                clerk_role = (clerk_info or {}).get('public_metadata', {}).get('role') if clerk_info else None
+                if clerk_role and clerk_role != db_user.role:
+                    db_user.role = clerk_role
+                    db.commit()
+                    db.refresh(db_user)
+                    print(f"--- [INFO] Synced role from Clerk API for user {db_user.id} to '{clerk_role}'. ---")
+            except Exception as e:
+                print(f"--- [WARN] Clerk API role sync failed for {db_user.clerk_user_id}: {e}")
 
     return db_user
 

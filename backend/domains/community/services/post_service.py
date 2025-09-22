@@ -79,7 +79,9 @@ class PostService:
 
     async def update_post(self, post_id: int, post_update: PostUpdate, user: User) -> Post:
         with SqlAlchemyUoW(self._create_session) as uow:
-            post = self.post_repo.get(post_id)
+            # Use a repository bound to the UoW session to avoid cross-session issues
+            post_repo = SqlAlchemyPostRepository(uow.session)
+            post = post_repo.get(post_id)
             if not post:
                 raise PostNotFoundException(f"Post {post_id} not found")
 
@@ -139,7 +141,9 @@ class PostService:
 
     async def delete_post(self, post_id: int, user: User) -> None:
         with SqlAlchemyUoW(self._create_session) as uow:
-            post = self.post_repo.get(post_id)
+            # Use a repository bound to the UoW session to avoid cross-session issues
+            post_repo = SqlAlchemyPostRepository(uow.session)
+            post = post_repo.get(post_id)
             if not post:
                 raise PostNotFoundException(f"Post {post_id} not found")
 
@@ -205,9 +209,11 @@ class PostService:
         # No need for post-processing filtering - repository handles it at SQL level
         return posts, total
 
-    async def increment_view_count(self, post_id: int, user: Optional[User] = None) -> Post:
+    async def increment_view_count(self, post_id: int, user: Optional[User] = None) -> int:
         with SqlAlchemyUoW(self._create_session) as uow:
-            post = self.post_repo.get(post_id)
+            # Use a repository bound to the UoW session
+            post_repo = SqlAlchemyPostRepository(uow.session)
+            post = post_repo.get(post_id)
             if not post:
                 raise PostNotFoundException(f"Post {post_id} not found")
 
@@ -216,7 +222,7 @@ class PostService:
             except PermissionError as e:
                 raise PermissionDeniedException(str(e))
 
-            self.post_repo.increment_view_count(post_id)
+            post_repo.increment_view_count(post_id)
             uow.commit()
             uow.session.refresh(post)
-            return post
+            return int(post.view_count or 0)

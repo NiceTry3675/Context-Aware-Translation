@@ -12,7 +12,9 @@ interface LegacyAuthor {
   role: string;
 }
 
+// AuthorSummary from backend (new schema)
 type AuthorSummary = components['schemas']['AuthorSummary'];
+
 type Author = LegacyAuthor | AuthorSummary;
 
 interface UserDisplayNameProps {
@@ -33,35 +35,38 @@ export default function UserDisplayName({
 }: UserDisplayNameProps) {
   const { user } = useUser();
 
-  // 현재 사용자인지 확인 (legacy API에서만 가능)
-  const isCurrentUser = isLegacyAuthor(author) && user?.id === author.clerk_user_id;
+  // Determine if this author is the currently signed-in user
+  const isCurrentUser = (() => {
+    if (!user) return false;
+    // Legacy: compare Clerk IDs
+    if (isLegacyAuthor(author)) return user.id === author.clerk_user_id;
+    // New schema: compare numeric id if available via publicMetadata (optional)
+    // We can't reliably map Clerk user to numeric DB id on the client, so only rely on name display below.
+    return false;
+  })();
 
-  // 표시할 이름 결정 로직 (사용자명 우선)
+  // Decide display name with sensible fallbacks
   const getDisplayName = () => {
-    // 1. 현재 사용자인 경우 Clerk에서 사용자명 우선 가져오기
+    // Prefer Clerk username for the current user for better UX
     if (isCurrentUser && user) {
-      if (user.username) {
-        return user.username;
-      }
-      if (user.firstName || user.lastName) {
-        return `${user.firstName || ''} ${user.lastName || ''}`.trim();
-      }
+      if (user.username) return user.username;
+      const full = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+      if (full) return full;
     }
 
-    // 2. 데이터베이스의 name 필드 사용 (보통 username이 저장됨)
-    if (author.name && author.name.trim()) {
-      return author.name.trim();
-    }
+    // Use provided author name if present
+    const providedName = (author as any).name as string | undefined;
+    if (providedName && providedName.trim()) return providedName.trim();
 
-    // 3. 이메일에서 사용자명 추출 (legacy API에서만)
+    // Legacy fallback: derive from email
     if (isLegacyAuthor(author) && author.email) {
       const emailUser = author.email.split('@')[0];
-      return variant === 'short' ?
-        (emailUser.length > 8 ? emailUser.substring(0, 8) + '...' : emailUser) :
-        emailUser;
+      return variant === 'short'
+        ? (emailUser.length > 8 ? emailUser.substring(0, 8) + '...' : emailUser)
+        : emailUser;
     }
 
-    // 4. 기본값
+    // Generic fallback
     return isCurrentUser ? '나' : '사용자';
   };
 

@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
-import { endpoints } from '@/lib/api';
+import { endpoints, type CurrentUser } from '@/lib/api';
 import { getCachedClerkToken } from '../../../utils/authToken';
 import UserDisplayName from '../../../components/UserDisplayName';
 import {
@@ -35,6 +35,7 @@ function PostDetailPageContent() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUserDb, setCurrentUserDb] = useState<CurrentUser | null>(null);
   const [commentContent, setCommentContent] = useState('');
   const [commentIsPrivate, setCommentIsPrivate] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -80,6 +81,16 @@ function PostDetailPageContent() {
     }
   }, [getToken, postId]);
 
+  const fetchCurrentUser = useCallback(async () => {
+    try {
+      const token = await getToken();
+      const { data } = await endpoints.getCurrentUser(token || undefined);
+      if (data) setCurrentUserDb(data);
+    } catch (_) {
+      // ignore; we can still render without it
+    }
+  }, [getToken]);
+
   const incrementViewCount = useCallback(async () => {
     try {
       const token = await getToken();
@@ -107,11 +118,12 @@ function PostDetailPageContent() {
 
     fetchPost();
     fetchComments();
+    fetchCurrentUser();
     if (!viewCountIncremented.current) {
       incrementViewCount();
       viewCountIncremented.current = true;
     }
-  }, [isLoaded, isSignedIn, router, fetchPost, fetchComments, incrementViewCount]);
+  }, [isLoaded, isSignedIn, router, fetchPost, fetchComments, fetchCurrentUser, incrementViewCount]);
 
   const handleDeletePost = async () => {
     if (!confirm('정말로 이 게시글을 삭제하시겠습니까?')) return;
@@ -208,18 +220,16 @@ function PostDetailPageContent() {
 
   const canModifyPost = () => {
     if (!post || !user) return false;
-
-    // Note: With AuthorSummary schema, we can't determine ownership reliably
-    // Only allow admin actions for now
-    return user.publicMetadata?.role === 'admin';
+    const isAdmin = user.publicMetadata?.role === 'admin';
+    const isAuthor = currentUserDb && post.author && 'id' in post.author && currentUserDb.id === post.author.id;
+    return Boolean(isAdmin || isAuthor);
   };
 
   const canModifyComment = (comment: Comment) => {
     if (!user) return false;
-
-    // Note: With AuthorSummary schema, we can't determine ownership reliably
-    // Only allow admin actions for now
-    return user.publicMetadata?.role === 'admin';
+    const isAdmin = user.publicMetadata?.role === 'admin';
+    const isAuthor = currentUserDb && comment.author && 'id' in comment.author && currentUserDb.id === comment.author.id;
+    return Boolean(isAdmin || isAuthor);
   };
 
   const formatDate = (dateString: string) => {

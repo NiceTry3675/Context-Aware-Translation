@@ -163,8 +163,8 @@ async def increment_post_view(
 ):
     """Increment the view count for a post."""
     try:
-        post = await post_service.increment_view_count(post_id, current_user)
-        return {"view_count": post.view_count}
+        view_count = await post_service.increment_view_count(post_id, current_user)
+        return {"view_count": view_count}
     except PostNotFoundException as e:
         raise HTTPException(status_code=404, detail=e.detail)
     except PermissionDeniedException as e:

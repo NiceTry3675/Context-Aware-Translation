@@ -27,7 +27,10 @@ class CommentService:
 
     async def create_comment(self, comment_data: CommentCreate, user: User) -> Comment:
         with SqlAlchemyUoW(self._create_session) as uow:
-            post = self.post_repo.get(comment_data.post_id)
+            # Use repositories bound to the UoW session for consistency
+            post_repo = SqlAlchemyPostRepository(uow.session)
+            comment_repo = SqlAlchemyCommentRepository(uow.session)
+            post = post_repo.get(comment_data.post_id)
             if not post:
                 raise PostNotFoundException(f"Post {comment_data.post_id} not found")
 
@@ -50,7 +53,7 @@ class CommentService:
             )
 
             if comment_data.parent_id:
-                parent_comment = self.comment_repo.get(comment_data.parent_id)
+                parent_comment = comment_repo.get(comment_data.parent_id)
                 if not parent_comment:
                     raise CommentNotFoundException(f"Parent comment {comment_data.parent_id} not found")
                 if parent_comment.post_id != comment_data.post_id:
@@ -70,12 +73,14 @@ class CommentService:
             ))
 
             uow.commit()
-            # Return a fresh copy with all relationships loaded from the main session
-            return self.comment_repo.get(comment.id)
+            # Return a fresh copy with all relationships loaded from a repository
+            return SqlAlchemyCommentRepository(self.session).get(comment.id)
 
     async def update_comment(self, comment_id: int, comment_update: CommentUpdate, user: User) -> Comment:
         with SqlAlchemyUoW(self._create_session) as uow:
-            comment = self.comment_repo.get(comment_id)
+            # Use repository bound to UoW session
+            comment_repo = SqlAlchemyCommentRepository(uow.session)
+            comment = comment_repo.get(comment_id)
             if not comment:
                 raise CommentNotFoundException(f"Comment {comment_id} not found")
 
@@ -98,12 +103,14 @@ class CommentService:
             comment.updated_at = datetime.utcnow()
 
             uow.commit()
-            # Return a fresh copy with all relationships loaded from the main session
-            return self.comment_repo.get(comment.id)
+            # Return a fresh copy with all relationships loaded from a repository
+            return SqlAlchemyCommentRepository(self.session).get(comment.id)
 
     async def delete_comment(self, comment_id: int, user: User) -> None:
         with SqlAlchemyUoW(self._create_session) as uow:
-            comment = self.comment_repo.get(comment_id)
+            # Use repository bound to UoW session
+            comment_repo = SqlAlchemyCommentRepository(uow.session)
+            comment = comment_repo.get(comment_id)
             if not comment:
                 raise CommentNotFoundException(f"Comment {comment_id} not found")
 

@@ -61,10 +61,10 @@ export default function CommunityPage() {
         throw new Error('Failed to fetch categories');
       }
 
-      console.log('Categories fetched:', categories);
-      setCategories(categories);
+      console.log('Categories fetched:', data);
+      setCategories(data);
 
-      if (categories.length === 0) {
+      if (!data || data.length === 0) {
         setError('카테고리가 아직 생성되지 않았습니다. 관리자에게 문의해주세요.');
       }
     } catch (err) {

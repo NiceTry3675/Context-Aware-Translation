@@ -37,6 +37,7 @@ export type PostCategory = paths['/api/v1/community/categories']['get']['respons
 export type CategoryOverview = paths['/api/v1/community/categories/overview']['get']['responses']['200']['content']['application/json'][0];
 export type Announcement = paths['/api/v1/community/announcements']['get']['responses']['200']['content']['application/json'][0];
 export type AnnouncementCreate = paths['/api/v1/community/announcements']['post']['requestBody']['content']['application/json'];
+export type CurrentUser = paths['/api/v1/users/me']['get']['responses']['200']['content']['application/json'];
 export type ValidationResponse = paths['/api/v1/validate/{job_id}']['post']['responses']['200']['content']['application/json'];
 export type PostEditResponse = paths['/api/v1/post-edit/{job_id}']['post']['responses']['200']['content']['application/json'];
 
@@ -159,6 +160,13 @@ export const endpoints = {
   async getAnnouncements(params?: { active_only?: boolean; limit?: number }) {
     return api.GET('/api/v1/community/announcements', {
       params: { query: params || {} }
+    });
+  },
+
+  // User
+  async getCurrentUser(token?: string) {
+    return api.GET('/api/v1/users/me', {
+      headers: createAuthHeaders(token)
     });
   },
 
