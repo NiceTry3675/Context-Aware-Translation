@@ -53,6 +53,35 @@ app.add_middleware(
     allow_headers=settings.cors_allow_headers,
 )
 
+# Ensure database is initialized (run Alembic migrations) on startup
+@app.on_event("startup")
+def _ensure_database_initialized():
+    try:
+        # Inspect current database; if empty, apply migrations
+        from sqlalchemy import inspect
+        from .config.database import engine
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        if not tables:
+            print("[startup] Database empty. Running Alembic upgrade head...")
+            from alembic.config import Config
+            from alembic import command
+            cfg = Config("backend/alembic.ini")
+            command.upgrade(cfg, "head")
+            print("[startup] Alembic migration completed.")
+    except Exception as e:
+        # Don't crash the app on startup; just log the error.
+        print(f"[startup] Database initialization failed: {e}")
+
+# Run auto-initialization tasks (e.g., seed categories) after DB is ready
+@app.on_event("startup")
+def _run_auto_init_after_db_ready():
+    try:
+        from . import auto_init
+        auto_init.run_auto_init()
+    except Exception as e:
+        print(f"❌ Auto initialization error (post-migrate): {e}")
+
 # Create uploads directory if it doesn't exist (handled by settings validator)
 # The upload directory is already created by the settings validator
 

@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
-import { buildOptionalAuthHeader } from '../../utils/authToken';
+import { buildAuthHeader } from '../../utils/authToken';
 import UserDisplayName from '../../components/UserDisplayName';
 import {
   Container, Box, Typography, Button, Alert,
@@ -76,7 +76,7 @@ function CategoryPostsPageContent() {
       const response = await fetch(
         `${API_URL}/api/v1/community/posts?category=${categoryName}&skip=${page * rowsPerPage}&limit=${rowsPerPage}${searchTerm ? `&search=${searchTerm}` : ''}`,
         {
-          headers: buildOptionalAuthHeader()
+          headers: await buildAuthHeader(getToken)
         }
       );
       if (!response.ok) throw new Error('Failed to fetch posts');
@@ -294,8 +294,8 @@ function CategoryPostsPageContent() {
                           fontStyle: post.is_private ? 'italic' : 'normal'
                         }}
                       >
-                        {post.is_private && user?.id !== post.author.clerk_user_id && user?.publicMetadata?.role !== 'admin' 
-                          ? '🔒 비밀글입니다' 
+                        {post.is_private && user?.publicMetadata?.role !== 'admin'
+                          ? '🔒 비밀글입니다'
                           : post.title
                         }
                       </Typography>
@@ -305,11 +305,8 @@ function CategoryPostsPageContent() {
                     <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
                       <PersonIcon fontSize="small" color="action" />
                       <Typography variant="body2">
-                        <UserDisplayName author={post.author} variant="short" />
+                        <UserDisplayName author={post.author} variant="short" showRole />
                       </Typography>
-                      {post.author.role === 'admin' && (
-                        <Chip label="운영자" size="small" color="primary" />
-                      )}
                     </Box>
                   </TableCell>
                   <TableCell align="center">

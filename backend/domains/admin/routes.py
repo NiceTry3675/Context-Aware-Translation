@@ -11,7 +11,8 @@ from backend.domains.community.models import Announcement
 from backend.domains.user.schemas import AnnouncementCreate
 from backend.domains.admin.policy import Permission, enforce_permission
 from backend.domains.user.service import UserService
-from backend.domains.community.service import CommunityService
+
+from backend.domains.community.services import PostService
 from backend.config.settings import get_settings
 
 
@@ -20,9 +21,9 @@ def get_user_service(db: Session = Depends(get_db)) -> UserService:
     return UserService(db)
 
 
-def get_community_service(db: Session = Depends(get_db)) -> CommunityService:
-    """Dependency to get community service."""
-    return CommunityService(db)
+def get_post_service(db: Session = Depends(get_db)) -> PostService:
+    """Dependency to get post service."""
+    return PostService(db)
 
 
 # Dependency to verify admin secret key (legacy support)
@@ -39,7 +40,7 @@ async def verify_admin_secret(
 async def delete_any_post(
     post_id: int,
     current_user: User = Depends(get_required_user),
-    service: CommunityService = Depends(get_community_service)
+    service: PostService = Depends(get_post_service)
 ):
     """Delete any post (requires POST_DELETE_ANY permission)."""
     try:

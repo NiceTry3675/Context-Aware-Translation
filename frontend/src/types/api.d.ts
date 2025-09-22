@@ -771,6 +771,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/community/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Posts
+         * @description Get posts with filtering and pagination.
+         */
+        get: operations["list_posts_api_v1_community_posts_get"];
+        put?: never;
+        /**
+         * Create Post
+         * @description Create a new post.
+         */
+        post: operations["create_post_api_v1_community_posts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/community/categories": {
         parameters: {
             query?: never;
@@ -784,7 +808,11 @@ export interface paths {
          */
         get: operations["list_categories_api_v1_community_categories_get"];
         put?: never;
-        post?: never;
+        /**
+         * Create Category
+         * @description Create a new category (admin only).
+         */
+        post: operations["create_category_api_v1_community_categories_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -805,30 +833,6 @@ export interface paths {
         get: operations["list_categories_overview_api_v1_community_categories_overview_get"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/community/posts": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Posts
-         * @description Get posts with filtering and pagination.
-         */
-        get: operations["list_posts_api_v1_community_posts_get"];
-        put?: never;
-        /**
-         * Create Post
-         * @description Create a new post.
-         */
-        post: operations["create_post_api_v1_community_posts_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -863,6 +867,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/community/posts/{post_id}/view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Increment Post View
+         * @description Increment the view count for a post.
+         */
+        post: operations["increment_post_view_api_v1_community_posts__post_id__view_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/community/posts/{post_id}/comments": {
         parameters: {
             query?: never;
@@ -881,26 +905,6 @@ export interface paths {
          * @description Create a comment on a post.
          */
         post: operations["create_comment_api_v1_community_posts__post_id__comments_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/community/posts/{post_id}/view": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Increment Post View
-         * @description Increment the view count for a post.
-         */
-        post: operations["increment_post_view_api_v1_community_posts__post_id__view_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -931,7 +935,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/community/upload-image": {
+    "/api/v1/community/images": {
         parameters: {
             query?: never;
             header?: never;
@@ -944,8 +948,104 @@ export interface paths {
          * Upload Image
          * @description Handle community image uploads.
          */
-        post: operations["upload_image_api_v1_community_upload_image_post"];
+        post: operations["upload_image_api_v1_community_images_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/community/categories/{category_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Category
+         * @description Get a specific category.
+         */
+        get: operations["get_category_api_v1_community_categories__category_id__get"];
+        /**
+         * Update Category
+         * @description Update a category (admin only).
+         */
+        put: operations["update_category_api_v1_community_categories__category_id__put"];
+        post?: never;
+        /**
+         * Delete Category
+         * @description Delete a category (admin only).
+         */
+        delete: operations["delete_category_api_v1_community_categories__category_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/community/announcements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Announcements
+         * @description Get announcements with optional filtering.
+         */
+        get: operations["list_announcements_api_v1_community_announcements_get"];
+        put?: never;
+        /**
+         * Create Announcement
+         * @description Create a new announcement (admin only).
+         */
+        post: operations["create_announcement_api_v1_community_announcements_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/community/announcements/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream Announcements
+         * @description Stream announcements via Server-Sent Events (SSE).
+         */
+        get: operations["stream_announcements_api_v1_community_announcements_stream_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/community/announcements/{announcement_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Announcement
+         * @description Update an existing announcement (admin only).
+         */
+        put: operations["update_announcement_api_v1_community_announcements__announcement_id__put"];
+        post?: never;
+        /**
+         * Delete Announcement
+         * @description Delete an announcement (admin only).
+         */
+        delete: operations["delete_announcement_api_v1_community_announcements__announcement_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -991,46 +1091,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/announcements": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Announcements
-         * @description Get active announcements (public endpoint).
-         */
-        get: operations["list_announcements_api_v1_announcements_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/announcements/stream": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Stream Announcements
-         * @description Stream announcements via Server-Sent Events (SSE).
-         */
-        get: operations["stream_announcements_api_v1_announcements_stream_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/admin/posts/{post_id}": {
         parameters: {
             query?: never;
@@ -1046,26 +1106,6 @@ export interface paths {
          * @description Delete any post (requires POST_DELETE_ANY permission).
          */
         delete: operations["delete_any_post_api_v1_admin_posts__post_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/admin/announcements": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Create Announcement
-         * @description Create a new announcement (requires ANNOUNCEMENT_CREATE permission).
-         */
-        post: operations["create_announcement_api_v1_admin_announcements_post"];
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1195,6 +1235,16 @@ export interface components {
              * @default true
              */
             is_active: boolean;
+        };
+        /**
+         * AuthorSummary
+         * @description Minimal author information for community content.
+         */
+        AuthorSummary: {
+            /** Id */
+            id: number;
+            /** Name */
+            name?: string | null;
         };
         /** Body_analyze_characters_api_v1_analysis_characters_post */
         Body_analyze_characters_api_v1_analysis_characters_post: {
@@ -1351,8 +1401,8 @@ export interface components {
             /** Profile Json */
             profile_json?: string | null;
         };
-        /** Body_upload_image_api_v1_community_upload_image_post */
-        Body_upload_image_api_v1_community_upload_image_post: {
+        /** Body_upload_image_api_v1_community_images_post */
+        Body_upload_image_api_v1_community_images_post: {
             /**
              * File
              * Format: binary
@@ -1445,7 +1495,7 @@ export interface components {
             is_private: boolean;
             /** Id */
             id: number;
-            author: components["schemas"]["User"];
+            author: components["schemas"]["AuthorSummary"];
             /** Post Id */
             post_id: number;
             /** Replies */
@@ -1602,7 +1652,7 @@ export interface components {
             images?: string[];
             /** Id */
             id: number;
-            author: components["schemas"]["User"];
+            author: components["schemas"]["AuthorSummary"];
             category: components["schemas"]["PostCategory"];
             /** View Count */
             view_count: number;
@@ -1634,6 +1684,25 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** PostCategoryCreate */
+        PostCategoryCreate: {
+            /** Name */
+            name: string;
+            /** Display Name */
+            display_name: string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Is Admin Only
+             * @default false
+             */
+            is_admin_only: boolean;
+            /**
+             * Order
+             * @default 0
+             */
+            order: number;
         };
         /** PostCreate */
         PostCreate: {
@@ -1696,7 +1765,7 @@ export interface components {
             id: number;
             /** Title */
             title: string;
-            author: components["schemas"]["User"];
+            author: components["schemas"]["AuthorSummary"];
             category: components["schemas"]["PostCategory"];
             /** Is Pinned */
             is_pinned: boolean;
@@ -1728,7 +1797,7 @@ export interface components {
             id: number;
             /** Title */
             title: string;
-            author: components["schemas"]["User"];
+            author: components["schemas"]["AuthorSummary"];
             /** Is Pinned */
             is_pinned: boolean;
             /** Is Private */
@@ -3122,53 +3191,11 @@ export interface operations {
             };
         };
     };
-    list_categories_api_v1_community_categories_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PostCategory"][];
-                };
-            };
-        };
-    };
-    list_categories_overview_api_v1_community_categories_overview_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CategoryOverview"][];
-                };
-            };
-        };
-    };
     list_posts_api_v1_community_posts_get: {
         parameters: {
-            query?: {
+            query: {
                 /** @description Category name to filter by */
-                category?: string | null;
-                /** @description Category ID to filter by */
-                category_id?: number | null;
+                category: string;
                 /** @description Search query */
                 search?: string | null;
                 skip?: number;
@@ -3214,7 +3241,7 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3229,6 +3256,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_categories_api_v1_community_categories_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostCategory"][];
+                };
+            };
+        };
+    };
+    create_category_api_v1_community_categories_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PostCategoryCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostCategory"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_categories_overview_api_v1_community_categories_overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CategoryOverview"][];
                 };
             };
         };
@@ -3328,6 +3428,37 @@ export interface operations {
             };
         };
     };
+    increment_post_view_api_v1_community_posts__post_id__view_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                post_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_post_comments_api_v1_community_posts__post_id__comments_get: {
         parameters: {
             query?: never;
@@ -3375,45 +3506,12 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["Comment"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    increment_post_view_api_v1_community_posts__post_id__view_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                post_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: number;
-                    };
                 };
             };
             /** @description Validation Error */
@@ -3491,7 +3589,7 @@ export interface operations {
             };
         };
     };
-    upload_image_api_v1_community_upload_image_post: {
+    upload_image_api_v1_community_images_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -3500,7 +3598,73 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "multipart/form-data": components["schemas"]["Body_upload_image_api_v1_community_upload_image_post"];
+                "multipart/form-data": components["schemas"]["Body_upload_image_api_v1_community_images_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_category_api_v1_community_categories__category_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostCategory"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_category_api_v1_community_categories__category_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PostCategoryCreate"];
             };
         };
         responses: {
@@ -3510,8 +3674,188 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": components["schemas"]["PostCategory"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_category_api_v1_community_categories__category_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_announcements_api_v1_community_announcements_get: {
+        parameters: {
+            query?: {
+                /** @description Only return active announcements */
+                active_only?: boolean;
+                /** @description Maximum announcements to return */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Announcement"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_announcement_api_v1_community_announcements_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnouncementCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Announcement"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stream_announcements_api_v1_community_announcements_stream_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/json": unknown;
                 };
+            };
+        };
+    };
+    update_announcement_api_v1_community_announcements__announcement_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                announcement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnnouncementCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Announcement"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_announcement_api_v1_community_announcements__announcement_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                announcement_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -3564,46 +3908,6 @@ export interface operations {
             };
         };
     };
-    list_announcements_api_v1_announcements_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Announcement"][];
-                };
-            };
-        };
-    };
-    stream_announcements_api_v1_announcements_stream_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
     delete_any_post_api_v1_admin_posts__post_id__delete: {
         parameters: {
             query?: never;
@@ -3621,39 +3925,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_announcement_api_v1_admin_announcements_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AnnouncementCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Announcement"];
-                };
             };
             /** @description Validation Error */
             422: {

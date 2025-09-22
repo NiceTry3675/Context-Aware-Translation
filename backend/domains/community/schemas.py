@@ -8,9 +8,14 @@ import datetime
 # Import shared base schemas from the shared domain
 from backend.domains.shared.schemas import KSTTimezoneBase, UTC_ZONE, KST_ZONE
 
-# Forward declaration to avoid circular import
-if TYPE_CHECKING:
-    from backend.domains.user.schemas import User
+# --- Author Schemas ---
+class AuthorSummary(BaseModel):
+    """Minimal author information for community content."""
+    id: int
+    name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 # --- PostCategory Schemas ---
 class PostCategoryBase(BaseModel):
@@ -42,7 +47,7 @@ class PostSummary(KSTTimezoneBase):
 
     id: int
     title: str
-    author: 'User'
+    author: AuthorSummary
     is_pinned: bool
     is_private: bool
     view_count: int
@@ -93,7 +98,7 @@ class CommentUpdate(BaseModel):
 class PostList(KSTTimezoneBase):
     id: int
     title: str
-    author: 'User'
+    author: AuthorSummary
     category: PostCategory
     is_pinned: bool
     is_private: bool
@@ -103,27 +108,17 @@ class PostList(KSTTimezoneBase):
 
 class Post(PostBase, KSTTimezoneBase):
     id: int
-    author: 'User'
+    author: AuthorSummary
     category: PostCategory
     view_count: int
     comments: List['Comment'] = Field(default_factory=list)
 
 class Comment(CommentBase, KSTTimezoneBase):
     id: int
-    author: 'User'
+    author: AuthorSummary
     post_id: int
     replies: List['Comment'] = Field(default_factory=list)
 
-# Rebuild models after circular import resolution
-def rebuild_models():
-    """Rebuild models with resolved forward references."""
-    from backend.domains.user.schemas import User
-    PostSummary.model_rebuild()
-    CategoryOverview.model_rebuild()
-    Comment.model_rebuild()
-    Post.model_rebuild()
-    PostList.model_rebuild()
+# Update forward references for Comment self-reference
+Comment.model_rebuild()
 
-
-# Ensure forward references are resolved at import time
-rebuild_models()

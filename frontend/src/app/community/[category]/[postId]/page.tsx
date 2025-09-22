@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, Suspense, useCallback } from 'react';
+import { useEffect, useState, Suspense, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
-import { buildOptionalAuthHeader, getCachedClerkToken } from '../../../utils/authToken';
+import { endpoints, type CurrentUser } from '@/lib/api';
+import { getCachedClerkToken } from '../../../utils/authToken';
 import UserDisplayName from '../../../components/UserDisplayName';
 import {
   Container, Box, Typography, Card, CardContent, Button, Alert,
@@ -20,13 +21,7 @@ import {
   Comment as CommentIcon,
   Send as SendIcon
 } from '@mui/icons-material';
-import type { components } from '@/types/api';
-
-// Type aliases for convenience
-type PostCategory = components['schemas']['PostCategory'];
-type Post = components['schemas']['Post'];
-type Comment = components['schemas']['Comment'];
-type User = components['schemas']['User'];
+import type { Post, Comment } from '@/lib/api';
 
 function PostDetailPageContent() {
   const router = useRouter();
@@ -40,9 +35,11 @@ function PostDetailPageContent() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUserDb, setCurrentUserDb] = useState<CurrentUser | null>(null);
   const [commentContent, setCommentContent] = useState('');
   const [commentIsPrivate, setCommentIsPrivate] = useState(false);
   const [submittingComment, setSubmittingComment] = useState(false);
+  const viewCountIncremented = useRef(false);
   
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
@@ -50,49 +47,66 @@ function PostDetailPageContent() {
 
   const fetchPost = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/api/v1/community/posts/${postId}`, {
-        headers: buildOptionalAuthHeader()
-      });
-      
-      if (response.status === 403) {
-        setError('🔒 이 게시글은 비밀글입니다. 작성자와 관리자만 볼 수 있습니다.');
-        return;
+      const token = await getToken();
+      const { data, error, response } = await endpoints.getPost(parseInt(postId), token || undefined);
+
+      if (error) {
+        if (response?.status === 403) {
+          setError('🔒 이 게시글은 비밀글입니다. 작성자와 관리자만 볼 수 있습니다.');
+          return;
+        }
+        throw new Error('API call failed');
       }
-      
-      if (!response.ok) throw new Error('Failed to fetch post');
-      const data = await response.json();
+
       setPost(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
       setLoading(false);
     }
-  }, [getToken, postId, API_URL]);
+  }, [getToken, postId]);
 
   const fetchComments = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/api/v1/community/posts/${postId}/comments`, {
-        headers: buildOptionalAuthHeader()
-      });
-      if (!response.ok) throw new Error('Failed to fetch comments');
-      const data = await response.json();
-      setComments(data);
+      const token = await getToken();
+      const { data, error } = await endpoints.getComments(parseInt(postId), token || undefined);
+
+      if (error) {
+        throw new Error('API call failed');
+      }
+
+      setComments(data || []);
     } catch (err) {
       console.error('Failed to fetch comments:', err);
     }
-  }, [getToken, postId, API_URL]);
+  }, [getToken, postId]);
+
+  const fetchCurrentUser = useCallback(async () => {
+    try {
+      const token = await getToken();
+      const { data } = await endpoints.getCurrentUser(token || undefined);
+      if (data) setCurrentUserDb(data);
+    } catch (_) {
+      // ignore; we can still render without it
+    }
+  }, [getToken]);
 
   const incrementViewCount = useCallback(async () => {
     try {
-      await fetch(`${API_URL}/api/v1/community/posts/${postId}/view`, {
-        method: 'POST',
-        headers: buildOptionalAuthHeader()
-      });
-      // No need to refetch here, view count is not critical to be real-time
+      const token = await getToken();
+      const { error } = await endpoints.incrementPostView(parseInt(postId), token || undefined);
+
+      if (error) {
+        console.warn('Failed to increment view count:', error);
+        return;
+      }
+
+      // Refetch the post to display the updated view count immediately
+      fetchPost();
     } catch (err) {
       console.warn('Failed to increment view count:', err);
     }
-  }, [getToken, postId, API_URL]);
+  }, [getToken, postId, fetchPost]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -104,8 +118,12 @@ function PostDetailPageContent() {
 
     fetchPost();
     fetchComments();
-    incrementViewCount();
-  }, [isLoaded, isSignedIn, router, fetchPost, fetchComments, incrementViewCount]);
+    fetchCurrentUser();
+    if (!viewCountIncremented.current) {
+      incrementViewCount();
+      viewCountIncremented.current = true;
+    }
+  }, [isLoaded, isSignedIn, router, fetchPost, fetchComments, fetchCurrentUser, incrementViewCount]);
 
   const handleDeletePost = async () => {
     if (!confirm('정말로 이 게시글을 삭제하시겠습니까?')) return;
@@ -133,22 +151,17 @@ function PostDetailPageContent() {
 
     setSubmittingComment(true);
     try {
-      const token = await getCachedClerkToken(getToken);
-      const response = await fetch(`${API_URL}/api/v1/community/posts/${postId}/comments`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          content: commentContent,
-          post_id: parseInt(postId),
-          is_private: commentIsPrivate
-        })
-      });
+      const token = await getToken();
+      const { error } = await endpoints.createComment(parseInt(postId), {
+        content: commentContent,
+        post_id: parseInt(postId),
+        is_private: commentIsPrivate
+      }, token || undefined);
 
-      if (!response.ok) throw new Error('Failed to submit comment');
-      
+      if (error) {
+        throw new Error('API call failed');
+      }
+
       setCommentContent('');
       setCommentIsPrivate(false);
       fetchComments();
@@ -207,18 +220,16 @@ function PostDetailPageContent() {
 
   const canModifyPost = () => {
     if (!post || !user) return false;
-    
-    // Clerk user ID 기반으로 권한 확인
-    return post.author.clerk_user_id === user.id || 
-           user.publicMetadata?.role === 'admin';
+    const isAdmin = user.publicMetadata?.role === 'admin';
+    const isAuthor = currentUserDb && post.author && 'id' in post.author && currentUserDb.id === post.author.id;
+    return Boolean(isAdmin || isAuthor);
   };
 
   const canModifyComment = (comment: Comment) => {
     if (!user) return false;
-    
-    // Clerk user ID 기반으로 권한 확인
-    return comment.author.clerk_user_id === user.id || 
-           user.publicMetadata?.role === 'admin';
+    const isAdmin = user.publicMetadata?.role === 'admin';
+    const isAuthor = currentUserDb && comment.author && 'id' in comment.author && currentUserDb.id === comment.author.id;
+    return Boolean(isAdmin || isAuthor);
   };
 
   const formatDate = (dateString: string) => {
@@ -455,7 +466,7 @@ function PostDetailPageContent() {
                   <Box flex={1}>
                     <Box display="flex" alignItems="center" gap={1} mb={1}>
                       <Avatar sx={{ width: 32, height: 32 }}>
-                        {(comment.author.name || comment.author.email || '사용자')?.[0] || '?'}
+                        {(comment.author.name || '사용자')?.[0] || '?'}
                       </Avatar>
                       {comment.is_private && (
                         <span title="비밀댓글">🔒</span>

@@ -165,7 +165,7 @@ function PostWritePageContent() {
         formData.append('file', file);
 
         const token = await getCachedClerkToken(getToken);
-        const response = await fetch(`${API_URL}/api/v1/community/upload-image`, {
+        const response = await fetch(`${API_URL}/api/v1/community/images`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
