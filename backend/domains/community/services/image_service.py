@@ -35,19 +35,19 @@ class ImageService:
         file_hash = hashlib.md5(file_content).hexdigest()
         unique_name = f"{uuid.uuid4().hex}_{file_hash}{file_ext}"
 
-        upload_dir = Path(self.settings.upload_dir) / "community"
+        upload_dir = Path(self.settings.upload_directory) / "community"
         upload_dir.mkdir(parents=True, exist_ok=True)
 
         file_path = upload_dir / unique_name
         file_path.write_bytes(file_content)
 
         return {
-            'url': f"/uploads/community/{unique_name}",
+            'url': f"/static/community/{unique_name}",
             'filename': unique_name,
             'size': len(file_content),
             'hash': file_hash
         }
 
     def init_upload_directory(self) -> None:
-        upload_dir = Path(self.settings.upload_dir) / "community"
+        upload_dir = Path(self.settings.upload_directory) / "community"
         upload_dir.mkdir(parents=True, exist_ok=True)
