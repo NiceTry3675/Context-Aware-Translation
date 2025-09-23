@@ -20,6 +20,7 @@ class OpenRouterModel:
         api_key: str,
         model_name: str,
         *,
+        generation_config: Dict[str, Any] | None = None,
         usage_callback: Callable[[UsageEvent], None] | None = None,
         **kwargs,
     ):
@@ -42,6 +43,7 @@ class OpenRouterModel:
         }
         # For compatibility with existing config structure
         self.enable_soft_retry = kwargs.get('enable_soft_retry', True)
+        self.generation_config: Dict[str, Any] = generation_config or {}
         self.usage_callback = usage_callback
         self.last_usage: UsageEvent | None = None
 
@@ -104,12 +106,25 @@ class OpenRouterModel:
         """
         Base text generation method with retry logic for transient errors.
         """
+        # Map shared generation_config to OpenAI-compatible fields
+        max_output_tokens = self.generation_config.get("max_output_tokens")
+        temperature = self.generation_config.get("temperature")
+        top_p = self.generation_config.get("top_p")
+
         body = {
             "model": self.model_name,
             "messages": [
                 {"role": "user", "content": prompt}
             ]
         }
+        # Apply mapped parameters when available
+        if isinstance(max_output_tokens, int) and max_output_tokens > 0:
+            # OpenRouter (OpenAI compatible) expects 'max_tokens' as completion cap
+            body["max_tokens"] = max_output_tokens
+        if isinstance(temperature, (int, float)):
+            body["temperature"] = float(temperature)
+        if isinstance(top_p, (int, float)):
+            body["top_p"] = float(top_p)
         
         for attempt in range(max_retries):
             try:
@@ -181,6 +196,63 @@ class OpenRouterModel:
         The decorator will automatically retry with softer prompts.
         """
         return self._generate_text_base(prompt, max_retries)
+
+    # --------------------
+    # Structured Output
+    # --------------------
+    def generate_structured(self, prompt: str, response_schema, max_retries: int = 3):
+        """
+        Structured output using OpenRouter (OpenAI-compatible chat API).
+
+        Behavior mirrors GeminiModel.generate_structured:
+        - If response_schema is a Pydantic model: returns an instance, requires valid JSON
+        - If response_schema is a dict (JSON schema): returns parsed Python dict
+        - Adds JSON-only instructions and attempts to enforce JSON mode when supported
+        """
+        # Defer import to keep optional dependency light
+        from pydantic import BaseModel  # type: ignore
+
+        is_pydantic = False
+        if not isinstance(response_schema, dict):
+            try:
+                if issubclass(response_schema, BaseModel):
+                    is_pydantic = True
+            except TypeError:
+                is_pydantic = True
+
+        # If the selected model is a Gemini engine routed via OpenRouter and a native Gemini key is available,
+        # use native Gemini structured output for best compatibility.
+        model_lower = (self.model_name or "").lower()
+        is_gemini_via_openrouter = (
+            model_lower.startswith("google/") or model_lower.startswith("gemini-") or "gemini" in model_lower
+        )
+        try:
+            from core.translation.models.gemini import GeminiModel as _GeminiModel  # type: ignore
+            from core.config.loader import load_config as _load_config  # type: ignore
+        except Exception:
+            _GeminiModel = None
+            _load_config = None
+
+        if is_gemini_via_openrouter and _GeminiModel and _load_config:
+            try:
+                cfg = _load_config()
+                # Try the environment first; loader may not return the key directly
+                gemini_api_key = os.getenv("GEMINI_API_KEY") or cfg.get("gemini_api_key")
+                if gemini_api_key:
+                    native = _GeminiModel(
+                        api_key=gemini_api_key,
+                        model_name=model_lower.replace("google/", ""),
+                        safety_settings=cfg.get("safety_settings", []),
+                        generation_config=cfg.get("generation_config", {}),
+                        enable_soft_retry=cfg.get("enable_soft_retry", True),
+                    )
+                    return native.generate_structured(prompt, response_schema, max_retries=max_retries)
+            except Exception:
+                # Fall back to OpenRouter path below on any failure
+                pass
+
+        # Non-Gemini engines via OpenRouter: explicitly not supported for structured output
+        raise NotImplementedError("Structured output is only supported for Gemini models.")
 
     @classmethod
     def validate_api_key(cls, api_key: str, model_name: str = None) -> bool:

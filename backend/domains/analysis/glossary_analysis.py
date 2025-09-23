@@ -172,14 +172,13 @@ class GlossaryAnalysis:
         filename = Path(filepath).stem
         
         try:
-            # Create GlossaryManager with appropriate model
-            if isinstance(self._model_api, GeminiModel):
+            # Use structured-output capable models (Gemini natively, or routed via OpenRouter)
+            if hasattr(self._model_api, 'generate_structured'):
                 glossary_manager = GlossaryManager(self._model_api, filename)
             else:
-                # For non-Gemini models, we can't use structured output
-                print("Warning: Non-Gemini model detected. Glossary extraction may be limited.")
+                print("Warning: Selected model does not support structured output. Glossary extraction skipped.")
                 return {}
-            
+
             # Update glossary with the sample text
             glossary_dict = glossary_manager.update_glossary(sample_text)
             

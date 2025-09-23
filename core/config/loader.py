@@ -25,6 +25,9 @@ def load_config():
         "temperature": 0.5,
         "top_p": 0.6,
         "top_k": 20,
+        # Target ~15k tokens for model output where supported
+        # Gemini/Vertex: max_output_tokens; other providers will map appropriately
+        "max_output_tokens": 15000,
     }
 
     return {

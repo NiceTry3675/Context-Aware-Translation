@@ -131,6 +131,7 @@ class ModelAPIFactory:
             return OpenRouterModel(
                 api_key=api_key,
                 model_name=model_name,
+                generation_config=config.get('generation_config', {}),
                 enable_soft_retry=config.get('enable_soft_retry', True),
                 usage_callback=usage_callback,
             )
