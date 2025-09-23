@@ -119,6 +119,18 @@ router.add_api_route(
     methods=["POST"],
     tags=["export"]
 )
+router.add_api_route(
+    "/jobs/{job_id}/glossary",
+    export_routes.download_glossary,
+    methods=["GET"],
+    tags=["jobs"]
+)
+router.add_api_route(
+    "/jobs/{job_id}/glossary",
+    export_routes.upload_glossary,
+    methods=["POST"],
+    tags=["jobs"]
+)
 
 # Analysis endpoints
 router.add_api_route(

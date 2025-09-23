@@ -51,7 +51,7 @@ export default function JobRow({
 
   const handleDownloadGlossary = () => {
     const filename = `${job.filename.split('.')[0]}_glossary.json`;
-    onDownload(`${apiUrl}/api/v1/jobs/${job.id}/glossary`, filename);
+    onDownload(`${apiUrl}/api/v1/jobs/${job.id}/glossary?structured=true`, filename);
   };
 
   const handleDownloadPromptLogs = () => {
@@ -100,6 +100,7 @@ export default function JobRow({
           onDownloadContextLogs={handleDownloadContextLogs}
           onDownloadValidationReport={() => onDownloadValidationReport(job.id)}
           onDownloadPostEditLog={() => onDownloadPostEditLog(job.id)}
+          apiUrl={apiUrl}
           onOpenSidebar={() => onOpenSidebar(job)}
           onTriggerValidation={() => onTriggerValidation(job.id)}
           onTriggerPostEdit={() => onTriggerPostEdit(job.id)}

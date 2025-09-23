@@ -39,6 +39,7 @@ import {
   PictureAsPdf as PdfIcon,
   PlayArrow as PlayArrowIcon,
   AutoStories as AutoStoriesIcon,
+  MenuBook as MenuBookIcon,
 } from '@mui/icons-material';
 import { Job } from '../../types/ui';
 import JobRowActions from './JobRowActions';
@@ -284,6 +285,38 @@ export default function JobSidebar({
                               }}
                             >
                               <DownloadIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="용어집 다운로드">
+                            <IconButton
+                              size="small"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                                try {
+                                  const token = await getCachedClerkToken(getToken);
+                                  const response = await fetch(`${API_URL}/api/v1/jobs/${job.id}/glossary?structured=true`, {
+                                    headers: {
+                                      'Authorization': token ? `Bearer ${token}` : '',
+                                    },
+                                  });
+                                  if (!response.ok) throw new Error('Glossary download failed');
+                                  const blob = await response.blob();
+                                  const url = window.URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  const baseFilename = job.filename ? job.filename.replace(/\.[^/.]+$/, '') : `job_${job.id}`;
+                                  a.download = `${baseFilename}_glossary.json`;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  document.body.removeChild(a);
+                                  window.URL.revokeObjectURL(url);
+                                } catch (error) {
+                                  console.error('Glossary download error:', error);
+                                }
+                              }}
+                            >
+                              <MenuBookIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
                           {job.status === 'FAILED' && (

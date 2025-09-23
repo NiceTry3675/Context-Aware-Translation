@@ -343,6 +343,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/{job_id}/glossary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Glossary
+         * @description Download glossary for a translation job.
+         *     If structured=true, returns structured glossary JSON payload.
+         *     Otherwise returns raw dictionary JSON.
+         */
+        get: operations["download_glossary_api_v1_jobs__job_id__glossary_get"];
+        put?: never;
+        /**
+         * Upload Glossary
+         * @description Upload and apply glossary to a job (merge or replace).
+         *     Accepts flexible formats: dict, array of {source,korean}, array of {term,translation}, etc.
+         */
+        post: operations["upload_glossary_api_v1_jobs__job_id__glossary_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analysis/style": {
         parameters: {
             query?: never;
@@ -1421,29 +1448,6 @@ export interface components {
             /** Profile Json */
             profile_json?: string | null;
         };
-        /** Body_resume_job_api_v1_jobs__job_id__resume_post */
-        Body_resume_job_api_v1_jobs__job_id__resume_post: {
-            /** Api Key */
-            api_key: string;
-            /**
-             * Model Name
-             * @default gemini-2.5-flash-lite
-             */
-            model_name: string;
-            /** Translation Model Name */
-            translation_model_name?: string | null;
-            /** Style Model Name */
-            style_model_name?: string | null;
-            /** Glossary Model Name */
-            glossary_model_name?: string | null;
-            /**
-             * Api Provider
-             * @default gemini
-             */
-            api_provider: string;
-            /** Provider Config */
-            provider_config?: string | null;
-        };
         /** Body_upload_image_api_v1_community_images_post */
         Body_upload_image_api_v1_community_images_post: {
             /**
@@ -1867,6 +1871,32 @@ export interface components {
             is_pinned?: boolean | null;
             /** Images */
             images?: string[] | null;
+        };
+        /**
+         * ResumeRequest
+         * @description Request payload for resuming a failed translation job.
+         */
+        ResumeRequest: {
+            /** Api Key */
+            api_key?: string | null;
+            /**
+             * Model Name
+             * @default gemini-2.5-flash-lite
+             */
+            model_name: string | null;
+            /** Translation Model Name */
+            translation_model_name?: string | null;
+            /** Style Model Name */
+            style_model_name?: string | null;
+            /** Glossary Model Name */
+            glossary_model_name?: string | null;
+            /**
+             * Api Provider
+             * @default gemini
+             */
+            api_provider: string | null;
+            /** Provider Config */
+            provider_config?: string | null;
         };
         /**
          * StyleAnalysisResponse
@@ -2395,7 +2425,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/x-www-form-urlencoded": components["schemas"]["Body_resume_job_api_v1_jobs__job_id__resume_post"];
+                "application/json": components["schemas"]["ResumeRequest"];
             };
         };
         responses: {
@@ -2599,6 +2629,79 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_glossary_api_v1_jobs__job_id__glossary_get: {
+        parameters: {
+            query?: {
+                structured?: boolean;
+            };
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_glossary_api_v1_jobs__job_id__glossary_post: {
+        parameters: {
+            query?: {
+                mode?: string;
+                structured?: boolean;
+            };
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
