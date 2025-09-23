@@ -172,6 +172,8 @@ class TranslationPipeline:
             self.progress_tracker.update_progress(i, total_segments)
             # If resuming and this segment is already translated from a prior run, skip to preserve composition
             if i < len(document.translated_segments):
+                # Ensure previous translation context is available to downstream steps
+                # No I/O here; continue with next needed segment
                 continue
             
             # Build dynamic guides (glossary and character styles)

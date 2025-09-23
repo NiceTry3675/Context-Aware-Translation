@@ -73,7 +73,23 @@ def process_translation_task(
         if not job:
             logger.error(f"Job ID {job_id} not found")
             raise ValueError(f"Job ID {job_id} not found")
-        
+
+        # Guard against stale retries: if job already completed or processing, skip
+        if getattr(job, 'status', None) == "COMPLETED":
+            logger.info(f"Job ID {job_id} already completed; skipping task {self.request.id}")
+            return {
+                'job_id': job_id,
+                'status': 'already_completed',
+                'filename': job.filename
+            }
+        if getattr(job, 'status', None) == "PROCESSING":
+            logger.info(f"Job ID {job_id} already processing; skipping duplicate task {self.request.id}")
+            return {
+                'job_id': job_id,
+                'status': 'already_processing',
+                'filename': job.filename
+            }
+
         # Update job status
         repo.set_status(job_id, "PROCESSING")
         db.commit()

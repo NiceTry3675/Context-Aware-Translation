@@ -260,4 +260,6 @@ async def resume_job(
         resume=True,
     )
 
+    # Optimistically mark job PROCESSING (avoid duplicate starts) and return
+    service.start_translation(job_id)
     return service.get_job(job_id)
