@@ -14,6 +14,7 @@ import json
 import logging
 import uuid
 from typing import Optional, Dict, Any, List, Tuple
+import asyncio
 from datetime import datetime
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, UploadFile
@@ -28,6 +29,9 @@ from backend.domains.shared.provider_context import (
     ProviderContext,
     provider_context_to_payload,
 )
+from backend.domains.shared.storage import create_storage
+from backend.config.settings import get_settings
+from .storage_utils import TranslationStorageManager
 from backend.domains.shared.service_base import DomainServiceBase
 from backend.domains.analysis import StyleAnalysis, GlossaryAnalysis
 from backend.domains.shared import (

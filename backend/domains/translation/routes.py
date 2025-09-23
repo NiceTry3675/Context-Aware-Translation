@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from backend.config.dependencies import get_db, get_required_user, is_admin
 from backend.domains.user.models import User
 from backend.domains.translation.models import TranslationJob as TranslationJobModel
-from backend.domains.translation.schemas import TranslationJob
+from backend.domains.translation.schemas import TranslationJob, ResumeRequest
 from backend.domains.translation.service import TranslationDomainService
 from backend.domains.shared.provider_context import provider_context_to_payload
 
@@ -227,13 +227,7 @@ async def get_job_segments(
 
 async def resume_job(
     job_id: int,
-    api_key: str = Form(...),
-    model_name: str = Form("gemini-2.5-flash-lite"),
-    translation_model_name: Optional[str] = Form(None),
-    style_model_name: Optional[str] = Form(None),
-    glossary_model_name: Optional[str] = Form(None),
-    api_provider: str = Form("gemini"),
-    provider_config: Optional[str] = Form(None),
+    request: ResumeRequest,
     user: User = Depends(get_required_user),
     service: TranslationDomainService = Depends(get_translation_service)
 ) -> TranslationJob:
@@ -241,7 +235,7 @@ async def resume_job(
     Resume a failed translation job.
     """
     # Build provider context same as create_job
-    provider_context = service.build_provider_context(api_provider, provider_config)
+    provider_context = service.build_provider_context(request.api_provider or "gemini", request.provider_config)
     provider_payload = provider_context_to_payload(provider_context)
 
     # Launch background translation with resume flag
@@ -255,11 +249,11 @@ async def resume_job(
 
     process_translation_task.delay(
         job_id=job_id,
-        api_key=api_key,
-        model_name=model_name,
-        translation_model_name=translation_model_name,
-        style_model_name=style_model_name,
-        glossary_model_name=glossary_model_name,
+        api_key=request.api_key or "",
+        model_name=(request.model_name or provider_context.default_model or service.config.get("default_model", "gemini-2.5-flash-lite")),
+        translation_model_name=request.translation_model_name,
+        style_model_name=request.style_model_name,
+        glossary_model_name=request.glossary_model_name,
         user_id=user.id,
         provider_context=provider_payload,
         # Signal resume via kwargs; consumed by service/translation pipeline
