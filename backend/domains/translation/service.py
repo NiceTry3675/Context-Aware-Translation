@@ -790,6 +790,18 @@ class TranslationDomainService(DomainServiceBase):
                 # Log the error but proceed with deleting the DB record
                 logger.error(f"Error deleting files for job {job_id}: {e}")
             
+            # Nullify dependent usage logs when DB cascade isn't present or is SET NULL
+            try:
+                from sqlalchemy import update as sa_update
+                TUL = __import__('backend.domains.translation.models', fromlist=['TranslationUsageLog']).TranslationUsageLog
+                uow.session.execute(
+                    sa_update(TUL)
+                    .where(TUL.job_id == job.id)
+                    .values(job_id=None)
+                )
+            except Exception as e:
+                logger.warning(f"Failed to nullify usage logs for job {job_id}: {e}")
+            
             # Delete the job from the database
             repo.delete(job.id)
             uow.commit()

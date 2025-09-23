@@ -58,7 +58,7 @@ class TranslationUsageLog(Base):
     __tablename__ = "translation_usage_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    job_id = Column(Integer, ForeignKey("translation_jobs.id"), index=True)
+    job_id = Column(Integer, ForeignKey("translation_jobs.id", ondelete="SET NULL"), index=True, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
     original_length = Column(Integer)
     translated_length = Column(Integer)

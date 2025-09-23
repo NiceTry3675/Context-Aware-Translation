@@ -125,7 +125,7 @@ def upgrade() -> None:
     sa.Column('model_used', sa.String(), nullable=True),
     sa.Column('error_type', sa.String(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
-    sa.ForeignKeyConstraint(['job_id'], ['translation_jobs.id'], ),
+        sa.ForeignKeyConstraint(['job_id'], ['translation_jobs.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_translation_usage_logs_id'), 'translation_usage_logs', ['id'], unique=False)

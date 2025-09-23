@@ -53,7 +53,9 @@ export default function InfiniteScrollTranslationViewer({
     console.log('Loading segments from offset:', offset);
     
     try {
-      const result = await onLoadMoreSegments(offset, 3);
+      // Use a larger page size to reduce perceived truncation
+      const pageSize = 50;
+      const result = await onLoadMoreSegments(offset, pageSize);
       
       console.log('Loaded segments:', result.segments.length, 'Has more:', result.has_more);
       
@@ -64,7 +66,8 @@ export default function InfiniteScrollTranslationViewer({
       }
       
       setHasMore(result.has_more);
-      setTotalSegments(result.total_segments);
+      // Some backends may not provide total; infer when needed
+      setTotalSegments(result.total_segments || (result.has_more ? 0 : (offset + result.segments.length)));
     } catch (err) {
       console.error('Error loading segments:', err);
       setError(err instanceof Error ? err.message : 'Failed to load more segments');
@@ -129,24 +132,7 @@ export default function InfiniteScrollTranslationViewer({
   
   // Merge source text from loaded segments
   const mergedSourceText = React.useMemo(() => {
-    if (sourceText) {
-      // If full source text is provided, show corresponding portion
-      const sourceLines = sourceText.split('\n');
-      const segmentCount = loadedSegments.length;
-      // Approximate portion based on loaded segments ratio
-      const portionRatio = totalSegments > 0 ? segmentCount / totalSegments : 1;
-      const linesToShow = Math.ceil(sourceLines.length * portionRatio);
-      return sourceLines.slice(0, linesToShow).join('\n');
-    }
-    
-    if (content.source_content) {
-      const sourceLines = content.source_content.split('\n');
-      const segmentCount = loadedSegments.length;
-      const portionRatio = totalSegments > 0 ? segmentCount / totalSegments : 1;
-      const linesToShow = Math.ceil(sourceLines.length * portionRatio);
-      return sourceLines.slice(0, linesToShow).join('\n');
-    }
-    
+    // Prefer reconstructing source from loaded segments for parity with translation
     if (loadedSegments.length > 0 && loadedSegments[0].source_text !== undefined) {
       return loadedSegments
         .slice()
@@ -154,9 +140,11 @@ export default function InfiniteScrollTranslationViewer({
         .map(segment => segment.source_text)
         .join('\n');
     }
-    
+    // Fallbacks when segments not yet loaded
+    if (sourceText) return sourceText;
+    if (content.source_content) return content.source_content;
     return undefined;
-  }, [sourceText, content.source_content, loadedSegments, totalSegments]);
+  }, [sourceText, content.source_content, loadedSegments]);
   
   const handleCopyContent = () => {
     navigator.clipboard.writeText(mergedTranslatedText);
@@ -175,9 +163,17 @@ export default function InfiniteScrollTranslationViewer({
     setError(null);
     
     try {
-      // Load all remaining segments
-      const result = await onLoadMoreSegments(loadedSegments.length, totalSegments - loadedSegments.length);
-      setLoadedSegments(prev => [...prev, ...result.segments]);
+      // Load remaining segments in batches to avoid very large single requests
+      const batchSize = 100;
+      let offset = loadedSegments.length;
+      while (totalSegments === 0 || offset < totalSegments) {
+        const remaining = totalSegments === 0 ? batchSize : Math.min(batchSize, totalSegments - offset);
+        const result = await onLoadMoreSegments(offset, remaining);
+        if (!result.segments.length) break;
+        setLoadedSegments(prev => [...prev, ...result.segments]);
+        offset += result.segments.length;
+        if (!result.has_more) break;
+      }
       setHasMore(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load all segments');
@@ -280,7 +276,7 @@ export default function InfiniteScrollTranslationViewer({
                     {error}
                   </Alert>
                 )}
-                {!hasMore && !isLoading && totalSegments > 0 && (
+                {!hasMore && !isLoading && (totalSegments === 0 || totalSegments > 0) && (
                   <Typography variant="body2" color="text.secondary">
                     모든 내용을 불러왔습니다
                   </Typography>

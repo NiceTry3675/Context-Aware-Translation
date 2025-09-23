@@ -120,10 +120,20 @@ export function useTranslationData({
       throw new Error('Failed to load segments');
     }
     
+    // Derive pagination info if backend omits fields
+    const backendHasMore = typeof (result as any).has_more === 'boolean' ? (result as any).has_more : undefined;
+    const backendTotal = typeof (result as any).total_segments === 'number' ? (result as any).total_segments : undefined;
+
+    const pageLength = Array.isArray((result as any).segments) ? (result as any).segments.length : 0;
+    const derivedHasMore = backendHasMore !== undefined ? backendHasMore : (pageLength === limit);
+    const derivedTotal = backendTotal !== undefined && backendTotal > 0
+      ? backendTotal
+      : (derivedHasMore ? 0 : (offset + pageLength));
+
     return {
-      segments: result.segments,
-      has_more: result.has_more || false,
-      total_segments: result.total_segments || 0,
+      segments: (result as any).segments || [],
+      has_more: derivedHasMore,
+      total_segments: derivedTotal,
     };
   }, [jobId, getToken]);
 
