@@ -16,7 +16,7 @@ except ModuleNotFoundError:  # pragma: no cover - fallback for minimal environme
             self.detail = detail
             super().__init__(detail)
 
-DEFAULT_VERTEX_LOCATION = "us-central1"
+DEFAULT_VERTEX_LOCATION = "global"
 SUPPORTED_PROVIDERS: tuple[str, ...] = ("gemini", "vertex", "openrouter")
 REQUIRED_SERVICE_ACCOUNT_FIELDS = {"client_email", "private_key", "token_uri"}
 

@@ -45,6 +45,7 @@ def process_translation_task(
     glossary_model_name: Optional[str] = None,
     user_id: Optional[int] = None,
     provider_context: Optional[Dict[str, object]] = None,
+    resume: bool = False,
 ):
     """
     Process a translation job using Celery.
@@ -105,6 +106,7 @@ def process_translation_task(
             style_model_name=style_model_name,
             glossary_model_name=glossary_model_name,
             provider_context=context,
+            resume=resume,
         )
         
         # Update progress

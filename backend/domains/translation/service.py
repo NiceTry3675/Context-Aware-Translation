@@ -380,6 +380,7 @@ class TranslationDomainService(DomainServiceBase):
         style_model_name: Optional[str] = None,
         glossary_model_name: Optional[str] = None,
         provider_context: Optional[ProviderContext] = None,
+        resume: bool = False,
     ) -> Dict[str, Any]:
         """Prepare all the necessary components for a translation job."""
         # Fallbacks: if specific per-task models are not provided, use the top-level model_name
@@ -426,6 +427,21 @@ class TranslationDomainService(DomainServiceBase):
             job_id=job_id,
             storage_handler=storage_handler
         )
+
+        # If resuming, prefill translated segments from existing partial file
+        if resume:
+            try:
+                manager = TranslationStorageManager(create_storage(get_settings()))
+                existing = asyncio.run(manager.read_translation_output(job_id, job.filename))
+            except Exception:
+                existing = None
+            if existing:
+                # Split using the same joiner used by DocumentOutputManager.save_text_output (\n\n)
+                pretranslated = [s for s in existing.split("\n\n") if s.strip()]
+                # Do not exceed total segments to preserve composition
+                if pretranslated:
+                    max_len = min(len(pretranslated), len(translation_document.segments))
+                    translation_document.translated_segments = pretranslated[:max_len]
         
         # Process style data using StyleAnalysisService
         initial_core_style_text = None

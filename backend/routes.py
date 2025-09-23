@@ -69,6 +69,15 @@ router.add_api_route(
     tags=["jobs"]
 )
 
+# Resume job endpoint
+router.add_api_route(
+    "/jobs/{job_id}/resume",
+    translation.resume_job,
+    methods=["POST"],
+    response_model=TranslationJob,
+    tags=["jobs"]
+)
+
 # Validation endpoints
 router.add_api_route(
     "/validate/{job_id}", 

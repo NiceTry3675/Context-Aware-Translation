@@ -170,6 +170,9 @@ class TranslationPipeline:
             
             # Update progress
             self.progress_tracker.update_progress(i, total_segments)
+            # If resuming and this segment is already translated from a prior run, skip to preserve composition
+            if i < len(document.translated_segments):
+                continue
             
             # Build dynamic guides (glossary and character styles)
             # Get previous context for world atmosphere analysis

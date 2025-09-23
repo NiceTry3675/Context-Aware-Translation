@@ -152,6 +152,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/{job_id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume Job
+         * @description Resume a failed translation job.
+         */
+        post: operations["resume_job_api_v1_jobs__job_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/validate/{job_id}": {
         parameters: {
             query?: never;
@@ -1401,6 +1421,29 @@ export interface components {
             /** Profile Json */
             profile_json?: string | null;
         };
+        /** Body_resume_job_api_v1_jobs__job_id__resume_post */
+        Body_resume_job_api_v1_jobs__job_id__resume_post: {
+            /** Api Key */
+            api_key: string;
+            /**
+             * Model Name
+             * @default gemini-2.5-flash-lite
+             */
+            model_name: string;
+            /** Translation Model Name */
+            translation_model_name?: string | null;
+            /** Style Model Name */
+            style_model_name?: string | null;
+            /** Glossary Model Name */
+            glossary_model_name?: string | null;
+            /**
+             * Api Provider
+             * @default gemini
+             */
+            api_provider: string;
+            /** Provider Config */
+            provider_config?: string | null;
+        };
         /** Body_upload_image_api_v1_community_images_post */
         Body_upload_image_api_v1_community_images_post: {
             /**
@@ -2328,6 +2371,41 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resume_job_api_v1_jobs__job_id__resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/x-www-form-urlencoded": components["schemas"]["Body_resume_job_api_v1_jobs__job_id__resume_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TranslationJob"];
                 };
             };
             /** @description Validation Error */
@@ -3754,7 +3832,9 @@ export interface operations {
     create_announcement_api_v1_community_announcements_post: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-admin-secret"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -3807,7 +3887,9 @@ export interface operations {
     update_announcement_api_v1_community_announcements__announcement_id__put: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-admin-secret"?: string;
+            };
             path: {
                 announcement_id: number;
             };
@@ -3842,7 +3924,9 @@ export interface operations {
     delete_announcement_api_v1_community_announcements__announcement_id__delete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "x-admin-secret"?: string;
+            };
             path: {
                 announcement_id: number;
             };

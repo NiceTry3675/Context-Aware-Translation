@@ -37,6 +37,7 @@ import {
   Delete as DeleteIcon,
   Download as DownloadIcon,
   PictureAsPdf as PdfIcon,
+  PlayArrow as PlayArrowIcon,
   AutoStories as AutoStoriesIcon,
 } from '@mui/icons-material';
 import { Job } from '../../types/ui';
@@ -242,7 +243,7 @@ export default function JobSidebar({
                   }}
                   secondaryAction={
                     <Stack direction="row" alignItems="center" spacing={0.5}>
-                      {job.status === 'COMPLETED' && (
+                      {(job.status === 'COMPLETED' || job.status === 'FAILED') && (
                         <>
                           <JobRowActions 
                             job={job} 
@@ -285,6 +286,42 @@ export default function JobSidebar({
                               <DownloadIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
+                          {job.status === 'FAILED' && (
+                            <Tooltip title="작업 재개">
+                              <IconButton
+                                size="small"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                                  try {
+                                    const token = await getCachedClerkToken(getToken);
+                                    const body: any = {
+                                      api_provider: apiProvider,
+                                      api_key: apiProvider === 'vertex' ? '' : (apiKey || ''),
+                                      model_name: defaultModelName || 'gemini-2.5-flash-lite',
+                                    };
+                                    if (apiProvider === 'vertex' && providerConfig) {
+                                      body.provider_config = providerConfig;
+                                    }
+                                    const response = await fetch(`${API_URL}/api/v1/jobs/${job.id}/resume`, {
+                                      method: 'POST',
+                                      headers: {
+                                        'Authorization': token ? `Bearer ${token}` : '',
+                                        'Content-Type': 'application/json',
+                                      },
+                                      body: JSON.stringify(body),
+                                    });
+                                    if (!response.ok) throw new Error('Resume failed');
+                                    await onRefreshJobs(job.id);
+                                  } catch (error) {
+                                    console.error('Resume error:', error);
+                                  }
+                                }}
+                              >
+                                <PlayArrowIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
                           <Tooltip title="PDF 다운로드">
                             <IconButton
                               size="small"

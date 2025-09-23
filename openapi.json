@@ -297,6 +297,59 @@
         }
       }
     },
+    "/api/v1/jobs/{job_id}/resume": {
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Resume Job",
+        "description": "Resume a failed translation job.",
+        "operationId": "resume_job_api_v1_jobs__job_id__resume_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_resume_job_api_v1_jobs__job_id__resume_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranslationJob"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/validate/{job_id}": {
       "post": {
         "tags": [
@@ -2393,6 +2446,17 @@
         "summary": "Create Announcement",
         "description": "Create a new announcement (admin only).",
         "operationId": "create_announcement_api_v1_community_announcements_post",
+        "parameters": [
+          {
+            "name": "x-admin-secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Admin-Secret"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -2464,6 +2528,15 @@
               "type": "integer",
               "title": "Announcement Id"
             }
+          },
+          {
+            "name": "x-admin-secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Admin-Secret"
+            }
           }
         ],
         "requestBody": {
@@ -2514,6 +2587,15 @@
             "schema": {
               "type": "integer",
               "title": "Announcement Id"
+            }
+          },
+          {
+            "name": "x-admin-secret",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "X-Admin-Secret"
             }
           }
         ],
@@ -3131,6 +3213,73 @@
           "api_key"
         ],
         "title": "Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post"
+      },
+      "Body_resume_job_api_v1_jobs__job_id__resume_post": {
+        "properties": {
+          "api_key": {
+            "type": "string",
+            "title": "Api Key"
+          },
+          "model_name": {
+            "type": "string",
+            "title": "Model Name",
+            "default": "gemini-2.5-flash-lite"
+          },
+          "translation_model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Translation Model Name"
+          },
+          "style_model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style Model Name"
+          },
+          "glossary_model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glossary Model Name"
+          },
+          "api_provider": {
+            "type": "string",
+            "title": "Api Provider",
+            "default": "gemini"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config"
+          }
+        },
+        "type": "object",
+        "required": [
+          "api_key"
+        ],
+        "title": "Body_resume_job_api_v1_jobs__job_id__resume_post"
       },
       "Body_upload_image_api_v1_community_images_post": {
         "properties": {
