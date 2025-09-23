@@ -319,9 +319,9 @@
         "requestBody": {
           "required": true,
           "content": {
-            "application/x-www-form-urlencoded": {
+            "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Body_resume_job_api_v1_jobs__job_id__resume_post"
+                "$ref": "#/components/schemas/ResumeRequest"
               }
             }
           }
@@ -644,6 +644,128 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/jobs/{job_id}/glossary": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Download Glossary",
+        "description": "Download glossary for a translation job.\nIf structured=true, returns structured glossary JSON payload.\nOtherwise returns raw dictionary JSON.",
+        "operationId": "download_glossary_api_v1_jobs__job_id__glossary_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "structured",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Structured"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Upload Glossary",
+        "description": "Upload and apply glossary to a job (merge or replace).\nAccepts flexible formats: dict, array of {source,korean}, array of {term,translation}, etc.",
+        "operationId": "upload_glossary_api_v1_jobs__job_id__glossary_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "merge",
+              "title": "Mode"
+            }
+          },
+          {
+            "name": "structured",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Structured"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Glossary"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -3214,73 +3336,6 @@
         ],
         "title": "Body_generate_character_bases_api_v1_illustrations__job_id__character_base_generate_post"
       },
-      "Body_resume_job_api_v1_jobs__job_id__resume_post": {
-        "properties": {
-          "api_key": {
-            "type": "string",
-            "title": "Api Key"
-          },
-          "model_name": {
-            "type": "string",
-            "title": "Model Name",
-            "default": "gemini-2.5-flash-lite"
-          },
-          "translation_model_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Translation Model Name"
-          },
-          "style_model_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Style Model Name"
-          },
-          "glossary_model_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Glossary Model Name"
-          },
-          "api_provider": {
-            "type": "string",
-            "title": "Api Provider",
-            "default": "gemini"
-          },
-          "provider_config": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Provider Config"
-          }
-        },
-        "type": "object",
-        "required": [
-          "api_key"
-        ],
-        "title": "Body_resume_job_api_v1_jobs__job_id__resume_post"
-      },
       "Body_upload_image_api_v1_community_images_post": {
         "properties": {
           "file": {
@@ -4240,6 +4295,92 @@
         },
         "type": "object",
         "title": "PostUpdate"
+      },
+      "ResumeRequest": {
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name",
+            "default": "gemini-2.5-flash-lite"
+          },
+          "translation_model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Translation Model Name"
+          },
+          "style_model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style Model Name"
+          },
+          "glossary_model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Glossary Model Name"
+          },
+          "api_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Provider",
+            "default": "gemini"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config"
+          }
+        },
+        "type": "object",
+        "title": "ResumeRequest",
+        "description": "Request payload for resuming a failed translation job."
       },
       "StyleAnalysisResponse": {
         "properties": {

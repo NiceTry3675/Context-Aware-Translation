@@ -421,3 +421,88 @@ class ExportDomainService(DomainServiceBase):
         
         base_filename = db_job.filename.rsplit('.', 1)[0] if '.' in db_job.filename else db_job.filename
         return f"{base_filename}_translation.pdf"
+
+    def get_glossary_filename(self, job_id: int) -> str:
+        """Get the glossary filename for a job."""
+        db_job = self.repo.get(job_id)
+        if not db_job:
+            self.raise_not_found("Job")
+        base_filename = db_job.filename.rsplit('.', 1)[0] if '.' in db_job.filename else db_job.filename
+        return f"{base_filename}_glossary.json"
+
+    async def update_job_glossary(
+        self,
+        user: User,
+        job_id: int,
+        glossary_json: str,
+        *,
+        mode: str = "merge",
+        structured: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Update a job's final glossary by merging or replacing with provided JSON.
+
+        Args:
+            user: Current user
+            job_id: Job ID
+            glossary_json: New glossary payload (supports multiple formats)
+            mode: 'merge' (default) or 'replace'
+            structured: If True, returns structured response
+
+        Returns:
+            Updated glossary (structured or raw dict)
+        """
+        db_job = await self._check_job_access(job_id, user)
+
+        # Only allow updates when translation completed or failed (to tweak terms)
+        if db_job.status not in ["COMPLETED", "FAILED"]:
+            self.raise_validation_error(
+                f"Glossary can be updated only after translation completes or fails. Current status: {db_job.status}"
+            )
+
+        # Parse incoming glossary using analysis utility (accepts flexible formats)
+        from backend.domains.analysis.glossary_analysis import GlossaryAnalysis
+        parser = GlossaryAnalysis()
+        try:
+            new_glossary_dict: Dict[str, str] = parser._process_user_glossary(glossary_json)
+        except Exception as e:
+            self.raise_validation_error(f"Invalid glossary payload: {e}")
+
+        # Normalize existing glossary to simple dict[str, str]
+        existing_dict: Dict[str, str] = {}
+        if db_job.final_glossary:
+            if isinstance(db_job.final_glossary, dict) and 'translations' in db_job.final_glossary:
+                from core.schemas import TranslatedTerms
+                try:
+                    tt = TranslatedTerms(**db_job.final_glossary)
+                    existing_dict = {t.source: t.korean for t in tt.translations}
+                except Exception:
+                    # Fallback: ignore malformed structured data
+                    existing_dict = {}
+            elif isinstance(db_job.final_glossary, dict):
+                existing_dict = {str(k): str(v) for k, v in db_job.final_glossary.items()}
+
+        # Merge or replace
+        merged_dict: Dict[str, str]
+        if (mode or "merge").lower() == "replace":
+            merged_dict = new_glossary_dict
+        else:
+            merged_dict = parser.merge_glossaries(existing_dict, new_glossary_dict, prefer_new=True)
+
+        # Store as structured TranslatedTerms for new pipeline
+        from core.schemas import TranslatedTerm, TranslatedTerms
+        structured_terms = TranslatedTerms(
+            translations=[TranslatedTerm(source=k, korean=v) for k, v in merged_dict.items()]
+        )
+        db_job.final_glossary = structured_terms.model_dump()
+        self.db.commit()
+
+        if structured:
+            # Build structured response compatible with analysis response
+            from backend.domains.analysis.schemas import GlossaryAnalysisResponse
+            return GlossaryAnalysisResponse(
+                glossary=[{"term": k, "translation": v} for k, v in merged_dict.items()],
+                translated_terms=structured_terms,
+            ).model_dump()
+        # Raw dict
+        return merged_dict

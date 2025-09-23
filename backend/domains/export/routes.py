@@ -1,7 +1,7 @@
 """Export domain routes - plain async functions for business logic."""
 
 from typing import Dict, Any
-from fastapi import Depends
+from fastapi import Depends, Body, Query
 from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
@@ -83,3 +83,55 @@ async def export_job(
         # Default to regular file download
         file_path, filename, media_type = await service.download_job_output(user, job_id)
         return FileResponse(path=file_path, filename=filename, media_type=media_type)
+
+
+async def download_glossary(
+    job_id: int,
+    structured: bool = Query(False),
+    user: User = Depends(get_required_user),
+    db: Session = Depends(get_db)
+) -> Response:
+    """
+    Download glossary for a translation job.
+    If structured=true, returns structured glossary JSON payload.
+    Otherwise returns raw dictionary JSON.
+    """
+    service = ExportDomainService(db)
+    glossary = await service.get_job_glossary(user, job_id, structured=structured)
+    filename = service.get_glossary_filename(job_id)
+    import json
+    return Response(
+        content=json.dumps(glossary, ensure_ascii=False, indent=2),
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
+
+
+async def upload_glossary(
+    job_id: int,
+    glossary: dict = Body(..., embed=False),
+    mode: str = Query("merge"),
+    structured: bool = Query(True),
+    user: User = Depends(get_required_user),
+    db: Session = Depends(get_db)
+) -> Response:
+    """
+    Upload and apply glossary to a job (merge or replace).
+    Accepts flexible formats: dict, array of {source,korean}, array of {term,translation}, etc.
+    """
+    import json
+    service = ExportDomainService(db)
+    payload = json.dumps(glossary, ensure_ascii=False)
+    updated = await service.update_job_glossary(
+        user=user,
+        job_id=job_id,
+        glossary_json=payload,
+        mode=mode,
+        structured=structured,
+    )
+    return Response(
+        content=json.dumps(updated, ensure_ascii=False, indent=2),
+        media_type="application/json",
+    )

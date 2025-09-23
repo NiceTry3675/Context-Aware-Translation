@@ -15,6 +15,8 @@ import {
   PictureAsPdf as PdfIcon,
 } from '@mui/icons-material';
 import { Job } from '../../../types/ui';
+import { useAuth } from '@clerk/nextjs';
+import { getCachedClerkToken } from '../../../utils/authToken';
 
 interface DownloadActionsProps {
   job: Job;
@@ -30,6 +32,7 @@ interface DownloadActionsProps {
   onTriggerPostEdit: () => void;
   onDelete: () => void;
   devMode?: boolean;
+  apiUrl: string;
 }
 
 export default function DownloadActions({
@@ -46,7 +49,9 @@ export default function DownloadActions({
   onTriggerPostEdit,
   onDelete,
   devMode = false,
+  apiUrl,
 }: DownloadActionsProps) {
+  const { getToken } = useAuth();
   return (
     <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
       {(job.status === 'COMPLETED' || job.status === 'FAILED') && (
