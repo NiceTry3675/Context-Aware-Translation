@@ -76,9 +76,9 @@ class CharacterIllustrationGenerator:
 
         # Distinct, independent variants to allow user choice
         variant_directives = [
-            "clean line art, flat colors, head-and-shoulders portrait",
-            "soft painterly shading, bust portrait, subtle rim light",
-            "semi-realistic rendering, three-quarter view waist-up, balanced studio lighting",
+                "masterpiece, best quality, professional character artwork, modern anime style, intricate and clean line art, smooth vibrant coloring, beautifully detailed eyes and hair, upper body portrait",
+                 "masterpiece, best quality, character concept art, expressive anime style, textured brushstrokes, painterly coloring, visible line work, close-up portrait",
+                "masterpiece, best quality, stylized semi-realism, trending on Artstation, smooth digital painting, anime-style face, detailed rendering of hair and skin, waist-up portrait",
         ]
 
         for i in range(num_variations):
@@ -129,7 +129,8 @@ class CharacterIllustrationGenerator:
                                    reference_image: Optional[Tuple[bytes, str]] = None,
                                    max_retries: int = 3,
                                    num_variations: int = 3,
-                                   add_variant_hints: bool = True) -> List[Dict[str, Any]]:
+                                   add_variant_hints: bool = True,
+                                   target_indices: Optional[List[int]] = None) -> List[Dict[str, Any]]:
         """
         Generate base images directly from provided prompts.
 
@@ -139,6 +140,7 @@ class CharacterIllustrationGenerator:
             max_retries: Maximum number of retry attempts
             num_variations: Number of variations to generate
             add_variant_hints: Whether to add variation hints
+            target_indices: Optional list of target base indices (0-based) to overwrite
 
         Returns:
             List of dictionaries: {index, illustration_path, prompt, success, type, used_reference}
@@ -146,11 +148,17 @@ class CharacterIllustrationGenerator:
         results: List[Dict[str, Any]] = []
         base_dir = self._setup_base_directory()
 
+        # Determine target indices for generation
+        if target_indices is not None:
+            indices_to_use = target_indices
+        else:
+            indices_to_use = list(range(num_variations))
+
         # Cleanup previous base files for the targeted indices
         try:
-            for i in range(1, len(prompts) + 1):
+            for idx in indices_to_use:
                 for ext in ("png", "json"):
-                    p = base_dir / f"base_{i:02d}.{ext}"
+                    p = base_dir / f"base_{idx+1:02d}.{ext}"
                     if p.exists():
                         p.unlink()
         except Exception as e:
@@ -158,30 +166,30 @@ class CharacterIllustrationGenerator:
 
         # Expand single prompt into multiple variant prompts if requested
         final_prompts: List[str]
-        if len(prompts) == 1 and num_variations > 1:
+        if len(prompts) == 1 and len(indices_to_use) > 1:
             if add_variant_hints:
                 variant_directives = [
-                    "clean line art, flat colors, head-and-shoulders portrait",
-                    "soft painterly shading, bust portrait, subtle rim light",
-                    "semi-realistic rendering, three-quarter view waist-up, balanced studio lighting",
-                ]
+                    "masterpiece, best quality, professional character artwork, modern anime style, intricate and clean line art, smooth vibrant coloring, beautifully detailed eyes and hair, upper body portrait",
+                     "masterpiece, best quality, character concept art, expressive anime style, textured brushstrokes, painterly coloring, visible line work, close-up portrait",
+                    "masterpiece, best quality, stylized semi-realism, trending on Artstation, smooth digital painting, anime-style face, detailed rendering of hair and skin, waist-up portrait",
+                    ]
                 final_prompts = [
                     (prompts[0].strip() + ". " + variant_directives[i % len(variant_directives)]).strip()
-                    for i in range(num_variations)
+                    for i in range(len(indices_to_use))
                 ]
             else:
-                final_prompts = [prompts[0]] * num_variations
+                final_prompts = [prompts[0]] * len(indices_to_use)
         else:
-            final_prompts = prompts[:num_variations]
+            final_prompts = prompts[:len(indices_to_use)]
 
-        for i, prompt in enumerate(final_prompts):
+        for prompt, idx in zip(final_prompts, indices_to_use):
             # Log the custom base prompt
             if self.logger:
-                self.logger.log_translation_prompt(i, f"[CUSTOM BASE PROMPT {i+1}]\n{prompt}")
+                self.logger.log_translation_prompt(idx, f"[CUSTOM BASE PROMPT {idx+1}]\n{prompt}")
 
-            image_filename = f"base_{i+1:02d}.png"
+            image_filename = f"base_{idx+1:02d}.png"
             image_filepath = base_dir / image_filename
-            json_filename = f"base_{i+1:02d}_prompt.json"
+            json_filename = f"base_{idx+1:02d}_prompt.json"
             json_filepath = base_dir / json_filename
 
             generated_path = self._generate_single_image(
@@ -190,13 +198,13 @@ class CharacterIllustrationGenerator:
                 json_filepath=json_filepath,
                 reference_image=reference_image,
                 max_retries=max_retries,
-                index=i
+                index=idx
             )
 
             success = generated_path is not None and generated_path.endswith('.png')
 
             results.append({
-                'index': i,
+                'index': idx,
                 'illustration_path': generated_path,
                 'prompt': prompt,
                 'success': success,

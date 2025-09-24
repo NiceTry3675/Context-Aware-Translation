@@ -216,7 +216,9 @@ export function useJobActions({ apiUrl, apiProvider, apiKey, providerConfig, onE
       skip_dialogue_heavy?: boolean;
       cache_enabled?: boolean;
     },
-    maxIllustrations?: number
+    maxIllustrations?: number,
+    currentIllustrationsData: any[] = [],
+    currentIllustrationsCount: number = 0
   ) => {
     setLoading(true);
     setError(null);
@@ -235,6 +237,8 @@ export function useJobActions({ apiUrl, apiProvider, apiKey, providerConfig, onE
           providerConfig,
           config,
           maxIllustrations,
+          currentIllustrationsData,
+          currentIllustrationsCount,
         }
       );
       onSuccess?.();
@@ -246,7 +250,7 @@ export function useJobActions({ apiUrl, apiProvider, apiKey, providerConfig, onE
     } finally {
       setLoading(false);
     }
-  }, [apiProvider, apiKey, providerConfig, getToken, onError, onSuccess]);
+  }, [apiProvider, apiKey, providerConfig, getToken, onError, onSuccess, ensureCredentials]);
 
   return {
     handleDownload,

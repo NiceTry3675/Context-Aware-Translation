@@ -695,13 +695,37 @@ export interface paths {
          * Regenerate Illustration Prompt
          * @description Regenerate an illustration prompt for a specific segment.
          *
-         *     This allows regenerating a single illustration prompt with optional new style hints.
+         *     This allows regenerating a single illustration prompt with optional new style hints or custom prompt.
          *
          *     Expects JSON body with:
          *     - api_key: API key for Gemini
          *     - style_hints: Optional style hints for regeneration
+         *     - custom_prompt: Optional custom prompt to override automatic generation
          */
         post: operations["regenerate_illustration_prompt_api_v1_illustrations__job_id__regenerate__segment_index__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/illustrations/{job_id}/character/base/{base_index}/regenerate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Regenerate Character Base
+         * @description Regenerate a specific character base image with custom prompt.
+         *
+         *     Expects JSON body with:
+         *     - custom_prompt: Custom prompt to use for regeneration
+         */
+        post: operations["regenerate_character_base_api_v1_illustrations__job_id__character_base__base_index__regenerate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3187,6 +3211,38 @@ export interface operations {
             path: {
                 job_id: number;
                 segment_index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    regenerate_character_base_api_v1_illustrations__job_id__character_base__base_index__regenerate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: number;
+                base_index: number;
             };
             cookie?: never;
         };

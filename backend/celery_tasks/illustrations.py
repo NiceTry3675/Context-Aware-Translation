@@ -10,6 +10,8 @@ from pathlib import Path
 import os
 import json
 import traceback
+import time
+import logging
 
 from ..celery_app import celery_app
 from .base import TrackedTask
@@ -466,16 +468,19 @@ def regenerate_single_illustration(
     style_hints: Optional[str],
     api_key: Optional[str],
     provider_context: Optional[Dict[str, object]] = None,
+    custom_prompt: Optional[str] = None,
+    api_token: Optional[str] = None,
 ):
     """
     Regenerate a single illustration prompt.
-    
+
     Args:
         job_id: Translation job ID
         segment_index: Index of the segment to regenerate
         style_hints: Optional style hints for regeneration
         api_key: API key for Gemini
-        
+        custom_prompt: Optional custom prompt to override automatic generation
+
     Returns:
         dict: Result with success status
     """
@@ -502,15 +507,16 @@ def regenerate_single_illustration(
 
         client = None
         model_name = settings.illustration_model
+        effective_api_key = api_key or api_token
 
         if context and context.name == "vertex":
             client = build_vertex_client(context)
             model_name = vertex_model_resource_name(model_name, context)
-        elif not api_key:
+        elif not effective_api_key:
             raise ValueError("API key is required for illustration regeneration")
 
         generator = IllustrationGenerator(
-            api_key=api_key,
+            api_key=effective_api_key,
             job_id=job_id,
             enable_caching=False,  # Don't use cache for regeneration
             model_name=model_name,
@@ -531,16 +537,23 @@ def regenerate_single_illustration(
 
         print(f"[REGENERATE ILLUSTRATION] World atmosphere data available: {world_atmosphere_data is not None}")
 
-        # If base selection exists, build a custom prompt using profile lock
-        custom_prompt = None
+        # Preserve any user-supplied custom prompt
+        final_custom_prompt = custom_prompt if custom_prompt else None
+        profile_locked_prompt = None
+
+        # If base selection exists, build a profile-locked prompt and prepare reference
         ref_tuple = None
         if job.character_base_selected_index is not None and job.character_profile:
-            custom_prompt = generator.create_scene_prompt_with_profile(
+            profile_locked_prompt = generator.create_scene_prompt_with_profile(
                 segment_text=segment.get('source_text', ''),
                 context=None,
                 profile=job.character_profile,
                 style_hints=style_hints or (job.illustrations_config.get('style_hints', '') if job.illustrations_config else '')
             )
+
+            # Only fall back to the generated profile prompt when user didn't supply one
+            if final_custom_prompt is None:
+                final_custom_prompt = profile_locked_prompt
 
             # Optionally attach the selected base as a reference image
             try:
@@ -565,11 +578,16 @@ def regenerate_single_illustration(
                 allow_ref = True
 
         # If using reference, clarify how to use it without copying background
-        if allow_ref and custom_prompt:
-            custom_prompt = (
-                custom_prompt +
-                ". Use the attached reference image to preserve identity; do not copy any reference background."
-            )
+        if allow_ref:
+            reference_instruction = "Use the attached reference image to preserve identity; do not copy any reference background."
+            prompt_with_reference = final_custom_prompt or profile_locked_prompt
+            if prompt_with_reference and reference_instruction not in prompt_with_reference:
+                prompt_text = prompt_with_reference.rstrip()
+                if not prompt_text.endswith('.'):
+                    prompt_text = f"{prompt_text}."
+                prompt_with_reference = f"{prompt_text} {reference_instruction}"
+            if prompt_with_reference:
+                final_custom_prompt = prompt_with_reference
 
         # Generate new illustration prompt (with reference if allowed)
         prompt_path, prompt = generator.generate_illustration(
@@ -578,7 +596,7 @@ def regenerate_single_illustration(
             style_hints=style_hints or (job.illustrations_config.get('style_hints', '') if job.illustrations_config else ''),
             glossary=job.final_glossary,
             world_atmosphere=world_atmosphere_data,
-            custom_prompt=custom_prompt,
+            custom_prompt=final_custom_prompt,
             reference_image=(ref_tuple if allow_ref else None)
         )
         
@@ -662,5 +680,169 @@ def regenerate_single_illustration(
 # Re-export for convenience
 __all__ = [
     'generate_illustrations_task',
-    'regenerate_single_illustration'
+    'regenerate_single_illustration',
+    'regenerate_single_base'
 ]
+
+
+@celery_app.task(
+    bind=True,
+    base=TrackedTask,
+    name="backend.celery_tasks.illustrations.regenerate_single_base",
+    max_retries=2,
+    default_retry_delay=30,
+    retry_backoff=True,
+    acks_late=True
+)
+def regenerate_single_base(
+    self,
+    job_id: int,
+    base_index: int,
+    custom_prompt: str,
+    api_key: Optional[str] = None,
+    provider_context: Optional[Dict[str, object]] = None,
+    api_token: Optional[str] = None,
+):
+    """
+    Regenerate a single character base image with custom prompt.
+
+    Args:
+        job_id: Translation job ID
+        base_index: Index of the base to regenerate
+        custom_prompt: Custom prompt to use for regeneration
+        api_key: API key for Gemini
+        provider_context: Provider context for Vertex AI
+
+    Returns:
+        dict: Result with success status
+    """
+    db = None
+    try:
+        # Update task state
+        self.update_state(
+            state='PROGRESS',
+            meta={'status': f'Regenerating base {base_index}...'}
+        )
+
+        # Create database session
+        db = SessionLocal()
+
+        # Get the job
+        job = db.query(TranslationJob).filter(TranslationJob.id == job_id).first()
+        if not job:
+            raise ValueError(f"Job {job_id} not found")
+
+        # Get current bases
+        bases = job.character_base_images or []
+        if not (0 <= base_index < len(bases)):
+            raise ValueError(f"Base index {base_index} not found")
+
+        # Get the base to regenerate
+        base_to_regenerate = bases[base_index]
+        if not base_to_regenerate:
+            raise ValueError(f"No base found at index {base_index}")
+
+        # Initialize illustration generator
+        settings = get_settings()
+        context = provider_context_from_payload(provider_context)
+        provider_name = context.name if context else "gemini"
+
+        client = None
+        model_name = settings.illustration_model
+
+        if context and context.name == "vertex":
+            client = build_vertex_client(context)
+            model_name = vertex_model_resource_name(model_name, context)
+        elif not api_key:
+            raise ValueError("API key is required for base regeneration. Please provide API key or use Vertex AI provider.")
+
+        generator = IllustrationGenerator(
+            api_key=api_key,
+            job_id=job_id,
+            enable_caching=False,  # Don't use cache for regeneration
+            model_name=model_name,
+            client=client,
+        )
+
+        # Get the character profile for consistency
+        profile = job.character_profile or {}
+
+        # Generate new base with custom prompt
+        new_bases = generator.generate_bases_from_prompts(
+            prompts=[custom_prompt],
+            reference_image=None,  # TODO: Could use existing base as reference for consistency
+            max_retries=3,
+            num_variations=1,
+            target_indices=[base_index]
+        )
+
+        if new_bases and len(new_bases) > 0:
+            new_base = new_bases[0]
+            illustration_path = new_base.get('illustration_path')
+            logging.info(f"[REGENERATE BASE] Generated path: {illustration_path}")
+
+            if not new_base.get('success') or not illustration_path or not str(illustration_path).endswith('.png'):
+                raise ValueError("Image regeneration did not produce a valid PNG. Check the prompt or API response.")
+
+            # Ensure the generated image exists
+            image_path = Path(illustration_path)
+            if not image_path.exists():
+                raise ValueError(f"Generated image file not found at {illustration_path}")
+
+            # Replace the base entry, preserving new prompt
+            bases[base_index] = dict(new_base)
+            job.character_base_images = bases
+
+            # Update directory if needed
+            if not job.character_base_directory:
+                job.character_base_directory = str((generator.job_output_dir / "base").resolve())
+
+            db.commit()
+
+            # Final task state
+            self.update_state(
+                state='SUCCESS',
+                meta={
+                    'status': f'Successfully regenerated base {base_index}',
+                    'result': {
+                        'success': True,
+                        'base_index': base_index,
+                        'updated_base': new_base
+                    }
+                }
+            )
+
+            return {
+                'success': True,
+                'base_index': base_index,
+                'updated_base': new_base
+            }
+        else:
+            raise ValueError("Failed to generate new base image")
+
+    except Exception as e:
+        error_msg = str(e)
+        print(f"[REGENERATE BASE] Error: {error_msg}")
+        traceback.print_exc()
+
+        # Retry if transient error
+        if self.request.retries < self.max_retries:
+            print(f"[REGENERATE BASE] Retrying... (attempt {self.request.retries + 1}/{self.max_retries})")
+            raise self.retry(exc=e, countdown=30 * (2 ** self.request.retries))
+
+        # Final failure
+        self.update_state(
+            state='FAILURE',
+            meta={
+                'exc_type': type(e).__name__,
+                'exc_message': error_msg,
+                'status': f'Failed to regenerate base {base_index}'
+            }
+        )
+
+        raise
+
+    finally:
+        # Always close the database session
+        if db:
+            db.close()

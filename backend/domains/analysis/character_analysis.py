@@ -14,10 +14,7 @@ from core.config.loader import load_config
 from core.utils.text_segmentation import create_segments_for_text
 
 
-APPEARANCE_EXTRA_INSTRUCTIONS = (
-    "Do not include any background. Plain light background. Neutral pose. "
-    "No text or watermark. Do not write the character's name in the image."
-)
+APPEARANCE_EXTRA_INSTRUCTIONS = "Do not include any background."
 
 
 class CharacterAnalysis:

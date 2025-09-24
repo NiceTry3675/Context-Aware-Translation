@@ -215,6 +215,11 @@ export function useCanvasState() {
       setTranslationError('일러스트 생성을 위해 Vertex 서비스 계정 JSON이 필요합니다.');
       return;
     }
+
+    // Store current illustrations count for comparison after generation
+    const currentIllustrationsCount = selectedJob?.illustrations_count || 0;
+    const currentIllustrationsData = selectedJob?.illustrations_data || [];
+
     handleTriggerIllustration(
       parseInt(jobId, 10),
       credential,
@@ -225,7 +230,10 @@ export function useCanvasState() {
         skip_dialogue_heavy: illustrationSkipDialogueHeavy,
         cache_enabled: false,
       },
-      illustrationMaxCount
+      illustrationMaxCount,
+      // Pass current data for efficient updating
+      currentIllustrationsData,
+      currentIllustrationsCount
     );
     setIllustrationDialogOpen(false);
   };

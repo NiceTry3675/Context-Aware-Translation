@@ -357,7 +357,8 @@ class IllustrationGenerator:
                                    reference_image: Optional[Tuple[bytes, str]] = None,
                                    max_retries: int = 3,
                                    num_variations: int = 3,
-                                   add_variant_hints: bool = True) -> List[Dict[str, Any]]:
+                                   add_variant_hints: bool = True,
+                                   target_indices: Optional[List[int]] = None) -> List[Dict[str, Any]]:
         """
         Generate base images directly from provided prompts.
 
@@ -367,6 +368,7 @@ class IllustrationGenerator:
             max_retries: Maximum number of retry attempts
             num_variations: Number of variations to generate
             add_variant_hints: Whether to add variation hints
+            target_indices: Optional list of target indices to overwrite
 
         Returns:
             List of dictionaries: {index, illustration_path, prompt, success, type, used_reference}
@@ -376,7 +378,8 @@ class IllustrationGenerator:
             reference_image=reference_image,
             max_retries=max_retries,
             num_variations=num_variations,
-            add_variant_hints=add_variant_hints
+            add_variant_hints=add_variant_hints,
+            target_indices=target_indices
         )
 
     def _log_prompt_generation_details(self, log_data: Dict[str, Any]):

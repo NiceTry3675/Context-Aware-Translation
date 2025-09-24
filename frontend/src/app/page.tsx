@@ -3,6 +3,8 @@
 import React, { Suspense, useRef, useEffect } from 'react';
 import { Box, Container, CircularProgress } from '@mui/material';
 import { useCanvasState } from './hooks/useCanvasState';
+import { regenerateIllustration } from './utils/api';
+import { getCachedClerkToken } from './utils/authToken';
 import JobSidebar from './components/canvas/JobSidebar';
 import CanvasHeader from './components/canvas/CanvasHeader';
 import NewTranslationForm from './components/canvas/NewTranslationForm';
@@ -164,6 +166,32 @@ function CanvasContent() {
                 onOpenValidationDialog={() => state.setValidationDialogOpen(true)}
                 onOpenPostEditDialog={() => state.setPostEditDialogOpen(true)}
                 onOpenIllustrationDialog={() => state.setIllustrationDialogOpen(true)}
+                onRegenerateIllustration={async (segmentIndex: number, customPrompt?: string) => {
+                  try {
+                    const token = await getCachedClerkToken(state.getToken);
+                    await regenerateIllustration({
+                      jobId: state.jobId || '',
+                      segmentIndex,
+                      token: token || undefined,
+                      customPrompt,
+                      apiProvider: state.apiProvider,
+                      apiKey: state.apiKey,
+                      providerConfig: state.providerConfig,
+                    });
+
+                    // Refresh data after regeneration
+                    setTimeout(() => {
+                      if (state.jobId) {
+                        state.refreshJobPublic(state.jobId);
+                      }
+                    }, 2000);
+
+                    console.log('Successfully regenerated illustration for segment', segmentIndex, 'with custom prompt:', !!customPrompt);
+                  } catch (error) {
+                    console.error('Failed to regenerate illustration:', error);
+                    // TODO: Show error notification to user
+                  }
+                }}
                 modifiedCases={state.modifiedCases}
                 onCaseEditChange={(segmentIndex, caseIndex, patch) => {
                   const key = `${segmentIndex}:${caseIndex}`;

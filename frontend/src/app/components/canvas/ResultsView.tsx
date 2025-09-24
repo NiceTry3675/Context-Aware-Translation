@@ -103,6 +103,7 @@ interface ResultsViewProps {
   onOpenValidationDialog: () => void;
   onOpenPostEditDialog: () => void;
   onOpenIllustrationDialog: () => void;
+  onRegenerateIllustration?: (segmentIndex: number, customPrompt?: string) => void;
   // Editable suggestion overrides
   modifiedCases?: Record<number, Array<{ reason?: string; recommend_korean_sentence?: string }>>;
   onCaseEditChange?: (
@@ -143,6 +144,7 @@ export default function ResultsView({
   onOpenValidationDialog,
   onOpenPostEditDialog,
   onOpenIllustrationDialog,
+  onRegenerateIllustration,
   modifiedCases,
   onCaseEditChange,
 }: ResultsViewProps) {
@@ -377,6 +379,7 @@ export default function ResultsView({
                 status={selectedJob?.illustrations_status}
                 count={selectedJob?.illustrations_count || 0}
                 onGenerateIllustrations={onOpenIllustrationDialog}
+                onRegenerateIllustration={onRegenerateIllustration}
               />
             ) : (
               <Alert severity="info">

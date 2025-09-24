@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -18,12 +18,17 @@ import {
   Tooltip,
   Chip,
   Stack,
+  TextField,
+  Collapse,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
+import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
+import CancelIcon from '@mui/icons-material/Cancel';
 import { useAuth } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
 
@@ -44,8 +49,9 @@ interface IllustrationViewerProps {
   status?: string;
   count?: number;
   onGenerateIllustrations?: () => void;
-  onRegenerateIllustration?: (segmentIndex: number) => void;
+  onRegenerateIllustration?: (segmentIndex: number, customPrompt?: string) => void; // Updated to support custom prompt
   onDeleteIllustration?: (segmentIndex: number) => void;
+  onIllustrationsUpdate?: (newIllustrations: Illustration[]) => void; // New prop for efficient updates
 }
 
 export default function IllustrationViewer({
@@ -56,6 +62,7 @@ export default function IllustrationViewer({
   onGenerateIllustrations,
   onRegenerateIllustration,
   onDeleteIllustration,
+  onIllustrationsUpdate,
 }: IllustrationViewerProps) {
   const { getToken } = useAuth();
   const [selectedImage, setSelectedImage] = useState<Illustration | null>(null);
@@ -63,43 +70,65 @@ export default function IllustrationViewer({
   const [loadedImages, setLoadedImages] = useState<{ [key: number]: string }>({});
   const [loadedPrompts, setLoadedPrompts] = useState<{ [key: number]: any }>({});
 
-  // Load illustrations from API
-  useEffect(() => {
-    if (jobId && illustrations.length > 0) {
-      loadIllustrations();
-    }
-  }, [jobId, illustrations]);
+  // New states for prompt editing functionality
+  const [editingPrompt, setEditingPrompt] = useState<number | null>(null);
+  const [customPrompts, setCustomPrompts] = useState<{ [key: number]: string }>({});
+  const [promptErrors, setPromptErrors] = useState<{ [key: number]: string }>({});
 
-  const loadIllustrations = async () => {
+  const loadIllustrations = useCallback(async () => {
+    if (!jobId) {
+      return;
+    }
+
     const token = await getCachedClerkToken(getToken);
-    const illustrationPromises = illustrations.map(async (ill) => {
-      if (ill.success) {
-        try {
-          const response = await fetch(
-            `${API_BASE_URL}/api/v1/illustrations/${jobId}/illustration/${ill.segment_index}`,
-            {
-              headers: {
-                Authorization: token ? `Bearer ${token}` : '',
-              },
-            }
-          );
-          if (response.ok) {
-            // Check if response is image or JSON
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('image')) {
-              // It's an image
-              const blob = await response.blob();
-              const url = URL.createObjectURL(blob);
-              return { index: ill.segment_index, type: 'image', data: url };
-            } else {
-              // It's JSON (prompt)
-              const data = await response.json();
-              return { index: ill.segment_index, type: 'prompt', data };
-            }
+
+    // Find illustrations that haven't been loaded yet
+    const missingIllustrations = illustrations.filter(ill => {
+      if (!ill.success) return false;
+
+      const hasImage = loadedImages[ill.segment_index];
+      const hasPrompt = loadedPrompts[ill.segment_index];
+      const expectsImage = ill.type === 'image' || (typeof ill.illustration_path === 'string' && ill.illustration_path.endsWith('.png'));
+
+      if (expectsImage) {
+        return !hasImage;
+      }
+
+      return !hasPrompt;
+    });
+
+    if (missingIllustrations.length === 0) {
+      return; // No new illustrations to load
+    }
+
+    console.log(`Loading ${missingIllustrations.length} new illustrations out of ${illustrations.length} total`);
+
+    const illustrationPromises = missingIllustrations.map(async (ill) => {
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/api/v1/illustrations/${jobId}/illustration/${ill.segment_index}`,
+          {
+            headers: {
+              Authorization: token ? `Bearer ${token}` : '',
+            },
           }
-        } catch (error) {
-          console.error(`Failed to load illustration ${ill.segment_index}:`, error);
+        );
+        if (response.ok) {
+          // Check if response is image or JSON
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('image')) {
+            // It's an image
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            return { index: ill.segment_index, type: 'image', data: url };
+          } else {
+            // It's JSON (prompt)
+            const data = await response.json();
+            return { index: ill.segment_index, type: 'prompt', data };
+          }
         }
+      } catch (error) {
+        console.error(`Failed to load illustration ${ill.segment_index}:`, error);
       }
       return null;
     });
@@ -107,7 +136,7 @@ export default function IllustrationViewer({
     const results = await Promise.all(illustrationPromises);
     const imageMap: { [key: number]: string } = {};
     const promptMap: { [key: number]: any } = {};
-    
+
     results.forEach((result) => {
       if (result) {
         if (result.type === 'image') {
@@ -117,10 +146,18 @@ export default function IllustrationViewer({
         }
       }
     });
-    
-    setLoadedImages(imageMap);
-    setLoadedPrompts(promptMap);
-  };
+
+    // Update state with new images/prompts
+    setLoadedImages(prev => ({ ...prev, ...imageMap }));
+    setLoadedPrompts(prev => ({ ...prev, ...promptMap }));
+  }, [getToken, illustrations, jobId, loadedImages, loadedPrompts]);
+
+  // Load illustrations from API with caching to prevent redundant Clerk API calls
+  useEffect(() => {
+    if (jobId && illustrations.length > 0) {
+      loadIllustrations();
+    }
+  }, [jobId, illustrations.length, loadIllustrations]);
 
   const handleDownload = (illustration: Illustration) => {
     // Check if we have an image first
@@ -152,8 +189,74 @@ export default function IllustrationViewer({
   const handleRegenerate = async (segmentIndex: number) => {
     if (onRegenerateIllustration) {
       setLoading(true);
-      await onRegenerateIllustration(segmentIndex);
+      const customPrompt = customPrompts[segmentIndex];
+      await onRegenerateIllustration(segmentIndex, customPrompt);
       setLoading(false);
+    }
+  };
+
+  const handleStartEdit = (segmentIndex: number, currentPrompt: string) => {
+    setEditingPrompt(segmentIndex);
+    setCustomPrompts(prev => ({
+      ...prev,
+      [segmentIndex]: currentPrompt
+    }));
+    setPromptErrors(prev => ({ ...prev, [segmentIndex]: '' }));
+  };
+
+  const handleCancelEdit = (segmentIndex: number) => {
+    setEditingPrompt(null);
+    setCustomPrompts(prev => {
+      const newPrompts = { ...prev };
+      delete newPrompts[segmentIndex];
+      return newPrompts;
+    });
+    setPromptErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[segmentIndex];
+      return newErrors;
+    });
+  };
+
+  const handleSavePrompt = (segmentIndex: number) => {
+    const customPrompt = customPrompts[segmentIndex];
+    if (!customPrompt || customPrompt.trim().length === 0) {
+      setPromptErrors(prev => ({
+        ...prev,
+        [segmentIndex]: '프롬프트는 비어있을 수 없습니다.'
+      }));
+      return;
+    }
+
+    if (customPrompt.trim().length < 10) {
+      setPromptErrors(prev => ({
+        ...prev,
+        [segmentIndex]: '프롬프트는 최소 10자 이상이어야 합니다.'
+      }));
+      return;
+    }
+
+    setEditingPrompt(null);
+    setPromptErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[segmentIndex];
+      return newErrors;
+    });
+  };
+
+  const handlePromptChange = (segmentIndex: number, value: string) => {
+    setCustomPrompts(prev => ({
+      ...prev,
+      [segmentIndex]: value
+    }));
+
+    // Clear error when user starts typing
+    if (promptErrors[segmentIndex]) {
+      setPromptErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[segmentIndex];
+        return newErrors;
+      });
     }
   };
 
@@ -161,13 +264,17 @@ export default function IllustrationViewer({
     if (onDeleteIllustration) {
       await onDeleteIllustration(segmentIndex);
       // Remove from loaded images and prompts
-      const newLoadedImages = { ...loadedImages };
-      delete newLoadedImages[segmentIndex];
-      setLoadedImages(newLoadedImages);
-      
-      const newLoadedPrompts = { ...loadedPrompts };
-      delete newLoadedPrompts[segmentIndex];
-      setLoadedPrompts(newLoadedPrompts);
+      setLoadedImages(prev => {
+        const newLoadedImages = { ...prev };
+        delete newLoadedImages[segmentIndex];
+        return newLoadedImages;
+      });
+
+      setLoadedPrompts(prev => {
+        const newLoadedPrompts = { ...prev };
+        delete newLoadedPrompts[segmentIndex];
+        return newLoadedPrompts;
+      });
     }
   };
 
@@ -319,61 +426,128 @@ export default function IllustrationViewer({
                   ) : (
                     <Chip label="생성 실패" color="error" size="small" />
                   )}
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                    }}
-                  >
-                    {illustration.prompt}
-                  </Typography>
+
+                  {/* Prompt editing section */}
+                  {editingPrompt === illustration.segment_index ? (
+                    <Box sx={{ mt: 1 }}>
+                      <TextField
+                        fullWidth
+                        multiline
+                        rows={3}
+                        value={customPrompts[illustration.segment_index] || ''}
+                        onChange={(e) => handlePromptChange(illustration.segment_index, e.target.value)}
+                        placeholder="프롬프트를 입력하세요..."
+                        variant="outlined"
+                        size="small"
+                        error={!!promptErrors[illustration.segment_index]}
+                        helperText={promptErrors[illustration.segment_index] || `${customPrompts[illustration.segment_index]?.length || 0}자`}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            fontSize: '0.75rem',
+                          }
+                        }}
+                      />
+                      {promptErrors[illustration.segment_index] && (
+                        <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                          {promptErrors[illustration.segment_index]}
+                        </Typography>
+                      )}
+                    </Box>
+                  ) : (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        minHeight: '2.5em',
+                      }}
+                    >
+                      {customPrompts[illustration.segment_index] || illustration.prompt}
+                    </Typography>
+                  )}
                 </Stack>
               </CardContent>
               <Box sx={{ p: 1, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                <Tooltip title="확대">
-                  <IconButton
-                    size="small"
-                    onClick={() => handleImageClick(illustration)}
-                    disabled={!illustration.success}
-                  >
-                    <ZoomInIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="다운로드">
-                  <IconButton
-                    size="small"
-                    onClick={() => handleDownload(illustration)}
-                    disabled={!illustration.success}
-                  >
-                    <DownloadIcon />
-                  </IconButton>
-                </Tooltip>
-                {onRegenerateIllustration && (
-                  <Tooltip title="재생성">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleRegenerate(illustration.segment_index)}
-                      disabled={loading}
-                    >
-                      <RefreshIcon />
-                    </IconButton>
-                  </Tooltip>
-                )}
-                {onDeleteIllustration && (
-                  <Tooltip title="삭제">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDelete(illustration.segment_index)}
-                      color="error"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
+                {/* Edit mode buttons */}
+                {editingPrompt === illustration.segment_index ? (
+                  <>
+                    <Tooltip title="저장">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleSavePrompt(illustration.segment_index)}
+                        color="primary"
+                        disabled={loading}
+                      >
+                        <SaveIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="취소">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleCancelEdit(illustration.segment_index)}
+                        disabled={loading}
+                      >
+                        <CancelIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </>
+                ) : (
+                  <>
+                    <Tooltip title="확대">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleImageClick(illustration)}
+                        disabled={!illustration.success}
+                      >
+                        <ZoomInIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="다운로드">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDownload(illustration)}
+                        disabled={!illustration.success}
+                      >
+                        <DownloadIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="프롬프트 편집">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleStartEdit(illustration.segment_index, illustration.prompt)}
+                        disabled={loading}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    {onRegenerateIllustration && (
+                      <Tooltip title={customPrompts[illustration.segment_index] ? "커스텀 프롬프트로 재생성" : "재생성"}>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleRegenerate(illustration.segment_index)}
+                          disabled={loading}
+                          color={customPrompts[illustration.segment_index] ? "secondary" : "default"}
+                        >
+                          <RefreshIcon />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    {onDeleteIllustration && (
+                      <Tooltip title="삭제">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDelete(illustration.segment_index)}
+                          color="error"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </>
                 )}
               </Box>
             </Card>
