@@ -175,8 +175,7 @@ class IllustrationPromptBuilder:
 
         # Minimal identity; instruct NOT to render text or name
         parts.append(
-            f"Character design portrait of {name}. Neutral pose. Plain light background. "
-            f"No text, no watermark, do not write the name. No background elements"
+            f"Character design portrait of {name}. Do not include any background."
         )
 
         # High-level style preference only

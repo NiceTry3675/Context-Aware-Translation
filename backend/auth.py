@@ -1,11 +1,12 @@
 import os
+import time
 from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from clerk_backend_api import Clerk
 from clerk_backend_api.models import ClerkErrors, SDKError
 from clerk_backend_api.security import AuthenticateRequestOptions
-from typing import Optional
+from typing import Optional, Dict, Tuple
 
 # Internal imports
 from .domains.user import schemas as user_schemas
@@ -20,6 +21,20 @@ clerk = Clerk(bearer_auth=os.environ.get("CLERK_SECRET_KEY"))
 # If False (default), we avoid calling Clerk Management API on each request
 # and rely on JWT claims for user info/role.
 USE_CLERK_MANAGEMENT_API = os.environ.get("USE_CLERK_MANAGEMENT_API", "false").lower() == "true"
+
+# In-process cache to avoid repeated Clerk JWT verification for identical tokens
+# Keyed by raw bearer token, value is (claims_payload_dict, expiry_epoch_seconds)
+_TOKEN_CACHE: Dict[str, Tuple[dict, float]] = {}
+_TOKEN_CACHE_MAX_TTL_SECONDS = float(os.environ.get("AUTH_TOKEN_CACHE_MAX_TTL_SECONDS", "60"))
+_TOKEN_CACHE_SAFETY_MARGIN_SECONDS = float(os.environ.get("AUTH_TOKEN_CACHE_SAFETY_MARGIN_SECONDS", "5"))
+
+def _extract_bearer_token(auth_header: Optional[str]) -> Optional[str]:
+    if not auth_header:
+        return None
+    parts = auth_header.split()
+    if len(parts) == 2 and parts[0].lower() == "bearer":
+        return parts[1]
+    return None
 
 async def get_clerk_user_info(clerk_user_id: str) -> dict:
     """Clerk Management API를 사용하여 완전한 사용자 정보 가져오기"""
@@ -82,6 +97,14 @@ async def get_current_user_claims(request: Request) -> Optional[dict]:
     
     auth_header = request.headers.get("Authorization")
     print(f"--- [AUTH DEBUG] Authorization header for {request.url.path}: {auth_header[:50] if auth_header else 'None'}...")
+
+    # Try in-process cache first to avoid repeated verification of the same token
+    token = _extract_bearer_token(auth_header)
+    now = time.time()
+    if token and token in _TOKEN_CACHE:
+        payload, expiry = _TOKEN_CACHE.get(token, ({}, 0))
+        if expiry - now > _TOKEN_CACHE_SAFETY_MARGIN_SECONDS:
+            return payload
         
     try:
         clerk_secret = os.environ.get("CLERK_SECRET_KEY")
@@ -97,6 +120,17 @@ async def get_current_user_claims(request: Request) -> Optional[dict]:
             payload = request_state.payload
             print(f"--- [DEBUG] Full JWT Claims: {payload}")
             print(f"--- [DEBUG] Available keys: {list(payload.keys()) if payload else 'None'}")
+            # Cache the payload until min(exp, now + MAX_TTL) with a small safety margin
+            try:
+                exp = float(payload.get("exp")) if payload and payload.get("exp") else None
+            except Exception:
+                exp = None
+            if token:
+                if exp is not None:
+                    expiry = min(exp, now + _TOKEN_CACHE_MAX_TTL_SECONDS)
+                else:
+                    expiry = now + _TOKEN_CACHE_MAX_TTL_SECONDS
+                _TOKEN_CACHE[token] = (payload, expiry)
             return payload
         else:
             print(f"--- [AUTH DEBUG] Token present but not signed in. Request state: {request_state}")

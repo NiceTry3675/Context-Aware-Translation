@@ -391,6 +391,8 @@ export interface IllustrationGenerationParams {
     cache_enabled?: boolean;
   };
   maxIllustrations?: number;
+  currentIllustrationsData?: any[];
+  currentIllustrationsCount?: number;
 }
 
 export async function triggerIllustrationGeneration({
@@ -401,6 +403,8 @@ export async function triggerIllustrationGeneration({
   providerConfig,
   config,
   maxIllustrations,
+  currentIllustrationsData = [],
+  currentIllustrationsCount = 0,
 }: IllustrationGenerationParams): Promise<void> {
   const payload: Record<string, unknown> = {
     api_provider: apiProvider,
@@ -437,6 +441,101 @@ export async function triggerIllustrationGeneration({
   }
 }
 
+interface RegenerateIllustrationParams {
+  jobId: string;
+  segmentIndex: number;
+  token?: string;
+  customPrompt?: string;
+  apiProvider?: string;
+  apiKey?: string;
+  providerConfig?: string;
+}
+
+export async function regenerateIllustration({
+  jobId,
+  segmentIndex,
+  token,
+  customPrompt,
+  apiProvider,
+  apiKey,
+  providerConfig,
+}: RegenerateIllustrationParams): Promise<void> {
+  const payload: Record<string, unknown> = {};
+
+  if (customPrompt) {
+    payload.custom_prompt = customPrompt;
+  }
+
+  if (apiProvider) {
+    payload.api_provider = apiProvider;
+  }
+
+  if (apiKey) {
+    payload.api_key = apiKey;
+  }
+
+  if (providerConfig) {
+    payload.provider_config = providerConfig;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/regenerate/${segmentIndex}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': token ? `Bearer ${token}` : '',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || `Failed to regenerate illustration for segment ${segmentIndex}`);
+  }
+}
+
+interface RegenerateBaseParams {
+  jobId: string;
+  baseIndex: number;
+  customPrompt: string;
+  token?: string;
+  apiProvider?: string;
+  apiKey?: string;
+  providerConfig?: string;
+}
+
+export async function regenerateBase({
+  jobId,
+  baseIndex,
+  customPrompt,
+  token,
+  apiProvider,
+  apiKey,
+  providerConfig,
+}: RegenerateBaseParams): Promise<void> {
+  const payload: Record<string, unknown> = {
+    custom_prompt: customPrompt,
+  };
+
+  // Add API credentials to payload if provided
+  if (apiProvider) payload.api_provider = apiProvider;
+  if (apiKey) payload.api_key = apiKey;
+  if (providerConfig) payload.provider_config = providerConfig;
+  if (token) payload.api_token = token;
+
+  const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/${baseIndex}/regenerate`, {
+    method: 'POST',
+    headers: {
+      'Authorization': token ? `Bearer ${token}` : '',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || `Failed to regenerate base image ${baseIndex}`);
+  }
+}
 
 // ============= Character Base API Functions =============
 

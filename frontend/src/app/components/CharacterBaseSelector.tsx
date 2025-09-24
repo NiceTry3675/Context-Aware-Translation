@@ -1,10 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Box, Button, Card, CardMedia, CardContent, Typography, Stack, Radio, CircularProgress, Alert, TextField } from '@mui/material';
+import { Box, Button, Card, CardMedia, CardContent, Typography, Stack, Radio, CircularProgress, Alert, TextField, IconButton, Collapse } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
+import CancelIcon from '@mui/icons-material/Cancel';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useAuth } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
-import { getCharacterBases, generateCharacterBases, selectCharacterBase, CharacterProfileBody, analyzeCharacterAppearance, generateBasesFromPrompt } from '../utils/api';
+import { getCharacterBases, generateCharacterBases, selectCharacterBase, CharacterProfileBody, analyzeCharacterAppearance, generateBasesFromPrompt, regenerateBase } from '../utils/api';
 import type { ApiProvider } from '../hooks/useApiKey';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -30,6 +34,11 @@ export default function CharacterBaseSelector({ jobId, apiProvider, apiKey, prov
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [appearancePrompts, setAppearancePrompts] = useState<string[]>([]);
 
+  // New states for prompt editing functionality
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [customPrompts, setCustomPrompts] = useState<{ [key: number]: string }>({});
+  const [promptErrors, setPromptErrors] = useState<{ [key: number]: string }>({});
+
   const load = async () => {
     setLoading(true);
     setError(null);
@@ -40,25 +49,55 @@ export default function CharacterBaseSelector({ jobId, apiProvider, apiKey, prov
       setBases(list);
       setSelectedIndex(typeof data.selected_index === 'number' ? data.selected_index : null);
       setProfile((data.profile as CharacterProfileBody) || null);
-      // Load images or prompts for preview
-      const urls: Record<number, string> = {};
-      await Promise.all((list as any[]).map(async (b: any, i: number) => {
-        try {
-          const res = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/${i}`, {
-            headers: {
-              'Authorization': token ? `Bearer ${token}` : '',
-            }
-          });
-          const contentType = res.headers.get('content-type') || '';
-          if (res.ok && contentType.includes('image')) {
-            const blob = await res.blob();
-            urls[i] = URL.createObjectURL(blob);
+
+      // Sync custom prompts with server data so they persist across reloads
+      setCustomPrompts(prev => {
+        const next: { [key: number]: string } = { ...prev };
+        list.forEach((base: any, idx: number) => {
+          if (base && typeof base.prompt === 'string' && base.prompt.trim()) {
+            next[idx] = base.prompt;
           }
-        } catch {
-          // ignore
+        });
+        return next;
+      });
+
+      // Load images or prompts for preview
+      const timestamp = Date.now();
+
+      const fetchWithRetry = async (index: number, attempts: number = 5, delayMs: number = 800) => {
+        for (let attempt = 1; attempt <= attempts; attempt++) {
+          try {
+            const res = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/${index}?t=${timestamp}`, {
+              headers: {
+                'Authorization': token ? `Bearer ${token}` : '',
+              },
+              cache: 'no-store',
+            });
+            if (res.ok) {
+              const contentType = res.headers.get('content-type') || '';
+              if (contentType.includes('image')) {
+                const blob = await res.blob();
+                return URL.createObjectURL(blob);
+              }
+            }
+          } catch {
+            // ignore and retry
+          }
+          if (attempt < attempts) {
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+          }
+        }
+        return undefined;
+      };
+
+      const nextUrls: { [key: number]: string } = {};
+      await Promise.all((list as any[]).map(async (_b: any, i: number) => {
+        const url = await fetchWithRetry(i);
+        if (url) {
+          nextUrls[i] = url;
         }
       }));
-      setImageUrls(urls);
+      setImageUrls(nextUrls);
     } catch (e) {
       // ignore if none exist yet
     } finally {
@@ -183,6 +222,119 @@ export default function CharacterBaseSelector({ jobId, apiProvider, apiKey, prov
     }
   };
 
+  const handleStartEdit = (index: number, currentPrompt: string) => {
+    setEditingIndex(index);
+    setCustomPrompts(prev => ({
+      ...prev,
+      [index]: currentPrompt
+    }));
+    setPromptErrors(prev => ({ ...prev, [index]: '' }));
+  };
+
+  const handleCancelEdit = (index: number) => {
+    setEditingIndex(null);
+    setCustomPrompts(prev => {
+      const newPrompts = { ...prev };
+      delete newPrompts[index];
+      return newPrompts;
+    });
+    setPromptErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[index];
+      return newErrors;
+    });
+  };
+
+  const handleSavePrompt = (index: number) => {
+    const customPrompt = (customPrompts[index] || '').trim();
+    if (!customPrompt) {
+      setPromptErrors(prev => ({
+        ...prev,
+        [index]: '프롬프트는 비어있을 수 없습니다.'
+      }));
+      return;
+    }
+
+    if (customPrompt.length < 10) {
+      setPromptErrors(prev => ({
+        ...prev,
+        [index]: '프롬프트는 최소 10자 이상이어야 합니다.'
+      }));
+      return;
+    }
+
+    setCustomPrompts(prev => ({
+      ...prev,
+      [index]: customPrompt,
+    }));
+
+    setBases(prev => {
+      const next = [...prev];
+      if (next[index]) {
+        next[index] = { ...next[index], prompt: customPrompt };
+      }
+      return next;
+    });
+
+    setEditingIndex(null);
+    setPromptErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[index];
+      return newErrors;
+    });
+  };
+
+  const handlePromptChange = (index: number, value: string) => {
+    setCustomPrompts(prev => ({
+      ...prev,
+      [index]: value
+    }));
+
+    // Clear error when user starts typing
+    if (promptErrors[index]) {
+      setPromptErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[index];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleRegenerateBase = async (index: number) => {
+    const customPrompt = customPrompts[index];
+    if (!customPrompt || customPrompt.trim().length === 0) {
+      setPromptErrors(prev => ({
+        ...prev,
+        [index]: '커스텀 프롬프트가 필요합니다.'
+      }));
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const token = await getCachedClerkToken(getToken);
+      await regenerateBase({
+        jobId,
+        baseIndex: index,
+        customPrompt,
+        token: token || undefined,
+        apiProvider,
+        apiKey: apiProvider === 'vertex' ? '' : (apiKey || ''),
+        providerConfig,
+      });
+      console.log('Successfully regenerated base', index, 'with custom prompt');
+      // Allow backend processing time before reloading assets
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      await load(); // Reload to show updated base
+      onChange?.();
+    } catch (e: any) {
+      setError(e?.message || '베이스 재생성에 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Box sx={{ p: 2, border: '1px solid', borderColor: 'grey.300', borderRadius: 1, mb: 2 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
@@ -257,31 +409,100 @@ export default function CharacterBaseSelector({ jobId, apiProvider, apiKey, prov
                     <Typography variant="caption" gutterBottom sx={{ color: '#000000' }}>
                       프롬프트
                     </Typography>
-                    {expandedIndex === i ? (
-                      <Box sx={{ p: 1, bgcolor: 'grey.800', borderRadius: 1, fontFamily: 'monospace', fontSize: '0.8rem', whiteSpace: 'pre-wrap', color: '#ffffff', border: '1px solid', borderColor: 'grey.700' }}>
-                        {b.prompt}
+
+                    {/* Edit mode */}
+                    {editingIndex === i ? (
+                      <Box sx={{ p: 1, bgcolor: 'grey.800', borderRadius: 1, border: '1px solid', borderColor: 'grey.700' }}>
+                        <TextField
+                          fullWidth
+                          multiline
+                          rows={6}
+                          value={customPrompts[i] || ''}
+                          onChange={(e) => handlePromptChange(i, e.target.value)}
+                          placeholder="프롬프트를 입력하세요..."
+                          variant="outlined"
+                          size="small"
+                          error={!!promptErrors[i]}
+                          helperText={promptErrors[i] || `${customPrompts[i]?.length || 0}자`}
+                          sx={{
+                            '& .MuiOutlinedInput-root': {
+                              bgcolor: 'grey.900',
+                              color: '#ffffff',
+                              fontSize: '0.75rem',
+                            },
+                            '& .MuiInputBase-input': {
+                              color: '#ffffff',
+                            },
+                            '& textarea': {
+                              color: '#ffffff',
+                            },
+                          }}
+                        />
+                        {promptErrors[i] && (
+                          <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                            {promptErrors[i]}
+                          </Typography>
+                        )}
                       </Box>
                     ) : (
-                      <Box sx={{ p: 1, bgcolor: 'grey.800', borderRadius: 1, border: '1px solid', borderColor: 'grey.700' }}>
+                      <Box sx={{
+                        p: 1,
+                        bgcolor: expandedIndex === i ? 'grey.700' : 'grey.800',
+                        borderRadius: 1,
+                        border: '1px solid',
+                        borderColor: expandedIndex === i ? 'primary.main' : 'grey.700',
+                        transition: 'all 0.2s ease-in-out'
+                      }}>
                         <Typography
                           variant="body2"
                           sx={{
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             display: '-webkit-box',
-                            WebkitLineClamp: 2,
+                            WebkitLineClamp: expandedIndex === i ? 'none' : 2,
                             WebkitBoxOrient: 'vertical',
-                            color: '#ffffff'
+                            color: '#ffffff',
+                            minHeight: expandedIndex === i ? 'auto' : '3em',
+                            whiteSpace: expandedIndex === i ? 'pre-wrap' : 'normal',
+                            wordBreak: 'break-word',
+                            lineHeight: 1.4,
+                            fontSize: expandedIndex === i ? '0.875rem' : '0.75rem',
                           }}
                         >
-                          {b.prompt}
+                          {customPrompts[i] || b.prompt}
                         </Typography>
                       </Box>
                     )}
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-                      <Button size="small" onClick={() => setExpandedIndex(expandedIndex === i ? null : i)}>
-                        {expandedIndex === i ? '감추기' : '자세히'}
-                      </Button>
+
+                    {/* Action buttons */}
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 1 }}>
+                      {editingIndex === i ? (
+                        <>
+                          <IconButton size="small" onClick={() => setExpandedIndex(expandedIndex === i ? null : i)} disabled={loading}>
+                            {expandedIndex === i ? '감추기' : '자세히'}
+                          </IconButton>
+                          <IconButton size="small" onClick={() => handleSavePrompt(i)} color="primary" disabled={loading}>
+                            <SaveIcon />
+                          </IconButton>
+                          <IconButton size="small" onClick={() => handleCancelEdit(i)} disabled={loading}>
+                            <CancelIcon />
+                          </IconButton>
+                        </>
+                      ) : (
+                        <>
+                          <IconButton size="small" onClick={() => setExpandedIndex(expandedIndex === i ? null : i)}>
+                            {expandedIndex === i ? '감추기' : '자세히'}
+                          </IconButton>
+                          <IconButton size="small" onClick={() => handleStartEdit(i, b.prompt)} disabled={loading}>
+                            <EditIcon />
+                          </IconButton>
+                          {customPrompts[i] && (
+                            <IconButton size="small" onClick={() => handleRegenerateBase(i)} disabled={loading} color="secondary">
+                              <RefreshIcon />
+                            </IconButton>
+                          )}
+                        </>
+                      )}
                     </Box>
                   </Box>
                 )}

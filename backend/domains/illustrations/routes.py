@@ -18,7 +18,7 @@ from ...config.dependencies import get_db, get_required_user
 from ...config.database import SessionLocal
 from ..translation.models import TranslationJob
 from ..user.models import User
-from ...celery_tasks.illustrations import generate_illustrations_task, regenerate_single_illustration
+from ...celery_tasks.illustrations import generate_illustrations_task, regenerate_single_illustration, regenerate_single_base
 from ...domains.tasks.models import TaskKind
 from ...domains.tasks.repository import TaskRepository
 from ...celery_app import celery_app
@@ -38,6 +38,7 @@ from ..shared.model_factory import ModelAPIFactory
 from ..shared.provider_context import provider_context_to_payload
 from core.config.loader import load_config
 from .service import IllustrationsService
+import logging
 
 router = APIRouter(prefix="/illustrations", tags=["illustrations"])
 
@@ -669,46 +670,66 @@ async def regenerate_illustration_prompt(
 ):
     """
     Regenerate an illustration prompt for a specific segment.
-    
-    This allows regenerating a single illustration prompt with optional new style hints.
-    
+
+    This allows regenerating a single illustration prompt with optional new style hints or custom prompt.
+
     Expects JSON body with:
     - api_key: API key for Gemini
     - style_hints: Optional style hints for regeneration
+    - custom_prompt: Optional custom prompt to override automatic generation
     """
     # Parse request body
     body = await request.json()
     api_key = body.get('api_key')
     style_hints = body.get('style_hints')
+    custom_prompt = body.get('custom_prompt')
     api_provider = body.get('api_provider', 'gemini')
     provider_config = body.get('provider_config')
-    
+    api_token = body.get('api_token')
+
     service = IllustrationsService(db)
     provider_context = service.build_provider_context(api_provider, provider_config)
     provider_payload = provider_context_to_payload(provider_context)
 
     if not api_key and provider_context.name != 'vertex':
         raise HTTPException(status_code=400, detail="API key is required")
-    
+
     # Get the translation job
     job = db.query(TranslationJob).filter(
         TranslationJob.id == job_id,
         TranslationJob.owner_id == current_user.id
     ).first()
-    
+
     if not job:
         raise HTTPException(status_code=404, detail="Translation job not found")
-    
+
     if job.status != "COMPLETED":
         raise HTTPException(
             status_code=400,
             detail="Translation must be completed before regenerating illustrations"
         )
-    
-    # Get the segment data
-    if not job.translation_segments or segment_index >= len(job.translation_segments):
-        raise HTTPException(status_code=404, detail=f"Segment {segment_index} not found")
-    
+
+    # Update stored prompt immediately so UI reflects edit
+    if custom_prompt:
+        try:
+            illustrations = job.illustrations_data or []
+            updated = False
+            new_data: List[Dict[str, Any]] = []
+            for ill in illustrations:
+                if ill.get('segment_index') == segment_index:
+                    entry = dict(ill)
+                    entry['prompt'] = custom_prompt
+                    entry['regeneration_status'] = 'PENDING'
+                    new_data.append(entry)
+                    updated = True
+                else:
+                    new_data.append(ill)
+            if updated:
+                job.illustrations_data = new_data
+                db.commit()
+        except Exception as e:
+            logging.warning(f"Failed to update illustration prompt immediately: {e}")
+
     # Start regeneration using Celery
     regenerate_single_illustration.delay(
         job_id=job_id,
@@ -716,8 +737,10 @@ async def regenerate_illustration_prompt(
         style_hints=style_hints,
         api_key=api_key,
         provider_context=provider_payload,
+        custom_prompt=custom_prompt,
+        api_token=api_token
     )
-    
+
     return {
         "message": f"Regeneration started for segment {segment_index}",
         "job_id": job_id,
@@ -922,9 +945,9 @@ def _legacy_regenerate_single_illustration(
         
         segment = segments[segment_index]
         
-        # If base selection exists, build a custom prompt using profile lock
+        # Build a custom prompt using profile lock when profile data exists
         custom_prompt = None
-        if job.character_base_selected_index is not None and job.character_profile:
+        if job.character_profile:
             custom_prompt = generator.create_scene_prompt_with_profile(
                 segment_text=segment.get('source_text', ''),
                 context=None,
@@ -997,3 +1020,113 @@ def _legacy_regenerate_single_illustration(
         # Always close the database session
         if db:
             db.close()
+
+
+@router.post("/{job_id}/character/base/{base_index}/regenerate")
+async def regenerate_character_base(
+    job_id: int,
+    base_index: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_required_user)
+):
+    """
+    Regenerate a specific character base image with custom prompt.
+
+    Expects JSON body with:
+    - custom_prompt: Custom prompt to use for regeneration
+    """
+    # Parse request body
+    body = await request.json()
+    custom_prompt = body.get('custom_prompt')
+
+    if not custom_prompt or not custom_prompt.strip():
+        raise HTTPException(status_code=400, detail="Custom prompt is required")
+
+    service = IllustrationsService(db)
+
+    job = db.query(TranslationJob).filter(
+        TranslationJob.id == job_id,
+        TranslationJob.owner_id == current_user.id
+    ).first()
+
+    if not job:
+        raise HTTPException(status_code=404, detail="Translation job not found")
+
+    if not job.character_base_images:
+        raise HTTPException(status_code=404, detail="No character bases found for this job")
+
+    bases = job.character_base_images
+    if not (0 <= base_index < len(bases)):
+        raise HTTPException(status_code=404, detail=f"Base index {base_index} not found")
+
+    # Get the base to regenerate
+    base_to_regenerate = bases[base_index]
+    if not base_to_regenerate or not base_to_regenerate.get('prompt'):
+        raise HTTPException(status_code=400, detail="Base has no prompt to regenerate from")
+
+    # Get API credentials from job or request
+    api_key = None
+    provider_context = None
+
+    # Try to get from job config first
+    if job.illustrations_config:
+        config = job.illustrations_config
+        if config.get('api_provider') == 'vertex':
+            provider_context = service.build_provider_context(
+                'vertex', config.get('provider_config')
+            )
+        else:
+            api_key = config.get('api_key')
+
+    # If not found in job config, try to get from request (for backward compatibility)
+    if not api_key and not provider_context:
+        # Try to get API key from request body
+        api_key = body.get('api_key')
+        if body.get('api_provider') == 'vertex':
+            provider_context = service.build_provider_context(
+                'vertex', body.get('provider_config')
+            )
+
+    # If still not found, raise error
+    if not api_key and not provider_context:
+        raise HTTPException(status_code=400, detail="API credentials not found. Please regenerate illustrations first or provide API key in the request.")
+
+    # Ensure provider_context is properly serialized for Celery
+    serialized_context = None
+    if provider_context:
+        serialized_context = provider_context_to_payload(provider_context)
+
+    # Start regeneration using Celery
+    regenerate_single_base.delay(
+        job_id=job_id,
+        base_index=base_index,
+        custom_prompt=custom_prompt,
+        api_key=api_key,
+        provider_context=serialized_context,
+        api_token=body.get('api_token'),
+    )
+
+    # Immediately update the stored prompt so the UI reflects the latest value while regeneration runs
+    try:
+        current_bases = job.character_base_images or []
+        if 0 <= base_index < len(current_bases):
+            updated_bases: List[Dict[str, Any]] = []
+            for base in current_bases:
+                updated_bases.append(dict(base) if isinstance(base, dict) else {})
+
+            base_entry = updated_bases[base_index]
+            base_entry['prompt'] = custom_prompt
+            base_entry['regeneration_status'] = 'PENDING'
+            updated_bases[base_index] = base_entry
+
+            job.character_base_images = updated_bases
+            db.commit()
+    except Exception as e:
+        logging.warning(f"Failed to update base prompt immediately: {e}")
+
+    return {
+        "message": f"Regeneration started for base {base_index}",
+        "job_id": job_id,
+        "base_index": base_index
+    }

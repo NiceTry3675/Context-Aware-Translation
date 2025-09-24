@@ -1430,7 +1430,7 @@
           "illustrations"
         ],
         "summary": "Regenerate Illustration Prompt",
-        "description": "Regenerate an illustration prompt for a specific segment.\n\nThis allows regenerating a single illustration prompt with optional new style hints.\n\nExpects JSON body with:\n- api_key: API key for Gemini\n- style_hints: Optional style hints for regeneration",
+        "description": "Regenerate an illustration prompt for a specific segment.\n\nThis allows regenerating a single illustration prompt with optional new style hints or custom prompt.\n\nExpects JSON body with:\n- api_key: API key for Gemini\n- style_hints: Optional style hints for regeneration\n- custom_prompt: Optional custom prompt to override automatic generation",
         "operationId": "regenerate_illustration_prompt_api_v1_illustrations__job_id__regenerate__segment_index__post",
         "parameters": [
           {
@@ -1449,6 +1449,56 @@
             "schema": {
               "type": "integer",
               "title": "Segment Index"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/illustrations/{job_id}/character/base/{base_index}/regenerate": {
+      "post": {
+        "tags": [
+          "illustrations"
+        ],
+        "summary": "Regenerate Character Base",
+        "description": "Regenerate a specific character base image with custom prompt.\n\nExpects JSON body with:\n- custom_prompt: Custom prompt to use for regeneration",
+        "operationId": "regenerate_character_base_api_v1_illustrations__job_id__character_base__base_index__regenerate_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "base_index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Base Index"
             }
           }
         ],

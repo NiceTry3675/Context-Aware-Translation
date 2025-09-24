@@ -90,8 +90,8 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
     let timer: NodeJS.Timeout | null = null;
     const load = async () => {
       try {
-        const token = await getCachedClerkToken(getToken);
-        const list = await fetchJobTasks(job.id, token || undefined);
+        // Poll job tasks without Clerk token to avoid unnecessary auth verification
+        const list = await fetchJobTasks(job.id);
         setTasks(list);
       } catch (e) {
         // silent fail to avoid noisy UI
@@ -104,7 +104,7 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [job.id, job.validation_status, job.post_edit_status, job.illustrations_status, getToken]);
+  }, [job.id, job.validation_status, job.post_edit_status, job.illustrations_status]);
 
   const hasActive = (kind: string) =>
     tasks.some(t => t.kind === (kind as any) && ['PENDING', 'STARTED', 'RETRY', 'running'].includes((t.celery_state || '').toUpperCase()));

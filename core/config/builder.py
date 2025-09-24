@@ -6,6 +6,7 @@ from .character_style import CharacterStyleManager
 from shared.errors import ProhibitedException
 from shared.errors import prohibited_content_logger
 from typing import List, Dict, Optional, Union
+from pydantic import ValidationError
 from ..schemas.narrative_style import (
     StyleDeviation,
     WorldAtmosphereAnalysis,
@@ -184,7 +185,18 @@ class DynamicConfigBuilder:
             if hasattr(self.model, 'generate_structured'):
                 schema = make_world_atmosphere_schema()
                 response = self.model.generate_structured(prompt, schema)
-                world_atmosphere = parse_world_atmosphere_response(response)
+                if not response:
+                    print("Warning: World atmosphere analysis returned empty payload; skipping.")
+                    return None
+
+                try:
+                    world_atmosphere = parse_world_atmosphere_response(response)
+                except ValidationError as validation_error:
+                    print(
+                        "Warning: World atmosphere analysis produced invalid payload; "
+                        f"skipping. Details: {validation_error}"
+                    )
+                    return None
 
                 # Validate that we got a proper summary, not raw text
                 if world_atmosphere.segment_summary:
