@@ -1073,8 +1073,8 @@ async def regenerate_character_base(
     if job.illustrations_config:
         config = job.illustrations_config
         if config.get('api_provider') == 'vertex':
-            provider_context = provider_context_to_payload(
-                service.build_provider_context('vertex', config.get('provider_config'))
+            provider_context = service.build_provider_context(
+                'vertex', config.get('provider_config')
             )
         else:
             api_key = config.get('api_key')
@@ -1084,8 +1084,8 @@ async def regenerate_character_base(
         # Try to get API key from request body
         api_key = body.get('api_key')
         if body.get('api_provider') == 'vertex':
-            provider_context = provider_context_to_payload(
-                service.build_provider_context('vertex', body.get('provider_config'))
+            provider_context = service.build_provider_context(
+                'vertex', body.get('provider_config')
             )
 
     # If still not found, raise error
@@ -1103,7 +1103,7 @@ async def regenerate_character_base(
         base_index=base_index,
         custom_prompt=custom_prompt,
         api_key=api_key,
-        provider_context=provider_context_to_payload(provider_context),
+        provider_context=serialized_context,
         api_token=body.get('api_token'),
     )
 

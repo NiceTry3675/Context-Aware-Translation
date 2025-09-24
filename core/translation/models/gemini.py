@@ -1,3 +1,4 @@
+import json
 import time
 from datetime import datetime
 from typing import Callable, Optional, Tuple
@@ -476,26 +477,31 @@ class GeminiModel:
                     except Exception:
                         pass
 
-                if response_text:
-                    # Strip markdown code block formatting if present
-                    cleaned_text = response_text.strip()
-                    if cleaned_text.startswith('```json'):
-                        cleaned_text = cleaned_text[7:]  # Remove ```json prefix
-                    elif cleaned_text.startswith('```'):
-                        cleaned_text = cleaned_text[3:]  # Remove ``` prefix
-                    if cleaned_text.endswith('```'):
-                        cleaned_text = cleaned_text[:-3]  # Remove ``` suffix
-                    cleaned_text = cleaned_text.strip()
+                parsed_response = None
+                parse_error = None
+                cleaned_text = None
 
+                if response_text:
+                    cleaned_text = self._clean_json_text(response_text)
                     try:
                         parsed_response = _json.loads(cleaned_text)
-                        self._emit_usage_event(response)
-                        return parsed_response
                     except _json.JSONDecodeError as e:
-                        # For dict schemas, we still fail on JSON errors
                         print(f"JSON parsing error: {e}")
                         print(f"Response text length: {len(cleaned_text)}")
-                        raise ValueError(f"Failed to parse JSON response: {e}")
+                        parse_error = e
+
+                if parsed_response is None:
+                    parsed_response = self._extract_structured_payload(response, cleaned_text)
+
+                if parsed_response is None and parse_error is None:
+                    parsed_response = {}
+
+                if parsed_response is not None:
+                    self._emit_usage_event(response)
+                    return parsed_response
+
+                if parse_error is not None:
+                    raise ValueError(f"Failed to parse JSON response: {parse_error}")
 
                 raise ValueError("Structured API returned an empty response.")
 
@@ -508,3 +514,86 @@ class GeminiModel:
                 self._retry_or_raise(e, attempt, max_retries, "structured API call")
 
         return {} if not is_pydantic else None
+
+    @staticmethod
+    def _clean_json_text(raw: str) -> str:
+        cleaned = raw.strip()
+        if cleaned.startswith('```json'):
+            cleaned = cleaned[7:]
+        elif cleaned.startswith('```'):
+            cleaned = cleaned[3:]
+        if cleaned.endswith('```'):
+            cleaned = cleaned[:-3]
+        return cleaned.strip()
+
+    def _extract_structured_payload(self, response, fallback_text: str | None = None):
+        if response is None:
+            return None
+
+        parsed = getattr(response, 'parsed', None)
+        coerced = self._coerce_structured_payload(parsed)
+        if coerced is not None:
+            return coerced
+
+        parts = getattr(response, 'parts', None)
+        if not parts:
+            candidates = getattr(response, 'candidates', None) or []
+            for candidate in candidates:
+                content = getattr(candidate, 'content', None)
+                if content and getattr(content, 'parts', None):
+                    parts = content.parts
+                    break
+
+        if parts:
+            for part in parts:
+                fc = getattr(part, 'function_call', None)
+                if fc is None:
+                    continue
+                payload = self._coerce_structured_payload(getattr(fc, 'args', None))
+                if payload is not None:
+                    return payload
+
+            for part in parts:
+                fr = getattr(part, 'function_response', None)
+                if fr is None:
+                    continue
+                payload = self._coerce_structured_payload(getattr(fr, 'response', None))
+                if payload is not None:
+                    return payload
+
+            for part in parts:
+                payload = self._coerce_structured_payload(getattr(part, 'text', None))
+                if payload is not None:
+                    return payload
+
+        if fallback_text:
+            return self._coerce_structured_payload(fallback_text)
+
+        return None
+
+    @staticmethod
+    def _coerce_structured_payload(payload):
+        if payload is None:
+            return None
+
+        try:
+            from pydantic import BaseModel  # Local import to avoid eager dependency costs
+        except Exception:  # pragma: no cover - pydantic should exist but guard anyway
+            BaseModel = None
+
+        if BaseModel and isinstance(payload, BaseModel):
+            return payload.model_dump()
+
+        if isinstance(payload, (dict, list)):
+            return payload
+
+        if isinstance(payload, str):
+            cleaned = GeminiModel._clean_json_text(payload)
+            if not cleaned:
+                return None
+            try:
+                return json.loads(cleaned)
+            except json.JSONDecodeError:
+                return None
+
+        return None
