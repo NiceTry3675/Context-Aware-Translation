@@ -541,9 +541,9 @@ def regenerate_single_illustration(
         final_custom_prompt = custom_prompt if custom_prompt else None
         profile_locked_prompt = None
 
-        # If base selection exists, build a profile-locked prompt and prepare reference
-        ref_tuple = None
-        if job.character_base_selected_index is not None and job.character_profile:
+        # Build a consistency prompt when profile data exists
+        has_profile = bool(job.character_profile)
+        if has_profile:
             profile_locked_prompt = generator.create_scene_prompt_with_profile(
                 segment_text=segment.get('source_text', ''),
                 context=None,
@@ -551,11 +551,12 @@ def regenerate_single_illustration(
                 style_hints=style_hints or (job.illustrations_config.get('style_hints', '') if job.illustrations_config else '')
             )
 
-            # Only fall back to the generated profile prompt when user didn't supply one
             if final_custom_prompt is None:
                 final_custom_prompt = profile_locked_prompt
 
-            # Optionally attach the selected base as a reference image
+        # Always attempt to load the selected base as reference when one is chosen
+        ref_tuple = None
+        if job.character_base_selected_index is not None:
             try:
                 bases = job.character_base_images or []
                 idx = job.character_base_selected_index

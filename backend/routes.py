@@ -120,6 +120,12 @@ router.add_api_route(
     tags=["export"]
 )
 router.add_api_route(
+    "/jobs/{job_id}/pdf",
+    export_routes.download_pdf,
+    methods=["GET"],
+    tags=["jobs"]
+)
+router.add_api_route(
     "/jobs/{job_id}/glossary",
     export_routes.download_glossary,
     methods=["GET"],

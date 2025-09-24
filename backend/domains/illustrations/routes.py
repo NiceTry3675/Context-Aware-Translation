@@ -945,9 +945,9 @@ def _legacy_regenerate_single_illustration(
         
         segment = segments[segment_index]
         
-        # If base selection exists, build a custom prompt using profile lock
+        # Build a custom prompt using profile lock when profile data exists
         custom_prompt = None
-        if job.character_base_selected_index is not None and job.character_profile:
+        if job.character_profile:
             custom_prompt = generator.create_scene_prompt_with_profile(
                 segment_text=segment.get('source_text', ''),
                 context=None,

@@ -85,6 +85,38 @@ async def export_job(
         return FileResponse(path=file_path, filename=filename, media_type=media_type)
 
 
+async def download_pdf(
+    job_id: int,
+    include_source: bool = Query(True),
+    include_illustrations: bool = Query(True),
+    page_size: str = Query("A4"),
+    user: User = Depends(get_required_user),
+    db: Session = Depends(get_db)
+) -> Response:
+    """Download translation as PDF using query parameters."""
+    service = ExportDomainService(db)
+
+    from .schemas import PDFExportRequest
+
+    request = PDFExportRequest(
+        job_id=job_id,
+        include_source=include_source,
+        include_illustrations=include_illustrations,
+        page_size=page_size,
+    )
+
+    pdf_bytes = await service.generate_pdf(user, request)
+    pdf_filename = service.get_pdf_filename(job_id)
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{pdf_filename}"'
+        }
+    )
+
+
 async def download_glossary(
     job_id: int,
     structured: bool = Query(False),
