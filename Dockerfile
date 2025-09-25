@@ -1,5 +1,6 @@
 # 1. 베이스 이미지 설정
-FROM python:3.11-slim
+# Use AWS's public ECR mirror to avoid Docker Hub auth/rate limits during remote builds
+FROM public.ecr.aws/docker/library/python:3.11-slim
 
 # 2. 작업 디렉토리 설정
 WORKDIR /app
