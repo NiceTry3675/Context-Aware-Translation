@@ -40,7 +40,7 @@ class PDFGenerator:
     MARGIN_RIGHT = 60
     
     # Font configuration
-    NANUM_FONT_PATH = os.path.join(os.path.dirname(__file__), '..', 'NanumGothic-Regular.ttf')
+    NANUM_FONT_PATH = Path(__file__).resolve().parent.parent / "NanumGothic-Regular.ttf"
     
     # Font sizes
     TITLE_FONT_SIZE = 24
