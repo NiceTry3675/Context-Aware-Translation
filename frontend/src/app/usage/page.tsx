@@ -270,6 +270,22 @@ export default function TokenUsagePage() {
                             <UsageMetricCard label="삽화 총 토큰" value={data.illustrations.total_tokens} />
                             <UsageMetricCard label="생성된 이미지" value={data.illustrations.image_count} />
                           </Box>
+                          {data.illustrations.per_model && data.illustrations.per_model.length > 0 && (
+                            <Stack spacing={1}>
+                              <Typography variant="subtitle2" color="text.secondary">
+                                삽화 모델별 사용량
+                              </Typography>
+                              <Box
+                                display="grid"
+                                gridTemplateColumns={{ xs: '1fr', sm: 'repeat(2, 1fr)' }}
+                                gap={2}
+                              >
+                                {data.illustrations.per_model.map(modelUsage => (
+                                  <ModelUsageCard key={`illustration-${modelUsage.model}`} usage={modelUsage} />
+                                ))}
+                              </Box>
+                            </Stack>
+                          )}
                         </Stack>
                       )}
                     </Stack>

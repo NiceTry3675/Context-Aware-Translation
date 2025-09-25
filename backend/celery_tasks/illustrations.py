@@ -197,6 +197,7 @@ def generate_illustrations_task(
                 model_name=model_name,
                 client=client,
                 output_dir=settings.job_storage_base,
+                usage_callback=usage_collector.record_event,
             )
             print(f"[ILLUSTRATIONS TASK] Generator initialized successfully with model: {settings.illustration_model}")
         except Exception as e:
@@ -648,6 +649,7 @@ def regenerate_single_illustration(
             enable_caching=False,  # Don't use cache for regeneration
             model_name=model_name,
             client=client,
+            usage_callback=usage_collector.record_event,
         )
         
         # Prepare a text model for world/atmosphere analysis if needed
@@ -796,7 +798,7 @@ def regenerate_single_illustration(
         # Update job metadata
         if prompt_path:
             illustrations_data = job.illustrations_data or []
-            
+
             # Update or add the illustration data
             found = False
             for ill in illustrations_data:
@@ -808,7 +810,7 @@ def regenerate_single_illustration(
                     ill['reference_used'] = bool(allow_ref)
                     found = True
                     break
-            
+
             if not found:
                 illustrations_data.append({
                     'segment_index': segment_index,
@@ -818,7 +820,7 @@ def regenerate_single_illustration(
                     'type': 'image' if prompt_path.endswith('.png') else 'prompt',
                     'reference_used': bool(allow_ref)
                 })
-            
+
             job.illustrations_data = illustrations_data
             job.illustrations_count = sum(1 for r in illustrations_data if r.get('success'))
             db.commit()
@@ -914,6 +916,8 @@ def regenerate_single_base(
         dict: Result with success status
     """
     db = None
+    usage_collector = TokenUsageCollector()
+    job_for_usage: Optional[TranslationJob] = None
     try:
         # Update task state
         self.update_state(
@@ -928,6 +932,7 @@ def regenerate_single_base(
         job = db.query(TranslationJob).filter(TranslationJob.id == job_id).first()
         if not job:
             raise ValueError(f"Job {job_id} not found")
+        job_for_usage = job
 
         # Get current bases
         bases = job.character_base_images or []
@@ -959,6 +964,7 @@ def regenerate_single_base(
             enable_caching=False,  # Don't use cache for regeneration
             model_name=model_name,
             client=client,
+            usage_callback=usage_collector.record_event,
         )
 
         # Get the character profile for consistency
@@ -1042,4 +1048,8 @@ def regenerate_single_base(
     finally:
         # Always close the database session
         if db:
-            db.close()
+            try:
+                if job_for_usage is not None:
+                    _persist_usage_events(db, job_for_usage, usage_collector)
+            finally:
+                db.close()

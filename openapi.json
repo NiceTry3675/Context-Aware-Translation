@@ -3843,6 +3843,41 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "IllustrationUsageTotals": {
+        "properties": {
+          "input_tokens": {
+            "type": "integer",
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "title": "Output Tokens"
+          },
+          "total_tokens": {
+            "type": "integer",
+            "title": "Total Tokens"
+          },
+          "image_count": {
+            "type": "integer",
+            "title": "Image Count"
+          },
+          "per_model": {
+            "items": {
+              "$ref": "#/components/schemas/ModelTokenUsage"
+            },
+            "type": "array",
+            "title": "Per Model"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input_tokens",
+          "output_tokens",
+          "total_tokens",
+          "image_count"
+        ],
+        "title": "IllustrationUsageTotals"
+      },
       "ModelTokenUsage": {
         "properties": {
           "input_tokens": {
@@ -4947,8 +4982,7 @@
             "title": "Per Model"
           },
           "illustrations": {
-            "$ref": "#/components/schemas/IllustrationUsageTotals",
-            "title": "Illustration Usage"
+            "$ref": "#/components/schemas/IllustrationUsageTotals"
           },
           "last_updated": {
             "anyOf": [
@@ -4970,34 +5004,6 @@
           "illustrations"
         ],
         "title": "TokenUsageDashboard"
-      },
-      "IllustrationUsageTotals": {
-        "properties": {
-          "input_tokens": {
-            "type": "integer",
-            "title": "Input Tokens"
-          },
-          "output_tokens": {
-            "type": "integer",
-            "title": "Output Tokens"
-          },
-          "total_tokens": {
-            "type": "integer",
-            "title": "Total Tokens"
-          },
-          "image_count": {
-            "type": "integer",
-            "title": "Image Count"
-          }
-        },
-        "type": "object",
-        "required": [
-          "input_tokens",
-          "output_tokens",
-          "total_tokens",
-          "image_count"
-        ],
-        "title": "IllustrationUsageTotals"
       },
       "TokenUsageTotals": {
         "properties": {

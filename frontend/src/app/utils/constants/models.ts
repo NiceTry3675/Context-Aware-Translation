@@ -136,6 +136,35 @@ export const vertexModelOptions: ModelOption[] = [
 
 export const isOpenRouterGeminiModel = (model: string): boolean => model.startsWith('google/gemini');
 
+export const openRouterGeminiModelOptions: ModelOption[] = openRouterModelOptions.filter((opt) =>
+  isOpenRouterGeminiModel(opt.value)
+);
+
+export const getDefaultOpenRouterGeminiModel = (): string => {
+  const preferred = openRouterGeminiModelOptions[0]?.value
+    ?? openRouterModelOptions.find((opt) => isOpenRouterGeminiModel(opt.value))?.value
+    ?? 'google/gemini-2.5-flash';
+  return preferred;
+};
+
+export const ensureOpenRouterGeminiModel = (model?: string | null): string => {
+  if (model && isOpenRouterGeminiModel(model)) {
+    return model;
+  }
+  return getDefaultOpenRouterGeminiModel();
+};
+
+export function getPreferredDefaultModel(apiProvider: 'gemini' | 'vertex' | 'openrouter'): string {
+  switch (apiProvider) {
+    case 'openrouter':
+      return 'google/gemini-2.5-pro';
+    case 'vertex':
+    case 'gemini':
+    default:
+      return 'gemini-2.5-pro';
+  }
+}
+
 export function getDefaultModel(apiProvider: 'gemini' | 'vertex' | 'openrouter'): string {
   switch (apiProvider) {
     case 'openrouter':

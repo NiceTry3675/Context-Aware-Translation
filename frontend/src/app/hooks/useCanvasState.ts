@@ -11,7 +11,7 @@ import { useApiKey } from './useApiKey';
 import { useTranslationService } from './useTranslationService';
 import { useJobActions } from './useJobActions';
 import { Job, StyleData, GlossaryTerm, TranslationSettings } from '../types/ui';
-import { isOpenRouterGeminiModel } from '../utils/constants/models';
+import { ensureOpenRouterGeminiModel, isOpenRouterGeminiModel } from '../utils/constants/models';
 
 export function useCanvasState() {
   const searchParams = useSearchParams();
@@ -197,20 +197,28 @@ export function useCanvasState() {
 
   const onConfirmValidation = () => {
     if (!jobId) return;
+    const requestedModel = validationModelName || selectedModel;
+    const modelForValidation = apiProvider === 'openrouter'
+      ? ensureOpenRouterGeminiModel(requestedModel)
+      : requestedModel;
     handleTriggerValidation(parseInt(jobId, 10), {
       quick_validation: quickValidation,
       validation_sample_rate: validationSampleRate / 100,
-      model_name: validationModelName || selectedModel,
+      model_name: modelForValidation,
     });
     setValidationDialogOpen(false);
   };
 
   const onConfirmPostEdit = () => {
     if (!jobId) return;
+    const requestedModel = postEditModelName || selectedModel;
+    const modelForPostEdit = apiProvider === 'openrouter'
+      ? ensureOpenRouterGeminiModel(requestedModel)
+      : requestedModel;
     const body: any = {
       selected_cases: selectedCases || {},
       modified_cases: modifiedCases || {},
-      model_name: postEditModelName || selectedModel,
+      model_name: modelForPostEdit,
       default_select_all: true,
     };
     handleTriggerPostEdit(parseInt(jobId, 10), body as any);

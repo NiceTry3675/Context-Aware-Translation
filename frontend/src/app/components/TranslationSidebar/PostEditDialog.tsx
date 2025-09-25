@@ -66,6 +66,7 @@ export default function PostEditDialog({
                   selectedModel={modelName || ''}
                   onModelChange={onModelNameChange}
                   hideTitle
+                  restrictOpenRouterToGemini
                 />
               </Box>
             )}

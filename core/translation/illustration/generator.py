@@ -9,7 +9,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple, List
+from typing import Optional, Dict, Any, Tuple, List, Callable
 
 from shared.utils.logging import TranslationLogger
 from shared.errors import TranslationError
@@ -20,6 +20,7 @@ from .visual_extractor import VisualElementExtractor
 from .prompt_builder import IllustrationPromptBuilder
 from .image_service import ImageGenerationService
 from .character_generator import CharacterIllustrationGenerator
+from core.translation.usage_tracker import UsageEvent
 
 
 # Check if genai is available
@@ -52,6 +53,7 @@ class IllustrationGenerator:
         enable_caching: bool = True,
         model_name: str = "gemini-2.5-flash-image-preview",
         client: Optional[genai.Client] = None,
+        usage_callback: Optional[Callable[[UsageEvent], None]] = None,
     ):
         """
         Initialize the illustration generator.
@@ -86,6 +88,7 @@ class IllustrationGenerator:
         self.output_dir = output_dir
         self.enable_caching = enable_caching
         self.model_name = model_name
+        self.usage_callback = usage_callback
 
         # Setup output directory
         self.job_output_dir = self._setup_output_directory()
@@ -102,10 +105,20 @@ class IllustrationGenerator:
         self.visual_extractor = VisualElementExtractor()
         self.prompt_builder = IllustrationPromptBuilder(self.visual_extractor)
         self.image_service = ImageGenerationService(
-            self.client, self.job_output_dir, self.cache_manager, self.logger, self.model_name
+            self.client,
+            self.job_output_dir,
+            self.cache_manager,
+            self.logger,
+            self.model_name,
+            usage_callback=self.usage_callback,
         )
         self.character_generator = CharacterIllustrationGenerator(
-            self.client, self.job_output_dir, self.prompt_builder, self.logger, self.model_name
+            self.client,
+            self.job_output_dir,
+            self.prompt_builder,
+            self.logger,
+            self.model_name,
+            usage_callback=self.usage_callback,
         )
 
         # Initialize logging session

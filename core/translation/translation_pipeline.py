@@ -111,7 +111,8 @@ class TranslationPipeline:
                 self.illustration_generator = IllustrationGenerator(
                     api_key=illustration_api_key,
                     job_id=job_id,
-                    enable_caching=illustration_config.cache_enabled
+                    enable_caching=illustration_config.cache_enabled,
+                    usage_callback=self.usage_collector.record_event if self.usage_collector else None,
                 )
                 print("Illustration generation enabled")
             except ImportError as e:

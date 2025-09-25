@@ -22,6 +22,7 @@ import { useJobActions } from '../../hooks/useJobActions';
 import { fetchValidationReport, ValidationReport, fetchJobTasks } from '../../utils/api';
 import type { ApiProvider } from '../../hooks/useApiKey';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import { ensureOpenRouterGeminiModel } from '../../utils/constants/models';
 
 interface JobRowActionsProps {
   job: Job;
@@ -36,6 +37,10 @@ interface JobRowActionsProps {
 export default function JobRowActions({ job, onRefresh, compact = false, apiProvider, defaultModelName, apiKey, providerConfig }: JobRowActionsProps) {
   const onRowRefresh = () => onRefresh(job.id);
   const jobId = job.id.toString();
+  const provider = apiProvider || 'gemini';
+  const getEffectiveModel = (model?: string) =>
+    provider === 'openrouter' ? ensureOpenRouterGeminiModel(model) : (model || '');
+  const dialogDefaultModel = getEffectiveModel(defaultModelName);
   
   // State for dialogs and their options, managed locally
   const [validationDialogOpen, setValidationDialogOpen] = useState(false);
@@ -64,7 +69,7 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
     handleTriggerValidation(job.id, {
       quick_validation: quickValidation,
       validation_sample_rate: validationSampleRate / 100,
-      model_name: validationModelName || defaultModelName,
+      model_name: getEffectiveModel(validationModelName || defaultModelName),
     });
     setValidationDialogOpen(false);
   };
@@ -76,7 +81,7 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
     );
     handleTriggerPostEdit(job.id, {
       selected_cases: selectedCases || {},
-      model_name: postEditModelName || defaultModelName,
+      model_name: getEffectiveModel(postEditModelName || defaultModelName),
       default_select_all: selectedTotal === 0,
     } as any);
     setPostEditDialogOpen(false);
@@ -215,7 +220,7 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
                     handleTriggerValidation(job.id, {
                       quick_validation: Boolean((job as any).quick_validation),
                       validation_sample_rate: Number((job as any).validation_sample_rate || 100) / 100,
-                      model_name: defaultModelName,
+                      model_name: getEffectiveModel(defaultModelName),
                     });
                   }}
                 >
@@ -261,7 +266,7 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
                     handleTriggerPostEdit(job.id, {
                       selected_cases: {},
                       default_select_all: true,
-                      model_name: defaultModelName,
+                      model_name: getEffectiveModel(defaultModelName),
                     } as any);
                   }}
                 >
@@ -283,7 +288,7 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
           onValidationSampleRateChange={setValidationSampleRate}
           loading={loadingReport} // Or a dedicated loading state if available
           apiProvider={apiProvider}
-          modelName={validationModelName || defaultModelName}
+          modelName={validationModelName || dialogDefaultModel}
           onModelNameChange={setValidationModelName}
         />
 
@@ -296,7 +301,7 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
           loading={loadingReport}
           selectedCounts={selectedCounts}
           apiProvider={apiProvider}
-          modelName={postEditModelName || defaultModelName}
+          modelName={postEditModelName || dialogDefaultModel}
           onModelNameChange={setPostEditModelName}
         />
       </>
@@ -348,7 +353,7 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
         onValidationSampleRateChange={setValidationSampleRate}
         loading={loadingReport} // Or a dedicated loading state if available
         apiProvider={apiProvider}
-        modelName={validationModelName || defaultModelName}
+        modelName={validationModelName || dialogDefaultModel}
         onModelNameChange={setValidationModelName}
       />
 
@@ -361,7 +366,7 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
         loading={loadingReport}
         selectedCounts={selectedCounts}
         apiProvider={apiProvider}
-        modelName={postEditModelName || defaultModelName}
+        modelName={postEditModelName || dialogDefaultModel}
         onModelNameChange={setPostEditModelName}
       />
     </>
