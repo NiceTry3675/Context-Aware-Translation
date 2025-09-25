@@ -17,6 +17,7 @@ import TranslationSettings from '../AdvancedSettings/TranslationSettings';
 import StyleConfigForm from '../StyleConfiguration/StyleConfigForm';
 import { StyleData, GlossaryTerm, TranslationSettings as TSettings } from '../../types/ui';
 import type { ApiProvider } from '../../hooks/useApiKey';
+import { isOpenRouterGeminiModel } from '../../utils/constants/models';
 
 interface NewTranslationFormProps {
   jobId: string | null;
@@ -81,6 +82,8 @@ export default function NewTranslationForm({
   onCancel,
   onClose
 }: NewTranslationFormProps) {
+  const isTurboLocked = apiProvider === 'openrouter' && !isOpenRouterGeminiModel(selectedModel);
+
   return (
     <Paper sx={{ p: 3, overflowY: 'auto', height: '100%' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
@@ -127,6 +130,7 @@ export default function NewTranslationForm({
           <TranslationSettings
             settings={translationSettings}
             onChange={onTranslationSettingsChange}
+            isTurboLocked={isTurboLocked}
           />
         </CardContent>
 

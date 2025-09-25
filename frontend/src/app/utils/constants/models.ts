@@ -81,6 +81,20 @@ export const openRouterModelOptions: ModelOption[] = [
     chipColor: "success",
   },
   {
+    value: "x-ai/grok-4-fast:free",
+    label: "Grok-4 Fast (무료)",
+    description: " ",
+    chip: "속도",
+    chipColor: "success",
+  },
+  {
+    value: "qwen/qwen3-235b-a22b:free",
+    label: "Qwen3 235B A22B (무료)",
+    description: " ",
+    chip: "품질",
+    chipColor: "success",
+  },
+  {
     value: "tngtech/deepseek-r1t2-chimera:free",
     label: "DeepSeek R1 T2 Chimera (무료)",
     description: " ",
@@ -119,6 +133,8 @@ export const vertexModelOptions: ModelOption[] = [
     chipColor: "error",
   },
 ];
+
+export const isOpenRouterGeminiModel = (model: string): boolean => model.startsWith('google/gemini');
 
 export function getDefaultModel(apiProvider: 'gemini' | 'vertex' | 'openrouter'): string {
   switch (apiProvider) {

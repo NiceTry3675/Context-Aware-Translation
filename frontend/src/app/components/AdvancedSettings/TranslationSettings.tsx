@@ -6,12 +6,15 @@ import { TranslationSettings as Settings } from '../../types/ui';
 interface TranslationSettingsProps {
   settings: Settings;
   onChange: (settings: Settings) => void;
+  isTurboLocked?: boolean;
 }
 
-export default function TranslationSettings({ settings, onChange }: TranslationSettingsProps) {
+export default function TranslationSettings({ settings, onChange, isTurboLocked = false }: TranslationSettingsProps) {
   const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
     onChange({ ...settings, [key]: value });
   };
+
+  const turboModeLabel = isTurboLocked ? '터보 모드 활성화 (필수)' : '터보 모드 활성화';
 
   return (
     <>
@@ -51,15 +54,21 @@ export default function TranslationSettings({ settings, onChange }: TranslationS
         <Typography variant="body2" color="text.secondary" mb={1}>
           동적 스타일 편차, 캐릭터 말투, 용어집 자동 추출을 건너뛰고 빠르게 번역합니다.
         </Typography>
+        {isTurboLocked && (
+          <Typography variant="caption" color="warning.main" display="block" mb={1}>
+            OpenRouter에서 Gemini가 아닌 모델을 사용할 때는 터보 모드가 필수입니다.
+          </Typography>
+        )}
         <FormControlLabel
           control={
             <Switch
-              checked={settings.turboMode ?? false}
+              checked={isTurboLocked ? true : (settings.turboMode ?? false)}
               onChange={(e) => updateSetting('turboMode', e.target.checked)}
               color="warning"
+              disabled={isTurboLocked}
             />
           }
-          label="터보 모드 활성화"
+          label={turboModeLabel}
         />
       </Box>
       
