@@ -343,6 +343,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/jobs/{job_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Pdf
+         * @description Download translation as PDF using query parameters.
+         */
+        get: operations["download_pdf_api_v1_jobs__job_id__pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/jobs/{job_id}/glossary": {
         parameters: {
             query?: never;
@@ -1439,6 +1459,11 @@ export interface components {
             api_provider: string;
             /** Provider Config */
             provider_config?: string | null;
+            /**
+             * Turbo Mode
+             * @default false
+             */
+            turbo_mode: boolean;
         };
         /** Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post */
         Body_generate_base_from_prompt_api_v1_illustrations__job_id__character_base_generate_from_prompt_post: {
@@ -1921,6 +1946,11 @@ export interface components {
             api_provider: string | null;
             /** Provider Config */
             provider_config?: string | null;
+            /**
+             * Turbo Mode
+             * @default false
+             */
+            turbo_mode: boolean | null;
         };
         /**
          * StyleAnalysisResponse
@@ -2642,6 +2672,41 @@ export interface operations {
         parameters: {
             query?: {
                 format?: string;
+                include_source?: boolean;
+                include_illustrations?: boolean;
+                page_size?: string;
+            };
+            header?: never;
+            path: {
+                job_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_pdf_api_v1_jobs__job_id__pdf_get: {
+        parameters: {
+            query?: {
                 include_source?: boolean;
                 include_illustrations?: boolean;
                 page_size?: string;

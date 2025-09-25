@@ -290,12 +290,16 @@ async def analyze_character_appearance(
             filepath=job.filepath,
             protagonist_name=protagonist_name
         )
-        return {
+        response_data = {
             'job_id': job_id,
             'prompts': result['prompts'],
             'protagonist_name': result['protagonist_name'],
             'sample_size': result['sample_size']
         }
+        notice = result.get('notice')
+        if notice:
+            response_data['notice'] = notice
+        return response_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to analyze appearance: {str(e)}")
 

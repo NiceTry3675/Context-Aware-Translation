@@ -666,6 +666,77 @@
         }
       }
     },
+    "/api/v1/jobs/{job_id}/pdf": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Download Pdf",
+        "description": "Download translation as PDF using query parameters.",
+        "operationId": "download_pdf_api_v1_jobs__job_id__pdf_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "include_source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Include Source"
+            }
+          },
+          {
+            "name": "include_illustrations",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Include Illustrations"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "A4",
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/jobs/{job_id}/glossary": {
       "get": {
         "tags": [
@@ -3284,6 +3355,11 @@
               }
             ],
             "title": "Provider Config"
+          },
+          "turbo_mode": {
+            "type": "boolean",
+            "title": "Turbo Mode",
+            "default": false
           }
         },
         "type": "object",
@@ -4426,6 +4502,18 @@
               }
             ],
             "title": "Provider Config"
+          },
+          "turbo_mode": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Turbo Mode",
+            "default": false
           }
         },
         "type": "object",

@@ -615,7 +615,7 @@ export async function analyzeCharacterAppearance({
   jobId: string;
   token?: string;
   protagonistName?: string;
-} & CredentialledParams): Promise<{ prompts: string[]; protagonist_name?: string }> {
+} & CredentialledParams): Promise<{ prompts: string[]; protagonist_name?: string; notice?: string; sample_size?: number }> {
   const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/appearance/analyze`, {
     method: 'POST',
     headers: {
