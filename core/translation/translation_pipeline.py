@@ -9,6 +9,7 @@ import re
 import time
 from tqdm import tqdm
 from typing import Optional, Dict, Any
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from .models.gemini import GeminiModel
@@ -23,6 +24,7 @@ from ..prompts.manager import PromptManager
 from ..prompts.sanitizer import PromptSanitizer
 from ..config.builder import DynamicConfigBuilder
 from ..schemas.illustration import IllustrationConfig, IllustrationBatch
+from ..schemas.narrative_style import WorldAtmosphereAnalysis
 from shared.errors import ProhibitedException, TranslationError
 from shared.errors import ProhibitedContentLogger
 from shared.utils.logging import TranslationLogger
@@ -186,13 +188,9 @@ class TranslationPipeline:
             if i > 0 and document.segments:
                 previous_context = document.segments[i-1].text
             
-            updated_glossary, updated_styles, style_deviation, world_atmosphere = self._build_dynamic_guides(
+            updated_glossary, updated_styles, style_deviation = self._build_dynamic_guides(
                 document, segment_info, segment_index, core_narrative_style, previous_context
             )
-
-            # Save world_atmosphere to segment_info for later use (e.g., illustrations)
-            if world_atmosphere:
-                segment_info.world_atmosphere = world_atmosphere.model_dump()
 
             # Prepare context for translation
             contextual_glossary = self._get_contextual_glossary(updated_glossary, segment_info.text)
@@ -209,7 +207,6 @@ class TranslationPipeline:
             # Log context and prompt
             context_data = {
                 'style_deviation': style_deviation,
-                'world_atmosphere': world_atmosphere.to_prompt_format() if world_atmosphere else None,
                 'contextual_glossary': contextual_glossary,
                 'full_glossary': document.glossary,
                 'character_styles': document.character_styles,
@@ -234,7 +231,6 @@ class TranslationPipeline:
             # Log segment input/output
             if self.logger:
                 metadata = {
-                    "world_atmosphere": world_atmosphere.model_dump() if world_atmosphere else None,
                     "glossary_used": contextual_glossary,
                     "style_deviation": style_deviation,
                     "translation_time": segment_translation_time,
@@ -253,9 +249,16 @@ class TranslationPipeline:
             
             # Generate illustration if enabled
             if self.illustration_generator and self._should_generate_illustration(segment_info, i):
+                world_atmosphere_for_illustration = self._analyze_world_atmosphere_for_illustration(
+                    segment_info=segment_info,
+                    glossary=document.glossary,
+                    previous_context=previous_context,
+                    segment_index=segment_index,
+                    job_base_filename=document.user_base_filename,
+                )
                 self._generate_segment_illustration(
                     segment_info, i, document.glossary,
-                    core_narrative_style, style_deviation, world_atmosphere,
+                    core_narrative_style, style_deviation, world_atmosphere_for_illustration,
                     character_styles=updated_styles
                 )
             
@@ -306,9 +309,9 @@ class TranslationPipeline:
         Build dynamic glossary and character style guides for the segment.
         
         Returns:
-            Tuple of (updated_glossary, updated_styles, style_deviation, world_atmosphere)
+            Tuple of (updated_glossary, updated_styles, style_deviation)
         """
-        updated_glossary, updated_styles, style_deviation, world_atmosphere = self.dyn_config_builder.build_dynamic_guides(
+        updated_glossary, updated_styles, style_deviation = self.dyn_config_builder.build_dynamic_guides(
             segment_text=segment_info.text,
             core_narrative_style=core_narrative_style,
             current_glossary=document.glossary,
@@ -317,12 +320,12 @@ class TranslationPipeline:
             segment_index=segment_index,
             previous_context=previous_context
         )
-        
+
         # Update document with new guides
         document.glossary = updated_glossary
         document.character_styles = updated_styles
-        
-        return updated_glossary, updated_styles, style_deviation, world_atmosphere
+
+        return updated_glossary, updated_styles, style_deviation
     
     def _get_contextual_glossary(self, glossary: Dict[str, str], segment_text: str) -> Dict[str, str]:
         """
@@ -554,6 +557,46 @@ class TranslationPipeline:
             print(f"Error generating illustration for segment {segment_index}: {e}")
             if self.logger:
                 self.logger.log_error(e, segment_index, "illustration_generation")
-    
+
+
+    def _analyze_world_atmosphere_for_illustration(
+        self,
+        segment_info: Any,
+        glossary: Dict[str, str],
+        previous_context: Optional[str],
+        segment_index: int,
+        job_base_filename: str,
+    ) -> Optional[WorldAtmosphereAnalysis]:
+        """Ensure world/atmosphere data is available when generating illustrations."""
+
+        existing_world_atmosphere = getattr(segment_info, "world_atmosphere", None)
+        if existing_world_atmosphere:
+            if isinstance(existing_world_atmosphere, WorldAtmosphereAnalysis):
+                return existing_world_atmosphere
+            if isinstance(existing_world_atmosphere, dict):
+                try:
+                    return WorldAtmosphereAnalysis.model_validate(existing_world_atmosphere)
+                except ValidationError:
+                    pass
+
+        try:
+            analysis = self.dyn_config_builder.analyze_world_atmosphere(
+                segment_text=segment_info.text,
+                previous_context=previous_context,
+                glossary=glossary,
+                job_base_filename=job_base_filename,
+                segment_index=segment_index,
+            )
+
+            if analysis:
+                segment_info.world_atmosphere = analysis.model_dump()
+
+            return analysis
+        except Exception as exc:
+            print(f"Warning: Failed to analyze world atmosphere for illustration (segment {segment_index}): {exc}")
+            if self.logger:
+                self.logger.log_error(exc, segment_index, "world_atmosphere_for_illustration")
+            return None
+
     
     

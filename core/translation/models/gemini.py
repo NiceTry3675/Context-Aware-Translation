@@ -486,8 +486,7 @@ class GeminiModel:
                     try:
                         parsed_response = _json.loads(cleaned_text)
                     except _json.JSONDecodeError as e:
-                        print(f"JSON parsing error: {e}")
-                        print(f"Response text length: {len(cleaned_text)}")
+                        self._log_json_parse_error(cleaned_text, e)
                         parse_error = e
 
                 if parsed_response is None:
@@ -525,6 +524,41 @@ class GeminiModel:
         if cleaned.endswith('```'):
             cleaned = cleaned[:-3]
         return cleaned.strip()
+
+    def _log_json_parse_error(self, text: str, exc) -> None:
+        try:
+            length = len(text) if isinstance(text, str) else 0
+            print(f"JSON parsing error: {exc}")
+            print(f"Response text length: {length}")
+
+            # Show error position context when available
+            pos = getattr(exc, 'pos', None)
+            if isinstance(pos, int) and 0 <= pos <= length:
+                start = max(0, pos - 120)
+                end = min(length, pos + 120)
+                snippet = text[start:end]
+                marker_relative = pos - start
+                print(f"Error context [{start}:{end}] (pos={pos}):")
+                print(snippet)
+                print(" " * marker_relative + "^")
+
+            # Head/Tail snippets for quick inspection
+            head = text[:200] if length > 0 else ""
+            tail = text[-200:] if length > 200 else ""
+            if head:
+                print("Response head (200):")
+                print(head)
+            if tail:
+                print("Response tail (200):")
+                print(tail)
+
+            # Structural hinting: brace/bracket balance
+            open_braces = text.count('{') - text.count('}') if isinstance(text, str) else 0
+            open_brackets = text.count('[') - text.count(']') if isinstance(text, str) else 0
+            print(f"Brace balance: braces={open_braces}, brackets={open_brackets}")
+
+        except Exception as log_exc:  # Best-effort logging; never raise from logger
+            print(f"[parse-debug] Failed to log JSON parse details: {log_exc}")
 
     def _extract_structured_payload(self, response, fallback_text: str | None = None):
         if response is None:

@@ -69,7 +69,7 @@ class DynamicConfigBuilder:
 
     
 
-    def build_dynamic_guides(self, segment_text: str, core_narrative_style: str, current_glossary: dict, current_character_styles: dict, job_base_filename: str, segment_index: int, previous_context: Optional[str] = None) -> tuple[dict, dict, str, Optional[WorldAtmosphereAnalysis]]:
+    def build_dynamic_guides(self, segment_text: str, core_narrative_style: str, current_glossary: dict, current_character_styles: dict, job_base_filename: str, segment_index: int, previous_context: Optional[str] = None) -> tuple[dict, dict, str]:
         """
         Analyzes a text segment to build dynamic guidelines for translation.
 
@@ -77,7 +77,6 @@ class DynamicConfigBuilder:
         1. Updates the glossary with new proper nouns.
         2. Updates the character style guide based on dialogue.
         3. Analyzes the segment for any narrative style deviations.
-        4. Analyzes world and atmosphere for context and illustration.
 
         Args:
             segment_text: The text content of the current segment.
@@ -90,7 +89,7 @@ class DynamicConfigBuilder:
 
         Returns:
             A tuple containing the updated glossary, updated character styles,
-            style deviation information, and world/atmosphere analysis.
+            and style deviation information.
         """
         # 1. Initialize GlossaryManager with the user-defined glossary
         # The current_glossary from the job state is merged with the initial one.
@@ -131,10 +130,25 @@ class DynamicConfigBuilder:
                 segment_index
             )
 
-        # 4. World/atmosphere analysis is deferred to illustration time to avoid extra translation calls
-        world_atmosphere = None
+        return updated_glossary, updated_character_styles, style_deviation_info
 
-        return updated_glossary, updated_character_styles, style_deviation_info, world_atmosphere
+    def analyze_world_atmosphere(
+        self,
+        segment_text: str,
+        previous_context: Optional[str],
+        glossary: dict,
+        job_base_filename: str = "unknown",
+        segment_index: Optional[int] = None,
+    ) -> Optional[WorldAtmosphereAnalysis]:
+        """Run world/atmosphere analysis on demand (e.g., for illustration requests)."""
+
+        return self._analyze_world_atmosphere(
+            segment_text=segment_text,
+            previous_context=previous_context,
+            glossary=glossary,
+            job_base_filename=job_base_filename,
+            segment_index=segment_index,
+        )
 
     def _analyze_style_deviation(self, segment_text: str, core_narrative_style: str, job_base_filename: str = "unknown", segment_index: Optional[int] = None) -> str:
         """Analyzes the segment for deviations from the core narrative style using structured output."""

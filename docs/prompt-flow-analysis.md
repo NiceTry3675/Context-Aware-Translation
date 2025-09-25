@@ -44,7 +44,7 @@ class PromptManager:
 
 | Prompt | Purpose | Key Context Variables |
 |--------|---------|----------------------|
-| `translation.main` | Primary translation prompt | `{core_narrative_style}`, `{glossary_terms}`, `{character_speech_styles}`, `{world_atmosphere}`, `{source_segment}` |
+| `translation.main` | Primary translation prompt | `{core_narrative_style}`, `{glossary_terms}`, `{character_speech_styles}`, `{source_segment}` |
 | `translation.soft_retry` | Fallback for content policy violations | Simplified context without potentially problematic content |
 
 ### 2.2 Context Analysis Prompts
@@ -102,16 +102,15 @@ For Each Segment:
     │   └─ Prompt: glossary.translate_terms
     ├─[2b. Character Style Update]
     │   └─ Prompt: character_style.analyze_dialogue
-    ├─[2c. Style Deviation Check]
-    │   └─ Prompt: style_analysis.narrative_deviation
-    └─[2d. World/Atmosphere Analysis]
-        └─ Prompt: world_atmosphere.analyze
+    └─[2c. Style Deviation Check]
+        └─ Prompt: style_analysis.narrative_deviation
     ↓
 [3. Translation]
     - Prompt: translation.main (enriched with all context)
     - Fallback: translation.soft_retry (on content policy violation)
     ↓
 [4. Optional Illustration]
+    ├─ (On-demand) Prompt: world_atmosphere.analyze – scene snapshot used exclusively for illustration context
     ├─ Prompt: illustration.analyze_visual_elements
     └─ Prompt: illustration.generate_illustration_prompt
     ↓
@@ -349,3 +348,4 @@ You are an expert literary translator...
 The Context-Aware Translation System's prompt architecture demonstrates sophisticated orchestration of AI interactions. By centralizing prompt management, progressively enriching context, and leveraging structured outputs, the system achieves high-quality literary translation while maintaining consistency, preserving narrative voice, and generating contextually appropriate illustrations.
 
 The modular design allows for easy prompt modification without code changes, while comprehensive logging enables debugging and optimization. This architecture provides a robust foundation for AI-powered translation that respects both the technical requirements and artistic nuances of literary work.
+

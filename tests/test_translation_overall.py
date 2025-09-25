@@ -79,7 +79,6 @@ class TestOverallTranslation(unittest.TestCase):
                 {"Holden": "홀든", "Pencey Prep": "펜시 프렙"},  # glossary
                 {"Holden": "Uses informal, cynical teenage speech"},  # character styles
                 "Maintaining cynical narrative tone",  # style deviation
-                None  # world_atmosphere (optional, can be None)
             )
             
             # Create and run translation engine
@@ -191,3 +190,4 @@ class TestOverallTranslation(unittest.TestCase):
 if __name__ == '__main__':
     # Run the tests
     unittest.main(verbosity=2)
+
