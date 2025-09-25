@@ -7,6 +7,8 @@ and uses centralized utilities for I/O and segmentation operations.
 """
 
 import os
+import json
+from pathlib import Path
 from typing import List, Optional
 
 from ..schemas import SegmentInfo, TranslationDocumentData
@@ -204,6 +206,8 @@ class TranslationDocument:
     # Output operations using centralized utilities
     def save_partial_output(self):
         """Save the currently translated segments to the output file."""
+        saved_with_storage = False
+
         # Try to save using storage abstraction if job_id available
         if hasattr(self, '_job_id') and self._job_id:
             saved_paths = DocumentOutputManager.save_to_storage_sync(
@@ -212,10 +216,14 @@ class TranslationDocument:
                 self._data.original_filename or self._data.user_base_filename,
                 self._storage_handler
             )
+            self._persist_partial_segment_cache()
             if saved_paths:
-                # Storage save succeeded, we're done
-                return
-        
+                # Storage save succeeded, no need for fallback write
+                saved_with_storage = True
+
+        if saved_with_storage:
+            return
+
         # Fallback to traditional file saving
         if self._data.input_format == '.epub':
             # Save to main output location
@@ -245,6 +253,9 @@ class TranslationDocument:
                     self._data.translated_segments,
                     self._data.job_output_filename
                 )
+
+        if hasattr(self, '_job_id') and self._job_id:
+            self._persist_partial_segment_cache()
     
     def save_final_output(self):
         """Save the final output based on the input file format."""
@@ -257,7 +268,7 @@ class TranslationDocument:
     def save_translation(self, output_path: Optional[str] = None):
         """
         Save the translation to a specified path or default output filename.
-        
+
         Args:
             output_path: Optional custom output path
         """
@@ -278,6 +289,21 @@ class TranslationDocument:
                 )
         else:
             self.save_final_output()
+
+    def _persist_partial_segment_cache(self):
+        """Persist partial translation segments for accurate resume support."""
+        job_id = getattr(self, '_job_id', None)
+        if not job_id:
+            return
+
+        try:
+            cache_dir = Path("logs") / "jobs" / str(job_id) / "output"
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            cache_path = cache_dir / "partial_segments.json"
+            with open(cache_path, 'w', encoding='utf-8') as cache_file:
+                json.dump(self._data.translated_segments, cache_file, ensure_ascii=False)
+        except Exception as exc:  # pragma: no cover - best effort cache
+            print(f"Warning: Failed to persist partial segments for job {job_id}: {exc}")
     
     # Data model access
     def get_data_model(self) -> TranslationDocumentData:

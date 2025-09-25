@@ -437,16 +437,19 @@ class TranslationDomainService(DomainServiceBase):
         if resume:
             try:
                 manager = TranslationStorageManager(create_storage(get_settings()))
-                existing = asyncio.run(manager.read_translation_output(job_id, job.filename))
-            except Exception:
-                existing = None
-            if existing:
-                # Split using the same joiner used by DocumentOutputManager.save_text_output (\n\n)
-                pretranslated = [s for s in existing.split("\n\n") if s.strip()]
-                # Do not exceed total segments to preserve composition
-                if pretranslated:
-                    max_len = min(len(pretranslated), len(translation_document.segments))
-                    translation_document.translated_segments = pretranslated[:max_len]
+                cached_segments = manager.read_partial_segments(job_id)
+                if cached_segments:
+                    prefill_count = min(len(cached_segments), len(translation_document.segments))
+                    translation_document.translated_segments = cached_segments[:prefill_count]
+                else:
+                    existing = asyncio.run(manager.read_translation_output(job_id, job.filename))
+                    if existing:
+                        print(
+                            f"--- Partial segment cache missing for Job ID: {job_id}; "
+                            "resume will retranslate from the beginning. ---"
+                        )
+            except Exception as e:
+                print(f"--- WARNING: Failed to load cached segments for Job ID: {job_id}. Error: {e} ---")
         
         # Process style data using StyleAnalysisService
         initial_core_style_text = None

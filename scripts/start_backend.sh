@@ -44,25 +44,37 @@ else
   echo -e "${YELLOW}No .env file found. Using environment defaults.${NC}"
 fi
 
-# Start Celery worker from project root with full module path
-echo -e "${YELLOW}Starting Celery worker...${NC}"
-celery -A backend.celery_app worker --loglevel=info --queues=translation,validation,post_edit,default,illustrations --detach
+# Start Celery worker (background, stream logs to this terminal like Railway)
+echo -e "${YELLOW}Starting Celery worker (logs will stream here)...${NC}"
+CELERY_LOGLEVEL=${CELERY_LOGLEVEL:-info}
+CELERY_QUEUES=${CELERY_QUEUES:-translation,validation,post_edit,illustrations,events,maintenance,default}
+CELERY_CONCURRENCY=${CELERY_CONCURRENCY:-1}
+celery -A backend.celery_app worker \
+  --loglevel="${CELERY_LOGLEVEL}" \
+  --concurrency="${CELERY_CONCURRENCY}" \
+  --queues="${CELERY_QUEUES}" &
+CELERY_PID=$!
 
 # Check if Celery started successfully
 sleep 2
 if pgrep -f "celery.*backend.celery_app" > /dev/null; then
-    echo -e "${GREEN}✓ Celery worker started${NC}"
+    echo -e "${GREEN}✓ Celery worker started (PID: ${CELERY_PID})${NC}"
 else
-    echo -e "${RED}Warning: Celery worker may not have started properly${NC}"
-    echo -e "${YELLOW}Trying to start Celery in foreground for debugging...${NC}"
-    # Try to show more detailed error
-    celery -A backend.celery_app worker --loglevel=debug --queues=translation,validation,post_edit,default,illustrations &
-    sleep 3
-    if ! pgrep -f "celery.*backend.celery_app" > /dev/null; then
-        echo -e "${RED}Failed to start Celery. Check if backend/.env has all required variables.${NC}"
-    fi
+    echo -e "${RED}Failed to start Celery worker. See output above for details.${NC}"
+    exit 1
 fi
 
-## Start uvicorn
+# Ensure background Celery/Redis are stopped when this script exits
+cleanup() {
+  echo -e "${YELLOW}Stopping Celery worker and Redis...${NC}"
+  if [ -n "${CELERY_PID}" ] && ps -p ${CELERY_PID} > /dev/null 2>&1; then
+    kill ${CELERY_PID} 2>/dev/null || true
+  fi
+  pkill -f "celery.*backend.celery_app" 2>/dev/null || true
+  redis-cli shutdown 2>/dev/null || true
+}
+trap cleanup EXIT
+
+## Start uvicorn (foreground so both logs appear in this terminal)
 echo -e "${YELLOW}Starting FastAPI server on port 8000...${NC}"
 uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000

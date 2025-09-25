@@ -146,5 +146,23 @@ class TranslationStorageManager:
                         return f.read()
             except Exception as e:
                 logger.error(f"Failed to read from legacy directory: {e}")
-        
+
+        return None
+
+    def read_partial_segments(self, job_id: int) -> Optional[List[str]]:
+        """Read partial translated segments stored for resume support."""
+        import json
+
+        cache_path = Path(f"logs/jobs/{job_id}/output/partial_segments.json")
+        if not cache_path.exists():
+            return None
+
+        try:
+            with open(cache_path, 'r', encoding='utf-8') as cache_file:
+                data = json.load(cache_file)
+                if isinstance(data, list):
+                    return [str(segment) for segment in data]
+        except Exception as exc:
+            logger.error(f"Failed to read partial segments for job {job_id}: {exc}")
+
         return None

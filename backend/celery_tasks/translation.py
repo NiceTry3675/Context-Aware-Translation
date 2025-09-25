@@ -84,12 +84,19 @@ def process_translation_task(
                 'filename': job.filename
             }
         if getattr(job, 'status', None) == "PROCESSING":
-            logger.info(f"Job ID {job_id} already processing; skipping duplicate task {self.request.id}")
-            return {
-                'job_id': job_id,
-                'status': 'already_processing',
-                'filename': job.filename
-            }
+            if resume:
+                logger.info(
+                    "Job ID %s marked PROCESSING but resume flag set; continuing task %s",
+                    job_id,
+                    getattr(self.request, 'id', '<unknown>'),
+                )
+            else:
+                logger.info(f"Job ID {job_id} already processing; skipping duplicate task {self.request.id}")
+                return {
+                    'job_id': job_id,
+                    'status': 'already_processing',
+                    'filename': job.filename
+                }
 
         # Update job status
         repo.set_status(job_id, "PROCESSING")
