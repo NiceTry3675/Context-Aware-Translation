@@ -214,6 +214,7 @@ class ProgressTracker:
                     prompt_tokens=normalized.prompt_tokens,
                     completion_tokens=normalized.completion_tokens,
                     total_tokens=normalized.total_tokens,
+                    usage_category="translation",
                 )
             )
 

@@ -118,10 +118,13 @@ export default function TokenUsagePage() {
   const hasUsage = useMemo(() => {
     if (!data) return false;
     const totals = data.total;
+    const illustrations = data.illustrations;
     return (
       (totals?.total_tokens ?? 0) > 0 ||
       (totals?.input_tokens ?? 0) > 0 ||
       (totals?.output_tokens ?? 0) > 0 ||
+      (illustrations?.total_tokens ?? 0) > 0 ||
+      (illustrations?.image_count ?? 0) > 0 ||
       (data.per_model?.length ?? 0) > 0
     );
   }, [data]);
@@ -201,7 +204,7 @@ export default function TokenUsagePage() {
               토큰 사용량
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              모델별 입력/출력 토큰 사용량을 확인하세요.
+              모델별 입력/출력 토큰 사용량과 삽화 생성 내역을 확인하세요.
             </Typography>
           </Box>
           <Stack direction="row" spacing={1} justifyContent="flex-end">
@@ -246,11 +249,30 @@ export default function TokenUsagePage() {
                     )}
                   </Stack>
                   {data ? (
-                    <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: 'repeat(3, 1fr)' }} gap={2}>
-                      <UsageMetricCard label="입력 토큰" value={data.total.input_tokens} />
-                      <UsageMetricCard label="출력 토큰" value={data.total.output_tokens} />
-                      <UsageMetricCard label="총 토큰" value={data.total.total_tokens} highlight />
-                    </Box>
+                    <Stack spacing={3}>
+                      <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }} gap={2}>
+                        <UsageMetricCard label="입력 토큰" value={data.total.input_tokens} />
+                        <UsageMetricCard label="출력 토큰" value={data.total.output_tokens} />
+                        <UsageMetricCard label="총 토큰" value={data.total.total_tokens} highlight />
+                      </Box>
+                      {data.illustrations && (
+                        <Stack spacing={1.5}>
+                          <Typography variant="subtitle2" color="text.secondary">
+                            삽화 관련 사용량
+                          </Typography>
+                          <Box
+                            display="grid"
+                            gridTemplateColumns={{ xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }}
+                            gap={2}
+                          >
+                            <UsageMetricCard label="삽화 입력 토큰" value={data.illustrations.input_tokens} />
+                            <UsageMetricCard label="삽화 출력 토큰" value={data.illustrations.output_tokens} />
+                            <UsageMetricCard label="삽화 총 토큰" value={data.illustrations.total_tokens} />
+                            <UsageMetricCard label="생성된 이미지" value={data.illustrations.image_count} />
+                          </Box>
+                        </Stack>
+                      )}
+                    </Stack>
                   ) : (
                     <Typography variant="body2" color="text.secondary">
                       아직 사용량 데이터가 없습니다.

@@ -520,6 +520,28 @@ class UserService:
             if row.last_used_at and (last_updated is None or row.last_used_at > last_updated):
                 last_updated = row.last_used_at
 
+        illustration_row = self.session.query(
+            func.sum(TranslationUsageLog.prompt_tokens).label('input_tokens'),
+            func.sum(TranslationUsageLog.completion_tokens).label('output_tokens'),
+            func.sum(TranslationUsageLog.total_tokens).label('total_tokens'),
+        ).filter(
+            TranslationUsageLog.user_id == user_id,
+            TranslationUsageLog.usage_category == 'illustration',
+        ).one()
+
+        illustration_input = int(illustration_row.input_tokens or 0)
+        illustration_output = int(illustration_row.output_tokens or 0)
+        illustration_total = int(
+            illustration_row.total_tokens or (illustration_input + illustration_output)
+        )
+
+        images_generated = (
+            self.session.query(func.sum(TranslationJob.illustrations_count))
+            .filter(TranslationJob.owner_id == user_id)
+            .scalar()
+            or 0
+        )
+
         return {
             'total': {
                 'input_tokens': total_input,
@@ -527,6 +549,12 @@ class UserService:
                 'total_tokens': total_tokens,
             },
             'per_model': per_model,
+            'illustrations': {
+                'input_tokens': illustration_input,
+                'output_tokens': illustration_output,
+                'total_tokens': illustration_total,
+                'image_count': int(images_generated or 0),
+            },
             'last_updated': last_updated,
         }
     

@@ -57,9 +57,14 @@ class ModelTokenUsage(TokenUsageTotals):
     model: str
 
 
+class IllustrationUsageTotals(TokenUsageTotals):
+    image_count: int
+
+
 class TokenUsageDashboard(BaseModel):
     total: TokenUsageTotals
     per_model: List[ModelTokenUsage]
+    illustrations: IllustrationUsageTotals
     last_updated: Optional[datetime.datetime] = None
 
 # --- Announcement Schemas ---

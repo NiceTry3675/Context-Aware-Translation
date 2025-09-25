@@ -2097,6 +2097,8 @@ export interface components {
             total: components["schemas"]["TokenUsageTotals"];
             /** Per Model */
             per_model: components["schemas"]["ModelTokenUsage"][];
+            /** Illustration Usage */
+            illustrations: components["schemas"]["IllustrationUsageTotals"];
             /** Last Updated */
             last_updated?: string | null;
         };
@@ -2108,6 +2110,17 @@ export interface components {
             output_tokens: number;
             /** Total Tokens */
             total_tokens: number;
+        };
+        /** IllustrationUsageTotals */
+        IllustrationUsageTotals: {
+            /** Input Tokens */
+            input_tokens: number;
+            /** Output Tokens */
+            output_tokens: number;
+            /** Total Tokens */
+            total_tokens: number;
+            /** Image Count */
+            image_count: number;
         };
         /**
          * TranslatedTerm
