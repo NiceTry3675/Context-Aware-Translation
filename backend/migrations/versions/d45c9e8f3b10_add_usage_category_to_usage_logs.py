@@ -1,7 +1,7 @@
 """Add usage_category to translation usage logs
 
 Revision ID: d45c9e8f3b10
-Revises: b2e468b624fb
+Revises: 1b2d3f4a1c7b, c3a7c1b2d4e5
 Create Date: 2025-09-10 00:00:00.000000
 """
 
