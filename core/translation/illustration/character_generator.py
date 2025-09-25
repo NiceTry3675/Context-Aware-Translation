@@ -8,15 +8,25 @@ import json
 import logging
 import concurrent.futures
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Callable
 from PIL import Image
 from io import BytesIO
+
+from core.translation.usage_tracker import UsageEvent
 
 
 class CharacterIllustrationGenerator:
     """Handles character-specific illustration generation."""
 
-    def __init__(self, client, base_dir: Path, prompt_builder, logger=None, model_name: str = "gemini-2.5-flash-image-preview"):
+    def __init__(
+        self,
+        client,
+        base_dir: Path,
+        prompt_builder,
+        logger=None,
+        model_name: str = "gemini-2.5-flash-image-preview",
+        usage_callback: Optional[Callable[[UsageEvent], None]] = None,
+    ):
         """
         Initialize the character generator.
 
@@ -32,6 +42,7 @@ class CharacterIllustrationGenerator:
         self.prompt_builder = prompt_builder
         self.logger = logger
         self.model_name = model_name
+        self.usage_callback = usage_callback
         self._setup_base_directory()
 
     def _setup_base_directory(self) -> Path:
@@ -283,6 +294,8 @@ class CharacterIllustrationGenerator:
                                 image_generated = True
                                 break
 
+                self._emit_usage_event(response)
+
                 if image_generated:
                     return str(image_filepath)
 
@@ -303,3 +316,46 @@ class CharacterIllustrationGenerator:
                     return None
 
         return None
+
+    def _emit_usage_event(self, response) -> None:
+        if not self.usage_callback:
+            return
+        if response is None:
+            return
+        metadata = getattr(response, "usage_metadata", None)
+        if metadata is None:
+            return
+
+        prompt = getattr(metadata, "prompt_token_count", None)
+        if prompt is None:
+            prompt = getattr(metadata, "input_token_count", None)
+
+        completion = getattr(metadata, "candidates_token_count", None)
+        if completion is None:
+            completion = getattr(metadata, "output_token_count", None)
+        if completion is None:
+            completion = getattr(metadata, "completion_token_count", None)
+
+        total = getattr(metadata, "total_token_count", None)
+
+        def _coerce(value) -> int:
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return 0
+
+        prompt_tokens = _coerce(prompt)
+        completion_tokens = _coerce(completion)
+        total_tokens = _coerce(total) if total is not None else prompt_tokens + completion_tokens
+
+        event = UsageEvent(
+            model_name=self.model_name,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total_tokens,
+        )
+
+        try:
+            self.usage_callback(event)
+        except Exception as exc:  # pragma: no cover - defensive
+            logging.debug(f"[CharacterIllustrationGenerator] Failed to emit usage event: {exc}")

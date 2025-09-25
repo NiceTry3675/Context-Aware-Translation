@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getDefaultModel, vertexModelOptions } from '../utils/constants/models';
+import { getDefaultModel, getPreferredDefaultModel, vertexModelOptions } from '../utils/constants/models';
 
 export type ApiProvider = 'gemini' | 'vertex' | 'openrouter';
 
@@ -42,14 +42,21 @@ export function useApiKey() {
       setProviderConfigState('');
     }
 
-    const storedModel = localStorage.getItem(STORAGE_KEYS.model[storedProvider]) || getDefaultModel(storedProvider);
-    const normalizedModel =
-      storedProvider === 'vertex' && !vertexModelOptions.some((opt) => opt.value === storedModel)
-        ? getDefaultModel('vertex')
-        : storedModel;
-    if (normalizedModel !== storedModel) {
+    const storedModel = localStorage.getItem(STORAGE_KEYS.model[storedProvider]);
+    const preferredModel = getPreferredDefaultModel(storedProvider);
+    const defaultModel = getDefaultModel(storedProvider);
+    let normalizedModel = storedModel || preferredModel || defaultModel;
+
+    if (storedProvider === 'vertex' && !vertexModelOptions.some((opt) => opt.value === normalizedModel)) {
+      normalizedModel = defaultModel;
+    }
+
+    if (!storedModel && normalizedModel) {
+      localStorage.setItem(STORAGE_KEYS.model[storedProvider], normalizedModel);
+    } else if (storedModel && normalizedModel !== storedModel && storedProvider === 'vertex') {
       localStorage.setItem(STORAGE_KEYS.model.vertex, normalizedModel);
     }
+
     setSelectedModel(normalizedModel);
     setIsInitialized(true);
   }, []);
@@ -71,14 +78,21 @@ export function useApiKey() {
     setApiProvider(newProvider);
     localStorage.setItem(STORAGE_KEYS.provider, newProvider);
 
-    const storedModel = localStorage.getItem(STORAGE_KEYS.model[newProvider]) || getDefaultModel(newProvider);
-    const normalizedModel =
-      newProvider === 'vertex' && !vertexModelOptions.some((opt) => opt.value === storedModel)
-        ? getDefaultModel('vertex')
-        : storedModel;
-    if (normalizedModel !== storedModel && newProvider === 'vertex') {
+    const storedModel = localStorage.getItem(STORAGE_KEYS.model[newProvider]);
+    const preferredModel = getPreferredDefaultModel(newProvider);
+    const defaultModel = getDefaultModel(newProvider);
+    let normalizedModel = storedModel || preferredModel || defaultModel;
+
+    if (newProvider === 'vertex' && !vertexModelOptions.some((opt) => opt.value === normalizedModel)) {
+      normalizedModel = getDefaultModel('vertex');
+    }
+
+    if (!storedModel && normalizedModel) {
+      localStorage.setItem(STORAGE_KEYS.model[newProvider], normalizedModel);
+    } else if (storedModel && normalizedModel !== storedModel && newProvider === 'vertex') {
       localStorage.setItem(STORAGE_KEYS.model.vertex, normalizedModel);
     }
+
     setSelectedModel(normalizedModel);
 
     if (newProvider === 'vertex') {

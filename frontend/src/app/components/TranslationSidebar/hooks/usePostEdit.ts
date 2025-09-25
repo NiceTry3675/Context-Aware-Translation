@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../../../utils/authToken';
 import { triggerPostEdit } from '../../../utils/api';
 import type { ApiProvider } from '../../../hooks/useApiKey';
+import { ensureOpenRouterGeminiModel } from '../../../utils/constants/models';
 
 interface UsePostEditProps {
   jobId: string;
@@ -20,11 +21,22 @@ interface UsePostEditProps {
 export function usePostEdit({ jobId, onRefresh, selectedCases, modifiedCases, apiProvider, apiKey, providerConfig, defaultModelName }: UsePostEditProps) {
   const [postEditDialogOpen, setPostEditDialogOpen] = useState(false);
   // Structured-only: issue types removed
-  const [modelName, setModelName] = useState<string>(defaultModelName || '');
+  const provider = apiProvider || 'gemini';
+  const [modelName, setModelName] = useState<string>(
+    provider === 'openrouter' ? ensureOpenRouterGeminiModel(defaultModelName) : (defaultModelName || '')
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   const { getToken } = useAuth();
+
+  useEffect(() => {
+    if (provider === 'openrouter') {
+      setModelName((current) => ensureOpenRouterGeminiModel(current || defaultModelName));
+    } else if (!modelName && defaultModelName) {
+      setModelName(defaultModelName);
+    }
+  }, [provider, defaultModelName, modelName]);
 
   const handleTriggerPostEdit = async () => {
     setLoading(true);
@@ -32,10 +44,13 @@ export function usePostEdit({ jobId, onRefresh, selectedCases, modifiedCases, ap
     
     try {
       const token = await getCachedClerkToken(getToken);
+      const requestedModel = modelName || defaultModelName;
       const body = {
         selected_cases: selectedCases || {},
         modified_cases: modifiedCases || {},
-        model_name: modelName || defaultModelName,
+        model_name: provider === 'openrouter'
+          ? ensureOpenRouterGeminiModel(requestedModel)
+          : requestedModel,
         default_select_all: true,
       } as any;
       if ((apiProvider || 'gemini') !== 'vertex' && !apiKey) {

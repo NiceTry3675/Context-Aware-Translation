@@ -493,7 +493,8 @@ class UserService:
             func.sum(TranslationUsageLog.total_tokens).label('total_tokens'),
             func.max(TranslationUsageLog.created_at).label('last_used_at'),
         ).filter(
-            TranslationUsageLog.user_id == user_id
+            TranslationUsageLog.user_id == user_id,
+            TranslationUsageLog.usage_category == 'translation',
         ).group_by(
             TranslationUsageLog.model_used
         ).all()
@@ -520,6 +521,52 @@ class UserService:
             if row.last_used_at and (last_updated is None or row.last_used_at > last_updated):
                 last_updated = row.last_used_at
 
+        illustration_rows = self.session.query(
+            TranslationUsageLog.model_used.label('model'),
+            func.sum(TranslationUsageLog.prompt_tokens).label('input_tokens'),
+            func.sum(TranslationUsageLog.completion_tokens).label('output_tokens'),
+            func.sum(TranslationUsageLog.total_tokens).label('total_tokens'),
+            func.max(TranslationUsageLog.created_at).label('last_used_at'),
+        ).filter(
+            TranslationUsageLog.user_id == user_id,
+            TranslationUsageLog.usage_category == 'illustration',
+        ).group_by(
+            TranslationUsageLog.model_used
+        ).all()
+
+        illustration_input = 0
+        illustration_output = 0
+        illustration_total = 0
+        illustration_per_model: list[dict] = []
+        illustration_last_used = None
+
+        for row in illustration_rows:
+            in_tokens = int(row.input_tokens or 0)
+            out_tokens = int(row.output_tokens or 0)
+            model_total = int(row.total_tokens or (in_tokens + out_tokens))
+            illustration_per_model.append({
+                'model': row.model,
+                'input_tokens': in_tokens,
+                'output_tokens': out_tokens,
+                'total_tokens': model_total,
+            })
+            illustration_input += in_tokens
+            illustration_output += out_tokens
+            illustration_total += model_total
+            if row.last_used_at and (illustration_last_used is None or row.last_used_at > illustration_last_used):
+                illustration_last_used = row.last_used_at
+
+        images_generated = (
+            self.session.query(func.sum(TranslationJob.illustrations_count))
+            .filter(TranslationJob.owner_id == user_id)
+            .scalar()
+            or 0
+        )
+
+        if illustration_last_used is not None:
+            if last_updated is None or illustration_last_used > last_updated:
+                last_updated = illustration_last_used
+
         return {
             'total': {
                 'input_tokens': total_input,
@@ -527,6 +574,13 @@ class UserService:
                 'total_tokens': total_tokens,
             },
             'per_model': per_model,
+            'illustrations': {
+                'input_tokens': illustration_input,
+                'output_tokens': illustration_output,
+                'total_tokens': illustration_total,
+                'image_count': int(images_generated or 0),
+                'per_model': illustration_per_model,
+            },
             'last_updated': last_updated,
         }
     

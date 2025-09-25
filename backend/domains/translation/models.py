@@ -68,4 +68,5 @@ class TranslationUsageLog(Base):
     prompt_tokens = Column(Integer, nullable=True, default=0)
     completion_tokens = Column(Integer, nullable=True, default=0)
     total_tokens = Column(Integer, nullable=True, default=0)
+    usage_category = Column(String, nullable=False, default="translation", index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

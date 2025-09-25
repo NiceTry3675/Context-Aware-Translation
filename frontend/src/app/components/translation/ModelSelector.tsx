@@ -1,5 +1,12 @@
+import { useEffect, useMemo } from 'react';
 import { Box, Typography, ToggleButtonGroup, ToggleButton, Chip, Alert } from '@mui/material';
-import { geminiModelOptions, openRouterModelOptions, vertexModelOptions, type ModelOption } from '../../utils/constants/models';
+import {
+  geminiModelOptions,
+  openRouterModelOptions,
+  openRouterGeminiModelOptions,
+  vertexModelOptions,
+  type ModelOption,
+} from '../../utils/constants/models';
 import type { ApiProvider } from '../../hooks/useApiKey';
 
 interface ModelSelectorProps {
@@ -7,14 +14,33 @@ interface ModelSelectorProps {
   selectedModel: string;
   onModelChange: (model: string) => void;
   hideTitle?: boolean;
+  restrictOpenRouterToGemini?: boolean;
 }
 
-export default function ModelSelector({ apiProvider, selectedModel, onModelChange, hideTitle = false }: ModelSelectorProps) {
-  const models: ModelOption[] = apiProvider === 'openrouter'
-    ? openRouterModelOptions
-    : apiProvider === 'vertex'
-      ? vertexModelOptions
-      : geminiModelOptions;
+export default function ModelSelector({ apiProvider, selectedModel, onModelChange, hideTitle = false, restrictOpenRouterToGemini = false }: ModelSelectorProps) {
+  const models = useMemo<ModelOption[]>(() => {
+    if (apiProvider === 'openrouter') {
+      return restrictOpenRouterToGemini ? openRouterGeminiModelOptions : openRouterModelOptions;
+    }
+    if (apiProvider === 'vertex') {
+      return vertexModelOptions;
+    }
+    return geminiModelOptions;
+  }, [apiProvider, restrictOpenRouterToGemini]);
+
+  useEffect(() => {
+    if (apiProvider !== 'openrouter' || !restrictOpenRouterToGemini) {
+      return;
+    }
+    const fallback = openRouterGeminiModelOptions[0]?.value;
+    if (!fallback) {
+      return;
+    }
+    const isSelectedAllowed = models.some((opt) => opt.value === selectedModel);
+    if (!selectedModel || !isSelectedAllowed) {
+      onModelChange(fallback);
+    }
+  }, [apiProvider, restrictOpenRouterToGemini, selectedModel, onModelChange, models]);
 
   const handleModelChange = (_: React.MouseEvent<HTMLElement>, newValue: string) => {
     if (!newValue) return;

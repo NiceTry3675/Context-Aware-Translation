@@ -12,11 +12,19 @@ import ResultsView from './components/canvas/ResultsView';
 import ValidationDialog from './components/TranslationSidebar/ValidationDialog';
 import PostEditDialog from './components/TranslationSidebar/PostEditDialog';
 import IllustrationDialog from './components/TranslationSidebar/IllustrationDialog';
+import { ensureOpenRouterGeminiModel } from './utils/constants/models';
 
 function CanvasContent() {
   const mainContainerRef = useRef<HTMLDivElement>(null);
   const state = useCanvasState();
   const editTimersRef = useRef<Record<string, any>>({});
+  const resolveDialogModel = (model: string) => (
+    state.apiProvider === 'openrouter'
+      ? ensureOpenRouterGeminiModel(model)
+      : model
+  );
+  const validationDialogModel = resolveDialogModel(state.validationModelName || state.selectedModel);
+  const postEditDialogModel = resolveDialogModel(state.postEditModelName || state.selectedModel);
   
   const handleToggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -224,7 +232,7 @@ function CanvasContent() {
         onValidationSampleRateChange={state.setValidationSampleRate}
         loading={state.loading}
         apiProvider={state.apiProvider}
-        modelName={state.validationModelName || state.selectedModel}
+        modelName={validationDialogModel}
         onModelNameChange={state.setValidationModelName}
       />
 
@@ -258,7 +266,7 @@ function CanvasContent() {
           })()
         }}
         apiProvider={state.apiProvider}
-        modelName={state.postEditModelName || state.selectedModel}
+        modelName={postEditDialogModel}
         onModelNameChange={state.setPostEditModelName}
       />
 

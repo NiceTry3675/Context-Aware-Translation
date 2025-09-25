@@ -162,6 +162,7 @@ def test_user_service_token_usage_dashboard(session: Session) -> None:
             completion_tokens=40,
             total_tokens=100,
             created_at=older,
+            usage_category='translation',
         ),
         TranslationUsageLog(
             job_id=job.id,
@@ -174,6 +175,33 @@ def test_user_service_token_usage_dashboard(session: Session) -> None:
             completion_tokens=20,
             total_tokens=50,
             created_at=now,
+            usage_category='translation',
+        ),
+        TranslationUsageLog(
+            job_id=job.id,
+            user_id=user.id,
+            original_length=0,
+            translated_length=0,
+            translation_duration_seconds=1,
+            model_used="gemini-2.5-flash",
+            prompt_tokens=25,
+            completion_tokens=10,
+            total_tokens=35,
+            created_at=now + timedelta(hours=1),
+            usage_category='illustration',
+        ),
+        TranslationUsageLog(
+            job_id=job.id,
+            user_id=user.id,
+            original_length=0,
+            translated_length=0,
+            translation_duration_seconds=1,
+            model_used="gemini-2.5-flash-image-preview",
+            prompt_tokens=0,
+            completion_tokens=0,
+            total_tokens=0,
+            created_at=now + timedelta(hours=1, minutes=10),
+            usage_category='illustration',
         ),
     ])
     session.commit()
@@ -184,8 +212,76 @@ def test_user_service_token_usage_dashboard(session: Session) -> None:
     assert summary['total']['input_tokens'] == 90
     assert summary['total']['output_tokens'] == 60
     assert summary['total']['total_tokens'] == 150
-    assert summary['last_updated'] == max(log.created_at for log in session.query(TranslationUsageLog).all())
+    all_logs = session.query(TranslationUsageLog).all()
+    assert summary['last_updated'] == max(log.created_at for log in all_logs)
 
     per_model = {entry['model']: entry for entry in summary['per_model']}
     assert per_model['gemini-pro']['total_tokens'] == 100
     assert per_model['openrouter/claude']['input_tokens'] == 30
+    assert 'gemini-illustration' not in per_model
+    assert summary['illustrations']['total_tokens'] == 35
+    assert summary['illustrations']['input_tokens'] == 25
+    assert summary['illustrations']['output_tokens'] == 10
+    assert summary['illustrations']['image_count'] == 0
+    illustration_models = {entry['model']: entry for entry in summary['illustrations']['per_model']}
+    assert illustration_models['gemini-2.5-flash']['total_tokens'] == 35
+    assert illustration_models['gemini-2.5-flash-image-preview']['total_tokens'] == 0
+
+
+def test_user_service_includes_illustration_usage(session: Session) -> None:
+    user = create_user(session, index=4)
+    job = create_job(session, owner=user, filename="illustrations.txt")
+
+    log_entries = [
+        TranslationUsageLog(
+            job_id=job.id,
+            user_id=user.id,
+            original_length=0,
+            translated_length=0,
+            translation_duration_seconds=5,
+            model_used="gemini-2.5-flash",
+            prompt_tokens=10,
+            completion_tokens=2,
+            total_tokens=12,
+            usage_category='illustration',
+        ),
+        TranslationUsageLog(
+            job_id=job.id,
+            user_id=user.id,
+            original_length=0,
+            translated_length=0,
+            translation_duration_seconds=3,
+            model_used="gemini-2.5-flash",
+            prompt_tokens=4,
+            completion_tokens=1,
+            total_tokens=5,
+            usage_category='illustration',
+        ),
+        TranslationUsageLog(
+            job_id=job.id,
+            user_id=user.id,
+            original_length=0,
+            translated_length=0,
+            translation_duration_seconds=1,
+            model_used="gemini-2.5-flash-image-preview",
+            prompt_tokens=0,
+            completion_tokens=0,
+            total_tokens=0,
+            usage_category='illustration',
+        ),
+    ]
+
+    session.add_all(log_entries)
+    job.illustrations_count = 3
+    session.commit()
+
+    service = UserService(session)
+    summary = service.get_token_usage_dashboard(user.id)
+
+    assert summary['illustrations']['input_tokens'] == 14
+    assert summary['illustrations']['output_tokens'] == 3
+    assert summary['illustrations']['total_tokens'] == 17
+    assert summary['illustrations']['image_count'] == 3
+    illustration_models = {entry['model']: entry for entry in summary['illustrations']['per_model']}
+    assert illustration_models['gemini-2.5-flash']['total_tokens'] == 17
+    assert illustration_models['gemini-2.5-flash-image-preview']['total_tokens'] == 0

@@ -1,6 +1,6 @@
 """User domain schemas."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 import datetime
 
@@ -57,9 +57,15 @@ class ModelTokenUsage(TokenUsageTotals):
     model: str
 
 
+class IllustrationUsageTotals(TokenUsageTotals):
+    image_count: int
+    per_model: List[ModelTokenUsage] = Field(default_factory=list)
+
+
 class TokenUsageDashboard(BaseModel):
     total: TokenUsageTotals
     per_model: List[ModelTokenUsage]
+    illustrations: IllustrationUsageTotals
     last_updated: Optional[datetime.datetime] = None
 
 # --- Announcement Schemas ---

@@ -17,7 +17,7 @@ from ..celery_app import celery_app
 from .base import TrackedTask
 from ..config.database import SessionLocal
 from ..config.settings import get_settings
-from backend.domains.translation.models import TranslationJob
+from backend.domains.translation.models import TranslationJob, TranslationUsageLog
 from backend.domains.shared.provider_context import (
     build_vertex_client,
     provider_context_from_payload,
@@ -28,6 +28,7 @@ from core.config.loader import load_config
 from core.config.builder import DynamicConfigBuilder
 from backend.domains.shared.model_factory import ModelAPIFactory
 from core.schemas.illustration import IllustrationConfig
+from core.translation.usage_tracker import TokenUsageCollector
 
 
 def _segment_sort_key(segment_key: Any) -> int:
@@ -64,6 +65,55 @@ def _load_segment_from_data(seg_data: Dict[str, Any], seg_id: Optional[int] = No
     return segment
 
 
+def _persist_usage_events(
+    db,
+    job: TranslationJob,
+    usage_collector: TokenUsageCollector | None,
+    usage_category: str = "illustration",
+) -> None:
+    """Persist collected usage events for the given job."""
+
+    if usage_collector is None:
+        return
+
+    events = usage_collector.events()
+    if not events:
+        return
+
+    owner_id = getattr(job, "owner_id", None)
+    if owner_id is None:
+        owner = getattr(job, "owner", None)
+        owner_id = getattr(owner, "id", None) if owner is not None else None
+
+    if owner_id is None:
+        return
+
+    for event in events:
+        normalized = event.normalized()
+        db.add(
+            TranslationUsageLog(
+                job_id=job.id,
+                user_id=owner_id,
+                original_length=0,
+                translated_length=0,
+                translation_duration_seconds=0,
+                model_used=normalized.model_name or "unknown",
+                prompt_tokens=normalized.prompt_tokens,
+                completion_tokens=normalized.completion_tokens,
+                total_tokens=normalized.total_tokens,
+                usage_category=usage_category,
+            )
+        )
+
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        logging.exception("Failed to persist illustration usage events for job %s", job.id)
+    finally:
+        usage_collector.clear()
+
+
 @celery_app.task(
     bind=True,
     base=TrackedTask,
@@ -81,7 +131,7 @@ def generate_illustrations_task(
     api_key: Optional[str],
     max_illustrations: Optional[int] = None,
     provider_context: Optional[Dict[str, object]] = None,
-):
+): 
     """
     Generate illustration prompts for a translation job.
     
@@ -99,6 +149,8 @@ def generate_illustrations_task(
     print(f"[ILLUSTRATIONS TASK] Max illustrations: {max_illustrations}")
     
     db = None
+    usage_collector = TokenUsageCollector()
+    job_for_usage: Optional[TranslationJob] = None
     try:
         # Update task state
         self.update_state(
@@ -114,6 +166,7 @@ def generate_illustrations_task(
         job = db.query(TranslationJob).filter(TranslationJob.id == job_id).first()
         if not job:
             raise ValueError(f"Job {job_id} not found")
+        job_for_usage = job
         
         print(f"[ILLUSTRATIONS TASK] Job found, initializing generator")
         context = provider_context_from_payload(provider_context)
@@ -143,6 +196,8 @@ def generate_illustrations_task(
                 enable_caching=config.cache_enabled,
                 model_name=model_name,
                 client=client,
+                output_dir=settings.job_storage_base,
+                usage_callback=usage_collector.record_event,
             )
             print(f"[ILLUSTRATIONS TASK] Generator initialized successfully with model: {settings.illustration_model}")
         except Exception as e:
@@ -163,6 +218,7 @@ def generate_illustrations_task(
                 model_name=text_model_name,
                 config=load_config(),
                 provider_context=context,
+                usage_callback=usage_collector.record_event,
             )
             protagonist_name = None
             try:
@@ -186,7 +242,7 @@ def generate_illustrations_task(
             dyn_builder = None
 
         # Load segments from log files instead of database for richer metadata
-        log_dir = Path(f"logs/jobs/{job_id}/segments/translation")
+        log_dir = Path(settings.job_storage_base) / str(job_id) / "segments" / "translation"
         segments = []
 
         if log_dir.exists():
@@ -514,7 +570,11 @@ def generate_illustrations_task(
     finally:
         # Always close the database session
         if db:
-            db.close()
+            try:
+                if job_for_usage is not None:
+                    _persist_usage_events(db, job_for_usage, usage_collector)
+            finally:
+                db.close()
 
 
 @celery_app.task(
@@ -550,6 +610,8 @@ def regenerate_single_illustration(
         dict: Result with success status
     """
     db = None
+    usage_collector = TokenUsageCollector()
+    job_for_usage: Optional[TranslationJob] = None
     try:
         # Update task state
         self.update_state(
@@ -564,6 +626,7 @@ def regenerate_single_illustration(
         job = db.query(TranslationJob).filter(TranslationJob.id == job_id).first()
         if not job:
             raise ValueError(f"Job {job_id} not found")
+        job_for_usage = job
         
         # Initialize illustration generator
         settings = get_settings()
@@ -586,6 +649,7 @@ def regenerate_single_illustration(
             enable_caching=False,  # Don't use cache for regeneration
             model_name=model_name,
             client=client,
+            usage_callback=usage_collector.record_event,
         )
         
         # Prepare a text model for world/atmosphere analysis if needed
@@ -602,6 +666,7 @@ def regenerate_single_illustration(
                 model_name=text_model_name,
                 config=load_config(),
                 provider_context=context,
+                usage_callback=usage_collector.record_event,
             )
             protagonist_name = None
             try:
@@ -733,7 +798,7 @@ def regenerate_single_illustration(
         # Update job metadata
         if prompt_path:
             illustrations_data = job.illustrations_data or []
-            
+
             # Update or add the illustration data
             found = False
             for ill in illustrations_data:
@@ -745,7 +810,7 @@ def regenerate_single_illustration(
                     ill['reference_used'] = bool(allow_ref)
                     found = True
                     break
-            
+
             if not found:
                 illustrations_data.append({
                     'segment_index': segment_index,
@@ -755,7 +820,7 @@ def regenerate_single_illustration(
                     'type': 'image' if prompt_path.endswith('.png') else 'prompt',
                     'reference_used': bool(allow_ref)
                 })
-            
+
             job.illustrations_data = illustrations_data
             job.illustrations_count = sum(1 for r in illustrations_data if r.get('success'))
             db.commit()
@@ -804,7 +869,11 @@ def regenerate_single_illustration(
     finally:
         # Always close the database session
         if db:
-            db.close()
+            try:
+                if job_for_usage is not None:
+                    _persist_usage_events(db, job_for_usage, usage_collector)
+            finally:
+                db.close()
 
 
 # Re-export for convenience
@@ -847,6 +916,8 @@ def regenerate_single_base(
         dict: Result with success status
     """
     db = None
+    usage_collector = TokenUsageCollector()
+    job_for_usage: Optional[TranslationJob] = None
     try:
         # Update task state
         self.update_state(
@@ -861,6 +932,7 @@ def regenerate_single_base(
         job = db.query(TranslationJob).filter(TranslationJob.id == job_id).first()
         if not job:
             raise ValueError(f"Job {job_id} not found")
+        job_for_usage = job
 
         # Get current bases
         bases = job.character_base_images or []
@@ -892,6 +964,7 @@ def regenerate_single_base(
             enable_caching=False,  # Don't use cache for regeneration
             model_name=model_name,
             client=client,
+            usage_callback=usage_collector.record_event,
         )
 
         # Get the character profile for consistency
@@ -975,4 +1048,8 @@ def regenerate_single_base(
     finally:
         # Always close the database session
         if db:
-            db.close()
+            try:
+                if job_for_usage is not None:
+                    _persist_usage_events(db, job_for_usage, usage_collector)
+            finally:
+                db.close()
