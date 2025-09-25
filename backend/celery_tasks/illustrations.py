@@ -24,6 +24,9 @@ from backend.domains.shared.provider_context import (
     vertex_model_resource_name,
 )
 from core.translation.illustration import IllustrationGenerator
+from core.config.loader import load_config
+from core.config.builder import DynamicConfigBuilder
+from backend.domains.shared.model_factory import ModelAPIFactory
 from core.schemas.illustration import IllustrationConfig
 
 
@@ -148,6 +151,40 @@ def generate_illustrations_task(
             traceback.print_exc()
             raise
         
+        # Prepare a text model for world/atmosphere analysis when needed
+        try:
+            text_model_name = load_config().get('gemini_model_name', 'gemini-2.5-flash')
+        except Exception:
+            text_model_name = 'gemini-2.5-flash'
+
+        try:
+            text_model = ModelAPIFactory.create(
+                api_key=(None if (context and context.name == "vertex") else settings.gemini_api_key),
+                model_name=text_model_name,
+                config=load_config(),
+                provider_context=context,
+            )
+            protagonist_name = None
+            try:
+                if job.character_profile and isinstance(job.character_profile, dict):
+                    protagonist_name = job.character_profile.get('name')
+            except Exception:
+                protagonist_name = None
+            if not protagonist_name:
+                # Fallback to filename stem as a neutral protagonist label
+                protagonist_name = Path(job.filename or "Protagonist").stem or "Protagonist"
+            dyn_builder = DynamicConfigBuilder(
+                model=text_model,
+                protagonist_name=protagonist_name,
+                initial_glossary=job.final_glossary or {},
+                character_style_model=None,
+                turbo_mode=True,  # keep light; we only need world/atmosphere on-demand
+            )
+        except Exception as e:
+            print(f"[ILLUSTRATIONS TASK] Warning: Failed to initialize text model for world/atmosphere analysis: {e}")
+            text_model = None
+            dyn_builder = None
+
         # Load segments from log files instead of database for richer metadata
         log_dir = Path(f"logs/jobs/{job_id}/segments/translation")
         segments = []
@@ -341,6 +378,34 @@ def generate_illustrations_task(
                 if segment_summary:
                     print(f"[ILLUSTRATIONS TASK] Segment summary: {segment_summary[:100]}...")
 
+            # If we don't have world/atmosphere data, compute it on-demand
+            if not world_atmosphere_data and dyn_builder is not None:
+                try:
+                    prev_context = None
+                    try:
+                        if segment['index'] > 0 and segment['index'] < len(segments):
+                            prev_seg = segments[segment['index'] - 1]
+                            prev_context = prev_seg.get('source_text') or prev_seg.get('text') or None
+                    except Exception:
+                        prev_context = None
+                    analysis = dyn_builder.analyze_world_atmosphere(
+                        segment_text=segment['text'],
+                        previous_context=prev_context,
+                        glossary=job.final_glossary or {},
+                        job_base_filename=job.filename or f"job_{job_id}",
+                        segment_index=segment['index'],
+                    )
+                    if analysis is not None:
+                        world_atmosphere_data = analysis.model_dump()
+                        # Attach to in-memory segment for downstream consistency
+                        try:
+                            if segment['index'] < len(segments) and isinstance(segments[segment['index']], dict):
+                                segments[segment['index']]['world_atmosphere'] = world_atmosphere_data
+                        except Exception:
+                            pass
+                except Exception as wa_exc:
+                    print(f"[ILLUSTRATIONS TASK] World/atmosphere analysis failed for segment {segment['index']}: {wa_exc}")
+
             try:
                 illustration_path, prompt = generator.generate_illustration(
                     segment_text=segment['text'],
@@ -523,6 +588,39 @@ def regenerate_single_illustration(
             client=client,
         )
         
+        # Prepare a text model for world/atmosphere analysis if needed
+        try:
+            text_model_name = load_config().get('gemini_model_name', 'gemini-2.5-flash')
+        except Exception:
+            text_model_name = 'gemini-2.5-flash'
+
+        text_model = None
+        dyn_builder = None
+        try:
+            text_model = ModelAPIFactory.create(
+                api_key=(None if (context and context.name == "vertex") else settings.gemini_api_key),
+                model_name=text_model_name,
+                config=load_config(),
+                provider_context=context,
+            )
+            protagonist_name = None
+            try:
+                if job.character_profile and isinstance(job.character_profile, dict):
+                    protagonist_name = job.character_profile.get('name')
+            except Exception:
+                protagonist_name = None
+            if not protagonist_name:
+                protagonist_name = Path(job.filename or "Protagonist").stem or "Protagonist"
+            dyn_builder = DynamicConfigBuilder(
+                model=text_model,
+                protagonist_name=protagonist_name,
+                initial_glossary=job.final_glossary or {},
+                character_style_model=None,
+                turbo_mode=True,
+            )
+        except Exception as e:
+            print(f"[REGENERATE ILLUSTRATION] Warning: Failed to initialize text model for world/atmosphere analysis: {e}")
+
         # Get the segment
         segments = job.translation_segments
         if not segments or segment_index >= len(segments):
@@ -536,6 +634,37 @@ def regenerate_single_illustration(
             world_atmosphere_data = segment.get('world_atmosphere')
 
         print(f"[REGENERATE ILLUSTRATION] World atmosphere data available: {world_atmosphere_data is not None}")
+
+        # If missing, compute world/atmosphere on-demand
+        if world_atmosphere_data is None and dyn_builder is not None:
+            try:
+                previous_context = None
+                try:
+                    if segment_index > 0 and segment_index < len(segments):
+                        prev_seg = segments[segment_index - 1]
+                        if isinstance(prev_seg, dict):
+                            previous_context = prev_seg.get('source_text') or prev_seg.get('text') or None
+                except Exception:
+                    previous_context = None
+
+                analysis = dyn_builder.analyze_world_atmosphere(
+                    segment_text=segment.get('source_text', '') or segment.get('text', ''),
+                    previous_context=previous_context,
+                    glossary=job.final_glossary or {},
+                    job_base_filename=job.filename or f"job_{job_id}",
+                    segment_index=segment_index,
+                )
+                if analysis is not None:
+                    world_atmosphere_data = analysis.model_dump()
+                    # Store back to the segment for future reuse
+                    try:
+                        segment['world_atmosphere'] = world_atmosphere_data
+                        job.translation_segments[segment_index] = segment
+                        db.commit()
+                    except Exception:
+                        pass
+            except Exception as wa_exc:
+                print(f"[REGENERATE ILLUSTRATION] World/atmosphere analysis failed for segment {segment_index}: {wa_exc}")
 
         # Preserve any user-supplied custom prompt
         final_custom_prompt = custom_prompt if custom_prompt else None

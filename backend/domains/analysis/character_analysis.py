@@ -7,11 +7,13 @@ and produces candidate image-generation prompts focusing on appearance only.
 Refactored from backend/services/character_appearance_service.py
 """
 
+import logging
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 
 from core.config.loader import load_config
 from core.utils.text_segmentation import create_segments_for_text
+from shared.errors import ProhibitedException
 
 
 APPEARANCE_EXTRA_INSTRUCTIONS = "Do not include any background."
@@ -94,17 +96,48 @@ class CharacterAnalysis:
             "Output strictly as a numbered list, each item on its own line without extra commentary."
         ).replace("{n}", str(candidates))
         
+        notice: Optional[str] = None
+        response_text: str = ""
+
         try:
             response_text = self._model_api.generate_text(f"{system}\n\n{user}")
-        except Exception:
-            # Fallback: provide neutral prompts
-            base = "Young adult with medium build, natural skin tone, tidy hairstyle, simple casual outfit. " + APPEARANCE_EXTRA_INSTRUCTIONS
-            return {
-                'prompts': [base, base + " Clean line art.", base + " Soft painterly shading."],
+        except ProhibitedException as exc:
+            logging.warning("Character appearance analysis blocked by safety settings: %s", exc)
+            notice = (
+                "자동 외형 분석이 gemini 모델의 안전성 기준에 의해 차단되었습니다. "
+                "소설 초반부에서 민감한 표현을 완화하거나 직접 프롬프트를 작성해 다시 시도해 주세요."
+            )
+        except Exception as exc:
+            logging.exception("Character appearance analysis failed: %s", exc)
+            notice = (
+                "외형 프롬프트 자동 생성 중 오류가 발생했습니다. "
+                "네트워크 상태를 확인하거나 잠시 후 다시 시도해 주세요. 필요한 경우 직접 프롬프트를 작성해 주세요."
+            )
+
+        if not response_text.strip():
+            base_prompt = (
+                "Young adult with medium build, natural skin tone, tidy hairstyle, simple casual outfit. "
+                + APPEARANCE_EXTRA_INSTRUCTIONS
+            )
+            fallback_prompts = [
+                base_prompt,
+                base_prompt + " Clean line art.",
+                base_prompt + " Soft painterly shading.",
+            ]
+            if notice is None:
+                notice = (
+                    "외형 프롬프트 자동 생성 결과가 비어 있어 기본 템플릿 프롬프트를 제공합니다. "
+                    "필요하다면 내용을 수정하거나 직접 작성해 주세요."
+                )
+            result: Dict[str, Any] = {
+                'prompts': fallback_prompts,
                 'protagonist_name': protagonist_name or 'Protagonist',
                 'sample_size': len(sample_text)
             }
-        
+            if notice:
+                result['notice'] = notice
+            return result
+
         # Parse numbered lines
         lines = [l.strip("- ") for l in response_text.splitlines() if l.strip()]
         candidates_list: List[str] = []
@@ -127,11 +160,14 @@ class CharacterAnalysis:
         else:
             candidates_list = candidates_list[:candidates]
         
-        return {
+        result: Dict[str, Any] = {
             'prompts': candidates_list,
             'protagonist_name': protagonist_name or 'Protagonist',
             'sample_size': len(sample_text)
         }
+        if notice:
+            result['notice'] = notice
+        return result
     
     def _prepare_document_segments(
         self,

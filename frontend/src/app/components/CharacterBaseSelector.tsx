@@ -33,6 +33,7 @@ export default function CharacterBaseSelector({ jobId, apiProvider, apiKey, prov
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [appearancePrompts, setAppearancePrompts] = useState<string[]>([]);
+  const [appearanceNotice, setAppearanceNotice] = useState<string | null>(null);
 
   // New states for prompt editing functionality
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -158,6 +159,7 @@ export default function CharacterBaseSelector({ jobId, apiProvider, apiKey, prov
     }
     setLoading(true);
     setError(null);
+    setAppearanceNotice(null);
     try {
       const token = await getCachedClerkToken(getToken);
       const res = await analyzeCharacterAppearance({
@@ -169,8 +171,11 @@ export default function CharacterBaseSelector({ jobId, apiProvider, apiKey, prov
         providerConfig,
       });
       setAppearancePrompts(res.prompts || []);
+      setAppearanceNotice(res.notice || null);
     } catch (e: any) {
       setError(e?.message || '외형 분석에 실패했습니다.');
+      setAppearancePrompts([]);
+      setAppearanceNotice(null);
     } finally {
       setLoading(false);
     }
@@ -376,6 +381,9 @@ export default function CharacterBaseSelector({ jobId, apiProvider, apiKey, prov
       </Stack>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+      )}
+      {appearanceNotice && (
+        <Alert severity="warning" sx={{ mb: 2 }}>{appearanceNotice}</Alert>
       )}
       {loading && (
         <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 2 }}>

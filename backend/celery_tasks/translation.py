@@ -46,6 +46,7 @@ def process_translation_task(
     user_id: Optional[int] = None,
     provider_context: Optional[Dict[str, object]] = None,
     resume: bool = False,
+    turbo_mode: bool = False,
 ):
     """
     Process a translation job using Celery.
@@ -83,12 +84,19 @@ def process_translation_task(
                 'filename': job.filename
             }
         if getattr(job, 'status', None) == "PROCESSING":
-            logger.info(f"Job ID {job_id} already processing; skipping duplicate task {self.request.id}")
-            return {
-                'job_id': job_id,
-                'status': 'already_processing',
-                'filename': job.filename
-            }
+            if resume:
+                logger.info(
+                    "Job ID %s marked PROCESSING but resume flag set; continuing task %s",
+                    job_id,
+                    getattr(self.request, 'id', '<unknown>'),
+                )
+            else:
+                logger.info(f"Job ID {job_id} already processing; skipping duplicate task {self.request.id}")
+                return {
+                    'job_id': job_id,
+                    'status': 'already_processing',
+                    'filename': job.filename
+                }
 
         # Update job status
         repo.set_status(job_id, "PROCESSING")
@@ -123,6 +131,7 @@ def process_translation_task(
             glossary_model_name=glossary_model_name,
             provider_context=context,
             resume=resume,
+            turbo_mode=turbo_mode,
         )
         
         # Update progress
@@ -143,6 +152,7 @@ def process_translation_task(
             initial_core_style_text=components['initial_core_style_text'],
             db=db,
             usage_collector=components.get('usage_collector'),
+            turbo_mode=components.get('turbo_mode', False),
         )
         
         # Mark as completed

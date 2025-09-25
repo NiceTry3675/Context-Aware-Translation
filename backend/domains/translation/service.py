@@ -385,6 +385,7 @@ class TranslationDomainService(DomainServiceBase):
         glossary_model_name: Optional[str] = None,
         provider_context: Optional[ProviderContext] = None,
         resume: bool = False,
+        turbo_mode: bool = False,
     ) -> Dict[str, Any]:
         """Prepare all the necessary components for a translation job."""
         # Fallbacks: if specific per-task models are not provided, use the top-level model_name
@@ -436,16 +437,19 @@ class TranslationDomainService(DomainServiceBase):
         if resume:
             try:
                 manager = TranslationStorageManager(create_storage(get_settings()))
-                existing = asyncio.run(manager.read_translation_output(job_id, job.filename))
-            except Exception:
-                existing = None
-            if existing:
-                # Split using the same joiner used by DocumentOutputManager.save_text_output (\n\n)
-                pretranslated = [s for s in existing.split("\n\n") if s.strip()]
-                # Do not exceed total segments to preserve composition
-                if pretranslated:
-                    max_len = min(len(pretranslated), len(translation_document.segments))
-                    translation_document.translated_segments = pretranslated[:max_len]
+                cached_segments = manager.read_partial_segments(job_id)
+                if cached_segments:
+                    prefill_count = min(len(cached_segments), len(translation_document.segments))
+                    translation_document.translated_segments = cached_segments[:prefill_count]
+                else:
+                    existing = asyncio.run(manager.read_translation_output(job_id, job.filename))
+                    if existing:
+                        print(
+                            f"--- Partial segment cache missing for Job ID: {job_id}; "
+                            "resume will retranslate from the beginning. ---"
+                        )
+            except Exception as e:
+                print(f"--- WARNING: Failed to load cached segments for Job ID: {job_id}. Error: {e} ---")
         
         # Process style data using StyleAnalysisService
         initial_core_style_text = None
@@ -527,6 +531,7 @@ class TranslationDomainService(DomainServiceBase):
             'initial_glossary': initial_glossary,
             'initial_core_style_text': initial_core_style_text,
             'usage_collector': usage_collector,
+            'turbo_mode': turbo_mode,
         }
 
     @staticmethod
@@ -541,6 +546,7 @@ class TranslationDomainService(DomainServiceBase):
         initial_core_style_text: Optional[str],
         db: Session,
         usage_collector: TokenUsageCollector | None = None,
+        turbo_mode: bool = False,
     ):
         """Execute the translation process."""
         # Always use structured output for configuration extraction
@@ -553,7 +559,8 @@ class TranslationDomainService(DomainServiceBase):
             dyn_model_for_guides,
             protagonist_name,
             initial_glossary=initial_glossary,
-            character_style_model=style_model_api
+            character_style_model=style_model_api,
+            turbo_mode=turbo_mode,
         )
         
         pipeline = TranslationPipeline(
@@ -564,6 +571,7 @@ class TranslationDomainService(DomainServiceBase):
             initial_core_style=initial_core_style_text,
             style_model_api=style_model_api,
             usage_collector=usage_collector,
+            turbo_mode=turbo_mode,
         )
 
         pipeline.translate_document(translation_document)
@@ -621,6 +629,7 @@ class TranslationDomainService(DomainServiceBase):
         enable_post_edit: bool = False,
         api_provider: str = "gemini",
         provider_config: Optional[str] = None,
+        turbo_mode: bool = False,
     ) -> TranslationJobSchema:
         """
         Create a new translation job with file upload.
@@ -721,6 +730,7 @@ class TranslationDomainService(DomainServiceBase):
             glossary_model_name=glossary_model_name,
             user_id=user_id,
             provider_context=provider_payload,
+            turbo_mode=turbo_mode,
         )
         
         # Fetch the job again and convert to Pydantic schema

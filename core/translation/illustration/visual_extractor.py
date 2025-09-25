@@ -60,11 +60,18 @@ class VisualElementExtractor:
                 elements['setting'] = setting
                 break
 
-        # Track which characters are present (but store names for reference)
+        # Track which characters are present (cap to <= 3 by first occurrence)
         if glossary:
-            for name in glossary.keys():
-                if name in text:
-                    elements['characters'].append(name)
+            try:
+                elements['characters'] = self._select_top_character_names(text, glossary, max_count=3)
+            except Exception:
+                capped: List[str] = []
+                for name in glossary.keys():
+                    if name in text:
+                        capped.append(name)
+                        if len(capped) >= 3:
+                            break
+                elements['characters'] = capped
 
         # Extract mood
         mood_keywords = {
@@ -239,15 +246,15 @@ class VisualElementExtractor:
                 descriptions.append("two people together")
 
         elif num_characters >= 3:
-            # Multiple characters - describe as a group
+            # Multiple characters - describe as a small group without explicit count
             if any(word in text_lower for word in ['meeting', 'gathering', 'assembled']):
-                descriptions.append("a group of people gathered")
+                descriptions.append("a small group of people gathered")
             elif any(word in text_lower for word in ['crowd', 'audience']):
-                descriptions.append("a crowd of people")
+                descriptions.append("a small crowd of people")
             elif any(word in text_lower for word in ['team', 'squad', 'group']):
-                descriptions.append("a team of people")
+                descriptions.append("a small team of people")
             else:
-                descriptions.append(f"a group of {num_characters} people")
+                descriptions.append("several people")
 
         # If we still have no descriptions, use generic fallback
         if not descriptions:
@@ -259,6 +266,31 @@ class VisualElementExtractor:
                 descriptions.append("several people")
 
         return descriptions
+
+    def _select_top_character_names(self, text: str, glossary: Dict[str, str], max_count: int = 3) -> List[str]:
+        """
+        Select up to max_count character names present in text by first occurrence order.
+
+        Args:
+            text: Source text to scan (summary preferred)
+            glossary: Glossary dict whose keys include character names
+            max_count: Maximum number of names to return
+
+        Returns:
+            List of up to `max_count` names ordered by first occurrence in text
+        """
+        if not glossary:
+            return []
+        positions: List[tuple[int, str]] = []
+        for name in glossary.keys():
+            try:
+                idx = text.find(name)
+            except Exception:
+                idx = -1
+            if idx != -1:
+                positions.append((idx, name))
+        positions.sort(key=lambda x: x[0])
+        return [name for _, name in positions[:max_count]]
 
     def infer_world_hints(self, text: Optional[str]) -> Dict[str, str]:
         """
@@ -387,13 +419,19 @@ class VisualElementExtractor:
             'summary': illustration_context.get('summary', '')
         }
 
-        # Extract characters from glossary if they appear in the summary (if available) or text
+        # Extract up to 3 characters from glossary if they appear in the summary (preferred) or text
         if glossary:
-            # Use summary if available for more accurate character identification
             search_text = elements.get('summary', segment_text) or segment_text
-            for name in glossary.keys():
-                if name in search_text:
-                    elements['characters'].append(name)
+            try:
+                elements['characters'] = self._select_top_character_names(search_text, glossary, max_count=3)
+            except Exception:
+                capped: List[str] = []
+                for name in glossary.keys():
+                    if name in search_text:
+                        capped.append(name)
+                        if len(capped) >= 3:
+                            break
+                elements['characters'] = capped
 
         # Determine action based on narrative focus
         focus = illustration_context.get('focus', '')

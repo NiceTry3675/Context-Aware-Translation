@@ -11,6 +11,7 @@ import { useApiKey } from './useApiKey';
 import { useTranslationService } from './useTranslationService';
 import { useJobActions } from './useJobActions';
 import { Job, StyleData, GlossaryTerm, TranslationSettings } from '../types/ui';
+import { isOpenRouterGeminiModel } from '../utils/constants/models';
 
 export function useCanvasState() {
   const searchParams = useSearchParams();
@@ -60,12 +61,27 @@ export function useCanvasState() {
   const [translationSettings, setTranslationSettings] = useState<TranslationSettings>({
     model_name: 'gemini-2.5-flash',
     segmentSize: 15000,
+    turboMode: false,
     enableValidation: false,
     quickValidation: false,
     validationSampleRate: 100,
     enablePostEdit: false,
     enableIllustrations: false
   });
+
+  const isTurboModeLocked = apiProvider === 'openrouter' && !isOpenRouterGeminiModel(selectedModel);
+
+  useEffect(() => {
+    if (!isTurboModeLocked) {
+      return;
+    }
+    setTranslationSettings((prev) => {
+      if (prev.turboMode) {
+        return prev;
+      }
+      return { ...prev, turboMode: true };
+    });
+  }, [isTurboModeLocked]);
   
   // Translation service hook
   const {

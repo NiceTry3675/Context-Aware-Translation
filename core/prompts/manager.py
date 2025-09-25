@@ -26,6 +26,7 @@ class PromptManager:
     
     # --- Translation Engine Prompts ---
     MAIN_TRANSLATION = _prompts["translation"]["main"]
+    TURBO_TRANSLATION = _prompts["translation"].get("turbo", _prompts["translation"]["main"])  # fallback to main if missing
     SOFT_RETRY_TRANSLATION = _prompts["translation"]["soft_retry"]
     
     # --- Validation Prompts (Structured Only) ---

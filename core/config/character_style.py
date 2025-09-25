@@ -45,7 +45,9 @@ class CharacterStyleManager:
         )
         try:
             schema = make_dialogue_analysis_schema(self.protagonist_name)
-            response = self.model.generate_structured(prompt, schema)
+            # Character style analysis should not retry multiple times.
+            # On first failure, keep existing styles.
+            response = self.model.generate_structured(prompt, schema, max_retries=1)
             result = parse_dialogue_analysis_response(response)
             
             if not result.has_dialogue or not result.interactions:

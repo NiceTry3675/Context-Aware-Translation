@@ -214,6 +214,9 @@ export function useTranslationService({
     }
     
     formData.append("segment_size", settings.segmentSize.toString());
+    if (settings.turboMode) {
+      formData.append("turbo_mode", "true");
+    }
     
     // Add validation settings if enabled
     if (settings.enableValidation) {
