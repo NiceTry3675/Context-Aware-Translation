@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     storage_backend: str = "local"  # local, s3, gcs
     upload_directory: str = Field(default="uploads", env="UPLOAD_DIR")
     job_storage_base: str = Field(default="logs/jobs", env="JOB_STORAGE_BASE")
+    # Legacy plain-text output directory (kept for backward compatibility)
+    legacy_translated_dir: str = Field(default="translated_novel", env="LEGACY_TRANSLATED_DIR")
     max_file_size: int = 100_000_000  # 100MB
     allowed_extensions: List[str] = Field(
         default_factory=lambda: [
@@ -138,6 +140,15 @@ class Settings(BaseSettings):
     @field_validator("job_storage_base")
     @classmethod
     def ensure_job_storage_dir(cls, v):
+        path = Path(v)
+        if not path.is_absolute():
+            path = Path(os.getcwd()) / path
+        path.mkdir(parents=True, exist_ok=True)
+        return str(path)
+
+    @field_validator("legacy_translated_dir")
+    @classmethod
+    def ensure_legacy_translated_dir(cls, v):
         path = Path(v)
         if not path.is_absolute():
             path = Path(os.getcwd()) / path

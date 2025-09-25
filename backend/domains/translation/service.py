@@ -957,7 +957,9 @@ class TranslationDomainService(DomainServiceBase):
                 import json
                 from pathlib import Path
                 
-                segments_path = Path(f"logs/jobs/{job_id}/output/segments.json")
+                from backend.config.settings import get_settings
+                base_dir = Path(get_settings().job_storage_base)
+                segments_path = base_dir / str(job_id) / "output" / "segments.json"
                 if segments_path.exists():
                     try:
                         with open(segments_path, 'r', encoding='utf-8') as f:
@@ -1019,7 +1021,9 @@ class TranslationDomainService(DomainServiceBase):
                 import json
                 from pathlib import Path
                 
-                segments_path = Path(f"logs/jobs/{job_id}/output/segments.json")
+                from backend.config.settings import get_settings
+                base_dir = Path(get_settings().job_storage_base)
+                segments_path = base_dir / str(job_id) / "output" / "segments.json"
                 if segments_path.exists():
                     try:
                         with open(segments_path, 'r', encoding='utf-8') as f:

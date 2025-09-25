@@ -100,8 +100,9 @@ class AWSTaskOutputService:
         }
 
         try:
-            # Get the job output directory
-            job_dir = Path(f"logs/jobs/{job_id}")
+            # Get the job output directory from configured job storage base
+            base_dir = Path(get_settings().job_storage_base)
+            job_dir = base_dir / str(job_id)
 
             if not job_dir.exists():
                 logger.debug(f"No output directory found for job {job_id}")

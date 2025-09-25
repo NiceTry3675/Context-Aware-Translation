@@ -143,6 +143,7 @@ def generate_illustrations_task(
                 enable_caching=config.cache_enabled,
                 model_name=model_name,
                 client=client,
+                output_dir=settings.job_storage_base,
             )
             print(f"[ILLUSTRATIONS TASK] Generator initialized successfully with model: {settings.illustration_model}")
         except Exception as e:
@@ -186,7 +187,7 @@ def generate_illustrations_task(
             dyn_builder = None
 
         # Load segments from log files instead of database for richer metadata
-        log_dir = Path(f"logs/jobs/{job_id}/segments/translation")
+        log_dir = Path(settings.job_storage_base) / str(job_id) / "segments" / "translation"
         segments = []
 
         if log_dir.exists():

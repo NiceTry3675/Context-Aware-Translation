@@ -7,6 +7,7 @@ from pathlib import Path
 import logging
 
 from backend.domains.shared.storage import Storage
+from backend.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +51,9 @@ class TranslationStorageManager:
         # Determine base filename
         base_name = Path(original_filename).stem
         
-        # Save directly to logs/jobs directory (outside of storage abstraction)
-        logs_output_dir = Path(f"logs/jobs/{job_id}/output")
+        # Save directly to job storage base directory (outside of storage abstraction)
+        base_dir = Path(get_settings().job_storage_base)
+        logs_output_dir = base_dir / str(job_id) / "output"
         logs_output_dir.mkdir(parents=True, exist_ok=True)
         logs_output_path = logs_output_dir / "translated.txt"
         
@@ -66,7 +68,7 @@ class TranslationStorageManager:
         
         # Save to legacy directory if requested
         if save_to_legacy:
-            legacy_dir = Path("translated_novel")
+            legacy_dir = Path(get_settings().legacy_translated_dir)
             legacy_dir.mkdir(parents=True, exist_ok=True)
             legacy_path = legacy_dir / f"{job_id}_{base_name}_translated.txt"
             try:
@@ -96,8 +98,9 @@ class TranslationStorageManager:
         """
         import json
         
-        # Save directly to logs/jobs directory
-        segments_dir = Path(f"logs/jobs/{job_id}/output")
+        # Save directly to job storage base directory
+        base_dir = Path(get_settings().job_storage_base)
+        segments_dir = base_dir / str(job_id) / "output"
         segments_dir.mkdir(parents=True, exist_ok=True)
         segments_path = segments_dir / "segments.json"
         
@@ -127,7 +130,8 @@ class TranslationStorageManager:
             Translation content as string, or None if not found
         """
         # Try job-specific directory first
-        job_path = Path(f"logs/jobs/{job_id}/output/translated.txt")
+        base_dir = Path(get_settings().job_storage_base)
+        job_path = base_dir / str(job_id) / "output" / "translated.txt"
         
         try:
             if job_path.exists():
@@ -139,7 +143,8 @@ class TranslationStorageManager:
         # Try legacy directory as fallback
         if original_filename:
             base_name = Path(original_filename).stem
-            legacy_path = Path(f"translated_novel/{job_id}_{base_name}_translated.txt")
+            legacy_dir = Path(get_settings().legacy_translated_dir)
+            legacy_path = legacy_dir / f"{job_id}_{base_name}_translated.txt"
             try:
                 if legacy_path.exists():
                     with open(legacy_path, 'r', encoding='utf-8') as f:
@@ -153,7 +158,8 @@ class TranslationStorageManager:
         """Read partial translated segments stored for resume support."""
         import json
 
-        cache_path = Path(f"logs/jobs/{job_id}/output/partial_segments.json")
+        base_dir = Path(get_settings().job_storage_base)
+        cache_path = base_dir / str(job_id) / "output" / "partial_segments.json"
         if not cache_path.exists():
             return None
 
