@@ -9,7 +9,7 @@ export interface ModelOption {
 export const geminiModelOptions: ModelOption[] = [
   {
     value: "gemini-2.5-flash-lite",
-    label: "Flash Lite (추천)",
+    label: "Flash Lite",
     description: "가장 빠른 속도와 저렴한 비용으로 빠르게 결과물을 확인하고 싶을 때 적합합니다.",
     chip: "속도",
     chipColor: "primary",
@@ -23,8 +23,8 @@ export const geminiModelOptions: ModelOption[] = [
   },
   {
     value: "gemini-2.5-pro",
-    label: "Pro",
-    description: "최고 수준의 문학적 번역 품질을 원하신다면 선택하세요. (느리고 비쌀 수 있음)",
+    label: "Pro (추천)",
+    description: "최고 수준의 문학적 번역 품질을 원하신다면 선택하세요.(느리고 비쌀 수 있음)",
     chip: "품질",
     chipColor: "error",
   },

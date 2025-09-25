@@ -26,6 +26,7 @@ style_analysis:
 
 translation:
   main: # Main translation prompt template
+  turbo: # Turbo translation (no style deviation or character styles)
 ```
 
 ## Usage

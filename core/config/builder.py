@@ -23,11 +23,12 @@ class DynamicConfigBuilder:
     """
 
     def __init__(
-        self, 
-        model: GeminiModel | OpenRouterModel, 
-        protagonist_name: str, 
+        self,
+        model: GeminiModel | OpenRouterModel,
+        protagonist_name: str,
         initial_glossary: Optional[Union[List[Dict[str, str]], Dict[str, str]]] = None,
-        character_style_model: Optional[GeminiModel | OpenRouterModel] = None
+        character_style_model: Optional[GeminiModel | OpenRouterModel] = None,
+        turbo_mode: bool = False,
     ):
         """
         Initializes the builder with the shared Gemini model and managers.
@@ -47,6 +48,7 @@ class DynamicConfigBuilder:
             print("Warning: Selected style model does not support structured output for character styles. Falling back to dynamic guide model.")
 
         self.character_style_manager = CharacterStyleManager(character_style_backend, protagonist_name)
+        self.turbo_mode = turbo_mode
         
         self.initial_glossary_dict = {}
         if initial_glossary:
@@ -99,33 +101,38 @@ class DynamicConfigBuilder:
             initial_glossary=combined_glossary
         )
         
-        # Update glossary based on the current segment
-        updated_glossary = glossary_manager.update_glossary(segment_text)
+        # Update glossary based on the current segment (skip in turbo mode)
+        if self.turbo_mode:
+            updated_glossary = {**self.initial_glossary_dict, **current_glossary}
+        else:
+            updated_glossary = glossary_manager.update_glossary(segment_text)
 
         # 2. Update character styles
-        updated_character_styles = self.character_style_manager.update_styles(
-            segment_text,
-            current_character_styles,
-            job_base_filename,
-            segment_index
-        )
+        # Update character styles (skip in turbo mode)
+        if self.turbo_mode:
+            updated_character_styles = current_character_styles
+        else:
+            updated_character_styles = self.character_style_manager.update_styles(
+                segment_text,
+                current_character_styles,
+                job_base_filename,
+                segment_index
+            )
 
         # 3. Analyze for style deviations
-        style_deviation_info = self._analyze_style_deviation(
-            segment_text,
-            core_narrative_style,
-            job_base_filename,
-            segment_index
-        )
+        # Analyze for style deviations (skip in turbo mode)
+        if self.turbo_mode:
+            style_deviation_info = "N/A"
+        else:
+            style_deviation_info = self._analyze_style_deviation(
+                segment_text,
+                core_narrative_style,
+                job_base_filename,
+                segment_index
+            )
 
-        # 4. Analyze world and atmosphere
-        world_atmosphere = self._analyze_world_atmosphere(
-            segment_text,
-            previous_context,
-            updated_glossary,
-            job_base_filename,
-            segment_index
-        )
+        # 4. World/atmosphere analysis is deferred to illustration time to avoid extra translation calls
+        world_atmosphere = None
 
         return updated_glossary, updated_character_styles, style_deviation_info, world_atmosphere
 

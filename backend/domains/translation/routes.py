@@ -61,6 +61,7 @@ def create_job(
     enable_post_edit: bool = Form(False),
     api_provider: str = Form("gemini"),
     provider_config: Optional[str] = Form(None),
+    turbo_mode: bool = Form(False),
     user: User = Depends(get_required_user),
     service: TranslationDomainService = Depends(get_translation_service)
 ) -> TranslationJob:
@@ -104,6 +105,7 @@ def create_job(
         enable_post_edit=enable_post_edit,
         api_provider=api_provider,
         provider_config=provider_config,
+        turbo_mode=turbo_mode,
     )
 
 
@@ -258,6 +260,7 @@ async def resume_job(
         provider_context=provider_payload,
         # Signal resume via kwargs; consumed by service/translation pipeline
         resume=True,
+        turbo_mode=(request.turbo_mode or False),
     )
 
     # Optimistically mark job PROCESSING (avoid duplicate starts) and return

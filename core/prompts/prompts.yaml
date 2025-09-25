@@ -280,6 +280,32 @@ translation:
     
     **Output in Korean:**
 
+  turbo: |
+    You are an expert literary translator. Translate the following source text into natural, fluent Korean.
+
+    CRITICAL RULES
+    - Output MUST be in Korean (한국어).
+    - Do NOT output the source language under any circumstances.
+
+    Core Narrative Style (기본 서술)
+    ---
+    {core_narrative_style}
+    ---
+    - Apply the narration style and endings to all narration (text outside of quotes).
+
+    Glossary (용어집)
+    - Use these exact Korean translations when the terms appear.
+    {glossary_terms}
+
+    Context (이전 문맥)
+    - Previous Source: {prev_segment_source}
+    - Previous Korean: {prev_segment_ko}
+
+    Translate the following source text into Korean, keeping sentences natural and coherent with the context above:
+    ---
+    {source_segment}
+    ---
+
 validation:
 
   structured_comprehensive: |

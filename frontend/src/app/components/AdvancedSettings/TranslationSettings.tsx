@@ -45,6 +45,23 @@ export default function TranslationSettings({ settings, onChange }: TranslationS
           color="secondary"
         />
       </Box>
+
+      <Box sx={{ mt: 3 }}>
+        <Typography variant="h6" gutterBottom>터보 번역 모드</Typography>
+        <Typography variant="body2" color="text.secondary" mb={1}>
+          동적 스타일 편차, 캐릭터 말투, 용어집 자동 추출을 건너뛰고 빠르게 번역합니다.
+        </Typography>
+        <FormControlLabel
+          control={
+            <Switch
+              checked={settings.turboMode ?? false}
+              onChange={(e) => updateSetting('turboMode', e.target.checked)}
+              color="warning"
+            />
+          }
+          label="터보 모드 활성화"
+        />
+      </Box>
       
       {/* Validation Settings */}
       <Box sx={{ mt: 3 }}>

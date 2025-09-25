@@ -385,6 +385,7 @@ class TranslationDomainService(DomainServiceBase):
         glossary_model_name: Optional[str] = None,
         provider_context: Optional[ProviderContext] = None,
         resume: bool = False,
+        turbo_mode: bool = False,
     ) -> Dict[str, Any]:
         """Prepare all the necessary components for a translation job."""
         # Fallbacks: if specific per-task models are not provided, use the top-level model_name
@@ -527,6 +528,7 @@ class TranslationDomainService(DomainServiceBase):
             'initial_glossary': initial_glossary,
             'initial_core_style_text': initial_core_style_text,
             'usage_collector': usage_collector,
+            'turbo_mode': turbo_mode,
         }
 
     @staticmethod
@@ -541,6 +543,7 @@ class TranslationDomainService(DomainServiceBase):
         initial_core_style_text: Optional[str],
         db: Session,
         usage_collector: TokenUsageCollector | None = None,
+        turbo_mode: bool = False,
     ):
         """Execute the translation process."""
         # Always use structured output for configuration extraction
@@ -553,7 +556,8 @@ class TranslationDomainService(DomainServiceBase):
             dyn_model_for_guides,
             protagonist_name,
             initial_glossary=initial_glossary,
-            character_style_model=style_model_api
+            character_style_model=style_model_api,
+            turbo_mode=turbo_mode,
         )
         
         pipeline = TranslationPipeline(
@@ -564,6 +568,7 @@ class TranslationDomainService(DomainServiceBase):
             initial_core_style=initial_core_style_text,
             style_model_api=style_model_api,
             usage_collector=usage_collector,
+            turbo_mode=turbo_mode,
         )
 
         pipeline.translate_document(translation_document)
@@ -621,6 +626,7 @@ class TranslationDomainService(DomainServiceBase):
         enable_post_edit: bool = False,
         api_provider: str = "gemini",
         provider_config: Optional[str] = None,
+        turbo_mode: bool = False,
     ) -> TranslationJobSchema:
         """
         Create a new translation job with file upload.
@@ -721,6 +727,7 @@ class TranslationDomainService(DomainServiceBase):
             glossary_model_name=glossary_model_name,
             user_id=user_id,
             provider_context=provider_payload,
+            turbo_mode=turbo_mode,
         )
         
         # Fetch the job again and convert to Pydantic schema

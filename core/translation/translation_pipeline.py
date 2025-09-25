@@ -61,16 +61,17 @@ class TranslationPipeline:
     - Progress tracking and database updates
     """
     
-    def __init__(self, 
-                 gemini_api: GeminiModel | OpenRouterModel, 
-                 dyn_config_builder: DynamicConfigBuilder, 
+    def __init__(self,
+                 gemini_api: GeminiModel | OpenRouterModel,
+                 dyn_config_builder: DynamicConfigBuilder,
                  db: Optional[Session] = None,
                  job_id: Optional[int] = None,
                  initial_core_style: Optional[str] = None,
                  style_model_api: Optional[GeminiModel | OpenRouterModel] = None,
                  illustration_config: Optional[IllustrationConfig] = None,
                  illustration_api_key: Optional[str] = None,
-                 usage_collector: Optional[TokenUsageCollector] = None):
+                 usage_collector: Optional[TokenUsageCollector] = None,
+                 turbo_mode: bool = False):
         """
         Initialize the translation pipeline.
         
@@ -86,7 +87,10 @@ class TranslationPipeline:
         """
         self.gemini_api = gemini_api
         self.dyn_config_builder = dyn_config_builder
-        self.prompt_builder = PromptBuilder(PromptManager.MAIN_TRANSLATION)
+        self.turbo_mode = turbo_mode
+        # Choose prompt template based on mode
+        template = PromptManager.TURBO_TRANSLATION if turbo_mode else PromptManager.MAIN_TRANSLATION
+        self.prompt_builder = PromptBuilder(template)
         # Allow a different model for style analysis if provided
         self.style_analyzer = StyleAnalyzer(style_model_api or gemini_api, job_id)
         self.progress_tracker = ProgressTracker(db, job_id)
@@ -199,7 +203,7 @@ class TranslationPipeline:
             prompt = self._build_translation_prompt(
                 segment_info, contextual_glossary, updated_styles,
                 core_narrative_style, style_deviation,
-                immediate_context_source, immediate_context_ko, world_atmosphere
+                immediate_context_source, immediate_context_ko
             )
             
             # Log context and prompt
@@ -332,15 +336,10 @@ class TranslationPipeline:
     def _build_translation_prompt(self, segment_info: Any, contextual_glossary: Dict[str, str],
                                  character_styles: Dict[str, str], core_narrative_style: str,
                                  style_deviation: str, immediate_context_source: str,
-                                 immediate_context_ko: str, world_atmosphere=None) -> str:
+                                 immediate_context_ko: str) -> str:
         """Build the translation prompt for a segment."""
-        # Add world atmosphere to core narrative style if available
-        enhanced_narrative_style = core_narrative_style
-        if world_atmosphere:
-            enhanced_narrative_style = f"{core_narrative_style}\n\n{world_atmosphere.to_prompt_format()}"
-        
         return self.prompt_builder.build_translation_prompt(
-            core_narrative_style=enhanced_narrative_style,
+            core_narrative_style=core_narrative_style,
             style_deviation_info=style_deviation,
             glossary=contextual_glossary,
             character_styles=character_styles,

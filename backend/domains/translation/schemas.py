@@ -95,6 +95,6 @@ class ResumeRequest(BaseModel):
     glossary_model_name: Optional[str] = None
     api_provider: Optional[str] = "gemini"
     provider_config: Optional[str] = None
-
+    turbo_mode: Optional[bool] = False
 
 
