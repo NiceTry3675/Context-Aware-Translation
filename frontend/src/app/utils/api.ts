@@ -627,7 +627,7 @@ export async function analyzeCharacterAppearance({
       api_key: apiProvider === 'vertex' ? '' : apiKey,
       ...(apiProvider === 'vertex' && providerConfig ? { provider_config: providerConfig } : {}),
       protagonist_name: protagonistName,
-      model_name: 'gemini-2.5-flash'
+      model_name: 'gemini-flash-latest'
     }),
   });
   if (!response.ok) {

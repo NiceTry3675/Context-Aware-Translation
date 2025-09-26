@@ -52,7 +52,7 @@ def test_glossary_extraction():
         "max_output_tokens": 8192,
     }
     
-    model = GeminiModel(api_key, "gemini-2.5-flash-lite", safety_settings, generation_config)
+    model = GeminiModel(api_key, "gemini-flash-lite-latest", safety_settings, generation_config)
     manager = GlossaryManager(model, "test_job")
     
     # Extract terms
@@ -94,7 +94,7 @@ def test_glossary_translation():
         "max_output_tokens": 8192,
     }
     
-    model = GeminiModel(api_key, "gemini-2.5-flash-lite", safety_settings, generation_config)
+    model = GeminiModel(api_key, "gemini-flash-lite-latest", safety_settings, generation_config)
     
     # Create manager with existing glossary
     existing_glossary = {"John": "존", "New York": "뉴욕"}
@@ -147,7 +147,7 @@ def test_character_style_analysis():
         "max_output_tokens": 8192,
     }
     
-    model = GeminiModel(api_key, "gemini-2.5-flash-lite", safety_settings, generation_config)
+    model = GeminiModel(api_key, "gemini-flash-lite-latest", safety_settings, generation_config)
     manager = CharacterStyleManager(model, "John")
     
     # Analyze styles
@@ -211,7 +211,7 @@ def test_style_deviation():
         "max_output_tokens": 8192,
     }
     
-    model = GeminiModel(api_key, "gemini-2.5-flash-lite", safety_settings, generation_config)
+    model = GeminiModel(api_key, "gemini-flash-lite-latest", safety_settings, generation_config)
     builder = DynamicConfigBuilder(model, "John")
     
     # Analyze deviation

@@ -105,7 +105,7 @@ Integrate **Clerk** as the primary authentication service. This will provide a r
         background_tasks: BackgroundTasks,
         file: UploadFile = File(...),
         api_key: str = Form(...),
-        model_name: str = Form("gemini-2.5-flash-lite"),
+        model_name: str = Form("gemini-flash-lite-latest"),
         style_data: str = Form(None),
         segment_size: int = Form(15000),
         db: Session = Depends(get_db),

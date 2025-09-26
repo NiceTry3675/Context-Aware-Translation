@@ -539,7 +539,7 @@ export interface paths {
          *     Expects JSON body with:
          *     - api_key: API key for model
          *     - protagonist_name: Optional protagonist name
-         *     - model_name: Model name for analysis (default: gemini-2.5-flash)
+         *     - model_name: Model name for analysis (default: gemini-flash-latest)
          */
         post: operations["analyze_character_appearance_api_v1_illustrations__job_id__character_appearance_analyze_post"];
         delete?: never;
@@ -1348,7 +1348,7 @@ export interface components {
             api_key: string;
             /**
              * Model Name
-             * @default gemini-2.5-flash-lite
+             * @default gemini-flash-lite-latest
              */
             model_name: string;
             /**
@@ -1370,7 +1370,7 @@ export interface components {
             api_key: string;
             /**
              * Model Name
-             * @default gemini-2.5-flash-lite
+             * @default gemini-flash-lite-latest
              */
             model_name: string;
             /**
@@ -1392,7 +1392,7 @@ export interface components {
             api_key: string;
             /**
              * Model Name
-             * @default gemini-2.5-flash-lite
+             * @default gemini-flash-lite-latest
              */
             model_name: string;
             /**
@@ -1414,7 +1414,7 @@ export interface components {
             api_key: string;
             /**
              * Model Name
-             * @default gemini-2.5-flash-lite
+             * @default gemini-flash-lite-latest
              */
             model_name: string;
             /** Translation Model Name */
@@ -1943,7 +1943,7 @@ export interface components {
             api_key?: string | null;
             /**
              * Model Name
-             * @default gemini-2.5-flash-lite
+             * @default gemini-flash-lite-latest
              */
             model_name: string | null;
             /** Translation Model Name */

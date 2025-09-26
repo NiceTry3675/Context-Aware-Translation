@@ -67,11 +67,11 @@ async def post_edit_job(
         request.provider_config,
     )
     # Use provider-specific default models
-    fallback_model = "gemini-2.5-flash-lite"
+    fallback_model = "gemini-flash-lite-latest"
     if provider_context and provider_context.name == "vertex":
-        fallback_model = "gemini-2.5-flash"
+        fallback_model = "gemini-flash-latest"
     elif provider_context and provider_context.name == "openrouter":
-        fallback_model = "google/gemini-2.5-flash-lite"
+        fallback_model = "google/gemini-2.5-flash-lite-preview-09-2025"
 
     model_name = (
         request.model_name

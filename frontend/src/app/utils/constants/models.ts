@@ -8,14 +8,14 @@ export interface ModelOption {
 
 export const geminiModelOptions: ModelOption[] = [
   {
-    value: "gemini-2.5-flash-lite",
+    value: "gemini-flash-lite-latest",
     label: "Flash Lite",
     description: "가장 빠른 속도와 저렴한 비용으로 빠르게 결과물을 확인하고 싶을 때 적합합니다.",
     chip: "속도",
     chipColor: "primary",
   },
   {
-    value: "gemini-2.5-flash",
+    value: "gemini-flash-latest",
     label: "Flash",
     description: "준수한 품질과 합리적인 속도의 균형을 원할 때 가장 이상적인 선택입니다.",
     chip: "균형",
@@ -32,14 +32,14 @@ export const geminiModelOptions: ModelOption[] = [
 
 export const openRouterModelOptions: ModelOption[] = [
   {
-    value: "google/gemini-2.5-flash-lite",
+    value: "google/gemini-2.5-flash-lite-preview-09-2025",
     label: "Gemini 2.5 Flash Lite",
     description: " ",
     chip: "속도",
     chipColor: "primary",
   },
   {
-    value: "google/gemini-2.5-flash",
+    value: "google/gemini-2.5-flash-preview-09-2025",
     label: "Gemini 2.5 Flash",
     description: " ",
     chip: "균형",
@@ -112,14 +112,14 @@ export const openRouterModelOptions: ModelOption[] = [
 
 export const vertexModelOptions: ModelOption[] = [
   {
-    value: "gemini-2.5-flash-lite",
+    value: "gemini-flash-lite-latest",
     label: "Flash Lite",
     description: "가장 저렴한 Vertex Gemini 옵션으로 빠른 번역과 검수를 위한 기본 선택입니다.",
     chip: "속도",
     chipColor: "primary",
   },
   {
-    value: "gemini-2.5-flash",
+    value: "gemini-flash-latest",
     label: "Flash",
     description: "품질과 속도의 균형이 좋은 Vertex Gemini 2.5 Flash 모델입니다.",
     chip: "균형",
@@ -143,7 +143,7 @@ export const openRouterGeminiModelOptions: ModelOption[] = openRouterModelOption
 export const getDefaultOpenRouterGeminiModel = (): string => {
   const preferred = openRouterGeminiModelOptions[0]?.value
     ?? openRouterModelOptions.find((opt) => isOpenRouterGeminiModel(opt.value))?.value
-    ?? 'google/gemini-2.5-flash';
+    ?? 'google/gemini-2.5-flash-preview-09-2025';
   return preferred;
 };
 

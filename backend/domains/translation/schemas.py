@@ -89,7 +89,7 @@ GlossaryTerm = TranslatedTerm  # Alias for backward compatibility
 class ResumeRequest(BaseModel):
     """Request payload for resuming a failed translation job."""
     api_key: Optional[str] = None
-    model_name: Optional[str] = "gemini-2.5-flash-lite"
+    model_name: Optional[str] = "gemini-flash-lite-latest"
     translation_model_name: Optional[str] = None
     style_model_name: Optional[str] = None
     glossary_model_name: Optional[str] = None

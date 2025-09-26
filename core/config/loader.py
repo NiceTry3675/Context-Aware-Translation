@@ -32,7 +32,7 @@ def load_config():
 
     return {
         # "gemini_api_key": gemini_api_key, # 서버 제공 키 사용 시 주석 해제
-        "gemini_model_name": 'gemini-2.5-flash-lite',
+        "gemini_model_name": 'gemini-flash-lite-latest',
         "safety_settings": safety_settings,
         "generation_config": generation_config,
         "enable_soft_retry": True,  # Enable retry with softer prompts for ProhibitedException

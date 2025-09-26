@@ -331,7 +331,7 @@ export default function JobSidebar({
                                     const body: any = {
                                       api_provider: apiProvider,
                                       api_key: apiProvider === 'vertex' ? '' : (apiKey || ''),
-                                      model_name: defaultModelName || 'gemini-2.5-flash-lite',
+                                      model_name: defaultModelName || 'gemini-flash-lite-latest',
                                     };
                                     if (apiProvider === 'vertex' && providerConfig) {
                                       body.provider_config = providerConfig;

@@ -55,7 +55,7 @@ class ValidationDomainService(DomainServiceBase):
         session: Session,
         job_id: int,
         api_key: Optional[str],
-        model_name: str = "gemini-2.5-flash-lite",
+        model_name: str = "gemini-flash-lite-latest",
         provider_context: Optional[ProviderContext] = None,
     ) -> Tuple[TranslationValidator, TranslationDocument, str, Any, Any]:
         """
@@ -379,7 +379,7 @@ class ValidationDomainService(DomainServiceBase):
         session: Session,
         job_id: int,
         api_key: str,
-        model_name: str = "gemini-2.5-flash-lite",
+        model_name: str = "gemini-flash-lite-latest",
         sample_rate: float = 1.0,
         quick_mode: bool = False,
         progress_callback: Optional[Callable[[int], None]] = None

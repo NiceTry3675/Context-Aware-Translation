@@ -1083,7 +1083,7 @@
           "illustrations"
         ],
         "summary": "Analyze Character Appearance",
-        "description": "Analyze early novel text to produce appearance-only prompt candidates for the protagonist.\n\nExpects JSON body with:\n- api_key: API key for model\n- protagonist_name: Optional protagonist name\n- model_name: Model name for analysis (default: gemini-2.5-flash)",
+        "description": "Analyze early novel text to produce appearance-only prompt candidates for the protagonist.\n\nExpects JSON body with:\n- api_key: API key for model\n- protagonist_name: Optional protagonist name\n- model_name: Model name for analysis (default: gemini-flash-latest)",
         "operationId": "analyze_character_appearance_api_v1_illustrations__job_id__character_appearance_analyze_post",
         "parameters": [
           {
@@ -3138,7 +3138,7 @@
           "model_name": {
             "type": "string",
             "title": "Model Name",
-            "default": "gemini-2.5-flash-lite"
+            "default": "gemini-flash-lite-latest"
           },
           "api_provider": {
             "type": "string",
@@ -3178,7 +3178,7 @@
           "model_name": {
             "type": "string",
             "title": "Model Name",
-            "default": "gemini-2.5-flash-lite"
+            "default": "gemini-flash-lite-latest"
           },
           "api_provider": {
             "type": "string",
@@ -3218,7 +3218,7 @@
           "model_name": {
             "type": "string",
             "title": "Model Name",
-            "default": "gemini-2.5-flash-lite"
+            "default": "gemini-flash-lite-latest"
           },
           "api_provider": {
             "type": "string",
@@ -3258,7 +3258,7 @@
           "model_name": {
             "type": "string",
             "title": "Model Name",
-            "default": "gemini-2.5-flash-lite"
+            "default": "gemini-flash-lite-latest"
           },
           "translation_model_name": {
             "anyOf": [
@@ -4480,7 +4480,7 @@
               }
             ],
             "title": "Model Name",
-            "default": "gemini-2.5-flash-lite"
+            "default": "gemini-flash-lite-latest"
           },
           "translation_model_name": {
             "anyOf": [

@@ -2,7 +2,7 @@
 
 ## Overview
 
-We want to expose Google Vertex AI as a peer provider to the existing Gemini (direct) and OpenRouter options without increasing setup friction for users. Only the Vertex-supported Gemini 2.5 variants (`gemini-2.5-flash-lite`, `gemini-2.5-flash`, `gemini-2.5-pro`) need to be selectable when Vertex is chosen. The cornerstone of the design is a single JSON file that a user can paste or upload, removing the need for environment-variable gymnastics while keeping the security posture identical to the current API-key flow.
+We want to expose Google Vertex AI as a peer provider to the existing Gemini (direct) and OpenRouter options without increasing setup friction for users. Only the Vertex-supported Gemini 2.5 variants (`gemini-flash-lite-latest`, `gemini-flash-latest`, `gemini-2.5-pro`) need to be selectable when Vertex is chosen. The cornerstone of the design is a single JSON file that a user can paste or upload, removing the need for environment-variable gymnastics while keeping the security posture identical to the current API-key flow.
 
 ## Requirements
 
@@ -35,7 +35,7 @@ Two JSON shapes are supported to minimize friction:
    {
      "project_id": "firm-mariner-470708-n9",
      "location": "us-central1",
-     "default_model": "gemini-2.5-flash",
+     "default_model": "gemini-flash-latest",
      "service_account": {
        "type": "service_account",
        "project_id": "firm-mariner-470708-n9",
@@ -138,13 +138,15 @@ This structure is cached per request and serialized into Celery tasks using stan
 
 | Provider    | UI Label           | Backend Model Identifier                                                     |
 |-------------|--------------------|------------------------------------------------------------------------------|
-| Gemini API  | Flash Lite (추천)  | `gemini-2.5-flash-lite`                                                     |
-| Gemini API  | Flash              | `gemini-2.5-flash`                                                           |
+| Gemini API  | Flash Lite (추천)  | `gemini-flash-lite-latest`                                                     |
+| Gemini API  | Flash              | `gemini-flash-latest`                                                           |
 | Gemini API  | Pro                | `gemini-2.5-pro`                                                             |
-| Vertex AI   | Flash Lite (추천)  | `projects/{project}/locations/{location}/publishers/google/models/gemini-2.5-flash-lite` |
-| Vertex AI   | Flash              | `projects/{project}/locations/{location}/publishers/google/models/gemini-2.5-flash`     |
+| Vertex AI   | Flash Lite (추천)  | `projects/{project}/locations/{location}/publishers/google/models/gemini-flash-lite-latest` |
+| Vertex AI   | Flash              | `projects/{project}/locations/{location}/publishers/google/models/gemini-flash-latest`     |
 | Vertex AI   | Pro                | `projects/{project}/locations/{location}/publishers/google/models/gemini-2.5-pro`       |
-| OpenRouter  | (existing options) | (unchanged)                                                                |
+| OpenRouter  | Flash Lite (Preview) | `google/gemini-2.5-flash-lite-preview-09-2025`                                 |
+| OpenRouter  | Flash (Preview)      | `google/gemini-2.5-flash-preview-09-2025`                                      |
+| OpenRouter  | Pro                  | `google/gemini-2.5-pro`                                                        |
 
 Helper utilities generate Vertex resource names automatically, ensuring the UI only deals with short model IDs.
 

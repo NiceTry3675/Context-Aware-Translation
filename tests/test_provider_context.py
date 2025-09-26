@@ -93,7 +93,7 @@ class ProviderContextParsingTests(unittest.TestCase):
         payload = {
             "project_id": "demo-project",
             "location": "asia-northeast3",
-            "default_model": "gemini-2.5-flash",
+            "default_model": "gemini-flash-latest",
             "service_account": _service_account(project_id="demo-project"),
         }
 
@@ -103,7 +103,7 @@ class ProviderContextParsingTests(unittest.TestCase):
         self.assertEqual(context.name, "vertex")
         self.assertEqual(context.project_id, "demo-project")
         self.assertEqual(context.location, "asia-northeast3")
-        self.assertEqual(context.default_model, "gemini-2.5-flash")
+        self.assertEqual(context.default_model, "gemini-flash-latest")
         self.assertIsNotNone(context.credentials)
         self.assertEqual(context.credentials["client_email"], "vertex@example.iam.gserviceaccount.com")
 
@@ -176,7 +176,7 @@ class ProviderContextParsingTests(unittest.TestCase):
             credentials=_service_account(),
         )
 
-        resource = vertex_model_resource_name("gemini-2.5-flash", context)
+        resource = vertex_model_resource_name("gemini-flash-latest", context)
 
         self.assertTrue(resource.startswith("projects/demo-project/"))
 

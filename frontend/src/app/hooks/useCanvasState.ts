@@ -59,7 +59,7 @@ export function useCanvasState() {
   
   // Translation settings
   const [translationSettings, setTranslationSettings] = useState<TranslationSettings>({
-    model_name: 'gemini-2.5-flash',
+    model_name: 'gemini-flash-latest',
     segmentSize: 15000,
     turboMode: false,
     enableValidation: false,

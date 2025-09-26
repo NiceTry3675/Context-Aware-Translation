@@ -28,11 +28,11 @@ class AnalysisService(ServiceBase):
 
         provider_context = self.build_provider_context(api_provider, provider_config)
         # Use provider-specific default models
-        fallback_model = "gemini-2.5-flash-lite"
+        fallback_model = "gemini-flash-lite-latest"
         if provider_context and provider_context.name == "vertex":
-            fallback_model = "gemini-2.5-flash"
+            fallback_model = "gemini-flash-latest"
         elif provider_context and provider_context.name == "openrouter":
-            fallback_model = "google/gemini-2.5-flash-lite"
+            fallback_model = "google/gemini-2.5-flash-lite-preview-09-2025"
 
         resolved_model = (
             model_name
@@ -52,7 +52,7 @@ class AnalysisService(ServiceBase):
         self,
         file: UploadFile,
         api_key: str,
-        model_name: str = "gemini-2.5-flash-lite",
+        model_name: str = "gemini-flash-lite-latest",
         *,
         api_provider: str = "gemini",
         provider_config: Any = None,
@@ -108,7 +108,7 @@ class AnalysisService(ServiceBase):
         self,
         file: UploadFile,
         api_key: str,
-        model_name: str = "gemini-2.5-flash-lite",
+        model_name: str = "gemini-flash-lite-latest",
         *,
         api_provider: str = "gemini",
         provider_config: Any = None,
@@ -166,7 +166,7 @@ class AnalysisService(ServiceBase):
         self,
         file: UploadFile,
         api_key: str,
-        model_name: str = "gemini-2.5-flash-lite",
+        model_name: str = "gemini-flash-lite-latest",
         *,
         api_provider: str = "gemini",
         provider_config: Any = None,

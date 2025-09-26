@@ -11,7 +11,7 @@ from .schemas import StyleAnalysisResponse, GlossaryAnalysisResponse, CharacterA
 async def analyze_style(
     file: UploadFile,
     api_key: str = Form(...),
-    model_name: str = Form("gemini-2.5-flash-lite"),
+    model_name: str = Form("gemini-flash-lite-latest"),
     api_provider: str = Form("gemini"),
     provider_config: Optional[str] = Form(None),
 ) -> StyleAnalysisResponse:
@@ -39,7 +39,7 @@ async def analyze_style(
 async def analyze_glossary(
     file: UploadFile,
     api_key: str = Form(...),
-    model_name: str = Form("gemini-2.5-flash-lite"),
+    model_name: str = Form("gemini-flash-lite-latest"),
     api_provider: str = Form("gemini"),
     provider_config: Optional[str] = Form(None),
 ) -> GlossaryAnalysisResponse:
@@ -67,7 +67,7 @@ async def analyze_glossary(
 async def analyze_characters(
     file: UploadFile,
     api_key: str = Form(...),
-    model_name: str = Form("gemini-2.5-flash-lite"),
+    model_name: str = Form("gemini-flash-lite-latest"),
     api_provider: str = Form("gemini"),
     provider_config: Optional[str] = Form(None),
 ) -> CharacterAnalysisResponse:

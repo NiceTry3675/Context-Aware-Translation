@@ -92,7 +92,7 @@ class PostEditDomainService(DomainServiceBase):
         session: Session,
         job_id: int,
         api_key: Optional[str],
-        model_name: str = "gemini-2.5-flash-lite",
+        model_name: str = "gemini-flash-lite-latest",
         provider_context: Optional[ProviderContext] = None,
     ) -> Tuple[PostEditEngine, TranslationDocument, str, Any, Any]:
         """
@@ -419,7 +419,7 @@ class PostEditDomainService(DomainServiceBase):
         session: Session,
         job_id: int,
         api_key: str,
-        model_name: str = "gemini-2.5-flash-lite",
+        model_name: str = "gemini-flash-lite-latest",
         selected_cases: Optional[Dict[str, Any]] = None,
         modified_cases: Optional[Dict[str, Any]] = None,
         default_select_all: bool = True,

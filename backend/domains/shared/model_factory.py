@@ -20,8 +20,8 @@ except ImportError:  # pragma: no cover - optional dependency in minimal envs.
     google_api_exceptions = None
 
 KNOWN_VERTEX_MODELS: Tuple[str, ...] = (
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
+    "gemini-flash-latest",
+    "gemini-flash-lite-latest",
     "gemini-2.5-pro",
     "gemini-2.0-flash",
     "gemini-1.5-flash",

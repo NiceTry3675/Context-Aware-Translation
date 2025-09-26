@@ -183,7 +183,7 @@ def test_user_service_token_usage_dashboard(session: Session) -> None:
             original_length=0,
             translated_length=0,
             translation_duration_seconds=1,
-            model_used="gemini-2.5-flash",
+            model_used="gemini-flash-latest",
             prompt_tokens=25,
             completion_tokens=10,
             total_tokens=35,
@@ -224,7 +224,7 @@ def test_user_service_token_usage_dashboard(session: Session) -> None:
     assert summary['illustrations']['output_tokens'] == 10
     assert summary['illustrations']['image_count'] == 0
     illustration_models = {entry['model']: entry for entry in summary['illustrations']['per_model']}
-    assert illustration_models['gemini-2.5-flash']['total_tokens'] == 35
+    assert illustration_models['gemini-flash-latest']['total_tokens'] == 35
     assert illustration_models['gemini-2.5-flash-image-preview']['total_tokens'] == 0
 
 
@@ -239,7 +239,7 @@ def test_user_service_includes_illustration_usage(session: Session) -> None:
             original_length=0,
             translated_length=0,
             translation_duration_seconds=5,
-            model_used="gemini-2.5-flash",
+            model_used="gemini-flash-latest",
             prompt_tokens=10,
             completion_tokens=2,
             total_tokens=12,
@@ -251,7 +251,7 @@ def test_user_service_includes_illustration_usage(session: Session) -> None:
             original_length=0,
             translated_length=0,
             translation_duration_seconds=3,
-            model_used="gemini-2.5-flash",
+            model_used="gemini-flash-latest",
             prompt_tokens=4,
             completion_tokens=1,
             total_tokens=5,
@@ -283,5 +283,5 @@ def test_user_service_includes_illustration_usage(session: Session) -> None:
     assert summary['illustrations']['total_tokens'] == 17
     assert summary['illustrations']['image_count'] == 3
     illustration_models = {entry['model']: entry for entry in summary['illustrations']['per_model']}
-    assert illustration_models['gemini-2.5-flash']['total_tokens'] == 17
+    assert illustration_models['gemini-flash-latest']['total_tokens'] == 17
     assert illustration_models['gemini-2.5-flash-image-preview']['total_tokens'] == 0

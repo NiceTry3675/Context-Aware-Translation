@@ -208,9 +208,9 @@ def generate_illustrations_task(
         
         # Prepare a text model for world/atmosphere analysis when needed
         try:
-            text_model_name = load_config().get('gemini_model_name', 'gemini-2.5-flash')
+            text_model_name = load_config().get('gemini_model_name', 'gemini-flash-latest')
         except Exception:
-            text_model_name = 'gemini-2.5-flash'
+            text_model_name = 'gemini-flash-latest'
 
         try:
             text_model = ModelAPIFactory.create(
@@ -654,9 +654,9 @@ def regenerate_single_illustration(
         
         # Prepare a text model for world/atmosphere analysis if needed
         try:
-            text_model_name = load_config().get('gemini_model_name', 'gemini-2.5-flash')
+            text_model_name = load_config().get('gemini_model_name', 'gemini-flash-latest')
         except Exception:
-            text_model_name = 'gemini-2.5-flash'
+            text_model_name = 'gemini-flash-latest'
 
         text_model = None
         dyn_builder = None

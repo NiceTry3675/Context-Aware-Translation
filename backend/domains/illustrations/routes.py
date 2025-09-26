@@ -205,7 +205,7 @@ async def generate_character_bases(
                     protagonist = style_svc.extract_protagonist_name(
                         filepath=job.filepath,
                         api_key=api_key,
-                        model_name='gemini-2.5-flash'
+                        model_name='gemini-flash-latest'
                     )
                     profile_data['name'] = protagonist or Path(job.filepath).stem
                 except Exception:
@@ -258,13 +258,13 @@ async def analyze_character_appearance(
     Expects JSON body with:
     - api_key: API key for model
     - protagonist_name: Optional protagonist name
-    - model_name: Model name for analysis (default: gemini-2.5-flash)
+    - model_name: Model name for analysis (default: gemini-flash-latest)
     """
     # Parse request body
     body = await request.json()
     api_key = body.get('api_key')
     protagonist_name = body.get('protagonist_name')
-    model_name = body.get('model_name', 'gemini-2.5-flash')
+    model_name = body.get('model_name', 'gemini-flash-latest')
     
     if not api_key:
         raise HTTPException(status_code=400, detail="API key is required")

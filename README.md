@@ -56,10 +56,10 @@ curl -X POST "$API_URL/api/v1/jobs" \
   -H "Authorization: Bearer <TOKEN>" \
   -F file=@novel.txt \
   -F api_key="$GEMINI_API_KEY" \
-  -F model_name="gemini-2.5-flash-lite" \
+  -F model_name="gemini-flash-lite-latest" \
   -F translation_model_name="gemini-2.5-pro" \
-  -F style_model_name="gemini-2.5-flash-lite" \
-  -F glossary_model_name="gemini-2.5-flash-lite"
+  -F style_model_name="gemini-flash-lite-latest" \
+  -F glossary_model_name="gemini-flash-lite-latest"
 ```
 
 참고: 용어집/스타일 편차 등 구조화 출력이 필요한 단계는 Gemini 계열 모델을 권장합니다.

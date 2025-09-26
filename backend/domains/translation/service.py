@@ -615,7 +615,7 @@ class TranslationDomainService(DomainServiceBase):
         user: User,
         file: UploadFile,
         api_key: Optional[str],
-        model_name: str = "gemini-2.5-flash-lite",
+        model_name: str = "gemini-flash-lite-latest",
         translation_model_name: Optional[str] = None,
         style_model_name: Optional[str] = None,
         glossary_model_name: Optional[str] = None,
@@ -661,11 +661,11 @@ class TranslationDomainService(DomainServiceBase):
         provider_context = self.build_provider_context(api_provider, provider_config)
 
         # Use provider-specific default models
-        fallback_model = "gemini-2.5-flash-lite"
+        fallback_model = "gemini-flash-lite-latest"
         if provider_context and provider_context.name == "vertex":
-            fallback_model = "gemini-2.5-flash"
+            fallback_model = "gemini-flash-latest"
         elif provider_context and provider_context.name == "openrouter":
-            fallback_model = "google/gemini-2.5-flash-lite"
+            fallback_model = "google/gemini-2.5-flash-lite-preview-09-2025"
 
         model_name = model_name or provider_context.default_model or self.config.get(
             "default_model", fallback_model
