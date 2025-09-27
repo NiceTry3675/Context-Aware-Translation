@@ -16,6 +16,7 @@ from pathlib import Path
 
 from ...config.dependencies import get_db, get_required_user
 from ...config.database import SessionLocal
+from ...config.settings import get_settings, Settings
 from ..translation.models import TranslationJob
 from ..user.models import User
 from ...celery_tasks.illustrations import generate_illustrations_task, regenerate_single_illustration, regenerate_single_base
@@ -41,6 +42,20 @@ from .service import IllustrationsService
 import logging
 
 router = APIRouter(prefix="/illustrations", tags=["illustrations"])
+
+
+@router.get("/config")
+async def get_illustration_config(
+    settings: Settings = Depends(get_settings)
+):
+    """
+    Get illustration configuration settings.
+    Tells the frontend whether to use client-side storage for illustrations.
+    """
+    return {
+        "client_side_storage": settings.illustrations_to_user_side,
+        "temp_ttl": settings.illustration_temp_ttl
+    }
 
 
 @router.post("/{job_id}/generate")
@@ -557,50 +572,79 @@ async def get_illustration_prompt(
     job_id: int,
     segment_index: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_required_user)
+    current_user: User = Depends(get_required_user),
+    settings: Settings = Depends(get_settings)
 ):
     """
     Get the illustration for a specific segment.
-    
+
     Returns the generated image if available, otherwise returns the prompt JSON file.
+    For client-side storage mode, returns base64 data from job metadata.
     """
     # Get the translation job
     job = db.query(TranslationJob).filter(
         TranslationJob.id == job_id,
         TranslationJob.owner_id == current_user.id
     ).first()
-    
+
     if not job:
         raise HTTPException(status_code=404, detail="Translation job not found")
-    
-    if not job.illustrations_directory:
-        raise HTTPException(status_code=404, detail="No illustrations generated for this job")
-    
-    # First check for image file
-    image_filename = f"segment_{segment_index:04d}.png"
-    image_path = Path(job.illustrations_directory) / image_filename
-    
-    if image_path.exists():
-        # Return the actual image file with no-store cache header
-        return FileResponse(
-            path=str(image_path),
-            media_type="image/png",
-            filename=image_filename,
-            headers={"Cache-Control": "no-store"}
-        )
-    
-    # Fall back to prompt file
-    prompt_filename = f"segment_{segment_index:04d}_prompt.json"
-    prompt_path = Path(job.illustrations_directory) / prompt_filename
-    
-    if not prompt_path.exists():
+
+    # Check if we're in client-side storage mode
+    if settings.illustrations_to_user_side:
+        # Get illustration data from job metadata
+        if not job.illustrations_data:
+            raise HTTPException(status_code=404, detail="No illustrations generated for this job")
+
+        # Find the illustration for the requested segment
+        for illustration in job.illustrations_data:
+            if illustration.get('segment_index') == segment_index:
+                # Check if it's base64 data
+                if 'illustration_data' in illustration:
+                    # Return the base64 data directly
+                    return illustration['illustration_data']
+                elif illustration.get('prompt'):
+                    # Return prompt data if no image was generated
+                    return {
+                        "segment_index": segment_index,
+                        "prompt": illustration['prompt'],
+                        "status": "prompt_only",
+                        "note": "Image generation failed or was not completed"
+                    }
+                break
+
         raise HTTPException(status_code=404, detail=f"Illustration not found for segment {segment_index}")
-    
-    # Read and return the prompt data
-    with open(prompt_path, 'r', encoding='utf-8') as f:
-        prompt_data = json.load(f)
-    
-    return prompt_data
+
+    else:
+        # Traditional file-based mode
+        if not job.illustrations_directory:
+            raise HTTPException(status_code=404, detail="No illustrations generated for this job")
+
+        # First check for image file
+        image_filename = f"segment_{segment_index:04d}.png"
+        image_path = Path(job.illustrations_directory) / image_filename
+
+        if image_path.exists():
+            # Return the actual image file with no-store cache header
+            return FileResponse(
+                path=str(image_path),
+                media_type="image/png",
+                filename=image_filename,
+                headers={"Cache-Control": "no-store"}
+            )
+
+        # Fall back to prompt file
+        prompt_filename = f"segment_{segment_index:04d}_prompt.json"
+        prompt_path = Path(job.illustrations_directory) / prompt_filename
+
+        if not prompt_path.exists():
+            raise HTTPException(status_code=404, detail=f"Illustration not found for segment {segment_index}")
+
+        # Read and return the prompt data
+        with open(prompt_path, 'r', encoding='utf-8') as f:
+            prompt_data = json.load(f)
+
+        return prompt_data
 
 
 @router.delete("/{job_id}/illustration/{segment_index}")

@@ -463,37 +463,56 @@ def generate_illustrations_task(
                     print(f"[ILLUSTRATIONS TASK] World/atmosphere analysis failed for segment {segment['index']}: {wa_exc}")
 
             try:
-                illustration_path, prompt = generator.generate_illustration(
+                # Check if we should return base64 data instead of saving to disk
+                return_base64 = settings.illustrations_to_user_side
+
+                illustration_result, prompt = generator.generate_illustration(
                     segment_text=segment['text'],
                     segment_index=segment['index'],
                     style_hints=config.style_hints,
                     glossary=job.final_glossary,
                     world_atmosphere=world_atmosphere_data,
                     custom_prompt=effective_prompt,
-                    reference_image=(ref_tuple if use_reference else None)
+                    reference_image=(ref_tuple if use_reference else None),
+                    return_base64=return_base64
                 )
-                
+
                 print(f"[ILLUSTRATIONS TASK] Completed generation for segment {segment['index']}")
-                print(f"[ILLUSTRATIONS TASK] Result path: {illustration_path}")
+                if return_base64:
+                    print(f"[ILLUSTRATIONS TASK] Generated base64 data for client-side storage")
+                else:
+                    print(f"[ILLUSTRATIONS TASK] Result path: {illustration_result}")
             except Exception as e:
                 print(f"[ILLUSTRATIONS TASK] Error generating illustration for segment {segment['index']}: {e}")
-                
+
                 # Just log the error and continue without retry since we're already not using reference
                 print(f"[ILLUSTRATIONS TASK] Generation failed, continuing without image")
-                illustration_path = None
+                illustration_result = None
                 prompt = None
-            
-            # Determine if it's an image or prompt
-            file_type = 'image' if illustration_path and illustration_path.endswith('.png') else 'prompt'
-            
-            result = {
-                'segment_index': segment['index'],
-                'illustration_path': illustration_path,
-                'prompt': prompt,
-                'success': illustration_path is not None,
-                'type': file_type,
-                'reference_used': bool(use_reference)
-            }
+
+            # Determine if it's an image or prompt, and handle base64 data
+            if settings.illustrations_to_user_side and illustration_result and isinstance(illustration_result, dict):
+                # Base64 mode - store data directly
+                file_type = 'base64_image' if illustration_result.get('type') == 'image' else 'prompt'
+                result = {
+                    'segment_index': segment['index'],
+                    'illustration_data': illustration_result,  # Contains base64 data
+                    'prompt': prompt,
+                    'success': illustration_result is not None,
+                    'type': file_type,
+                    'reference_used': bool(use_reference)
+                }
+            else:
+                # Traditional file-based mode
+                file_type = 'image' if illustration_result and str(illustration_result).endswith('.png') else 'prompt'
+                result = {
+                    'segment_index': segment['index'],
+                    'illustration_path': str(illustration_result) if illustration_result else None,
+                    'prompt': prompt,
+                    'success': illustration_result is not None,
+                    'type': file_type,
+                    'reference_used': bool(use_reference)
+                }
             if use_profile_lock:
                 result['used_base_index'] = selected_base_index
                 result['consistency_mode'] = 'profile_locked'

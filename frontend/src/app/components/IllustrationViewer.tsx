@@ -29,8 +29,11 @@ import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
+import StorageIcon from '@mui/icons-material/Storage';
 import { useAuth } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../utils/authToken';
+import { illustrationStorage } from '../utils/illustrationStorage';
+import IllustrationStorageManager from './IllustrationStorageManager';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -68,19 +71,64 @@ export default function IllustrationViewer({
   const [selectedImage, setSelectedImage] = useState<Illustration | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadedImages, setLoadedImages] = useState<{ [key: number]: string }>({});
-  const [loadedPrompts, setLoadedPrompts] = useState<{ [key: number]: any }>({});
+  const [loadedPrompts, setLoadedPrompts] = useState<{ [key: number]: any }>({})
+  const [useClientStorage, setUseClientStorage] = useState<boolean | null>(null);
 
   // New states for prompt editing functionality
   const [editingPrompt, setEditingPrompt] = useState<number | null>(null);
   const [customPrompts, setCustomPrompts] = useState<{ [key: number]: string }>({});
   const [promptErrors, setPromptErrors] = useState<{ [key: number]: string }>({});
+  const [storageManagerOpen, setStorageManagerOpen] = useState(false);
+
+  // Check if we should use client-side storage
+  useEffect(() => {
+    const checkConfig = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/config`);
+        if (response.ok) {
+          const config = await response.json();
+          setUseClientStorage(config.client_side_storage);
+        }
+      } catch (error) {
+        console.error('Failed to fetch illustration config:', error);
+        setUseClientStorage(false); // Default to server storage on error
+      }
+    };
+    checkConfig();
+  }, []);
 
   const loadIllustrations = useCallback(async () => {
-    if (!jobId) {
-      return;
+    if (!jobId || useClientStorage === null) {
+      return; // Wait for config to be loaded
     }
 
     const token = await getCachedClerkToken(getToken);
+
+    // Check if we should use client-side storage
+    if (useClientStorage) {
+      // Load from IndexedDB first
+      const storedIllustrations = await illustrationStorage.getJobIllustrations(jobId);
+      const imageMap: { [key: number]: string } = {};
+      const promptMap: { [key: number]: any } = {};
+
+      for (const stored of storedIllustrations) {
+        if (stored.type === 'image') {
+          // Convert base64 to blob URL
+          imageMap[stored.segmentIndex] = illustrationStorage.base64ToBlobUrl(
+            stored.data,
+            stored.mimeType
+          );
+        } else {
+          promptMap[stored.segmentIndex] = JSON.parse(stored.data);
+        }
+      }
+
+      // Update state with stored data
+      if (Object.keys(imageMap).length > 0 || Object.keys(promptMap).length > 0) {
+        setLoadedImages(prev => ({ ...prev, ...imageMap }));
+        setLoadedPrompts(prev => ({ ...prev, ...promptMap }));
+      }
+    }
 
     // Find illustrations that haven't been loaded yet
     const missingIllustrations = illustrations.filter(ill => {
@@ -88,7 +136,8 @@ export default function IllustrationViewer({
 
       const hasImage = loadedImages[ill.segment_index];
       const hasPrompt = loadedPrompts[ill.segment_index];
-      const expectsImage = ill.type === 'image' || (typeof ill.illustration_path === 'string' && ill.illustration_path.endsWith('.png'));
+      const expectsImage = ill.type === 'base64_image' || ill.type === 'image' ||
+        (typeof ill.illustration_path === 'string' && ill.illustration_path.endsWith('.png'));
 
       if (expectsImage) {
         return !hasImage;
@@ -117,14 +166,54 @@ export default function IllustrationViewer({
           // Check if response is image or JSON
           const contentType = response.headers.get('content-type');
           if (contentType && contentType.includes('image')) {
-            // It's an image
+            // It's an image file (server-side storage mode)
             const blob = await response.blob();
             const url = URL.createObjectURL(blob);
             return { index: ill.segment_index, type: 'image', data: url };
           } else {
-            // It's JSON (prompt)
+            // It's JSON - could be base64 data or prompt
             const data = await response.json();
-            return { index: ill.segment_index, type: 'prompt', data };
+
+            if (useClientStorage && data.type === 'image' && data.data) {
+              // It's base64 image data - store in IndexedDB
+              try {
+                await illustrationStorage.storeIllustration(
+                  jobId,
+                  ill.segment_index,
+                  data,
+                  'image'
+                );
+                // Convert to blob URL for display
+                const blobUrl = illustrationStorage.base64ToBlobUrl(
+                  data.data,
+                  data.mime_type || 'image/png'
+                );
+                return { index: ill.segment_index, type: 'image', data: blobUrl };
+              } catch (error) {
+                console.error(`Failed to store illustration ${ill.segment_index} in IndexedDB:`, error);
+                // Fall back to displaying directly from base64
+                const blobUrl = illustrationStorage.base64ToBlobUrl(
+                  data.data,
+                  data.mime_type || 'image/png'
+                );
+                return { index: ill.segment_index, type: 'image', data: blobUrl };
+              }
+            } else {
+              // It's prompt data - store if client storage is enabled
+              if (useClientStorage) {
+                try {
+                  await illustrationStorage.storeIllustration(
+                    jobId,
+                    ill.segment_index,
+                    data,
+                    'prompt'
+                  );
+                } catch (error) {
+                  console.error(`Failed to store prompt ${ill.segment_index} in IndexedDB:`, error);
+                }
+              }
+              return { index: ill.segment_index, type: 'prompt', data };
+            }
           }
         }
       } catch (error) {
@@ -150,7 +239,7 @@ export default function IllustrationViewer({
     // Update state with new images/prompts
     setLoadedImages(prev => ({ ...prev, ...imageMap }));
     setLoadedPrompts(prev => ({ ...prev, ...promptMap }));
-  }, [getToken, illustrations, jobId, loadedImages, loadedPrompts]);
+  }, [getToken, illustrations, jobId, loadedImages, loadedPrompts, useClientStorage]);
 
   // Load illustrations from API with caching to prevent redundant Clerk API calls
   useEffect(() => {
@@ -341,16 +430,30 @@ export default function IllustrationViewer({
         <Typography variant="h6">
           생성된 삽화 ({count}개)
         </Typography>
-        {onGenerateIllustrations && (
-          <Button
-            variant="outlined"
-            startIcon={<AddPhotoAlternateIcon />}
-            onClick={onGenerateIllustrations}
-            size="small"
-          >
-            추가 생성
-          </Button>
-        )}
+        <Stack direction="row" spacing={1}>
+          {useClientStorage && (
+            <Tooltip title="Manage local storage">
+              <Button
+                variant="outlined"
+                startIcon={<StorageIcon />}
+                onClick={() => setStorageManagerOpen(true)}
+                size="small"
+              >
+                Storage
+              </Button>
+            </Tooltip>
+          )}
+          {onGenerateIllustrations && (
+            <Button
+              variant="outlined"
+              startIcon={<AddPhotoAlternateIcon />}
+              onClick={onGenerateIllustrations}
+              size="small"
+            >
+              추가 생성
+            </Button>
+          )}
+        </Stack>
       </Stack>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 3 }}>
@@ -645,6 +748,13 @@ export default function IllustrationViewer({
           </>
         )}
       </Dialog>
+
+      {/* Storage Manager */}
+      <IllustrationStorageManager
+        open={storageManagerOpen}
+        onClose={() => setStorageManagerOpen(false)}
+        currentJobId={jobId}
+      />
     </Box>
   );
 }
