@@ -218,7 +218,6 @@ class ImageGenerationService:
                 failure_reason = self._get_failure_reason(response)
                 prompt_data = {
                     "segment_index": segment_index,
-                    "prompt": prompt,
                     "status": "image_generation_failed",
                     "failure_reason": failure_reason,
                     "note": "Image generation failed. Use this prompt with another service.",

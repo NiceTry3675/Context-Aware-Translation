@@ -90,22 +90,20 @@ export default function IllustrationStorageManager({
       const storageStats = await illustrationStorage.getStorageStats();
       setStats(storageStats);
 
-      // Group by job
+      // Get all illustrations and group them by job
+      const allItems = await illustrationStorage.getAllItems();
       const jobMap = new Map<string, JobStorage>();
 
-      // Get all illustrations (simplified for this example)
-      // In a real implementation, you'd want to iterate through all stored items
-      // and group them by jobId
-      if (currentJobId) {
-        const jobIllustrations = await illustrationStorage.getJobIllustrations(currentJobId);
-        if (jobIllustrations.length > 0) {
-          const jobSize = jobIllustrations.reduce((sum, ill) => sum + ill.size, 0);
-          jobMap.set(currentJobId, {
-            jobId: currentJobId,
-            count: jobIllustrations.length,
-            size: jobSize,
-          });
-        }
+      for (const item of allItems) {
+        const existing = jobMap.get(item.jobId) || {
+          jobId: item.jobId,
+          count: 0,
+          size: 0,
+        };
+
+        existing.count += 1;
+        existing.size += item.size;
+        jobMap.set(item.jobId, existing);
       }
 
       setJobStorages(Array.from(jobMap.values()));

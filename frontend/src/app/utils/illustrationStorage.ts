@@ -148,6 +148,22 @@ class IllustrationStorage {
   }
 
   /**
+   * Retrieve all stored illustrations
+   */
+  async getAllItems(): Promise<StoredIllustration[]> {
+    await this.init();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([this.storeName], 'readonly');
+      const store = transaction.objectStore(this.storeName);
+      const request = store.getAll();
+
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
    * Get all illustrations for a job
    */
   async getJobIllustrations(jobId: string): Promise<StoredIllustration[]> {

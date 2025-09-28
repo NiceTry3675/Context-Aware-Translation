@@ -596,24 +596,28 @@ async def get_illustration_prompt(
         if not job.illustrations_data:
             raise HTTPException(status_code=404, detail="No illustrations generated for this job")
 
-        # Find the illustration for the requested segment
-        for illustration in job.illustrations_data:
-            if illustration.get('segment_index') == segment_index:
-                # Check if it's base64 data
-                if 'illustration_data' in illustration:
-                    # Return the base64 data directly
-                    return illustration['illustration_data']
-                elif illustration.get('prompt'):
-                    # Return prompt data if no image was generated
-                    return {
-                        "segment_index": segment_index,
-                        "prompt": illustration['prompt'],
-                        "status": "prompt_only",
-                        "note": "Image generation failed or was not completed"
-                    }
-                break
+        # Use a dictionary for faster lookups
+        illustrations_map = {
+            ill.get('segment_index'): ill for ill in job.illustrations_data
+        }
+        illustration = illustrations_map.get(segment_index)
 
-        raise HTTPException(status_code=404, detail=f"Illustration not found for segment {segment_index}")
+        if not illustration:
+            raise HTTPException(status_code=404, detail=f"Illustration not found for segment {segment_index}")
+
+        if 'illustration_data' in illustration:
+            # Return the base64 data directly
+            return illustration['illustration_data']
+        elif illustration.get('prompt'):
+            # Return prompt data if no image was generated
+            return {
+                "segment_index": segment_index,
+                "prompt": illustration['prompt'],
+                "status": "prompt_only",
+                "note": "Image generation failed or was not completed"
+            }
+
+        raise HTTPException(status_code=404, detail=f"Illustration data for segment {segment_index} is incomplete")
 
     else:
         # Traditional file-based mode
