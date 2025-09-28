@@ -240,7 +240,8 @@ class IllustrationGenerator:
                             custom_prompt: Optional[str] = None,
                             reference_image: Optional[Tuple[bytes, str]] = None,
                             max_retries: int = 3,
-                            character_styles: Optional[Dict[str, str]] = None) -> Tuple[Optional[str], Optional[str]]:
+                            character_styles: Optional[Dict[str, str]] = None,
+                            return_base64: bool = False) -> Tuple[Optional[Any], Optional[str]]:
         """
         Generate an illustration for a text segment using Gemini's image generation.
 
@@ -255,9 +256,11 @@ class IllustrationGenerator:
             reference_image: Optional reference image as tuple of (bytes, mime_type)
             max_retries: Maximum number of retry attempts
             character_styles: Optional character styles dictionary
+            return_base64: If True, returns base64 data dict instead of file path
 
         Returns:
-            Tuple of (image_file_path, prompt_used) or (None, None) on failure
+            If return_base64 is False: Tuple of (image_file_path, prompt_used) or (None, None) on failure
+            If return_base64 is True: Tuple of (data_dict, prompt_used) where data_dict contains base64 image
         """
         # Log full context before generating illustration
         if self.logger:
@@ -304,7 +307,8 @@ class IllustrationGenerator:
             max_retries=max_retries,
             glossary=glossary,
             world_atmosphere=world_atmosphere,
-            character_styles=character_styles
+            character_styles=character_styles,
+            return_base64=return_base64
         )
 
     def generate_batch_illustrations(self,

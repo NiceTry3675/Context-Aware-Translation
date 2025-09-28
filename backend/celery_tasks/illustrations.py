@@ -463,37 +463,49 @@ def generate_illustrations_task(
                     print(f"[ILLUSTRATIONS TASK] World/atmosphere analysis failed for segment {segment['index']}: {wa_exc}")
 
             try:
-                illustration_path, prompt = generator.generate_illustration(
+                # Check if we should return base64 data instead of saving to disk
+                return_base64 = settings.illustrations_to_user_side
+
+                illustration_result, prompt = generator.generate_illustration(
                     segment_text=segment['text'],
                     segment_index=segment['index'],
                     style_hints=config.style_hints,
                     glossary=job.final_glossary,
                     world_atmosphere=world_atmosphere_data,
                     custom_prompt=effective_prompt,
-                    reference_image=(ref_tuple if use_reference else None)
+                    reference_image=(ref_tuple if use_reference else None),
+                    return_base64=return_base64
                 )
-                
+
                 print(f"[ILLUSTRATIONS TASK] Completed generation for segment {segment['index']}")
-                print(f"[ILLUSTRATIONS TASK] Result path: {illustration_path}")
+                if return_base64:
+                    print(f"[ILLUSTRATIONS TASK] Generated base64 data for client-side storage")
+                else:
+                    print(f"[ILLUSTRATIONS TASK] Result path: {illustration_result}")
             except Exception as e:
                 print(f"[ILLUSTRATIONS TASK] Error generating illustration for segment {segment['index']}: {e}")
-                
+
                 # Just log the error and continue without retry since we're already not using reference
                 print(f"[ILLUSTRATIONS TASK] Generation failed, continuing without image")
-                illustration_path = None
+                illustration_result = None
                 prompt = None
-            
-            # Determine if it's an image or prompt
-            file_type = 'image' if illustration_path and illustration_path.endswith('.png') else 'prompt'
-            
+
+            # Determine if it's an image or prompt, and handle base64 data
             result = {
                 'segment_index': segment['index'],
-                'illustration_path': illustration_path,
                 'prompt': prompt,
-                'success': illustration_path is not None,
-                'type': file_type,
+                'success': illustration_result is not None,
                 'reference_used': bool(use_reference)
             }
+
+            if return_base64 and illustration_result and isinstance(illustration_result, dict):
+                # Base64 mode - store data directly
+                result['type'] = 'base64_image' if illustration_result.get('type') == 'image' else 'prompt'
+                result['illustration_data'] = illustration_result
+            else:
+                # Traditional file-based mode
+                result['type'] = 'image' if illustration_result and str(illustration_result).endswith('.png') else 'prompt'
+                result['illustration_path'] = str(illustration_result) if illustration_result else None
             if use_profile_lock:
                 result['used_base_index'] = selected_base_index
                 result['consistency_mode'] = 'profile_locked'
@@ -785,64 +797,80 @@ def regenerate_single_illustration(
                 final_custom_prompt = prompt_with_reference
 
         # Generate new illustration prompt (with reference if allowed)
-        prompt_path, prompt = generator.generate_illustration(
+        return_base64 = settings.illustrations_to_user_side
+        illustration_result, prompt = generator.generate_illustration(
             segment_text=segment.get('source_text', ''),
             segment_index=segment_index,
             style_hints=style_hints or (job.illustrations_config.get('style_hints', '') if job.illustrations_config else ''),
             glossary=job.final_glossary,
             world_atmosphere=world_atmosphere_data,
             custom_prompt=final_custom_prompt,
-            reference_image=(ref_tuple if allow_ref else None)
+            reference_image=(ref_tuple if allow_ref else None),
+            return_base64=return_base64
         )
-        
+
         # Update job metadata
-        if prompt_path:
+        if illustration_result:
             illustrations_data = job.illustrations_data or []
 
             # Update or add the illustration data
             found = False
             for ill in illustrations_data:
                 if ill.get('segment_index') == segment_index:
-                    ill['illustration_path'] = prompt_path
                     ill['prompt'] = prompt
                     ill['success'] = True
-                    ill['type'] = 'image' if prompt_path.endswith('.png') else 'prompt'
                     ill['reference_used'] = bool(allow_ref)
+                    if return_base64 and isinstance(illustration_result, dict):
+                        ill['type'] = 'base64_image' if illustration_result.get('type') == 'image' else 'prompt'
+                        ill['illustration_data'] = illustration_result
+                        ill.pop('illustration_path', None)
+                    else:
+                        path_str = str(illustration_result)
+                        ill['type'] = 'image' if path_str.endswith('.png') else 'prompt'
+                        ill['illustration_path'] = path_str
+                        ill.pop('illustration_data', None)
                     found = True
                     break
 
             if not found:
-                illustrations_data.append({
+                entry = {
                     'segment_index': segment_index,
-                    'illustration_path': prompt_path,
                     'prompt': prompt,
                     'success': True,
-                    'type': 'image' if prompt_path.endswith('.png') else 'prompt',
                     'reference_used': bool(allow_ref)
-                })
+                }
+                if return_base64 and isinstance(illustration_result, dict):
+                    entry['type'] = 'base64_image' if illustration_result.get('type') == 'image' else 'prompt'
+                    entry['illustration_data'] = illustration_result
+                else:
+                    path_str = str(illustration_result)
+                    entry['type'] = 'image' if path_str.endswith('.png') else 'prompt'
+                    entry['illustration_path'] = path_str
+                illustrations_data.append(entry)
 
             job.illustrations_data = illustrations_data
             job.illustrations_count = sum(1 for r in illustrations_data if r.get('success'))
             db.commit()
-        
+
         # Final task state
+        result_payload: Dict[str, Any] = {
+            'success': True,
+            'segment_index': segment_index
+        }
+        if return_base64 and isinstance(illustration_result, dict):
+            result_payload['illustration_data'] = illustration_result
+        else:
+            result_payload['illustration_path'] = illustration_result if illustration_result else None
+
         self.update_state(
             state='SUCCESS',
             meta={
                 'status': f'Successfully regenerated illustration for segment {segment_index}',
-                'result': {
-                    'success': True,
-                    'segment_index': segment_index,
-                    'illustration_path': prompt_path
-                }
+                'result': result_payload
             }
         )
-        
-        return {
-            'success': True,
-            'segment_index': segment_index,
-            'illustration_path': prompt_path
-        }
+
+        return result_payload
         
     except Exception as e:
         error_msg = str(e)

@@ -7,9 +7,10 @@ timeout handling, and error management.
 import json
 import logging
 import hashlib
+import base64
 import concurrent.futures
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple, List, Callable
+from typing import Optional, Dict, Any, Tuple, List, Callable, Union
 from PIL import Image
 from io import BytesIO
 from datetime import datetime
@@ -56,7 +57,8 @@ class ImageGenerationService:
                             max_retries: int = 3,
                             glossary: Optional[Dict[str, str]] = None,
                             world_atmosphere=None,
-                            character_styles: Optional[Dict[str, str]] = None) -> Tuple[Optional[str], Optional[str]]:
+                            character_styles: Optional[Dict[str, str]] = None,
+                            return_base64: bool = False) -> Union[Tuple[Optional[str], Optional[str]], Tuple[Optional[Dict], Optional[str]]]:
         """
         Generate an illustration for a text segment using Gemini's image generation.
 
@@ -71,9 +73,11 @@ class ImageGenerationService:
             glossary: Optional glossary dictionary (context data, not directly used here)
             world_atmosphere: Optional world atmosphere analysis (context data, not directly used here)
             character_styles: Optional character styles dictionary (context data, not directly used here)
+            return_base64: If True, returns base64 data dict instead of file path
 
         Returns:
-            Tuple of (image_file_path, prompt_used) or (None, None) on failure
+            If return_base64 is False: Tuple of (image_file_path, prompt_used) or (None, None) on failure
+            If return_base64 is True: Tuple of (data_dict, prompt_used) where data_dict contains base64 image
         """
         # Use custom prompt if provided
         final_prompt = custom_prompt if custom_prompt else prompt
@@ -108,16 +112,21 @@ class ImageGenerationService:
         for attempt in range(max_retries):
             try:
                 result = self._generate_single_illustration(
-                    final_prompt, segment_index, reference_image, attempt, max_retries
+                    final_prompt, segment_index, reference_image, attempt, max_retries, return_base64
                 )
 
                 if result:
-                    image_filepath, prompt_used = result
-                    # Update cache
-                    if self.cache_manager.enable_caching and cache_key is not None:
-                        self.cache_manager.add_to_cache(cache_key, str(image_filepath),
-                                                       prompt_used, segment_index)
-                    return str(image_filepath), prompt_used
+                    if return_base64:
+                        image_data, prompt_used = result
+                        # Note: We don't cache base64 data to avoid memory issues
+                        return image_data, prompt_used
+                    else:
+                        image_filepath, prompt_used = result
+                        # Update cache
+                        if self.cache_manager.enable_caching and cache_key is not None:
+                            self.cache_manager.add_to_cache(cache_key, str(image_filepath),
+                                                           prompt_used, segment_index)
+                        return str(image_filepath), prompt_used
 
             except Exception as e:
                 logging.error(f"Attempt {attempt + 1} failed to generate illustration for segment {segment_index}: {e}")
@@ -135,7 +144,8 @@ class ImageGenerationService:
         reference_image: Optional[Tuple[bytes, str]],
         attempt: int,
         max_retries: int,
-    ) -> Optional[Tuple[Path, str]]:
+        return_base64: bool = False,
+    ) -> Optional[Union[Tuple[Path, str], Tuple[Dict, str]]]:
         """
         Generate a single illustration.
 
@@ -145,9 +155,11 @@ class ImageGenerationService:
             reference_image: Optional reference image
             attempt: Current attempt number
             max_retries: Maximum number of retries
+            return_base64: If True, returns base64 data instead of saving to disk
 
         Returns:
-            Tuple of (image_path, prompt) or None on failure
+            If return_base64 is False: Tuple of (image_path, prompt) or None on failure
+            If return_base64 is True: Tuple of (data_dict, prompt) or None on failure
         """
         try:
             from google.genai import types
@@ -196,15 +208,31 @@ class ImageGenerationService:
         self._emit_usage_event(response)
 
         # Process response
-        image_generated = self._extract_image_from_response(response, image_filepath, segment_index)
-
-        if image_generated:
-            logging.info(f"Successfully generated image for segment {segment_index}")
-            return image_filepath, prompt
+        if return_base64:
+            image_data = self._extract_image_as_base64(response, segment_index)
+            if image_data:
+                logging.info(f"Successfully generated image as base64 for segment {segment_index}")
+                return image_data, prompt
+            else:
+                # Return prompt data as fallback
+                failure_reason = self._get_failure_reason(response)
+                prompt_data = {
+                    "segment_index": segment_index,
+                    "status": "image_generation_failed",
+                    "failure_reason": failure_reason,
+                    "note": "Image generation failed. Use this prompt with another service.",
+                    "timestamp": datetime.now().isoformat()
+                }
+                return prompt_data, prompt
         else:
-            # Save prompt as fallback
-            failure_reason = self._get_failure_reason(response)
-            return self._save_prompt_fallback(json_filepath, segment_index, prompt, failure_reason)
+            image_generated = self._extract_image_from_response(response, image_filepath, segment_index)
+            if image_generated:
+                logging.info(f"Successfully generated image for segment {segment_index}")
+                return image_filepath, prompt
+            else:
+                # Save prompt as fallback
+                failure_reason = self._get_failure_reason(response)
+                return self._save_prompt_fallback(json_filepath, segment_index, prompt, failure_reason)
 
     def _call_api_with_timeout(self, contents: List[Any], timeout: int = 120):
         """
@@ -275,6 +303,68 @@ class ImageGenerationService:
                     return True
 
         return False
+
+    def _extract_image_as_base64(self, response, segment_index: int) -> Optional[Dict]:
+        """
+        Extract image from API response and return as base64 data.
+
+        Args:
+            response: API response
+            segment_index: Segment index for logging
+
+        Returns:
+            Dictionary with base64 image data or None if extraction failed
+        """
+        if not response or not hasattr(response, 'candidates') or not response.candidates:
+            logging.warning(f"No candidates in response for segment {segment_index}")
+            return None
+
+        candidate = response.candidates[0]
+
+        # Check for content filtering
+        if hasattr(candidate, 'finish_reason'):
+            finish_reason = str(candidate.finish_reason)
+            if 'SAFETY' in finish_reason or 'BLOCKED' in finish_reason:
+                logging.warning(f"Content filtering triggered for segment {segment_index}: {finish_reason}")
+                if hasattr(candidate, 'safety_ratings'):
+                    logging.warning(f"Safety ratings: {candidate.safety_ratings}")
+
+        if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+            for part in candidate.content.parts:
+                # Log text responses (often contain explanations)
+                if hasattr(part, 'text') and part.text:
+                    logging.info(f"Text response for segment {segment_index}: {part.text[:200]}")
+
+                # Check for image data
+                if hasattr(part, 'inline_data') and part.inline_data is not None:
+                    # Convert image to base64
+                    try:
+                        # Get the raw bytes
+                        image_bytes = part.inline_data.data
+
+                        # Convert to PIL Image to ensure it's valid and to standardize format
+                        image = Image.open(BytesIO(image_bytes))
+
+                        # Save to BytesIO in PNG format
+                        buffer = BytesIO()
+                        image.save(buffer, format="PNG")
+                        buffer.seek(0)
+
+                        # Convert to base64
+                        image_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+                        return {
+                            "segment_index": segment_index,
+                            "type": "image",
+                            "data": image_base64,
+                            "mime_type": "image/png",
+                            "timestamp": datetime.now().isoformat()
+                        }
+                    except Exception as e:
+                        logging.error(f"Failed to convert image to base64 for segment {segment_index}: {e}")
+                        return None
+
+        return None
 
     def _get_failure_reason(self, response) -> str:
         """

@@ -86,6 +86,10 @@ class Settings(BaseSettings):
     max_retries: int = 3
     retry_delay: int = 1  # seconds
     request_timeout: int = 300  # 5 minutes
+
+    # Illustration Storage Settings
+    illustrations_to_user_side: bool = Field(default=False, env="ILLUSTRATIONS_TO_USER_SIDE")
+    illustration_temp_ttl: int = Field(default=86400, env="ILLUSTRATION_TEMP_TTL")  # 24 hours in seconds
     
     # Logging
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
