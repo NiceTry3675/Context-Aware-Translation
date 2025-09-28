@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     cors_allow_headers: List[str] = Field(default_factory=lambda: ["*"])
     
     # API Keys
-    gemini_api_key: str = Field(..., env="GEMINI_API_KEY")
+    gemini_api_key: Optional[str] = Field(default=None, env="GEMINI_API_KEY")
     # Optional in development; required only if using OpenRouter
     openrouter_api_key: Optional[str] = Field(default=None, env="OPENROUTER_API_KEY")
     clerk_secret_key: str = Field(..., env="CLERK_SECRET_KEY")

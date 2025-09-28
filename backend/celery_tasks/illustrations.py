@@ -213,8 +213,9 @@ def generate_illustrations_task(
             text_model_name = 'gemini-flash-latest'
 
         try:
+            text_model_api_key = None if (context and context.name == "vertex") else api_key
             text_model = ModelAPIFactory.create(
-                api_key=(None if (context and context.name == "vertex") else settings.gemini_api_key),
+                api_key=text_model_api_key,
                 model_name=text_model_name,
                 config=load_config(),
                 provider_context=context,
@@ -673,8 +674,9 @@ def regenerate_single_illustration(
         text_model = None
         dyn_builder = None
         try:
+            text_model_api_key = None if (context and context.name == "vertex") else effective_api_key
             text_model = ModelAPIFactory.create(
-                api_key=(None if (context and context.name == "vertex") else settings.gemini_api_key),
+                api_key=text_model_api_key,
                 model_name=text_model_name,
                 config=load_config(),
                 provider_context=context,

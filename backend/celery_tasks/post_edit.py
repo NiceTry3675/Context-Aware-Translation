@@ -77,12 +77,7 @@ def process_post_edit_task(
         )
 
         if not api_key and provider_name != "vertex":
-            from backend.config.settings import get_settings
-
-            settings = get_settings()
-            api_key = settings.gemini_api_key
-            if not api_key:
-                raise ValueError("API key is required for post-editing")
+            raise ValueError("API key is required for post-editing")
         
         # Update task progress
         current_task.update_state(

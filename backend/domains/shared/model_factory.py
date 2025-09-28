@@ -134,6 +134,7 @@ class ModelAPIFactory:
                 generation_config=config.get('generation_config', {}),
                 enable_soft_retry=config.get('enable_soft_retry', True),
                 usage_callback=usage_callback,
+                native_gemini_api_key=config.get('gemini_api_key'),
             )
         elif api_key.startswith("AIza") or len(api_key) == 39 or (provider_context and provider_context.name == "gemini"):
             print(f"--- [API] Using Gemini model: {model_name} ---")

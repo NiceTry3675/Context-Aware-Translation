@@ -11,7 +11,7 @@ Translate novels from various source languages into Korean, focusing on contextu
 - **Backend**: Python, FastAPI, SQLAlchemy  
 - **Frontend**: Next.js, TypeScript, Material-UI (MUI)
 - **Database**: SQLite (local), PostgreSQL (production)
-- **AI Model**: Google Gemini (default; also supports OpenRouter models)
+- **AI Models**: Google Gemini (direct API), Google Vertex AI (service account JSON), OpenRouter
 - **Deployment**: Backend on **Railway**, Frontend on **Vercel**
 
 ## Core Architecture

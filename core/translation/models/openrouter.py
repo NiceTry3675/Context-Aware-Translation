@@ -1,4 +1,3 @@
-import os
 import requests
 import json
 import time
@@ -22,6 +21,7 @@ class OpenRouterModel:
         *,
         generation_config: Dict[str, Any] | None = None,
         usage_callback: Callable[[UsageEvent], None] | None = None,
+        native_gemini_api_key: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -46,6 +46,7 @@ class OpenRouterModel:
         self.generation_config: Dict[str, Any] = generation_config or {}
         self.usage_callback = usage_callback
         self.last_usage: UsageEvent | None = None
+        self.native_gemini_api_key = native_gemini_api_key
 
     def _emit_usage_event(self, result: Dict[str, Any]) -> None:
         usage = result.get('usage') if isinstance(result, dict) else None
@@ -236,8 +237,7 @@ class OpenRouterModel:
         if is_gemini_via_openrouter and _GeminiModel and _load_config:
             try:
                 cfg = _load_config()
-                # Try the environment first; loader may not return the key directly
-                gemini_api_key = os.getenv("GEMINI_API_KEY") or cfg.get("gemini_api_key")
+                gemini_api_key = self.native_gemini_api_key or cfg.get("gemini_api_key")
                 if gemini_api_key:
                     native = _GeminiModel(
                         api_key=gemini_api_key,

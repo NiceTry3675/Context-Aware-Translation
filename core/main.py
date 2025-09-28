@@ -54,11 +54,9 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
         # Load configuration
         config = load_config()
         
-        # Get API key from environment if not provided
+        # Require API key to be provided explicitly
         if not api_key:
-            api_key = os.environ.get('GEMINI_API_KEY')
-            if not api_key:
-                raise ValueError("API key required. Provide via --api-key or GEMINI_API_KEY environment variable")
+            raise ValueError("API key required. Provide via --api-key option.")
         
         # Validate API key
         if verbose:

@@ -95,18 +95,10 @@ def process_validation_task(
         
         # Check if API key is provided when required
         if not api_key and provider_name != "vertex":
-            task_logger.info(
-                "[VALIDATION TASK] No API key provided; attempting to use default Gemini API key from settings"
+            task_logger.error(
+                "[VALIDATION TASK] No API key provided for non-Vertex provider"
             )
-            from backend.config.settings import get_settings
-
-            settings = get_settings()
-            api_key = settings.gemini_api_key
-            if not api_key:
-                task_logger.error(
-                    "[VALIDATION TASK] No API key provided and no default Gemini API key in settings"
-                )
-                raise ValueError("API key is required for validation")
+            raise ValueError("API key is required for validation")
         
         # Get database session
         db = self.db_session
