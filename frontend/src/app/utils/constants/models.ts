@@ -60,6 +60,20 @@ export const openRouterModelOptions: ModelOption[] = [
     chipColor: "warning",
   },
   {
+    value: "openai/gpt-5",
+    label: "GPT-5",
+    description: " ",
+    chip: "품질",
+    chipColor: "error",
+  },
+  {
+    value: "openai/gpt-5-chat",
+    label: "GPT-5 Chat",
+    description: " ",
+    chip: "품질",
+    chipColor: "error",
+  },
+  {
     value: "anthropic/claude-sonnet-4",
     label: "Claude Sonnet 4",
     description: " ",

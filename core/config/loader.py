@@ -27,7 +27,7 @@ def load_config():
         "top_k": 20,
         # Target ~15k tokens for model output where supported
         # Gemini/Vertex: max_output_tokens; other providers will map appropriately
-        "max_output_tokens": 15000,
+        "max_output_tokens": 25000,
     }
 
     return {

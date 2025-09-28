@@ -9,7 +9,6 @@ import re
 import time
 from tqdm import tqdm
 from typing import Optional, Dict, Any
-from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from .models.gemini import GeminiModel
@@ -17,7 +16,7 @@ from .models.openrouter import OpenRouterModel
 from .document import TranslationDocument
 from .style_analyzer import StyleAnalyzer
 from .progress_tracker import ProgressTracker
-from .illustration import IllustrationGenerator
+from .illustration import IllustrationGenerator, WorldAtmosphereProvider
 from .usage_tracker import TokenUsageCollector
 from ..prompts.builder import PromptBuilder
 from ..prompts.manager import PromptManager
@@ -98,14 +97,15 @@ class TranslationPipeline:
         self.progress_tracker = ProgressTracker(db, job_id)
         self.initial_core_style = initial_core_style
         self.usage_collector = usage_collector
-        
+
         # Logger will be initialized with document filename later
         self.job_id = job_id
         self.logger = None
-        
+
         # Initialize illustration generator if configured
         self.illustration_config = illustration_config
         self.illustration_generator = None
+        self.world_atmosphere_provider = WorldAtmosphereProvider(dyn_config_builder)
         if illustration_config and illustration_config.enabled and illustration_api_key:
             try:
                 self.illustration_generator = IllustrationGenerator(
@@ -229,6 +229,20 @@ class TranslationPipeline:
             # Calculate translation time
             segment_translation_time = time.time() - segment_start_time
 
+            should_generate_illustration = bool(
+                self.illustration_generator
+                and self._should_generate_illustration(segment_info, i)
+            )
+            world_atmosphere_for_illustration = None
+            if should_generate_illustration:
+                world_atmosphere_for_illustration = self._analyze_world_atmosphere_for_illustration(
+                    segment_info=segment_info,
+                    glossary=document.glossary,
+                    previous_context=previous_context,
+                    segment_index=segment_index,
+                    job_base_filename=document.user_base_filename,
+                )
+
             # Log segment input/output
             if self.logger:
                 metadata = {
@@ -238,6 +252,13 @@ class TranslationPipeline:
                     "chapter_title": segment_info.chapter_title,
                     "chapter_filename": segment_info.chapter_filename
                 }
+                world_atmosphere_metadata = None
+                if world_atmosphere_for_illustration is not None:
+                    world_atmosphere_metadata = world_atmosphere_for_illustration.model_dump()
+                elif self.world_atmosphere_provider:
+                    world_atmosphere_metadata = self.world_atmosphere_provider.get_world_atmosphere_dict(segment_info)
+                if world_atmosphere_metadata:
+                    metadata["world_atmosphere"] = world_atmosphere_metadata
                 self.logger.log_segment_io(
                     segment_index=segment_index,
                     source_text=segment_info.text,
@@ -247,16 +268,9 @@ class TranslationPipeline:
 
             # Append translation and save progress
             document.append_translated_segment(translated_text, segment_info)
-            
+
             # Generate illustration if enabled
-            if self.illustration_generator and self._should_generate_illustration(segment_info, i):
-                world_atmosphere_for_illustration = self._analyze_world_atmosphere_for_illustration(
-                    segment_info=segment_info,
-                    glossary=document.glossary,
-                    previous_context=previous_context,
-                    segment_index=segment_index,
-                    job_base_filename=document.user_base_filename,
-                )
+            if should_generate_illustration:
                 self._generate_segment_illustration(
                     segment_info, i, document.glossary,
                     core_narrative_style, style_deviation, world_atmosphere_for_illustration,
@@ -570,29 +584,17 @@ class TranslationPipeline:
     ) -> Optional[WorldAtmosphereAnalysis]:
         """Ensure world/atmosphere data is available when generating illustrations."""
 
-        existing_world_atmosphere = getattr(segment_info, "world_atmosphere", None)
-        if existing_world_atmosphere:
-            if isinstance(existing_world_atmosphere, WorldAtmosphereAnalysis):
-                return existing_world_atmosphere
-            if isinstance(existing_world_atmosphere, dict):
-                try:
-                    return WorldAtmosphereAnalysis.model_validate(existing_world_atmosphere)
-                except ValidationError:
-                    pass
+        if not self.world_atmosphere_provider:
+            return None
 
         try:
-            analysis = self.dyn_config_builder.analyze_world_atmosphere(
-                segment_text=segment_info.text,
-                previous_context=previous_context,
+            return self.world_atmosphere_provider.ensure_world_atmosphere(
+                segment_info=segment_info,
                 glossary=glossary,
-                job_base_filename=job_base_filename,
+                previous_context=previous_context,
                 segment_index=segment_index,
+                job_base_filename=job_base_filename,
             )
-
-            if analysis:
-                segment_info.world_atmosphere = analysis.model_dump()
-
-            return analysis
         except Exception as exc:
             print(f"Warning: Failed to analyze world atmosphere for illustration (segment {segment_index}): {exc}")
             if self.logger:

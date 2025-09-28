@@ -23,7 +23,11 @@ from backend.domains.shared.provider_context import (
     provider_context_from_payload,
     vertex_model_resource_name,
 )
-from core.translation.illustration import IllustrationGenerator
+from core.translation.illustration import IllustrationGenerator, WorldAtmosphereProvider
+from core.translation.illustration.world_atmosphere_provider import (
+    ensure_world_atmosphere_data,
+    extract_world_atmosphere_dict,
+)
 from core.config.loader import load_config
 from core.config.builder import DynamicConfigBuilder
 from backend.domains.shared.model_factory import ModelAPIFactory
@@ -63,6 +67,7 @@ def _load_segment_from_data(seg_data: Dict[str, Any], seg_id: Optional[int] = No
         segment['segment_summary'] = world_atmosphere.get('segment_summary', '')
 
     return segment
+
 
 
 def _persist_usage_events(
@@ -242,59 +247,66 @@ def generate_illustrations_task(
             text_model = None
             dyn_builder = None
 
-        # Load segments from log files instead of database for richer metadata
-        log_dir = Path(settings.job_storage_base) / str(job_id) / "segments" / "translation"
-        segments = []
+        world_provider = WorldAtmosphereProvider(dyn_builder)
 
-        if log_dir.exists():
-            summary_file = log_dir / "summary.json"
-            if summary_file.exists():
-                print(f"[ILLUSTRATIONS TASK] Loading segments from {summary_file}")
-                try:
-                    with open(summary_file, 'r', encoding='utf-8') as f:
-                        summary_data = json.load(f)
+        segments = job.translation_segments or []
+        segments_from_db = bool(segments)
+        if segments_from_db:
+            print(f"[ILLUSTRATIONS TASK] Loaded {len(segments)} segments from database")
 
-                    # Extract segments from summary data
-                    segments_dict = summary_data.get('segments', {})
-                    for seg_id_key in sorted(segments_dict.keys(), key=_segment_sort_key):
-                        seg_data = segments_dict[seg_id_key]
-                        try:
-                            seg_id_int = int(seg_id_key)
-                        except (TypeError, ValueError):
-                            seg_id_int = None
-
-                        segments.append(_load_segment_from_data(seg_data, seg_id_int))
-
-                    print(f"[ILLUSTRATIONS TASK] Loaded {len(segments)} segments from log summary")
-                except Exception as e:
-                    print(f"[ILLUSTRATIONS TASK] Error loading from summary.json: {e}")
-                    import traceback
-                    traceback.print_exc()
-
-            # Fallback: load individual segment files if summary doesn't work
-            if not segments:
-                print(f"[ILLUSTRATIONS TASK] Attempting to load individual segment files from {log_dir}")
-                for seg_file in sorted(log_dir.glob("segment_*.json")):
-                    try:
-                        with open(seg_file, 'r', encoding='utf-8') as f:
-                            seg_data = json.load(f)
-                            segments.append(_load_segment_from_data(seg_data))
-                    except Exception as e:
-                        print(f"[ILLUSTRATIONS TASK] Error loading {seg_file}: {e}")
-
-        # Fallback to database if log files don't exist
         if not segments:
-            print(f"[ILLUSTRATIONS TASK] Log files not found, falling back to database")
-            segments = job.translation_segments
+            # Load segments from log files as a fallback for legacy jobs
+            log_dir = Path(settings.job_storage_base) / str(job_id) / "segments" / "translation"
+            if log_dir.exists():
+                summary_file = log_dir / "summary.json"
+                segments = []
+                if summary_file.exists():
+                    print(f"[ILLUSTRATIONS TASK] Loading segments from {summary_file}")
+                    try:
+                        with open(summary_file, 'r', encoding='utf-8') as f:
+                            summary_data = json.load(f)
+
+                        segments_dict = summary_data.get('segments', {})
+                        for seg_id_key in sorted(segments_dict.keys(), key=_segment_sort_key):
+                            seg_data = segments_dict[seg_id_key]
+                            try:
+                                seg_id_int = int(seg_id_key)
+                            except (TypeError, ValueError):
+                                seg_id_int = None
+
+                            segments.append(_load_segment_from_data(seg_data, seg_id_int))
+
+                        print(f"[ILLUSTRATIONS TASK] Loaded {len(segments)} segments from log summary")
+                    except Exception as e:
+                        print(f"[ILLUSTRATIONS TASK] Error loading from summary.json: {e}")
+                        import traceback
+                        traceback.print_exc()
+
+                if not segments:
+                    print(f"[ILLUSTRATIONS TASK] Attempting to load individual segment files from {log_dir}")
+                    segments = []
+                    for seg_file in sorted(log_dir.glob("segment_*.json")):
+                        try:
+                            with open(seg_file, 'r', encoding='utf-8') as f:
+                                seg_data = json.load(f)
+                                segments.append(_load_segment_from_data(seg_data))
+                        except Exception as e:
+                            print(f"[ILLUSTRATIONS TASK] Error loading {seg_file}: {e}")
+
             if not segments:
-                job.illustrations_status = "FAILED"
-                job.illustrations_data = {"error": "No segments found in logs or database"}
-                db.commit()
-                raise ValueError("No segments found in translation job")
+                print(f"[ILLUSTRATIONS TASK] No log files found; using database segments if available")
+                segments = job.translation_segments or []
+                segments_from_db = bool(segments)
+
+        if not segments:
+            job.illustrations_status = "FAILED"
+            job.illustrations_data = {"error": "No segments found in logs or database"}
+            db.commit()
+            raise ValueError("No segments found in translation job")
 
         # Log what we found
         print(f"[ILLUSTRATIONS TASK] Total segments loaded: {len(segments)}")
-        if segments and segments[0].get('world_atmosphere'):
+        if segments and extract_world_atmosphere_dict(segments[0]):
             print(f"[ILLUSTRATIONS TASK] First segment has world_atmosphere data")
 
         # Prepare segments for illustration
@@ -302,10 +314,10 @@ def generate_illustrations_task(
         for i, segment in enumerate(segments):
             if max_illustrations and len(segments_to_illustrate) >= max_illustrations:
                 break
-            
+
             # Check if segment meets criteria
             segment_data = {
-                'text': segment.get('source_text', ''),
+                'text': segment.get('source_text') or segment.get('text', ''),
                 'index': i
             }
             
@@ -313,13 +325,13 @@ def generate_illustrations_task(
             if len(segment_data['text']) >= config.min_segment_length:
                 if not config.skip_dialogue_heavy or segment_data['text'].count('"') < len(segment_data['text']) / 50:
                     segments_to_illustrate.append(segment_data)
-        
+
         # Generate illustration prompts with progress tracking
         results = []
         total_segments = len(segments_to_illustrate)
-        
+
         print(f"[ILLUSTRATIONS TASK] Will generate illustrations for {total_segments} segments")
-        
+
         # Determine if we have a base selection and profile
         selected_base_index = job.character_base_selected_index
         character_profile = job.character_profile
@@ -333,7 +345,10 @@ def generate_illustrations_task(
             use_profile_lock = (selected_base_index is not None) and bool(character_profile)
 
         print(f"[ILLUSTRATIONS TASK] Profile lock enabled: {use_profile_lock}")
-        
+
+        world_data_dirty = False
+        job_base_filename = job.filename or f"job_{job_id}"
+
         for idx, segment in enumerate(segments_to_illustrate):
             print(f"[ILLUSTRATIONS TASK] Processing segment {idx + 1}/{total_segments} (index: {segment['index']})")
             
@@ -419,49 +434,39 @@ def generate_illustrations_task(
                     + ". Use the attached reference image to preserve identity; do not copy any reference background."
                 )
 
-            # Extract world_atmosphere data from the segment (now loaded from logs)
-            world_atmosphere_data = None
+            # Extract or compute world_atmosphere data for the segment
+            world_atmosphere_data: Optional[Dict[str, Any]] = None
             segment_summary = None
 
             if segment['index'] < len(segments):
                 full_segment = segments[segment['index']]
-                if isinstance(full_segment, dict):
-                    world_atmosphere_data = full_segment.get('world_atmosphere')
-                    segment_summary = full_segment.get('segment_summary', '')
+                world_atmosphere_data, created_now = ensure_world_atmosphere_data(
+                    world_provider,
+                    segments,
+                    segment['index'],
+                    job.final_glossary or {},
+                    job_base_filename,
+                )
+
+                if world_atmosphere_data is None:
+                    world_atmosphere_data = extract_world_atmosphere_dict(full_segment)
+                    created_now = False
+
+                if world_atmosphere_data:
+                    segment_summary = world_atmosphere_data.get('segment_summary', '')
+                    if isinstance(full_segment, dict):
+                        full_segment['world_atmosphere'] = world_atmosphere_data
+                        if segment_summary:
+                            full_segment['segment_summary'] = segment_summary
+                    if created_now:
+                        world_data_dirty = True
 
             print(f"[ILLUSTRATIONS TASK] World atmosphere data available: {world_atmosphere_data is not None}")
             if world_atmosphere_data:
-                print(f"[ILLUSTRATIONS TASK] World atmosphere keys: {list(world_atmosphere_data.keys()) if isinstance(world_atmosphere_data, dict) else 'N/A'}")
+                keys = list(world_atmosphere_data.keys()) if isinstance(world_atmosphere_data, dict) else []
+                print(f"[ILLUSTRATIONS TASK] World atmosphere keys: {keys}")
                 if segment_summary:
                     print(f"[ILLUSTRATIONS TASK] Segment summary: {segment_summary[:100]}...")
-
-            # If we don't have world/atmosphere data, compute it on-demand
-            if not world_atmosphere_data and dyn_builder is not None:
-                try:
-                    prev_context = None
-                    try:
-                        if segment['index'] > 0 and segment['index'] < len(segments):
-                            prev_seg = segments[segment['index'] - 1]
-                            prev_context = prev_seg.get('source_text') or prev_seg.get('text') or None
-                    except Exception:
-                        prev_context = None
-                    analysis = dyn_builder.analyze_world_atmosphere(
-                        segment_text=segment['text'],
-                        previous_context=prev_context,
-                        glossary=job.final_glossary or {},
-                        job_base_filename=job.filename or f"job_{job_id}",
-                        segment_index=segment['index'],
-                    )
-                    if analysis is not None:
-                        world_atmosphere_data = analysis.model_dump()
-                        # Attach to in-memory segment for downstream consistency
-                        try:
-                            if segment['index'] < len(segments) and isinstance(segments[segment['index']], dict):
-                                segments[segment['index']]['world_atmosphere'] = world_atmosphere_data
-                        except Exception:
-                            pass
-                except Exception as wa_exc:
-                    print(f"[ILLUSTRATIONS TASK] World/atmosphere analysis failed for segment {segment['index']}: {wa_exc}")
 
             try:
                 # Check if we should return base64 data instead of saving to disk
@@ -511,9 +516,12 @@ def generate_illustrations_task(
                 result['used_base_index'] = selected_base_index
                 result['consistency_mode'] = 'profile_locked'
             results.append(result)
-            
+
             # Update job progress in database
             job.illustrations_progress = progress
+            if segments_from_db and world_data_dirty:
+                job.translation_segments = segments
+                world_data_dirty = False
             db.commit()
         
         # Update job with final results
@@ -700,50 +708,32 @@ def regenerate_single_illustration(
         except Exception as e:
             print(f"[REGENERATE ILLUSTRATION] Warning: Failed to initialize text model for world/atmosphere analysis: {e}")
 
+        world_provider = WorldAtmosphereProvider(dyn_builder)
+
         # Get the segment
         segments = job.translation_segments
         if not segments or segment_index >= len(segments):
             raise ValueError(f"Segment {segment_index} not found")
-        
+
         segment = segments[segment_index]
 
-        # Extract world_atmosphere data if available
-        world_atmosphere_data = None
-        if isinstance(segment, dict):
-            world_atmosphere_data = segment.get('world_atmosphere')
+        world_atmosphere_data, created_now = ensure_world_atmosphere_data(
+            world_provider,
+            segments,
+            segment_index,
+            job.final_glossary or {},
+            job.filename or f"job_{job_id}",
+        )
+
+        if world_atmosphere_data is None:
+            world_atmosphere_data = extract_world_atmosphere_dict(segment)
+            created_now = False
 
         print(f"[REGENERATE ILLUSTRATION] World atmosphere data available: {world_atmosphere_data is not None}")
 
-        # If missing, compute world/atmosphere on-demand
-        if world_atmosphere_data is None and dyn_builder is not None:
-            try:
-                previous_context = None
-                try:
-                    if segment_index > 0 and segment_index < len(segments):
-                        prev_seg = segments[segment_index - 1]
-                        if isinstance(prev_seg, dict):
-                            previous_context = prev_seg.get('source_text') or prev_seg.get('text') or None
-                except Exception:
-                    previous_context = None
-
-                analysis = dyn_builder.analyze_world_atmosphere(
-                    segment_text=segment.get('source_text', '') or segment.get('text', ''),
-                    previous_context=previous_context,
-                    glossary=job.final_glossary or {},
-                    job_base_filename=job.filename or f"job_{job_id}",
-                    segment_index=segment_index,
-                )
-                if analysis is not None:
-                    world_atmosphere_data = analysis.model_dump()
-                    # Store back to the segment for future reuse
-                    try:
-                        segment['world_atmosphere'] = world_atmosphere_data
-                        job.translation_segments[segment_index] = segment
-                        db.commit()
-                    except Exception:
-                        pass
-            except Exception as wa_exc:
-                print(f"[REGENERATE ILLUSTRATION] World/atmosphere analysis failed for segment {segment_index}: {wa_exc}")
+        if created_now:
+            job.translation_segments = segments
+            db.commit()
 
         # Preserve any user-supplied custom prompt
         final_custom_prompt = custom_prompt if custom_prompt else None
@@ -753,7 +743,7 @@ def regenerate_single_illustration(
         has_profile = bool(job.character_profile)
         if has_profile:
             profile_locked_prompt = generator.create_scene_prompt_with_profile(
-                segment_text=segment.get('source_text', ''),
+                segment_text=segment.get('source_text') or segment.get('text', ''),
                 context=None,
                 profile=job.character_profile,
                 style_hints=style_hints or (job.illustrations_config.get('style_hints', '') if job.illustrations_config else '')
@@ -801,7 +791,7 @@ def regenerate_single_illustration(
         # Generate new illustration prompt (with reference if allowed)
         return_base64 = settings.illustrations_to_user_side
         illustration_result, prompt = generator.generate_illustration(
-            segment_text=segment.get('source_text', ''),
+            segment_text=segment.get('source_text') or segment.get('text', ''),
             segment_index=segment_index,
             style_hints=style_hints or (job.illustrations_config.get('style_hints', '') if job.illustrations_config else ''),
             glossary=job.final_glossary,
