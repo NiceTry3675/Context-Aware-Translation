@@ -72,6 +72,8 @@ export default function IllustrationViewer({
   const [loading, setLoading] = useState(false);
   const [loadedImages, setLoadedImages] = useState<{ [key: number]: string }>({});
   const [loadedPrompts, setLoadedPrompts] = useState<{ [key: number]: any }>({})
+  const [imageTimestamps, setImageTimestamps] = useState<{ [key: number]: number }>({});
+  const [promptTimestamps, setPromptTimestamps] = useState<{ [key: number]: number }>({});
   const [useClientStorage, setUseClientStorage] = useState<boolean | null>(null);
 
   // New states for prompt editing functionality
@@ -102,31 +104,52 @@ export default function IllustrationViewer({
       return; // Wait for config to be loaded
     }
 
-    const token = await getCachedClerkToken(getToken);
+    let mergedImages = { ...loadedImages };
+    let mergedPrompts = { ...loadedPrompts };
+    let mergedImageTimestamps = { ...imageTimestamps };
+    let mergedPromptTimestamps = { ...promptTimestamps };
+    let imagesChanged = false;
+    let promptsChanged = false;
 
     // Check if we should use client-side storage
     if (useClientStorage) {
       // Load from IndexedDB first
       const storedIllustrations = await illustrationStorage.getJobIllustrations(jobId);
-      const imageMap: { [key: number]: string } = {};
-      const promptMap: { [key: number]: any } = {};
 
       for (const stored of storedIllustrations) {
-        if (stored.type === 'image') {
-          // Convert base64 to blob URL
-          imageMap[stored.segmentIndex] = illustrationStorage.base64ToBlobUrl(
-            stored.data,
-            stored.mimeType
-          );
-        } else {
-          promptMap[stored.segmentIndex] = JSON.parse(stored.data);
-        }
-      }
+        const segmentIndex = stored.segmentIndex;
+        const storedTimestamp = typeof stored.timestamp === 'number' ? stored.timestamp : Date.now();
 
-      // Update state with stored data
-      if (Object.keys(imageMap).length > 0 || Object.keys(promptMap).length > 0) {
-        setLoadedImages(prev => ({ ...prev, ...imageMap }));
-        setLoadedPrompts(prev => ({ ...prev, ...promptMap }));
+        if (stored.type === 'image') {
+          const existingTimestamp = mergedImageTimestamps[segmentIndex] ?? 0;
+          const shouldUpdate = !mergedImages[segmentIndex] || existingTimestamp < storedTimestamp;
+          if (shouldUpdate) {
+            try {
+              const blobUrl = illustrationStorage.base64ToBlobUrl(
+                stored.data,
+                stored.mimeType
+              );
+              mergedImages = { ...mergedImages, [segmentIndex]: blobUrl };
+              mergedImageTimestamps = { ...mergedImageTimestamps, [segmentIndex]: storedTimestamp };
+              imagesChanged = true;
+            } catch (error) {
+              console.error(`Failed to convert stored illustration ${segmentIndex} to blob:`, error);
+            }
+          }
+        } else {
+          const existingTimestamp = mergedPromptTimestamps[segmentIndex] ?? 0;
+          const shouldUpdate = !mergedPrompts[segmentIndex] || existingTimestamp < storedTimestamp;
+          if (shouldUpdate) {
+            try {
+              const parsed = JSON.parse(stored.data);
+              mergedPrompts = { ...mergedPrompts, [segmentIndex]: parsed };
+              mergedPromptTimestamps = { ...mergedPromptTimestamps, [segmentIndex]: storedTimestamp };
+              promptsChanged = true;
+            } catch (error) {
+              console.error(`Failed to parse stored prompt ${segmentIndex}:`, error);
+            }
+          }
+        }
       }
     }
 
@@ -134,8 +157,8 @@ export default function IllustrationViewer({
     const missingIllustrations = illustrations.filter(ill => {
       if (!ill.success) return false;
 
-      const hasImage = loadedImages[ill.segment_index];
-      const hasPrompt = loadedPrompts[ill.segment_index];
+      const hasImage = mergedImages[ill.segment_index];
+      const hasPrompt = mergedPrompts[ill.segment_index];
       const expectsImage = ill.type === 'base64_image' || ill.type === 'image' ||
         (typeof ill.illustration_path === 'string' && ill.illustration_path.endsWith('.png'));
 
@@ -147,10 +170,32 @@ export default function IllustrationViewer({
     });
 
     if (missingIllustrations.length === 0) {
+      if (imagesChanged) {
+        setLoadedImages(mergedImages);
+        setImageTimestamps(mergedImageTimestamps);
+      }
+      if (promptsChanged) {
+        setLoadedPrompts(mergedPrompts);
+        setPromptTimestamps(mergedPromptTimestamps);
+      }
       return; // No new illustrations to load
     }
 
     console.log(`Loading ${missingIllustrations.length} new illustrations out of ${illustrations.length} total`);
+
+    const token = await getCachedClerkToken(getToken);
+    if (!token) {
+      console.warn('Failed to acquire authentication token for illustration fetch.');
+      if (imagesChanged) {
+        setLoadedImages(mergedImages);
+        setImageTimestamps(mergedImageTimestamps);
+      }
+      if (promptsChanged) {
+        setLoadedPrompts(mergedPrompts);
+        setPromptTimestamps(mergedPromptTimestamps);
+      }
+      return;
+    }
 
     const illustrationPromises = missingIllustrations.map(async (ill) => {
       try {
@@ -158,7 +203,7 @@ export default function IllustrationViewer({
           `${API_BASE_URL}/api/v1/illustrations/${jobId}/illustration/${ill.segment_index}`,
           {
             headers: {
-              Authorization: token ? `Bearer ${token}` : '',
+              Authorization: `Bearer ${token}`,
             },
           }
         );
@@ -169,7 +214,7 @@ export default function IllustrationViewer({
             // It's an image file (server-side storage mode)
             const blob = await response.blob();
             const url = URL.createObjectURL(blob);
-            return { index: ill.segment_index, type: 'image', data: url };
+            return { index: ill.segment_index, type: 'image' as const, data: url };
           } else {
             // It's JSON - could be base64 data or prompt
             const data = await response.json();
@@ -188,7 +233,7 @@ export default function IllustrationViewer({
                   data.data,
                   data.mime_type || 'image/png'
                 );
-                return { index: ill.segment_index, type: 'image', data: blobUrl };
+                return { index: ill.segment_index, type: 'image' as const, data: blobUrl };
               } catch (error) {
                 console.error(`Failed to store illustration ${ill.segment_index} in IndexedDB:`, error);
                 // Fall back to displaying directly from base64
@@ -196,7 +241,7 @@ export default function IllustrationViewer({
                   data.data,
                   data.mime_type || 'image/png'
                 );
-                return { index: ill.segment_index, type: 'image', data: blobUrl };
+                return { index: ill.segment_index, type: 'image' as const, data: blobUrl };
               }
             } else {
               // It's prompt data - store if client storage is enabled
@@ -212,7 +257,7 @@ export default function IllustrationViewer({
                   console.error(`Failed to store prompt ${ill.segment_index} in IndexedDB:`, error);
                 }
               }
-              return { index: ill.segment_index, type: 'prompt', data };
+              return { index: ill.segment_index, type: 'prompt' as const, data };
             }
           }
         }
@@ -223,23 +268,29 @@ export default function IllustrationViewer({
     });
 
     const results = await Promise.all(illustrationPromises);
-    const imageMap: { [key: number]: string } = {};
-    const promptMap: { [key: number]: any } = {};
 
     results.forEach((result) => {
-      if (result) {
-        if (result.type === 'image') {
-          imageMap[result.index] = result.data;
-        } else {
-          promptMap[result.index] = result.data;
-        }
+      if (!result) return;
+      if (result.type === 'image') {
+        mergedImages = { ...mergedImages, [result.index]: result.data };
+        mergedImageTimestamps = { ...mergedImageTimestamps, [result.index]: Date.now() };
+        imagesChanged = true;
+      } else {
+        mergedPrompts = { ...mergedPrompts, [result.index]: result.data };
+        mergedPromptTimestamps = { ...mergedPromptTimestamps, [result.index]: Date.now() };
+        promptsChanged = true;
       }
     });
 
-    // Update state with new images/prompts
-    setLoadedImages(prev => ({ ...prev, ...imageMap }));
-    setLoadedPrompts(prev => ({ ...prev, ...promptMap }));
-  }, [getToken, illustrations, jobId, loadedImages, loadedPrompts, useClientStorage]);
+    if (imagesChanged) {
+      setLoadedImages(mergedImages);
+      setImageTimestamps(mergedImageTimestamps);
+    }
+    if (promptsChanged) {
+      setLoadedPrompts(mergedPrompts);
+      setPromptTimestamps(mergedPromptTimestamps);
+    }
+  }, [getToken, illustrations, jobId, imageTimestamps, loadedImages, loadedPrompts, promptTimestamps, useClientStorage]);
 
   // Load illustrations from API with caching to prevent redundant Clerk API calls
   useEffect(() => {
@@ -358,11 +409,21 @@ export default function IllustrationViewer({
         delete newLoadedImages[segmentIndex];
         return newLoadedImages;
       });
+      setImageTimestamps(prev => {
+        const next = { ...prev };
+        delete next[segmentIndex];
+        return next;
+      });
 
       setLoadedPrompts(prev => {
         const newLoadedPrompts = { ...prev };
         delete newLoadedPrompts[segmentIndex];
         return newLoadedPrompts;
+      });
+      setPromptTimestamps(prev => {
+        const next = { ...prev };
+        delete next[segmentIndex];
+        return next;
       });
     }
   };
