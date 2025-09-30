@@ -6,6 +6,15 @@ import { fetchWithRetry } from './fetchWithRetry';
 export type GlossaryAnalysisResponse = components['schemas']['GlossaryAnalysisResponse'];
 export type TranslatedTerm = components['schemas']['TranslatedTerm'];
 
+// Helper function to build auth headers conditionally
+function buildAuthHeaders(token?: string): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 // Local type definitions for structured reports (not yet in OpenAPI schema)
 // TODO: These should be generated from backend/schemas.py once they're exported
 export interface StructuredValidationReport {
@@ -118,9 +127,7 @@ export async function fetchValidationReport(jobId: string, token?: string): Prom
   try {
     console.log(`[fetchValidationReport] Fetching validation report for job ${jobId}`);
     const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/validation/${jobId}/status`, {
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-      },
+      headers: buildAuthHeaders(token),
     }, { retries: 3, timeoutMs: 10000 });
 
     console.log(`[fetchValidationReport] Response status: ${response.status}`);
@@ -153,10 +160,13 @@ export async function fetchValidationReport(jobId: string, token?: string): Prom
 
 export async function fetchPostEditLog(jobId: string, token?: string): Promise<PostEditLog | null> {
   try {
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/post-edit/${jobId}/status`, {
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-      },
+      headers,
     }, { retries: 3, timeoutMs: 10000 });
 
     if (!response.ok) {
@@ -186,9 +196,7 @@ export interface IllustrationStatus {
 
 export async function fetchJobTasks(jobId: number, token?: string): Promise<components['schemas']['TaskExecutionResponse'][]> {
   const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/tasks/job/${jobId}/tasks`, {
-    headers: {
-      'Authorization': token ? `Bearer ${token}` : '',
-    },
+    headers: buildAuthHeaders(token),
   }, { retries: 3, timeoutMs: 8000 });
   if (!response.ok) {
     throw new Error(`Failed to fetch job tasks: ${response.statusText}`);
@@ -199,9 +207,7 @@ export async function fetchJobTasks(jobId: number, token?: string): Promise<comp
 export async function fetchIllustrationStatus(jobId: string, token?: string): Promise<IllustrationStatus | null> {
   try {
     const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/illustrations/${jobId}/status`, {
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-      },
+      headers: buildAuthHeaders(token),
     }, { retries: 3, timeoutMs: 10000 });
 
     if (!response.ok) {
@@ -245,9 +251,7 @@ export interface TranslationSegments {
 export async function fetchTranslationContent(jobId: string, token?: string): Promise<TranslationContent | null> {
   try {
     const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/jobs/${jobId}/content`, {
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-      },
+      headers: buildAuthHeaders(token),
     }, { retries: 3, timeoutMs: 10000 });
 
     if (!response.ok) {
@@ -278,9 +282,7 @@ export async function fetchTranslationSegments(
     const url = `${API_BASE_URL}/api/v1/jobs/${jobId}/segments${params.toString() ? '?' + params.toString() : ''}`;
     
     const response = await fetchWithRetry(url, {
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-      },
+      headers: buildAuthHeaders(token),
     }, { retries: 3, timeoutMs: 12000 });
 
     if (!response.ok) {
@@ -316,10 +318,12 @@ export async function triggerValidation({
 } & CredentialledParams): Promise<void> {
   const url = `${API_BASE_URL}/api/v1/jobs/${jobId}/validation`;
   
-  const headers = {
-    'Authorization': token ? `Bearer ${token}` : '',
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
   
   console.log('Triggering validation:', { url, body, hasToken: !!token });
   
@@ -357,12 +361,16 @@ export async function triggerPostEdit({
   token?: string;
   body: components['schemas']['PostEditRequest'];
 } & CredentialledParams): Promise<void> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
   const response = await fetch(`${API_BASE_URL}/api/v1/post-edit/${jobId}`, {
     method: 'POST',
-    headers: {
-      'Authorization': token ? `Bearer ${token}` : '',
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify({
       ...(body as any),
       api_provider: apiProvider,
@@ -429,7 +437,7 @@ export async function triggerIllustrationGeneration({
   const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/generate`, {
     method: 'POST',
     headers: {
-      'Authorization': token ? `Bearer ${token}` : '',
+      ...buildAuthHeaders(token),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
@@ -481,7 +489,7 @@ export async function regenerateIllustration({
   const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/regenerate/${segmentIndex}`, {
     method: 'POST',
     headers: {
-      'Authorization': token ? `Bearer ${token}` : '',
+      ...buildAuthHeaders(token),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
@@ -525,7 +533,7 @@ export async function regenerateBase({
   const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/${baseIndex}/regenerate`, {
     method: 'POST',
     headers: {
-      'Authorization': token ? `Bearer ${token}` : '',
+      ...buildAuthHeaders(token),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
@@ -592,9 +600,7 @@ export async function generateCharacterBases({
   }
   const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate`, {
     method: 'POST',
-    headers: {
-      'Authorization': token ? `Bearer ${token}` : '',
-    },
+    headers: buildAuthHeaders(token),
     body: form,
   });
   if (!response.ok) {
@@ -619,7 +625,7 @@ export async function analyzeCharacterAppearance({
   const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/appearance/analyze`, {
     method: 'POST',
     headers: {
-      'Authorization': token ? `Bearer ${token}` : '',
+      ...buildAuthHeaders(token),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -669,9 +675,7 @@ export async function generateBasesFromPrompt({
   }
   const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/generate-from-prompt`, {
     method: 'POST',
-    headers: {
-      'Authorization': token ? `Bearer ${token}` : '',
-    },
+    headers: buildAuthHeaders(token),
     body: form,
   });
   if (!response.ok) {
@@ -686,9 +690,7 @@ export async function getCharacterBases(
   token: string | undefined,
 ): Promise<{ profile?: CharacterProfileBody; bases: any[]; selected_index?: number; directory?: string }>{
   const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base`, {
-    headers: {
-      'Authorization': token ? `Bearer ${token}` : '',
-    },
+    headers: buildAuthHeaders(token),
   });
   if (!response.ok) {
     throw new Error('Failed to fetch character bases');
@@ -704,7 +706,7 @@ export async function selectCharacterBase(
   const response = await fetch(`${API_BASE_URL}/api/v1/illustrations/${jobId}/character/base/select`, {
     method: 'POST',
     headers: {
-      'Authorization': token ? `Bearer ${token}` : '',
+      ...buildAuthHeaders(token),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ selected_index: selectedIndex }),
@@ -722,9 +724,7 @@ export async function selectCharacterBase(
 export async function fetchStructuredValidationReport(jobId: string, token?: string): Promise<StructuredValidationReport | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/validation/${jobId}/status?structured=true`, {
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-      },
+      headers: buildAuthHeaders(token),
     });
 
     if (!response.ok) {
@@ -744,9 +744,7 @@ export async function fetchStructuredValidationReport(jobId: string, token?: str
 export async function fetchStructuredPostEditLog(jobId: string, token?: string): Promise<StructuredPostEditLog | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/post-edit/${jobId}/status?structured=true`, {
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-      },
+      headers: buildAuthHeaders(token),
     });
 
     if (!response.ok) {
@@ -766,9 +764,7 @@ export async function fetchStructuredPostEditLog(jobId: string, token?: string):
 export async function fetchStructuredGlossary(jobId: string, token?: string): Promise<GlossaryAnalysisResponse | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/jobs/${jobId}/glossary?structured=true`, {
-      headers: {
-        'Authorization': token ? `Bearer ${token}` : '',
-      },
+      headers: buildAuthHeaders(token),
     });
 
     if (!response.ok) {
