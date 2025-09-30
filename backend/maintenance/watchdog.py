@@ -31,47 +31,66 @@ def mark_stalled_jobs(
     now = datetime.utcnow()
     cutoff = now - timedelta(hours=lookback_hours)
 
-    # naive scan: get recent jobs via raw query to the model to avoid adding new repository calls
+    # Process jobs in batches to avoid unbounded memory use while checking all jobs
     from backend.domains.translation.models import TranslationJob
-    jobs = db.query(TranslationJob).filter(TranslationJob.created_at >= cutoff).all()
-
+    
     stalled = {"validation": 0, "post_edit": 0, "illustrations": 0}
-
-    for job in jobs:
-        # Helper to decide if a phase is stalled: IN_PROGRESS for too long and no active task
-        def is_stalled(kind: TaskKind, started_at_field: str | None, status_value: str | None) -> bool:
-            if status_value != "IN_PROGRESS":
-                return False
-            # Find most recent task for this job and kind
-            tasks = task_repo.get_job_tasks(job.id)
-            recent = next((t for t in tasks if t.kind == kind), None)
-            if recent:
-                state = AsyncResult(recent.id, app=celery_app).state
-                if state in ("PENDING", "STARTED", "RETRY"):
+    batch_size = 1000
+    offset = 0
+    
+    while True:
+        # Fetch batch of jobs ordered by created_at (oldest first to catch long-stalled jobs)
+        batch = (
+            db.query(TranslationJob)
+            .filter(TranslationJob.created_at >= cutoff)
+            .order_by(TranslationJob.created_at.asc())  # Process oldest first
+            .limit(batch_size)
+            .offset(offset)
+            .all()
+        )
+        
+        if not batch:
+            break
+        
+        # Process this batch
+        for job in batch:
+            # Helper to decide if a phase is stalled: IN_PROGRESS for too long and no active task
+            def is_stalled(kind: TaskKind, started_at_field: str | None, status_value: str | None) -> bool:
+                if status_value != "IN_PROGRESS":
                     return False
-            # Fallback: use created_at/validation_completed_at timestamps to estimate staleness
-            started_at = getattr(job, started_at_field) if started_at_field else job.created_at
-            if not started_at:
-                return True
-            return (now - (started_at or cutoff)) > timedelta(minutes=max_inprogress_minutes)
+                # Find most recent task for this job and kind
+                tasks = task_repo.get_job_tasks(job.id)
+                recent = next((t for t in tasks if t.kind == kind), None)
+                if recent:
+                    state = AsyncResult(recent.id, app=celery_app).state
+                    if state in ("PENDING", "STARTED", "RETRY"):
+                        return False
+                # Fallback: use created_at/validation_completed_at timestamps to estimate staleness
+                started_at = getattr(job, started_at_field) if started_at_field else job.created_at
+                if not started_at:
+                    return True
+                return (now - (started_at or cutoff)) > timedelta(minutes=max_inprogress_minutes)
 
-        # Validation
-        if is_stalled(TaskKind.VALIDATION, "validation_completed_at", job.validation_status):
-            repo.update_validation_status(job.id, "FAILED")
-            db.commit()
-            stalled["validation"] += 1
+            # Validation
+            if is_stalled(TaskKind.VALIDATION, "validation_completed_at", job.validation_status):
+                repo.update_validation_status(job.id, "FAILED")
+                db.commit()
+                stalled["validation"] += 1
 
-        # Post-edit
-        if is_stalled(TaskKind.POST_EDIT, "post_edit_completed_at", job.post_edit_status):
-            repo.update_post_edit_status(job.id, "FAILED")
-            db.commit()
-            stalled["post_edit"] += 1
+            # Post-edit
+            if is_stalled(TaskKind.POST_EDIT, "post_edit_completed_at", job.post_edit_status):
+                repo.update_post_edit_status(job.id, "FAILED")
+                db.commit()
+                stalled["post_edit"] += 1
 
-        # Illustrations
-        if is_stalled(TaskKind.ILLUSTRATION, None, job.illustrations_status):
-            repo.update_illustration_status(job.id, "FAILED")
-            db.commit()
-            stalled["illustrations"] += 1
+            # Illustrations
+            if is_stalled(TaskKind.ILLUSTRATION, None, job.illustrations_status):
+                repo.update_illustration_status(job.id, "FAILED")
+                db.commit()
+                stalled["illustrations"] += 1
+        
+        # Move to next batch
+        offset += batch_size
 
     logger.info(f"Watchdog: stalled summary: {stalled}")
     db.close()

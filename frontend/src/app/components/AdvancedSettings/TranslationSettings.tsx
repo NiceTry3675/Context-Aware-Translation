@@ -134,8 +134,8 @@ export default function TranslationSettings({ settings, onChange, isTurboLocked 
         )}
       </Box>
       
-      {/* Illustration Settings */}
-      <Box sx={{ mt: 3 }}>
+      {/* Illustration Settings - Hidden */}
+      {/* <Box sx={{ mt: 3 }}>
         <Typography variant="h6" gutterBottom>삽화 생성 설정</Typography>
         <FormControlLabel
           control={
@@ -211,7 +211,7 @@ export default function TranslationSettings({ settings, onChange, isTurboLocked 
             </Box>
           </Box>
         )}
-      </Box>
+      </Box> */}
     </>
   );
 }
