@@ -164,6 +164,7 @@ async def get_post_edit_status(
     
     # Check if post-edit report exists
     if not job.post_edit_log_path:
+        print(f"[POST-EDIT] Job {job_id}: No post_edit_log_path set in database")
         return {
             "job_id": job_id,
             "status": "not_post_edited",
@@ -171,12 +172,28 @@ async def get_post_edit_status(
         }
     
     # Load the post-edit report
-    if os.path.exists(job.post_edit_log_path):
-        with open(job.post_edit_log_path, 'r', encoding='utf-8') as f:
-            report = json.load(f)
-        return report
-    else:
-        raise HTTPException(
-            status_code=404, 
-            detail=f"Post-edit report file not found at {job.post_edit_log_path}"
-        )
+    # Handle both absolute paths (e.g., /data/logs/...) and relative paths (e.g., logs/...)
+    log_path = job.post_edit_log_path
+    
+    # If it's an absolute path starting with /data/, try without /data prefix too
+    paths_to_try = [log_path]
+    if log_path.startswith('/data/'):
+        paths_to_try.append(log_path[6:])  # Remove '/data/' prefix
+    
+    print(f"[POST-EDIT] Job {job_id}: Trying paths: {paths_to_try}")
+    
+    for path in paths_to_try:
+        print(f"[POST-EDIT] Job {job_id}: Checking {path}, exists: {os.path.exists(path)}")
+        if os.path.exists(path):
+            with open(path, 'r', encoding='utf-8') as f:
+                report = json.load(f)
+            return report
+    
+    # File not found in any location
+    print(f"[POST-EDIT] Job {job_id}: File not found in any of the attempted paths")
+    return {
+        "job_id": job_id,
+        "status": job.post_edit_status or "UNKNOWN",
+        "message": f"Post-edit log file not found. Attempted paths: {paths_to_try}",
+        "note": "Log file may have been lost or saved to unexpected location. Please re-run post-editing."
+    }

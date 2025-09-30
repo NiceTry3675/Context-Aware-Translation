@@ -985,6 +985,26 @@
         }
       }
     },
+    "/api/v1/illustrations/config": {
+      "get": {
+        "tags": [
+          "illustrations"
+        ],
+        "summary": "Get Illustration Config",
+        "description": "Get illustration configuration settings.\nTells the frontend whether to use client-side storage for illustrations.",
+        "operationId": "get_illustration_config_api_v1_illustrations_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/illustrations/{job_id}/generate": {
       "post": {
         "tags": [
@@ -1403,7 +1423,7 @@
           "illustrations"
         ],
         "summary": "Get Illustration Prompt",
-        "description": "Get the illustration for a specific segment.\n\nReturns the generated image if available, otherwise returns the prompt JSON file.",
+        "description": "Get the illustration for a specific segment.\n\nReturns the generated image if available, otherwise returns the prompt JSON file.\nFor client-side storage mode, returns base64 data from job metadata.",
         "operationId": "get_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__get",
         "parameters": [
           {
@@ -5192,6 +5212,17 @@
             ],
             "title": "Validation Completed At"
           },
+          "validation_report_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation Report Path"
+          },
           "post_edit_enabled": {
             "anyOf": [
               {
@@ -5236,6 +5267,17 @@
               }
             ],
             "title": "Post Edit Completed At"
+          },
+          "post_edit_log_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Post Edit Log Path"
           },
           "illustrations_enabled": {
             "anyOf": [

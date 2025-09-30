@@ -38,10 +38,12 @@ class TranslationJob(TranslationJobBase):
     validation_sample_rate: Optional[int] = None
     quick_validation: Optional[bool] = None
     validation_completed_at: Optional[datetime.datetime] = None
+    validation_report_path: Optional[str] = None
     post_edit_enabled: Optional[bool] = None
     post_edit_status: Optional[str] = None
     post_edit_progress: Optional[int] = None
     post_edit_completed_at: Optional[datetime.datetime] = None
+    post_edit_log_path: Optional[str] = None
     
     # Illustration fields
     illustrations_enabled: Optional[bool] = None

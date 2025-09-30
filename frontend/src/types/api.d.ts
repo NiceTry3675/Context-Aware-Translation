@@ -474,6 +474,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/illustrations/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Illustration Config
+         * @description Get illustration configuration settings.
+         *     Tells the frontend whether to use client-side storage for illustrations.
+         */
+        get: operations["get_illustration_config_api_v1_illustrations_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/illustrations/{job_id}/generate": {
         parameters: {
             query?: never;
@@ -686,6 +707,7 @@ export interface paths {
          * @description Get the illustration for a specific segment.
          *
          *     Returns the generated image if available, otherwise returns the prompt JSON file.
+         *     For client-side storage mode, returns base64 data from job metadata.
          */
         get: operations["get_illustration_prompt_api_v1_illustrations__job_id__illustration__segment_index__get"];
         put?: never;
@@ -2185,6 +2207,8 @@ export interface components {
             quick_validation?: boolean | null;
             /** Validation Completed At */
             validation_completed_at?: string | null;
+            /** Validation Report Path */
+            validation_report_path?: string | null;
             /** Post Edit Enabled */
             post_edit_enabled?: boolean | null;
             /** Post Edit Status */
@@ -2193,6 +2217,8 @@ export interface components {
             post_edit_progress?: number | null;
             /** Post Edit Completed At */
             post_edit_completed_at?: string | null;
+            /** Post Edit Log Path */
+            post_edit_log_path?: string | null;
             /** Illustrations Enabled */
             illustrations_enabled?: boolean | null;
             /** Illustrations Status */
@@ -2921,6 +2947,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_illustration_config_api_v1_illustrations_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
