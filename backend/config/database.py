@@ -15,7 +15,15 @@ if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
         echo=False
     )
 else:
-    engine = create_engine(SQLALCHEMY_DATABASE_URL)
+    # PostgreSQL with connection pooling for production
+    engine = create_engine(
+        SQLALCHEMY_DATABASE_URL,
+        pool_size=settings.pool_size,
+        max_overflow=settings.max_overflow,
+        pool_pre_ping=settings.pool_pre_ping,
+        pool_recycle=3600,  # Recycle connections after 1 hour
+        echo=False
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

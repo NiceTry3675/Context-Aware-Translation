@@ -670,8 +670,15 @@ def regenerate_single_illustration(
             enable_caching=False,  # Don't use cache for regeneration
             model_name=model_name,
             client=client,
+            output_dir=settings.job_storage_base,
             usage_callback=usage_collector.record_event,
         )
+
+        # Ensure the job metadata points to the absolute illustrations directory.
+        generator_output_dir = str(generator.job_output_dir)
+        if job.illustrations_directory != generator_output_dir:
+            job.illustrations_directory = generator_output_dir
+            db.commit()
         
         # Prepare a text model for world/atmosphere analysis if needed
         try:

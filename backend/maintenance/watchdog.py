@@ -31,9 +31,15 @@ def mark_stalled_jobs(
     now = datetime.utcnow()
     cutoff = now - timedelta(hours=lookback_hours)
 
-    # naive scan: get recent jobs via raw query to the model to avoid adding new repository calls
+    # Query with limit to prevent unbounded result sets in production
     from backend.domains.translation.models import TranslationJob
-    jobs = db.query(TranslationJob).filter(TranslationJob.created_at >= cutoff).all()
+    jobs = (
+        db.query(TranslationJob)
+        .filter(TranslationJob.created_at >= cutoff)
+        .order_by(TranslationJob.created_at.desc())
+        .limit(1000)  # Prevent memory issues with large datasets
+        .all()
+    )
 
     stalled = {"validation": 0, "post_edit": 0, "illustrations": 0}
 
