@@ -12,6 +12,7 @@ from enum import Enum
 
 class IllustrationStyle(str, Enum):
     """Enumeration of available illustration styles."""
+    DEFAULT = "default"
     REALISTIC = "realistic"
     ARTISTIC = "artistic"
     WATERCOLOR = "watercolor"
@@ -111,7 +112,7 @@ class IllustrationConfig(BaseModel):
         description="Whether illustration generation is enabled"
     )
     style: IllustrationStyle = Field(
-        default=IllustrationStyle.DIGITAL_ART,
+        default=IllustrationStyle.DEFAULT,
         description="The artistic style for generated illustrations"
     )
     style_hints: str = Field(

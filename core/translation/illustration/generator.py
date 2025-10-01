@@ -146,7 +146,8 @@ class IllustrationGenerator:
                                  context: Optional[str] = None,
                                  style_hints: str = "",
                                  glossary: Optional[Dict[str, str]] = None,
-                                 world_atmosphere=None) -> str:
+                                 world_atmosphere=None,
+                                 style: Optional[str] = None) -> str:
         """
         Create an illustration prompt from segment text.
 
@@ -156,12 +157,13 @@ class IllustrationGenerator:
             style_hints: Style preferences for the illustration
             glossary: Optional glossary for character/place names
             world_atmosphere: World and atmosphere analysis data
+            style: Illustration style (realistic, watercolor, anime, etc.)
 
         Returns:
             Generated prompt for image generation
         """
         prompt = self.prompt_builder.create_illustration_prompt(
-            segment_text, context, style_hints, glossary, world_atmosphere
+            segment_text, context, style_hints, glossary, world_atmosphere, style
         )
 
         # Log prompt generation details if logger available
@@ -193,7 +195,8 @@ class IllustrationGenerator:
     def create_character_base_prompt(self,
                                     profile: Dict[str, Any],
                                     style_hints: str = "",
-                                    context_text: Optional[str] = None) -> str:
+                                    context_text: Optional[str] = None,
+                                    style: Optional[str] = None) -> str:
         """
         Build a minimal prompt anchored on the protagonist's name only.
 
@@ -201,19 +204,21 @@ class IllustrationGenerator:
             profile: Character profile dictionary
             style_hints: Optional style hints
             context_text: Optional context text for world inference
+            style: Illustration style (realistic, watercolor, anime, etc.)
 
         Returns:
             Character base prompt
         """
         return self.prompt_builder.create_character_base_prompt(
-            profile, style_hints, context_text
+            profile, style_hints, context_text, style
         )
 
     def create_scene_prompt_with_profile(self,
                                         segment_text: str,
                                         context: Optional[str],
                                         profile: Dict[str, Any],
-                                        style_hints: str = "") -> str:
+                                        style_hints: str = "",
+                                        style: Optional[str] = None) -> str:
         """
         Compose a richer scene prompt with profile lock and cinematic details.
 
@@ -222,12 +227,13 @@ class IllustrationGenerator:
             context: Previous context
             profile: Character profile for consistency
             style_hints: Optional style hints
+            style: Illustration style (realistic, watercolor, anime, etc.)
 
         Returns:
             Scene prompt with character consistency
         """
         return self.prompt_builder.create_scene_prompt_with_profile(
-            segment_text, context, profile, style_hints
+            segment_text, context, profile, style_hints, style
         )
 
     def generate_illustration(self,
@@ -241,7 +247,8 @@ class IllustrationGenerator:
                             reference_image: Optional[Tuple[bytes, str]] = None,
                             max_retries: int = 3,
                             character_styles: Optional[Dict[str, str]] = None,
-                            return_base64: bool = False) -> Tuple[Optional[Any], Optional[str]]:
+                            return_base64: bool = False,
+                            style: Optional[str] = None) -> Tuple[Optional[Any], Optional[str]]:
         """
         Generate an illustration for a text segment using Gemini's image generation.
 
@@ -257,6 +264,7 @@ class IllustrationGenerator:
             max_retries: Maximum number of retry attempts
             character_styles: Optional character styles dictionary
             return_base64: If True, returns base64 data dict instead of file path
+            style: Illustration style (realistic, watercolor, anime, etc.)
 
         Returns:
             If return_base64 is False: Tuple of (image_file_path, prompt_used) or (None, None) on failure
@@ -293,7 +301,7 @@ class IllustrationGenerator:
             prompt = custom_prompt
         else:
             prompt = self.create_illustration_prompt(
-                segment_text, context, style_hints, glossary, world_atmosphere
+                segment_text, context, style_hints, glossary, world_atmosphere, style
             )
 
         # Generate the illustration

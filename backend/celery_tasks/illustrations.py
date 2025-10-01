@@ -405,7 +405,8 @@ def generate_illustrations_task(
                         segment_text=segment['text'],
                         context=context_text,
                         profile=character_profile,
-                        style_hints=config.style_hints
+                        style_hints=config.style_hints,
+                        style=config.style
                     )
                     print(f"[ILLUSTRATIONS TASK] Created custom prompt: {custom_prompt[:100]}...")
                 except Exception as e:
@@ -461,12 +462,15 @@ def generate_illustrations_task(
                     if created_now:
                         world_data_dirty = True
 
-            print(f"[ILLUSTRATIONS TASK] World atmosphere data available: {world_atmosphere_data is not None}")
             if world_atmosphere_data:
+                print(f"[ILLUSTRATIONS TASK] ✓ World atmosphere analysis available for segment {segment['index']}")
                 keys = list(world_atmosphere_data.keys()) if isinstance(world_atmosphere_data, dict) else []
                 print(f"[ILLUSTRATIONS TASK] World atmosphere keys: {keys}")
                 if segment_summary:
                     print(f"[ILLUSTRATIONS TASK] Segment summary: {segment_summary[:100]}...")
+            else:
+                print(f"[ILLUSTRATIONS TASK] ✗ World atmosphere analysis NOT available for segment {segment['index']}")
+                print(f"[ILLUSTRATIONS TASK] Will use basic prompt without detailed scene analysis")
 
             try:
                 # Check if we should return base64 data instead of saving to disk
@@ -480,7 +484,8 @@ def generate_illustrations_task(
                     world_atmosphere=world_atmosphere_data,
                     custom_prompt=effective_prompt,
                     reference_image=(ref_tuple if use_reference else None),
-                    return_base64=return_base64
+                    return_base64=return_base64,
+                    style=config.style
                 )
 
                 print(f"[ILLUSTRATIONS TASK] Completed generation for segment {segment['index']}")
@@ -501,7 +506,8 @@ def generate_illustrations_task(
                 'segment_index': segment['index'],
                 'prompt': prompt,
                 'success': illustration_result is not None,
-                'reference_used': bool(use_reference)
+                'reference_used': bool(use_reference),
+                'world_atmosphere_used': world_atmosphere_data is not None  # Track if analysis was used
             }
 
             if return_base64 and illustration_result and isinstance(illustration_result, dict):
@@ -736,7 +742,13 @@ def regenerate_single_illustration(
             world_atmosphere_data = extract_world_atmosphere_dict(segment)
             created_now = False
 
-        print(f"[REGENERATE ILLUSTRATION] World atmosphere data available: {world_atmosphere_data is not None}")
+        if world_atmosphere_data:
+            status = "newly created" if created_now else "from cache"
+            print(f"[REGENERATE ILLUSTRATION] ✓ World atmosphere analysis available for segment {segment_index} ({status})")
+        else:
+            print(f"[REGENERATE ILLUSTRATION] ✗ World atmosphere analysis NOT available for segment {segment_index}")
+            print(f"[REGENERATE ILLUSTRATION] Analysis may have failed due to: API error, safety filter, or empty response")
+            print(f"[REGENERATE ILLUSTRATION] Will use basic prompt without detailed scene analysis")
 
         if created_now:
             job.translation_segments = segments
@@ -748,12 +760,14 @@ def regenerate_single_illustration(
 
         # Build a consistency prompt when profile data exists
         has_profile = bool(job.character_profile)
+        illustration_style = job.illustrations_config.get('style') if job.illustrations_config else None
         if has_profile:
             profile_locked_prompt = generator.create_scene_prompt_with_profile(
                 segment_text=segment.get('source_text') or segment.get('text', ''),
                 context=None,
                 profile=job.character_profile,
-                style_hints=style_hints or (job.illustrations_config.get('style_hints', '') if job.illustrations_config else '')
+                style_hints=style_hints or (job.illustrations_config.get('style_hints', '') if job.illustrations_config else ''),
+                style=illustration_style
             )
 
             if final_custom_prompt is None:
@@ -805,7 +819,8 @@ def regenerate_single_illustration(
             world_atmosphere=world_atmosphere_data,
             custom_prompt=final_custom_prompt,
             reference_image=(ref_tuple if allow_ref else None),
-            return_base64=return_base64
+            return_base64=return_base64,
+            style=illustration_style
         )
 
         # Update job metadata
@@ -819,6 +834,7 @@ def regenerate_single_illustration(
                     ill['prompt'] = prompt
                     ill['success'] = True
                     ill['reference_used'] = bool(allow_ref)
+                    ill['world_atmosphere_used'] = world_atmosphere_data is not None  # Track if analysis was used
                     if return_base64 and isinstance(illustration_result, dict):
                         ill['type'] = 'base64_image' if illustration_result.get('type') == 'image' else 'prompt'
                         ill['illustration_data'] = illustration_result
@@ -836,7 +852,8 @@ def regenerate_single_illustration(
                     'segment_index': segment_index,
                     'prompt': prompt,
                     'success': True,
-                    'reference_used': bool(allow_ref)
+                    'reference_used': bool(allow_ref),
+                    'world_atmosphere_used': world_atmosphere_data is not None  # Track if analysis was used
                 }
                 if return_base64 and isinstance(illustration_result, dict):
                     entry['type'] = 'base64_image' if illustration_result.get('type') == 'image' else 'prompt'

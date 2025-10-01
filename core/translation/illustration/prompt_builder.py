@@ -20,12 +20,40 @@ class IllustrationPromptBuilder:
         """
         self.visual_extractor = visual_extractor
 
+    def _get_style_description(self, style: Optional[str]) -> str:
+        """
+        Convert style enum value to descriptive prompt text.
+
+        Args:
+            style: IllustrationStyle value (e.g., 'realistic', 'watercolor', 'anime')
+
+        Returns:
+            Style description for prompt
+        """
+        if not style or style == 'default':
+            return "High quality, detailed"
+
+        style_lower = str(style).lower()
+        style_map = {
+            'realistic': "Photorealistic render, highly detailed textures, natural lighting, lifelike, professional photography quality",
+            'artistic': "Artistic illustration with painterly style, expressive brushwork, high quality, detailed background",
+            'watercolor': "Watercolor painting style with soft blending, translucent colors, high quality, detailed background",
+            'digital_art': "Digital art illustration with clean lines, vibrant colors, high quality, detailed background",
+            'sketch': "Sketch art style with pencil or ink lines, loose artistic rendering, high quality",
+            'anime': "Anime/manga illustration style with clean linework, vibrant colors, high quality, detailed background",
+            'vintage': "Vintage art style with retro aesthetics, muted tones, high quality, detailed background",
+            'minimalist': "Minimalist illustration with simple shapes, limited color palette, clean composition, high quality"
+        }
+
+        return style_map.get(style_lower, "High quality, detailed")
+
     def create_illustration_prompt(self,
                                  segment_text: str,
                                  context: Optional[str] = None,
                                  style_hints: str = "",
                                  glossary: Optional[Dict[str, str]] = None,
-                                 world_atmosphere=None) -> str:
+                                 world_atmosphere=None,
+                                 style: Optional[str] = None) -> str:
         """
         Create an illustration prompt from segment text.
 
@@ -35,6 +63,7 @@ class IllustrationPromptBuilder:
             style_hints: Style preferences for the illustration
             glossary: Optional glossary for character/place names
             world_atmosphere: World and atmosphere analysis data
+            style: Illustration style (realistic, watercolor, anime, etc.)
 
         Returns:
             Generated prompt for image generation
@@ -127,8 +156,9 @@ class IllustrationPromptBuilder:
         if style_hints:
             prompt = f"{style_hints}. {prompt}"
 
-        # Add artistic style at the end
-        prompt += ". Digital illustration in anime/manga style, high quality, detailed background, vibrant colors"
+        # Add artistic style at the end (using style parameter)
+        style_description = self._get_style_description(style)
+        prompt += f". {style_description}"
 
         # Make sure prompt is safe and appropriate
         original_prompt = prompt
@@ -143,7 +173,8 @@ class IllustrationPromptBuilder:
     def create_character_base_prompt(self,
                                     profile: Dict[str, Any],
                                     style_hints: str = "",
-                                    context_text: Optional[str] = None) -> str:
+                                    context_text: Optional[str] = None,
+                                    style: Optional[str] = None) -> str:
         """
         Build a minimal prompt anchored on the protagonist's name only.
 
@@ -153,6 +184,7 @@ class IllustrationPromptBuilder:
             profile: Character profile dictionary
             style_hints: Optional style hints
             context_text: Optional context text for world inference
+            style: Illustration style (realistic, watercolor, anime, etc.)
 
         Returns:
             Character base prompt
@@ -178,14 +210,27 @@ class IllustrationPromptBuilder:
             f"Character design portrait of {name}. Do not include any background."
         )
 
-        # High-level style preference only
-        style_pref = str(profile.get('style') or '').lower()
-        if style_pref == 'anime':
+        # Use style parameter if provided, otherwise fall back to profile style
+        effective_style = style or profile.get('style')
+        style_pref = str(effective_style or '').lower()
+
+        # Apply style-specific description for character design
+        if style_pref == 'default' or not style_pref:
+            parts.append("Character design, high quality")
+        elif style_pref == 'anime':
             parts.append("Anime character design, clean linework, high quality")
-        elif style_pref in ['watercolor', 'sketch', 'realistic', 'artistic', 'digital_art', 'vintage', 'minimalist']:
+        elif style_pref == 'realistic':
+            parts.append("Photorealistic character portrait, lifelike details, professional photography, studio lighting")
+        elif style_pref == 'watercolor':
+            parts.append("Watercolor character portrait, soft colors, high quality")
+        elif style_pref == 'sketch':
+            parts.append("Sketch character design, pencil or ink lines, high quality")
+        elif style_pref == 'artistic':
+            parts.append("Artistic character portrait, painterly style, high quality")
+        elif style_pref in ['digital_art', 'vintage', 'minimalist']:
             parts.append("Digital illustration character design, high quality, consistent lighting")
         else:
-            parts.append("Digital illustration character design, high quality, consistent lighting")
+            parts.append("Character design, high quality")
 
         return ". ".join(parts)
 
@@ -193,7 +238,8 @@ class IllustrationPromptBuilder:
                                         segment_text: str,
                                         context: Optional[str],
                                         profile: Dict[str, Any],
-                                        style_hints: str = "") -> str:
+                                        style_hints: str = "",
+                                        style: Optional[str] = None) -> str:
         """
         Compose a richer scene prompt with profile lock and cinematic details.
 
@@ -206,6 +252,7 @@ class IllustrationPromptBuilder:
             context: Previous context
             profile: Character profile for consistency
             style_hints: Optional style hints
+            style: Illustration style (realistic, watercolor, anime, etc.)
 
         Returns:
             Scene prompt with character consistency
@@ -270,7 +317,8 @@ class IllustrationPromptBuilder:
         # Style hints come first to bias rendering
         prefix = (style_hints + ". ") if style_hints else ""
         scene_prompt = f"{prefix}{lock_clause}. {base_scene}. No text or watermark in the image. Cinematic composition, high quality."
-        # Prefer a general art direction but avoid over-constraining exact style engines
-        scene_prompt += " Digital illustration, detailed background, consistent lighting"
+        # Apply style description based on config
+        style_description = self._get_style_description(style)
+        scene_prompt += f". {style_description}"
 
         return scene_prompt

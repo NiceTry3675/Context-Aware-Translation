@@ -29,6 +29,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import StorageIcon from '@mui/icons-material/Storage';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useAuth } from '@clerk/nextjs';
 import { buildOptionalAuthHeader, clearCachedClerkToken, getCachedClerkToken } from '../utils/authToken';
 import { illustrationStorage } from '../utils/illustrationStorage';
@@ -53,6 +54,7 @@ interface Illustration {
   type?: string;  // 'image' or 'prompt'
   reference_used?: boolean;
   illustration_data?: IllustrationData;
+  world_atmosphere_used?: boolean;  // Track if text analysis was used
 }
 
 type PromptPayload = IllustrationData | { prompt: string };
@@ -637,16 +639,38 @@ export default function IllustrationViewer({
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 3 }}>
         {illustrations.map((illustration) => (
-          <Card key={illustration.segment_index} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <Card key={illustration.segment_index} sx={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
               {loadedImages[illustration.segment_index] ? (
-                <CardMedia
-                  component="img"
-                  height="200"
-                  image={loadedImages[illustration.segment_index]}
-                  alt={`Segment ${illustration.segment_index} illustration`}
-                  sx={{ cursor: 'pointer', objectFit: 'cover' }}
-                  onClick={() => handleImageClick(illustration)}
-                />
+                <>
+                  <CardMedia
+                    component="img"
+                    height="200"
+                    image={loadedImages[illustration.segment_index]}
+                    alt={`Segment ${illustration.segment_index} illustration`}
+                    sx={{ cursor: 'pointer', objectFit: 'cover' }}
+                    onClick={() => handleImageClick(illustration)}
+                  />
+                  {illustration.world_atmosphere_used === false && (
+                    <Tooltip title="기본 프롬프트 사용됨 (검열, API 제한 등으로 인해 텍스트 분석 실패)" arrow>
+                      <InfoOutlinedIcon
+                        sx={{
+                          fontSize: 16,
+                          opacity: 0.4,
+                          position: 'absolute',
+                          bottom: 8,
+                          right: 8,
+                          color: 'white',
+                          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                          borderRadius: '50%',
+                          padding: '2px',
+                          '&:hover': {
+                            opacity: 0.8,
+                          }
+                        }}
+                      />
+                    </Tooltip>
+                  )}
+                </>
               ) : loadedPrompts[illustration.segment_index] ? (
                 <Box
                   sx={{
@@ -712,6 +736,11 @@ export default function IllustrationViewer({
                   {/* Prompt editing section */}
                   {editingPrompt === illustration.segment_index ? (
                     <Box sx={{ mt: 1 }}>
+                      {illustration.world_atmosphere_used === false && (
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontStyle: 'italic' }}>
+                          ℹ️ 이 삽화는 기본 프롬프트로 생성되었습니다 (검열, API 제한 등으로 인해 텍스트 분석 실패)
+                        </Typography>
+                      )}
                       <TextField
                         fullWidth
                         multiline

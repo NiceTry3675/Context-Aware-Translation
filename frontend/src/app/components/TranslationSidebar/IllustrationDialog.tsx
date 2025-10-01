@@ -44,7 +44,7 @@ export default function IllustrationDialog({
   open,
   onClose,
   onConfirm,
-  style = 'digital_art',
+  style = 'default',
   onStyleChange,
   styleHints = '',
   onStyleHintsChange,
@@ -96,6 +96,7 @@ export default function IllustrationDialog({
               label="삽화 스타일"
               onChange={(e: SelectChangeEvent) => onStyleChange?.(e.target.value)}
             >
+              <MenuItem value="default">미지정 (Default)</MenuItem>
               <MenuItem value="realistic">사실적 (Realistic)</MenuItem>
               <MenuItem value="artistic">예술적 (Artistic)</MenuItem>
               <MenuItem value="watercolor">수채화 (Watercolor)</MenuItem>

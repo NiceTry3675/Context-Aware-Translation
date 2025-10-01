@@ -97,7 +97,8 @@ class CharacterIllustrationGenerator:
             prompt = self.prompt_builder.create_character_base_prompt(
                 profile,
                 style_hints=(style_hints + f". {vh}").strip(),
-                context_text=context_text
+                context_text=context_text,
+                style=profile.get('style')  # Pass style from profile
             )
 
             # Log the character base prompt
