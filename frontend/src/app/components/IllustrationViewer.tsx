@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box,
   Card,
@@ -19,7 +19,6 @@ import {
   Chip,
   Stack,
   TextField,
-  Collapse,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -31,11 +30,20 @@ import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import StorageIcon from '@mui/icons-material/Storage';
 import { useAuth } from '@clerk/nextjs';
-import { getCachedClerkToken } from '../utils/authToken';
+import { buildOptionalAuthHeader, clearCachedClerkToken, getCachedClerkToken } from '../utils/authToken';
 import { illustrationStorage } from '../utils/illustrationStorage';
 import IllustrationStorageManager from './IllustrationStorageManager';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+interface IllustrationData {
+  type?: 'image' | 'base64_image' | 'prompt' | string;
+  data?: string;
+  mime_type?: string;
+  prompt?: string;
+  timestamp?: number;
+  [key: string]: unknown;
+}
 
 interface Illustration {
   segment_index: number;
@@ -44,7 +52,10 @@ interface Illustration {
   success: boolean;
   type?: string;  // 'image' or 'prompt'
   reference_used?: boolean;
+  illustration_data?: IllustrationData;
 }
+
+type PromptPayload = IllustrationData | { prompt: string };
 
 interface IllustrationViewerProps {
   jobId: string;
@@ -65,16 +76,18 @@ export default function IllustrationViewer({
   onGenerateIllustrations,
   onRegenerateIllustration,
   onDeleteIllustration,
-  onIllustrationsUpdate,
+  onIllustrationsUpdate: _onIllustrationsUpdate,
 }: IllustrationViewerProps) {
   const { getToken } = useAuth();
   const [selectedImage, setSelectedImage] = useState<Illustration | null>(null);
   const [loading, setLoading] = useState(false);
-  const [loadedImages, setLoadedImages] = useState<{ [key: number]: string }>({});
-  const [loadedPrompts, setLoadedPrompts] = useState<{ [key: number]: any }>({})
+  const [loadedImages, setLoadedImages] = useState<Record<number, string>>({});
+  const [loadedPrompts, setLoadedPrompts] = useState<Record<number, PromptPayload>>({});
+  // Tracks version signatures (not literal timestamps) to detect fresh data
   const [imageTimestamps, setImageTimestamps] = useState<{ [key: number]: number }>({});
   const [promptTimestamps, setPromptTimestamps] = useState<{ [key: number]: number }>({});
   const [useClientStorage, setUseClientStorage] = useState<boolean | null>(null);
+  const pendingFetchRef = useRef<Set<number>>(new Set());
 
   // New states for prompt editing functionality
   const [editingPrompt, setEditingPrompt] = useState<number | null>(null);
@@ -104,25 +117,32 @@ export default function IllustrationViewer({
       return; // Wait for config to be loaded
     }
 
+    const computeSignature = (value: string | null | undefined): number => {
+      if (!value) return 0;
+      let hash = 0;
+      const step = Math.max(1, Math.floor(value.length / 64));
+      for (let i = 0; i < value.length; i += step) {
+        hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+      }
+      return hash;
+    };
+
     let mergedImages = { ...loadedImages };
     let mergedPrompts = { ...loadedPrompts };
-    let mergedImageTimestamps = { ...imageTimestamps };
-    let mergedPromptTimestamps = { ...promptTimestamps };
+    let mergedImageVersions = { ...imageTimestamps };
+    let mergedPromptVersions = { ...promptTimestamps };
     let imagesChanged = false;
     let promptsChanged = false;
 
-    // Check if we should use client-side storage
     if (useClientStorage) {
-      // Load from IndexedDB first
       const storedIllustrations = await illustrationStorage.getJobIllustrations(jobId);
 
       for (const stored of storedIllustrations) {
         const segmentIndex = stored.segmentIndex;
-        const storedTimestamp = typeof stored.timestamp === 'number' ? stored.timestamp : Date.now();
+        const signature = computeSignature(stored.data);
 
         if (stored.type === 'image') {
-          const existingTimestamp = mergedImageTimestamps[segmentIndex] ?? 0;
-          const shouldUpdate = !mergedImages[segmentIndex] || existingTimestamp < storedTimestamp;
+          const shouldUpdate = !mergedImages[segmentIndex] || mergedImageVersions[segmentIndex] !== signature;
           if (shouldUpdate) {
             try {
               const blobUrl = illustrationStorage.base64ToBlobUrl(
@@ -130,20 +150,19 @@ export default function IllustrationViewer({
                 stored.mimeType
               );
               mergedImages = { ...mergedImages, [segmentIndex]: blobUrl };
-              mergedImageTimestamps = { ...mergedImageTimestamps, [segmentIndex]: storedTimestamp };
+              mergedImageVersions = { ...mergedImageVersions, [segmentIndex]: signature };
               imagesChanged = true;
             } catch (error) {
               console.error(`Failed to convert stored illustration ${segmentIndex} to blob:`, error);
             }
           }
         } else {
-          const existingTimestamp = mergedPromptTimestamps[segmentIndex] ?? 0;
-          const shouldUpdate = !mergedPrompts[segmentIndex] || existingTimestamp < storedTimestamp;
+          const shouldUpdate = !mergedPrompts[segmentIndex] || mergedPromptVersions[segmentIndex] !== signature;
           if (shouldUpdate) {
             try {
-              const parsed = JSON.parse(stored.data);
+              const parsed = JSON.parse(stored.data) as PromptPayload;
               mergedPrompts = { ...mergedPrompts, [segmentIndex]: parsed };
-              mergedPromptTimestamps = { ...mergedPromptTimestamps, [segmentIndex]: storedTimestamp };
+              mergedPromptVersions = { ...mergedPromptVersions, [segmentIndex]: signature };
               promptsChanged = true;
             } catch (error) {
               console.error(`Failed to parse stored prompt ${segmentIndex}:`, error);
@@ -153,142 +172,241 @@ export default function IllustrationViewer({
       }
     }
 
-    // Find illustrations that haven't been loaded yet
+    for (const ill of illustrations) {
+      if (!ill || !ill.success) continue;
+
+    const segmentIndex = ill.segment_index;
+    const inlineData = ill.illustration_data;
+      const inlineType = inlineData?.type || ill.type;
+
+      if ((inlineType === 'image' || inlineType === 'base64_image') && typeof inlineData?.data === 'string') {
+        const base64Data: string = inlineData.data;
+        const signature = computeSignature(base64Data);
+        const shouldUpdate = !mergedImages[segmentIndex] || mergedImageVersions[segmentIndex] !== signature;
+
+        if (shouldUpdate) {
+          try {
+            const blobUrl = illustrationStorage.base64ToBlobUrl(
+              base64Data,
+              inlineData?.mime_type || 'image/png'
+            );
+            mergedImages = { ...mergedImages, [segmentIndex]: blobUrl };
+            mergedImageVersions = { ...mergedImageVersions, [segmentIndex]: signature };
+            imagesChanged = true;
+          } catch (error) {
+            console.error(`Failed to convert inline illustration ${segmentIndex} to blob:`, error);
+          }
+        }
+
+        if (useClientStorage) {
+          try {
+            await illustrationStorage.storeIllustration(
+              jobId,
+              segmentIndex,
+              {
+                ...inlineData,
+                type: 'image',
+                data: base64Data,
+                mime_type: inlineData?.mime_type || 'image/png'
+              },
+              'image'
+            );
+          } catch (error) {
+            console.error(`Failed to persist inline illustration ${segmentIndex}:`, error);
+          }
+        }
+      }
+
+      const promptPayload: PromptPayload | null = (() => {
+        if (inlineData && inlineType && inlineType !== 'image' && inlineType !== 'base64_image') {
+          return inlineData as PromptPayload;
+        }
+        if (inlineData && inlineData.type === 'prompt') {
+          return inlineData as PromptPayload;
+        }
+        if (typeof inlineData?.prompt === 'string') {
+          return { prompt: inlineData.prompt };
+        }
+        if (ill.prompt) {
+          return { prompt: ill.prompt };
+        }
+        return null;
+      })();
+
+      if (promptPayload) {
+        const normalizedPrompt = promptPayload as PromptPayload;
+        const promptString = JSON.stringify(normalizedPrompt);
+        const signature = computeSignature(promptString);
+        const shouldUpdate = !mergedPrompts[segmentIndex] || mergedPromptVersions[segmentIndex] !== signature;
+
+        if (shouldUpdate) {
+          mergedPrompts = {
+            ...mergedPrompts,
+            [segmentIndex]: normalizedPrompt,
+          };
+          mergedPromptVersions = { ...mergedPromptVersions, [segmentIndex]: signature };
+          promptsChanged = true;
+        }
+
+        if (useClientStorage) {
+          try {
+            await illustrationStorage.storeIllustration(jobId, segmentIndex, normalizedPrompt, 'prompt');
+          } catch (error) {
+            console.error(`Failed to persist inline prompt ${segmentIndex}:`, error);
+          }
+        }
+      }
+    }
+
     const missingIllustrations = illustrations.filter(ill => {
       if (!ill.success) return false;
 
-      const hasImage = mergedImages[ill.segment_index];
-      const hasPrompt = mergedPrompts[ill.segment_index];
       const expectsImage = ill.type === 'base64_image' || ill.type === 'image' ||
         (typeof ill.illustration_path === 'string' && ill.illustration_path.endsWith('.png'));
 
+      const hasImage = !!mergedImages[ill.segment_index];
+      const hasPrompt = !!mergedPrompts[ill.segment_index];
+      const hasInline = Boolean(ill.illustration_data?.data);
+      const isPending = pendingFetchRef.current.has(ill.segment_index);
+
       if (expectsImage) {
-        return !hasImage;
+        return !hasImage && !hasInline && !isPending;
       }
 
-      return !hasPrompt;
+      return !hasPrompt && !isPending;
     });
 
     if (missingIllustrations.length === 0) {
       if (imagesChanged) {
         setLoadedImages(mergedImages);
-        setImageTimestamps(mergedImageTimestamps);
+        setImageTimestamps(mergedImageVersions);
       }
       if (promptsChanged) {
         setLoadedPrompts(mergedPrompts);
-        setPromptTimestamps(mergedPromptTimestamps);
-      }
-      return; // No new illustrations to load
-    }
-
-    console.log(`Loading ${missingIllustrations.length} new illustrations out of ${illustrations.length} total`);
-
-    const token = await getCachedClerkToken(getToken);
-    if (!token) {
-      console.warn('Failed to acquire authentication token for illustration fetch.');
-      if (imagesChanged) {
-        setLoadedImages(mergedImages);
-        setImageTimestamps(mergedImageTimestamps);
-      }
-      if (promptsChanged) {
-        setLoadedPrompts(mergedPrompts);
-        setPromptTimestamps(mergedPromptTimestamps);
+        setPromptTimestamps(mergedPromptVersions);
       }
       return;
     }
 
-    const illustrationPromises = missingIllustrations.map(async (ill) => {
-      try {
-        const response = await fetch(
-          `${API_BASE_URL}/api/v1/illustrations/${jobId}/illustration/${ill.segment_index}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        if (response.ok) {
-          // Check if response is image or JSON
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('image')) {
-            // It's an image file (server-side storage mode)
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            return { index: ill.segment_index, type: 'image' as const, data: url };
-          } else {
-            // It's JSON - could be base64 data or prompt
-            const data = await response.json();
+    console.log(`Loading ${missingIllustrations.length} new illustrations out of ${illustrations.length} total`);
 
-            if (useClientStorage && data.type === 'image' && data.data) {
-              // It's base64 image data - store in IndexedDB
-              try {
-                await illustrationStorage.storeIllustration(
-                  jobId,
-                  ill.segment_index,
-                  data,
-                  'image'
-                );
-                // Convert to blob URL for display
-                const blobUrl = illustrationStorage.base64ToBlobUrl(
-                  data.data,
-                  data.mime_type || 'image/png'
-                );
-                return { index: ill.segment_index, type: 'image' as const, data: blobUrl };
-              } catch (error) {
-                console.error(`Failed to store illustration ${ill.segment_index} in IndexedDB:`, error);
-                // Fall back to displaying directly from base64
-                const blobUrl = illustrationStorage.base64ToBlobUrl(
-                  data.data,
-                  data.mime_type || 'image/png'
-                );
-                return { index: ill.segment_index, type: 'image' as const, data: blobUrl };
-              }
-            } else {
-              // It's prompt data - store if client storage is enabled
-              if (useClientStorage) {
-                try {
-                  await illustrationStorage.storeIllustration(
-                    jobId,
-                    ill.segment_index,
-                    data,
-                    'prompt'
-                  );
-                } catch (error) {
-                  console.error(`Failed to store prompt ${ill.segment_index} in IndexedDB:`, error);
-                }
-              }
-              return { index: ill.segment_index, type: 'prompt' as const, data };
-            }
+    let authHeaders = buildOptionalAuthHeader();
+    let attemptedRefresh = false;
+
+    const fetchWithAuth = async (segmentIndex: number): Promise<Response | null> => {
+      const url = `${API_BASE_URL}/api/v1/illustrations/${jobId}/illustration/${segmentIndex}`;
+
+      const requestWithCurrentAuth = () =>
+        fetch(url, authHeaders.Authorization ? { headers: authHeaders } : undefined);
+
+      try {
+        let response = await requestWithCurrentAuth();
+
+        if (response.status === 401 && !attemptedRefresh) {
+          attemptedRefresh = true;
+          clearCachedClerkToken();
+          const freshToken = await getCachedClerkToken(getToken);
+          if (freshToken) {
+            authHeaders = { Authorization: `Bearer ${freshToken}` };
+            response = await fetch(url, { headers: authHeaders });
           }
         }
+
+        if (response.status === 401) {
+          console.warn(`Unauthorized fetching illustration ${segmentIndex}; skipping.`);
+          return null;
+        }
+
+        return response;
       } catch (error) {
-        console.error(`Failed to load illustration ${ill.segment_index}:`, error);
+        console.error(`Failed to load illustration ${segmentIndex}:`, error);
+        return null;
       }
-      return null;
+    };
+
+    missingIllustrations.forEach(ill => pendingFetchRef.current.add(ill.segment_index));
+
+    const illustrationPromises = missingIllustrations.map(async (ill) => {
+      try {
+        const response = await fetchWithAuth(ill.segment_index);
+        if (!response || !response.ok) {
+          return null;
+        }
+
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('image')) {
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          return { index: ill.segment_index, type: 'image' as const, data: url };
+        }
+
+        const data = await response.json();
+
+        if (useClientStorage && data.type === 'image' && data.data) {
+          try {
+            await illustrationStorage.storeIllustration(
+              jobId,
+              ill.segment_index,
+              data,
+              'image'
+            );
+            const blobUrl = illustrationStorage.base64ToBlobUrl(
+              data.data,
+              data.mime_type || 'image/png'
+            );
+            return { index: ill.segment_index, type: 'image' as const, data: blobUrl };
+          } catch (error) {
+            console.error(`Failed to store illustration ${ill.segment_index} in IndexedDB:`, error);
+            const blobUrl = illustrationStorage.base64ToBlobUrl(
+              data.data,
+              data.mime_type || 'image/png'
+            );
+            return { index: ill.segment_index, type: 'image' as const, data: blobUrl };
+          }
+        }
+
+        if (useClientStorage) {
+          try {
+            await illustrationStorage.storeIllustration(
+              jobId,
+              ill.segment_index,
+              data,
+              'prompt'
+            );
+          } catch (error) {
+            console.error(`Failed to store prompt ${ill.segment_index} in IndexedDB:`, error);
+          }
+        }
+
+        return { index: ill.segment_index, type: 'prompt' as const, data };
+      } finally {
+        pendingFetchRef.current.delete(ill.segment_index);
+      }
     });
 
     const results = await Promise.all(illustrationPromises);
 
     results.forEach((result) => {
       if (!result) return;
+
       if (result.type === 'image') {
         mergedImages = { ...mergedImages, [result.index]: result.data };
-        mergedImageTimestamps = { ...mergedImageTimestamps, [result.index]: Date.now() };
+        mergedImageVersions = { ...mergedImageVersions, [result.index]: Date.now() };
         imagesChanged = true;
       } else {
         mergedPrompts = { ...mergedPrompts, [result.index]: result.data };
-        mergedPromptTimestamps = { ...mergedPromptTimestamps, [result.index]: Date.now() };
+        mergedPromptVersions = { ...mergedPromptVersions, [result.index]: Date.now() };
         promptsChanged = true;
       }
     });
 
     if (imagesChanged) {
       setLoadedImages(mergedImages);
-      setImageTimestamps(mergedImageTimestamps);
+      setImageTimestamps(mergedImageVersions);
     }
     if (promptsChanged) {
       setLoadedPrompts(mergedPrompts);
-      setPromptTimestamps(mergedPromptTimestamps);
+      setPromptTimestamps(mergedPromptVersions);
     }
   }, [getToken, illustrations, jobId, imageTimestamps, loadedImages, loadedPrompts, promptTimestamps, useClientStorage]);
 
@@ -297,7 +415,7 @@ export default function IllustrationViewer({
     if (jobId && illustrations.length > 0) {
       loadIllustrations();
     }
-  }, [jobId, illustrations.length, loadIllustrations]);
+  }, [jobId, illustrations, loadIllustrations]);
 
   const handleDownload = (illustration: Illustration) => {
     // Check if we have an image first

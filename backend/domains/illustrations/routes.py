@@ -586,7 +586,6 @@ async def get_illustration_prompt(
         TranslationJob.id == job_id,
         TranslationJob.owner_id == current_user.id
     ).first()
-
     if not job:
         raise HTTPException(status_code=404, detail="Translation job not found")
 
