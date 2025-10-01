@@ -207,16 +207,16 @@ class DynamicConfigBuilder:
                 schema = make_world_atmosphere_schema()
                 response = self.model.generate_structured(prompt, schema)
                 if not response:
-                    print("Warning: World atmosphere analysis returned empty payload; skipping.")
+                    print(f"[WORLD ATMOSPHERE] Analysis returned empty payload for segment {segment_index} (Job: {job_base_filename})")
+                    print(f"[WORLD ATMOSPHERE] Segment text length: {len(segment_text)} chars")
                     return None
 
                 try:
                     world_atmosphere = parse_world_atmosphere_response(response)
                 except ValidationError as validation_error:
-                    print(
-                        "Warning: World atmosphere analysis produced invalid payload; "
-                        f"skipping. Details: {validation_error}"
-                    )
+                    print(f"[WORLD ATMOSPHERE] Analysis produced invalid payload for segment {segment_index} (Job: {job_base_filename})")
+                    print(f"[WORLD ATMOSPHERE] Validation error: {validation_error}")
+                    print(f"[WORLD ATMOSPHERE] Response type: {type(response)}")
                     return None
 
                 # Validate that we got a proper summary, not raw text
@@ -226,10 +226,11 @@ class DynamicConfigBuilder:
                         world_atmosphere.segment_summary[:100] in segment_text):
                         raise ValueError(f"World atmosphere analysis failed: segment_summary contains raw text instead of a summary. Length: {len(world_atmosphere.segment_summary)}")
 
+                print(f"[WORLD ATMOSPHERE] Analysis succeeded for segment {segment_index} (Job: {job_base_filename})")
                 return world_atmosphere
             else:
                 # Model doesn't support structured output (e.g., OpenRouter)
-                print(f"Warning: Model {type(self.model).__name__} doesn't support structured output. Skipping world atmosphere analysis.")
+                print(f"[WORLD ATMOSPHERE] Model {type(self.model).__name__} doesn't support structured output. Skipping analysis.")
                 return None
         except ProhibitedException as e:
             log_path = prohibited_content_logger.log_simple_prohibited_content(
@@ -241,8 +242,12 @@ class DynamicConfigBuilder:
                 segment_index=segment_index,
                 context={"previous_context": previous_context, "glossary": glossary_str}
             )
-            print(f"Warning: World atmosphere analysis blocked by safety settings. Log saved to: {log_path}")
+            print(f"[WORLD ATMOSPHERE] Analysis blocked by safety settings for segment {segment_index} (Job: {job_base_filename})")
+            print(f"[WORLD ATMOSPHERE] Prohibited content log saved to: {log_path}")
+            print(f"[WORLD ATMOSPHERE] Reason: Content safety filter (possible violence, adult content, or policy violation)")
             return None
         except Exception as e:
-            print(f"ERROR: World atmosphere analysis failed: {e}")
+            print(f"[WORLD ATMOSPHERE] Analysis failed for segment {segment_index} (Job: {job_base_filename})")
+            print(f"[WORLD ATMOSPHERE] Error type: {type(e).__name__}")
+            print(f"[WORLD ATMOSPHERE] Error details: {e}")
             raise  # Re-raise the exception to make it fail properly

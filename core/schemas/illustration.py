@@ -12,6 +12,7 @@ from enum import Enum
 
 class IllustrationStyle(str, Enum):
     """Enumeration of available illustration styles."""
+    DEFAULT = "default"
     REALISTIC = "realistic"
     ARTISTIC = "artistic"
     WATERCOLOR = "watercolor"
@@ -111,7 +112,7 @@ class IllustrationConfig(BaseModel):
         description="Whether illustration generation is enabled"
     )
     style: IllustrationStyle = Field(
-        default=IllustrationStyle.DIGITAL_ART,
+        default=IllustrationStyle.DEFAULT,
         description="The artistic style for generated illustrations"
     )
     style_hints: str = Field(
@@ -177,6 +178,13 @@ class IllustrationConfig(BaseModel):
     model_name: str = Field(
         default="gemini-2.5-flash-image-preview",
         description="AI model to use for image generation"
+    )
+    prompt_model_name: Optional[str] = Field(
+        default=None,
+        description=(
+            "Optional text model used to build illustration prompts. "
+            "Defaults to the translation analysis model when not set."
+        )
     )
     image_quality: str = Field(
         default="high",

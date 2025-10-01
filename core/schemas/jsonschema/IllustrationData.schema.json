@@ -15,6 +15,7 @@
     "IllustrationStyle": {
       "description": "Enumeration of available illustration styles.",
       "enum": [
+        "default",
         "realistic",
         "artistic",
         "watercolor",

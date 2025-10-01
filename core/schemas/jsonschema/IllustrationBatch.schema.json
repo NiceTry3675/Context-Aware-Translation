@@ -11,7 +11,7 @@
         },
         "style": {
           "$ref": "#/$defs/IllustrationStyle",
-          "default": "digital_art",
+          "default": "default",
           "description": "The artistic style for generated illustrations"
         },
         "style_hints": {
@@ -104,6 +104,19 @@
           "description": "AI model to use for image generation",
           "title": "Model Name",
           "type": "string"
+        },
+        "prompt_model_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional text model used to build illustration prompts. Defaults to the translation analysis model when not set.",
+          "title": "Prompt Model Name"
         },
         "image_quality": {
           "default": "high",
@@ -312,6 +325,7 @@
     "IllustrationStyle": {
       "description": "Enumeration of available illustration styles.",
       "enum": [
+        "default",
         "realistic",
         "artistic",
         "watercolor",
