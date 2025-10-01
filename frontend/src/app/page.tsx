@@ -278,6 +278,8 @@ function CanvasContent() {
         onStyleChange={state.setIllustrationStyle}
         styleHints={state.illustrationStyleHints}
         onStyleHintsChange={state.setIllustrationStyleHints}
+        promptModelName={state.illustrationPromptModel}
+        onPromptModelNameChange={state.setIllustrationPromptModel}
         minSegmentLength={state.illustrationMinSegmentLength}
         onMinSegmentLengthChange={state.setIllustrationMinSegmentLength}
         skipDialogueHeavy={state.illustrationSkipDialogueHeavy}

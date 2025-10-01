@@ -179,6 +179,13 @@ class IllustrationConfig(BaseModel):
         default="gemini-2.5-flash-image-preview",
         description="AI model to use for image generation"
     )
+    prompt_model_name: Optional[str] = Field(
+        default=None,
+        description=(
+            "Optional text model used to build illustration prompts. "
+            "Defaults to the translation analysis model when not set."
+        )
+    )
     image_quality: str = Field(
         default="high",
         description="Image quality setting: 'low', 'medium', 'high', 'ultra'"

@@ -212,6 +212,7 @@ export function useJobActions({ apiUrl, apiProvider, apiKey, providerConfig, onE
     config?: {
       style?: string;
       style_hints?: string;
+      prompt_model_name?: string;
       min_segment_length?: number;
       skip_dialogue_heavy?: boolean;
       cache_enabled?: boolean;

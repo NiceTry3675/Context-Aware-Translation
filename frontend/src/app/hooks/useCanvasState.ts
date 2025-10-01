@@ -165,9 +165,14 @@ export function useCanvasState() {
   const [illustrationDialogOpen, setIllustrationDialogOpen] = useState(false);
   const [illustrationStyle, setIllustrationStyle] = useState<string>('digital_art');
   const [illustrationStyleHints, setIllustrationStyleHints] = useState<string>('');
+  const [illustrationPromptModel, setIllustrationPromptModel] = useState<string>(selectedModel);
   const [illustrationMinSegmentLength, setIllustrationMinSegmentLength] = useState(100);
   const [illustrationSkipDialogueHeavy, setIllustrationSkipDialogueHeavy] = useState(false);
   const [illustrationMaxCount, setIllustrationMaxCount] = useState(10);
+
+  useEffect(() => {
+    setIllustrationPromptModel((prev) => (prev ? prev : selectedModel));
+  }, [selectedModel]);
 
   const { 
     handleTriggerValidation, 
@@ -250,6 +255,7 @@ export function useCanvasState() {
       {
         style: illustrationStyle,
         style_hints: illustrationStyleHints,
+        prompt_model_name: illustrationPromptModel.trim() ? illustrationPromptModel.trim() : undefined,
         min_segment_length: illustrationMinSegmentLength,
         skip_dialogue_heavy: illustrationSkipDialogueHeavy,
         cache_enabled: false,
@@ -548,6 +554,8 @@ export function useCanvasState() {
     setIllustrationStyle,
     illustrationStyleHints,
     setIllustrationStyleHints,
+    illustrationPromptModel,
+    setIllustrationPromptModel,
     illustrationMinSegmentLength,
     setIllustrationMinSegmentLength,
     illustrationSkipDialogueHeavy,

@@ -35,6 +35,23 @@ from core.schemas.illustration import IllustrationConfig
 from core.translation.usage_tracker import TokenUsageCollector
 
 
+def _resolve_prompt_model_name(
+    override: Optional[str],
+    shared_config: Optional[Dict[str, object]] = None,
+) -> str:
+    """Return the prompt-generation model name using override when provided."""
+
+    if override and isinstance(override, str) and override.strip():
+        return override
+
+    if shared_config and isinstance(shared_config, dict):
+        fallback = shared_config.get('gemini_model_name')
+        if isinstance(fallback, str) and fallback.strip():
+            return fallback
+
+    return 'gemini-flash-latest'
+
+
 def _segment_sort_key(segment_key: Any) -> int:
     """Sort helper that safely handles non-numeric keys."""
 
@@ -213,16 +230,18 @@ def generate_illustrations_task(
         
         # Prepare a text model for world/atmosphere analysis when needed
         try:
-            text_model_name = load_config().get('gemini_model_name', 'gemini-flash-latest')
+            shared_config = load_config()
+            text_model_name = _resolve_prompt_model_name(config.prompt_model_name, shared_config)
         except Exception:
-            text_model_name = 'gemini-flash-latest'
+            shared_config = None
+            text_model_name = _resolve_prompt_model_name(config.prompt_model_name, None)
 
         try:
             text_model_api_key = None if (context and context.name == "vertex") else api_key
             text_model = ModelAPIFactory.create(
                 api_key=text_model_api_key,
                 model_name=text_model_name,
-                config=load_config(),
+                config=shared_config or load_config(),
                 provider_context=context,
                 usage_callback=usage_collector.record_event,
             )
@@ -688,9 +707,13 @@ def regenerate_single_illustration(
         
         # Prepare a text model for world/atmosphere analysis if needed
         try:
-            text_model_name = load_config().get('gemini_model_name', 'gemini-flash-latest')
+            shared_config = load_config()
         except Exception:
-            text_model_name = 'gemini-flash-latest'
+            shared_config = None
+
+        job_config = job.illustrations_config or {}
+        prompt_model_override = job_config.get('prompt_model_name') if isinstance(job_config, dict) else None
+        text_model_name = _resolve_prompt_model_name(prompt_model_override, shared_config)
 
         text_model = None
         dyn_builder = None
@@ -699,7 +722,7 @@ def regenerate_single_illustration(
             text_model = ModelAPIFactory.create(
                 api_key=text_model_api_key,
                 model_name=text_model_name,
-                config=load_config(),
+                config=shared_config or load_config(),
                 provider_context=context,
                 usage_callback=usage_collector.record_event,
             )

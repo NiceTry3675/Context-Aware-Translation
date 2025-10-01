@@ -397,6 +397,7 @@ export interface IllustrationGenerationParams {
   config?: {
     style?: string;
     style_hints?: string;
+    prompt_model_name?: string;
     min_segment_length?: number;
     skip_dialogue_heavy?: boolean;
     cache_enabled?: boolean;
@@ -425,6 +426,7 @@ export async function triggerIllustrationGeneration({
       enabled: true,
       style: config?.style || 'digital_art',
       style_hints: config?.style_hints || '',
+      prompt_model_name: config?.prompt_model_name || null,
       segments_per_illustration: 1,
       max_illustrations: maxIllustrations ?? null,
       min_segment_length: config?.min_segment_length || 100,

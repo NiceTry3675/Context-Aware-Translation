@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -19,18 +19,30 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  ListItemText,
+  FormHelperText,
   SelectChangeEvent,
 } from '@mui/material';
 import BrushIcon from '@mui/icons-material/Brush';
+import type { ApiProvider } from '../../hooks/useApiKey';
+import {
+  geminiModelOptions,
+  openRouterModelOptions,
+  vertexModelOptions,
+  type ModelOption,
+} from '../../utils/constants/models';
 
 interface IllustrationDialogProps {
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  apiProvider?: ApiProvider;
   style?: string;
   onStyleChange?: (value: string) => void;
   styleHints?: string;
   onStyleHintsChange?: (value: string) => void;
+  promptModelName?: string;
+  onPromptModelNameChange?: (value: string) => void;
   minSegmentLength?: number;
   onMinSegmentLengthChange?: (value: number) => void;
   skipDialogueHeavy?: boolean;
@@ -44,10 +56,13 @@ export default function IllustrationDialog({
   open,
   onClose,
   onConfirm,
+  apiProvider = 'gemini',
   style = 'default',
   onStyleChange,
   styleHints = '',
   onStyleHintsChange,
+  promptModelName = '',
+  onPromptModelNameChange,
   minSegmentLength = 100,
   onMinSegmentLengthChange,
   skipDialogueHeavy = false,
@@ -56,6 +71,34 @@ export default function IllustrationDialog({
   onMaxIllustrationsChange,
   loading = false,
 }: IllustrationDialogProps) {
+  const modelOptions = useMemo<ModelOption[]>(() => {
+    const base = apiProvider === 'openrouter'
+      ? openRouterModelOptions
+      : apiProvider === 'vertex'
+        ? vertexModelOptions
+        : geminiModelOptions;
+
+    if (promptModelName && !base.some((opt) => opt.value === promptModelName)) {
+      return [
+        ...base,
+        {
+          value: promptModelName,
+          label: promptModelName,
+          description: '사용자 정의 모델',
+          chip: 'Custom',
+          chipColor: 'info',
+        },
+      ];
+    }
+
+    return base;
+  }, [apiProvider, promptModelName]);
+
+  const handlePromptModelChange = (event: SelectChangeEvent<string>) => {
+    const value = event.target.value;
+    onPromptModelNameChange?.(value);
+  };
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -106,6 +149,34 @@ export default function IllustrationDialog({
               <MenuItem value="vintage">빈티지 (Vintage)</MenuItem>
               <MenuItem value="minimalist">미니멀리즘 (Minimalist)</MenuItem>
             </Select>
+          </FormControl>
+
+          <FormControl fullWidth>
+            <InputLabel id="prompt-model-select-label">프롬프트 생성 모델</InputLabel>
+            <Select
+              labelId="prompt-model-select-label"
+              value={promptModelName || ''}
+              label="프롬프트 생성 모델"
+              onChange={handlePromptModelChange}
+            >
+              <MenuItem value="">
+                <ListItemText
+                  primary="번역 모델과 동일"
+                  secondary="현재 번역에 사용 중인 모델을 그대로 사용합니다."
+                />
+              </MenuItem>
+              {modelOptions.map((option) => (
+                <MenuItem value={option.value} key={option.value}>
+                  <ListItemText
+                    primary={option.label}
+                    secondary={option.description || option.value}
+                  />
+                </MenuItem>
+              ))}
+            </Select>
+            <FormHelperText>
+              삽화 프롬프트를 생성할 텍스트 모델입니다. 지정하지 않으면 번역 기본 모델을 사용합니다.
+            </FormHelperText>
           </FormControl>
 
           <TextField
