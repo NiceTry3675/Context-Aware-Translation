@@ -3,6 +3,10 @@
 
 let cachedToken: string | null = null;
 let cachedTokenExpiryMs: number | null = null;
+let cachedTokenUnavailableUntilMs: number | null = null;
+let inFlightTokenPromise: Promise<string | null> | null = null;
+
+const FAILED_TOKEN_RETRY_DELAY_MS = 30_000;
 
 function decodeJwtExpiryMs(token: string): number | null {
   try {
@@ -33,22 +37,50 @@ export async function getCachedClerkToken(
     return cachedToken;
   }
 
-  const fresh = await getTokenFn();
-  if (!fresh) {
-    cachedToken = null;
-    cachedTokenExpiryMs = null;
+  if (!cachedToken && cachedTokenUnavailableUntilMs && cachedTokenUnavailableUntilMs - now > 0) {
     return null;
   }
 
-  cachedToken = fresh;
-  // If decode fails, fall back to a short cache window to avoid frequent refetches but limit risk
-  cachedTokenExpiryMs = decodeJwtExpiryMs(fresh) || now + 60_000;
-  return cachedToken;
+  if (inFlightTokenPromise) {
+    return inFlightTokenPromise;
+  }
+
+  const fetchPromise = (async () => {
+    const fetchStartedAt = Date.now();
+    try {
+      const fresh = await getTokenFn();
+      if (!fresh) {
+        cachedToken = null;
+        cachedTokenExpiryMs = null;
+        cachedTokenUnavailableUntilMs = fetchStartedAt + FAILED_TOKEN_RETRY_DELAY_MS;
+        return null;
+      }
+
+      cachedToken = fresh;
+      cachedTokenUnavailableUntilMs = null;
+      // If decode fails, fall back to a short cache window to avoid frequent refetches but limit risk
+      cachedTokenExpiryMs = decodeJwtExpiryMs(fresh) || fetchStartedAt + 60_000;
+      return cachedToken;
+    } catch (error) {
+      console.error('Failed to retrieve Clerk token:', error);
+      cachedToken = null;
+      cachedTokenExpiryMs = null;
+      cachedTokenUnavailableUntilMs = fetchStartedAt + FAILED_TOKEN_RETRY_DELAY_MS;
+      return null;
+    } finally {
+      inFlightTokenPromise = null;
+    }
+  })();
+
+  inFlightTokenPromise = fetchPromise;
+  return fetchPromise;
 }
 
 export function clearCachedClerkToken(): void {
   cachedToken = null;
   cachedTokenExpiryMs = null;
+  cachedTokenUnavailableUntilMs = null;
+  inFlightTokenPromise = null;
 }
 
 /**
@@ -74,5 +106,4 @@ export function buildOptionalAuthHeader(): Record<string, string> {
   const token = getCachedClerkTokenIfPresent();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
-
 

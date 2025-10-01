@@ -206,12 +206,15 @@ export async function fetchJobTasks(jobId: number, token?: string): Promise<comp
 
 export async function fetchIllustrationStatus(jobId: string, token?: string): Promise<IllustrationStatus | null> {
   try {
-    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/illustrations/${jobId}/status`, {
-      headers: buildAuthHeaders(token),
-    }, { retries: 3, timeoutMs: 10000 });
+    const headers = token ? buildAuthHeaders(token) : undefined;
+    const response = await fetchWithRetry(
+      `${API_BASE_URL}/api/v1/illustrations/${jobId}/status`,
+      headers ? { headers } : undefined,
+      { retries: 1, timeoutMs: 8000 }
+    );
 
     if (!response.ok) {
-      if (response.status === 404) {
+      if (response.status === 404 || response.status === 401) {
         return null;
       }
       throw new Error(`Failed to fetch illustration status: ${response.statusText}`);
