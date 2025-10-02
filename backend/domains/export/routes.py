@@ -37,41 +37,44 @@ async def export_job(
     include_source: bool = True,
     include_illustrations: bool = True,
     page_size: str = "A4",
+    illustration_position: str = "middle",
     user: User = Depends(get_required_user),
     db: Session = Depends(get_db)
 ) -> Response:
     """
     Export translation job in different formats.
-    
+
     Args:
         job_id: Job ID
         format: Export format (pdf, etc.)
         include_source: Whether to include source text
         include_illustrations: Whether to include illustrations
         page_size: Page size format
+        illustration_position: Position of illustrations (start, middle, end)
         user: Current authenticated user (from dependency)
         db: Database session (from dependency)
-        
+
     Returns:
         Response with exported file
     """
     service = ExportDomainService(db)
-    
+
     if format == "pdf":
         from .schemas import PDFExportRequest
-        
+
         # Create PDF request
         request = PDFExportRequest(
             job_id=job_id,
             include_source=include_source,
             include_illustrations=include_illustrations,
-            page_size=page_size
+            page_size=page_size,
+            illustration_position=illustration_position
         )
-        
+
         # Generate PDF
         pdf_bytes = await service.generate_pdf(user, request)
         pdf_filename = service.get_pdf_filename(job_id)
-        
+
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",
@@ -90,6 +93,7 @@ async def download_pdf(
     include_source: bool = Query(True),
     include_illustrations: bool = Query(True),
     page_size: str = Query("A4"),
+    illustration_position: str = Query("middle"),
     user: User = Depends(get_required_user),
     db: Session = Depends(get_db)
 ) -> Response:
@@ -103,6 +107,7 @@ async def download_pdf(
         include_source=include_source,
         include_illustrations=include_illustrations,
         page_size=page_size,
+        illustration_position=illustration_position,
     )
 
     pdf_bytes = await service.generate_pdf(user, request)

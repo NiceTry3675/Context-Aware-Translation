@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { TableRow, TableCell, Typography } from '@mui/material';
 import { Job } from '../../types/ui';
 import JobStatusIndicator from './components/JobStatusIndicator';
 import DownloadActions from './components/DownloadActions';
+import PdfDownloadDialog from './components/PdfDownloadDialog';
 
 interface JobRowProps {
   job: Job;
@@ -14,7 +16,7 @@ interface JobRowProps {
   onTriggerPostEdit: (jobId: number) => void;
   onDownloadValidationReport: (jobId: number) => void;
   onDownloadPostEditLog: (jobId: number) => void;
-  onDownloadPdf: (jobId: number) => void;
+  onDownloadPdf: (jobId: number, illustrationPosition: string) => void;
   devMode?: boolean;
   apiUrl: string;
 }
@@ -43,6 +45,8 @@ export default function JobRow({
   devMode = false,
   apiUrl
 }: JobRowProps) {
+  const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
+
   const handleDownloadTranslation = () => {
     const extension = job.filename.toLowerCase().endsWith('.epub') ? 'epub' : 'txt';
     const filename = `${job.filename.split('.')[0]}_translated.${extension}`;
@@ -64,7 +68,18 @@ export default function JobRow({
     onDownload(`${apiUrl}/api/v1/jobs/${job.id}/logs/context`, filename);
   };
 
+  const handlePdfDownload = (illustrationPosition: string) => {
+    onDownloadPdf(job.id, illustrationPosition);
+  };
+
   return (
+    <>
+      <PdfDownloadDialog
+        open={pdfDialogOpen}
+        onClose={() => setPdfDialogOpen(false)}
+        onDownload={handlePdfDownload}
+        jobId={job.id}
+      />
     <TableRow hover>
       <TableCell component="th" scope="row">
         <Typography variant="body2" noWrap title={job.filename} sx={{ maxWidth: '300px' }}>
@@ -94,7 +109,7 @@ export default function JobRow({
         <DownloadActions
           job={job}
           onDownloadTranslation={handleDownloadTranslation}
-          onDownloadPdf={() => onDownloadPdf(job.id)}
+          onOpenPdfDialog={() => setPdfDialogOpen(true)}
           onDownloadGlossary={handleDownloadGlossary}
           onDownloadPromptLogs={handleDownloadPromptLogs}
           onDownloadContextLogs={handleDownloadContextLogs}
@@ -109,5 +124,6 @@ export default function JobRow({
         />
       </TableCell>
     </TableRow>
+    </>
   );
 }

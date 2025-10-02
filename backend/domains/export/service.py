@@ -403,7 +403,8 @@ class ExportDomainService(DomainServiceBase):
                 db=self.db,
                 include_source=request.include_source,
                 include_illustrations=request.include_illustrations,
-                page_size=request.page_size
+                page_size=request.page_size,
+                illustration_position=request.illustration_position
             )
             return pdf_bytes
             

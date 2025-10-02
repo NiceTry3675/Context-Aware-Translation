@@ -17,7 +17,7 @@ interface JobsTableProps {
   onTriggerPostEdit: (jobId: number) => void;
   onDownloadValidationReport: (jobId: number) => void;
   onDownloadPostEditLog: (jobId: number) => void;
-  onDownloadPdf: (jobId: number) => void;
+  onDownloadPdf: (jobId: number, illustrationPosition: string) => void;
   devMode?: boolean;
   apiUrl: string;
 }

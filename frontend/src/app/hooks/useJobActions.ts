@@ -192,14 +192,16 @@ export function useJobActions({ apiUrl, apiProvider, apiKey, providerConfig, onE
     jobId: number,
     includeSource: boolean = true,
     includeIllustrations: boolean = true,
-    pageSize: string = "A4"
+    pageSize: string = "A4",
+    illustrationPosition: string = "middle"
   ) => {
     const params = new URLSearchParams({
       include_source: includeSource.toString(),
       include_illustrations: includeIllustrations.toString(),
-      page_size: pageSize
+      page_size: pageSize,
+      illustration_position: illustrationPosition
     });
-    
+
     await handleDownload(
       `${apiUrl}/api/v1/jobs/${jobId}/pdf?${params.toString()}`,
       `translation_job_${jobId}.pdf`

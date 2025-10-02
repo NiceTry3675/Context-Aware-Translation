@@ -21,7 +21,7 @@ import { getCachedClerkToken } from '../../../utils/authToken';
 interface DownloadActionsProps {
   job: Job;
   onDownloadTranslation: () => void;
-  onDownloadPdf: () => void;
+  onOpenPdfDialog: () => void;
   onDownloadGlossary: () => void;
   onDownloadPromptLogs: () => void;
   onDownloadContextLogs: () => void;
@@ -38,7 +38,7 @@ interface DownloadActionsProps {
 export default function DownloadActions({
   job,
   onDownloadTranslation,
-  onDownloadPdf,
+  onOpenPdfDialog,
   onDownloadGlossary,
   onDownloadPromptLogs,
   onDownloadContextLogs,
@@ -61,11 +61,11 @@ export default function DownloadActions({
           </IconButton>
         </Tooltip>
       )}
-      
+
       {job.status === 'COMPLETED' && (
         <>
           <Tooltip title="PDF로 다운로드 (삽화 포함)">
-            <IconButton color="primary" onClick={onDownloadPdf}>
+            <IconButton color="primary" onClick={onOpenPdfDialog}>
               <PdfIcon />
             </IconButton>
           </Tooltip>

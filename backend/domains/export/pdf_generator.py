@@ -86,18 +86,20 @@ class PDFGenerator:
             logging.warning(f"NanumGothic font not found at {self.NANUM_FONT_PATH}. Using fallback CJK font.")
             self.korean_font = fitz.Font("CJK")  # Fallback to CJK
         
-    def generate(self, 
+    def generate(self,
                  include_source: bool = True,
                  include_illustrations: bool = True,
-                 page_size: str = "A4") -> bytes:
+                 page_size: str = "A4",
+                 illustration_position: str = "middle") -> bytes:
         """
         Generate the complete PDF document.
-        
+
         Args:
             include_source: Whether to include source text
             include_illustrations: Whether to include illustrations
             page_size: Page size (A4 or Letter)
-            
+            illustration_position: Position of illustrations (start, middle, end)
+
         Returns:
             PDF document as bytes
         """
@@ -105,20 +107,20 @@ class PDFGenerator:
         if page_size == "Letter":
             self.PAGE_WIDTH = 612
             self.PAGE_HEIGHT = 792
-        
+
         # Add title page
         self._add_title_page()
-        
+
         # Add translation content
-        self._add_translation_content(include_source, include_illustrations)
-        
+        self._add_translation_content(include_source, include_illustrations, illustration_position)
+
         # Add metadata
         self._add_metadata()
-        
+
         # Convert to bytes
         pdf_bytes = self.doc.write()
         self.doc.close()
-        
+
         return pdf_bytes
     
     def _add_title_page(self):
@@ -270,17 +272,18 @@ class PDFGenerator:
         # Use original translation segments if no post-edit available
         return self.job.translation_segments
     
-    def _add_translation_content(self, include_source: bool, include_illustrations: bool):
+    def _add_translation_content(self, include_source: bool, include_illustrations: bool, illustration_position: str = "middle"):
         """
         Add the main translation content to the PDF.
-        
+
         Args:
             include_source: Whether to include source text
             include_illustrations: Whether to include illustrations
+            illustration_position: Position of illustrations (start, middle, end)
         """
         # Check if post-edit results are available
         segments_to_use = self._get_segments_with_post_edit()
-        
+
         if not segments_to_use:
             # Add a note if no segments available
             page = self._new_page()
@@ -293,18 +296,18 @@ class PDFGenerator:
                 color=self.COLOR_GRAY
             )
             return
-        
+
         # Get illustration data mapping
         illustration_map = {}
         if include_illustrations and self.job.illustrations_data:
             for ill in self.job.illustrations_data:
                 if ill.get('success') and ill.get('illustration_path'):
                     illustration_map[ill.get('segment_index')] = ill.get('illustration_path')
-        
+
         # Start on a new page after title page
         self.current_page = self._new_page()
         self.current_y = self.MARGIN_TOP
-        
+
         # Process each segment
         for idx, segment in enumerate(segments_to_use):
             # Start new page if needed (with some buffer space)
@@ -312,27 +315,38 @@ class PDFGenerator:
             if self.current_y > self.PAGE_HEIGHT - self.MARGIN_BOTTOM - 50:
                 self.current_page = self._new_page()
                 self.current_y = self.MARGIN_TOP
-            
+
             # Skip segment header for cleaner output
             # self._add_segment_header(idx + 1)
-            
-            # Add illustration BEFORE the text if available
-            if include_illustrations and idx in illustration_map:
+
+            # Handle illustration position: start
+            if illustration_position == "start" and include_illustrations and idx in illustration_map:
                 self._add_illustration(illustration_map[idx], idx)
-                self.current_y += 15  # Space between illustration and text
-            
+                self.current_y += 15  # Space after illustration
+
             # Add source text if requested
             if include_source and segment.get('source_text'):
                 self._add_source_text(segment['source_text'])
-            
-            # Add translated text
+
+            # Prepare illustration callback if available and position is middle
+            illustration_callback = None
+            if illustration_position == "middle" and include_illustrations and idx in illustration_map:
+                # Create a callback that inserts the illustration
+                illustration_callback = lambda idx=idx: self._add_illustration(illustration_map[idx], idx)
+
+            # Add translated text with illustration callback (will insert at middle paragraph if position is middle)
             if segment.get('translated_text'):
-                self._add_translated_text(segment['translated_text'])
+                self._add_translated_text(segment['translated_text'], illustration_callback)
             else:
                 # Fallback to 'translation' field for backward compatibility
                 if segment.get('translation'):
-                    self._add_translated_text(segment['translation'])
-            
+                    self._add_translated_text(segment['translation'], illustration_callback)
+
+            # Handle illustration position: end
+            if illustration_position == "end" and include_illustrations and idx in illustration_map:
+                self.current_y += 15  # Space before illustration
+                self._add_illustration(illustration_map[idx], idx)
+
             # Add proper paragraph spacing between segments
             self.current_y += self.BODY_FONT_SIZE * 1.5  # Increased from 10 to ~18 units for clearer separation
     
@@ -409,14 +423,20 @@ class PDFGenerator:
         # Rejoin with original line breaks preserved
         return '\n'.join(sanitized_paragraphs)
     
-    def _add_translated_text(self, text: str):
-        """Add translated text in black with justification."""
+    def _add_translated_text(self, text: str, illustration_callback=None):
+        """
+        Add translated text in black with justification.
+
+        Args:
+            text: Text to add
+            illustration_callback: Optional callback function to insert illustration at middle paragraph
+        """
         if not self.current_page:
             self.current_page = self._new_page()
-        
+
         # Sanitize text for PDF rendering
         text = self._sanitize_text_for_pdf(text)
-        
+
         # Split text by paragraph breaks (double newlines first, then single if no double)
         if '\n\n' in text:
             paragraphs = text.split('\n\n')
@@ -425,25 +445,27 @@ class PDFGenerator:
             paragraphs = text.split('\n')
         else:
             paragraphs = [text]
-        
+
+        # Filter out empty paragraphs first to get accurate count
+        paragraphs = [p for p in paragraphs if p.strip()]
+
+        # Calculate middle position for illustration
+        middle_paragraph_idx = len(paragraphs) // 2 if len(paragraphs) > 1 else None
+
         for p_idx, paragraph in enumerate(paragraphs):
-            # Skip empty paragraphs
-            if not paragraph.strip():
-                continue
-                
             # Wrap and draw each paragraph
             lines = self._wrap_text(paragraph.strip(), self.BODY_FONT_SIZE)
             num_lines = len(lines)
-            
+
             for i, line in enumerate(lines):
                 # Check with buffer to prevent text cutoff
                 if self.current_y + self.BODY_FONT_SIZE > self.PAGE_HEIGHT - self.MARGIN_BOTTOM:
                     self.current_page = self._new_page()
                     self.current_y = self.MARGIN_TOP
-                
+
                 # Justify all lines except the last one in a paragraph
                 is_last_line = (i == num_lines - 1)
-                
+
                 if is_last_line or len(line.split()) <= 1:
                     # Don't justify last line or single-word lines
                     self._draw_text(
@@ -465,12 +487,18 @@ class PDFGenerator:
                         self.PAGE_WIDTH - self.MARGIN_LEFT - self.MARGIN_RIGHT,
                         color=self.COLOR_BLACK
                     )
-                
+
                 self.current_y += self.BODY_FONT_SIZE + 6  # More line spacing for Korean text
-            
+
             # Add paragraph spacing if not the last paragraph
             if p_idx < len(paragraphs) - 1:
                 self.current_y += self.BODY_FONT_SIZE  # Extra line break between paragraphs within same segment
+
+            # Insert illustration after middle paragraph
+            if illustration_callback and middle_paragraph_idx is not None and p_idx == middle_paragraph_idx:
+                self.current_y += 15  # Space before illustration
+                illustration_callback()
+                self.current_y += 15  # Space after illustration
     
     def _add_illustration(self, illustration_path: str, segment_index: int):
         """
@@ -883,39 +911,42 @@ def generate_translation_pdf(
     db: Session,
     include_source: bool = True,
     include_illustrations: bool = True,
-    page_size: str = "A4"
+    page_size: str = "A4",
+    illustration_position: str = "middle"
 ) -> bytes:
     """
     Generate a PDF for a translation job.
-    
+
     Args:
         job_id: ID of the translation job
         db: Database session
         include_source: Whether to include source text
         include_illustrations: Whether to include illustrations
         page_size: Page size (A4 or Letter)
-        
+        illustration_position: Position of illustrations (start, middle, end)
+
     Returns:
         PDF document as bytes
-        
+
     Raises:
         ValueError: If job not found or not completed
     """
     # Get the job from database
     job = db.query(TranslationJob).filter(TranslationJob.id == job_id).first()
-    
+
     if not job:
         raise ValueError(f"Translation job {job_id} not found")
-    
+
     if job.status != "COMPLETED":
         raise ValueError(f"Translation job {job_id} is not completed (status: {job.status})")
-    
+
     # Create PDF generator and generate PDF
     generator = PDFGenerator(job, db)
     pdf_bytes = generator.generate(
         include_source=include_source,
         include_illustrations=include_illustrations,
-        page_size=page_size
+        page_size=page_size,
+        illustration_position=illustration_position
     )
-    
+
     return pdf_bytes
