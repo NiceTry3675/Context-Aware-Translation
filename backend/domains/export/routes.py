@@ -2,7 +2,7 @@
 
 from typing import Dict, Any
 from fastapi import Depends, Body, Query
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from sqlalchemy.orm import Session
 
 from backend.config.dependencies import get_db, get_required_user
@@ -14,7 +14,7 @@ async def download_file(
     job_id: int,
     user: User = Depends(get_required_user),
     db: Session = Depends(get_db)
-) -> FileResponse:
+) -> Response:
     """
     Download the output of a translation job.
     
@@ -28,7 +28,16 @@ async def download_file(
     """
     service = ExportDomainService(db)
     file_path, filename, media_type = await service.download_job_output(user, job_id)
-    return FileResponse(path=file_path, filename=filename, media_type=media_type)
+    from backend.utils.http import build_content_disposition
+    # Use streaming to avoid loading entire potentially large file into memory.
+    fileobj = open(file_path, 'rb')
+    return StreamingResponse(
+        fileobj,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": build_content_disposition(filename)
+        }
+    )
 
 
 async def export_job(
@@ -75,17 +84,26 @@ async def export_job(
         pdf_bytes = await service.generate_pdf(user, request)
         pdf_filename = service.get_pdf_filename(job_id)
 
+        from backend.utils.http import build_content_disposition
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f'attachment; filename="{pdf_filename}"'
+                "Content-Disposition": build_content_disposition(pdf_filename)
             }
         )
     else:
         # Default to regular file download
         file_path, filename, media_type = await service.download_job_output(user, job_id)
-        return FileResponse(path=file_path, filename=filename, media_type=media_type)
+        from backend.utils.http import build_content_disposition
+        fileobj = open(file_path, 'rb')
+        return StreamingResponse(
+            fileobj,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": build_content_disposition(filename)
+            }
+        )
 
 
 async def download_pdf(
@@ -113,11 +131,12 @@ async def download_pdf(
     pdf_bytes = await service.generate_pdf(user, request)
     pdf_filename = service.get_pdf_filename(job_id)
 
+    from backend.utils.http import build_content_disposition
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="{pdf_filename}"'
+            "Content-Disposition": build_content_disposition(pdf_filename)
         }
     )
 
@@ -137,11 +156,12 @@ async def download_glossary(
     glossary = await service.get_job_glossary(user, job_id, structured=structured)
     filename = service.get_glossary_filename(job_id)
     import json
+    from backend.utils.http import build_content_disposition
     return Response(
         content=json.dumps(glossary, ensure_ascii=False, indent=2),
         media_type="application/json",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"'
+            "Content-Disposition": build_content_disposition(filename)
         }
     )
 
