@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
 import { getCachedClerkToken } from '../../utils/authToken';
+import { endpoints, type CurrentUser } from '@/lib/api';
 import {
   Container, Box, Typography, TextField, Button, Alert,
   CircularProgress, FormControl, InputLabel, Select, MenuItem,
@@ -20,7 +21,6 @@ import type { components } from '@/types/api';
 
 // Type aliases for convenience
 type PostCategory = components['schemas']['PostCategory'];
-type PostCreate = components['schemas']['PostCreate'];
 
 interface PostFormData {
   title: string;
@@ -54,8 +54,21 @@ function PostWritePageContent() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [currentUserDb, setCurrentUserDb] = useState<CurrentUser | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+  const fetchCurrentUser = async () => {
+    try {
+      const token = await getToken();
+      const { data } = await endpoints.getCurrentUser(token || undefined);
+      if (data) {
+        setCurrentUserDb(data);
+      }
+    } catch (err) {
+      console.warn('Failed to load current user info:', err);
+    }
+  };
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -66,6 +79,7 @@ function PostWritePageContent() {
     }
 
     fetchCategories();
+    fetchCurrentUser();
     if (isEditMode) {
       fetchPost();
     }
@@ -108,16 +122,26 @@ function PostWritePageContent() {
     try {
       const token = await getCachedClerkToken(getToken);
       const response = await fetch(`${API_URL}/api/v1/community/posts/${editParam}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: token ? { 'Authorization': `Bearer ${token}` } : undefined
       });
       if (!response.ok) throw new Error('Failed to fetch post');
       const post = await response.json();
       
-      // Check if user can edit this post
-      if (post.author.clerk_user_id !== user?.id && 
-          user?.publicMetadata?.role !== 'admin') {
+      let dbUser = currentUserDb;
+      if (!dbUser && token) {
+        try {
+          const { data } = await endpoints.getCurrentUser(token || undefined);
+          if (data) {
+            dbUser = data;
+            setCurrentUserDb(data);
+          }
+        } catch (verifyError) {
+          console.warn('Failed to verify current user for edit:', verifyError);
+        }
+      }
+
+      const isAdmin = user?.publicMetadata?.role === 'admin' || dbUser?.role === 'admin';
+      if (!isAdmin && dbUser && post.author && 'id' in post.author && post.author.id !== dbUser.id) {
         throw new Error('수정 권한이 없습니다.');
       }
       

@@ -2,7 +2,7 @@
 from typing import List, Optional
 import json
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from backend.domains.user.models import User
 from backend.domains.community.models import Announcement
@@ -10,17 +10,21 @@ from backend.domains.user.schemas import AnnouncementCreate
 from backend.domains.community.repository import AnnouncementRepository, SqlAlchemyAnnouncementRepository
 from backend.domains.community.policy import Action, enforce_policy
 from backend.domains.shared.uow import SqlAlchemyUoW
-from backend.config.database import SessionLocal
 from backend.domains.community.exceptions import PermissionDeniedException, CommunityException
 
 class AnnouncementService:
     def __init__(self, session: Session):
         self.session = session
+        self._session_factory = sessionmaker(
+            bind=session.bind,
+            class_=session.__class__,
+            expire_on_commit=False,
+        )
         self.announcement_repo: AnnouncementRepository = SqlAlchemyAnnouncementRepository(session)
 
     def _create_session(self):
         """Create a new session for UoW transactions."""
-        return SessionLocal()
+        return self._session_factory()
 
     def get_announcements(self, active_only: bool = False, limit: int = 10) -> List[Announcement]:
         """Get announcements with optional filtering."""

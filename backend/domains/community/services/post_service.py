@@ -3,7 +3,7 @@ from typing import List, Optional, Tuple
 from datetime import datetime
 import uuid
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from backend.domains.user.models import User
 from backend.domains.community.models import Post
@@ -11,7 +11,6 @@ from backend.domains.community.schemas import PostCreate, PostUpdate
 from backend.domains.community.repository import PostRepository, SqlAlchemyPostRepository, PostCategoryRepository
 from backend.domains.community.policy import Action, enforce_policy, check_policy
 from backend.domains.shared.uow import SqlAlchemyUoW
-from backend.config.database import SessionLocal
 from backend.domains.shared.events import (
     PostCreatedEvent as CommunityPostCreatedEvent,
     PostUpdatedEvent as CommunityPostUpdatedEvent,
@@ -22,12 +21,17 @@ from backend.domains.community.exceptions import PostNotFoundException, Category
 class PostService:
     def __init__(self, session: Session):
         self.session = session
+        self._session_factory = sessionmaker(
+            bind=session.bind,
+            class_=session.__class__,
+            expire_on_commit=False,
+        )
         self.post_repo: PostRepository = SqlAlchemyPostRepository(session)
         self.category_repo = PostCategoryRepository(session)
 
     def _create_session(self):
         """Create a new session for UoW transactions."""
-        return SessionLocal()
+        return self._session_factory()
 
 
     async def create_post(self, post_data: PostCreate, user: User) -> Post:
@@ -136,8 +140,7 @@ class PostService:
                 ))
 
             uow.commit()
-            uow.session.refresh(post)
-            return post
+            return self.post_repo.get_with_details(post_id)
 
     async def delete_post(self, post_id: int, user: User) -> None:
         with SqlAlchemyUoW(self._create_session) as uow:

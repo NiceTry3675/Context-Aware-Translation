@@ -1,16 +1,25 @@
 import pytest
+from uuid import uuid4
+from fastapi import Header, HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.pool import StaticPool
+
 from backend.main import app
 from backend.config.db import get_db
+from backend.config import dependencies
 from backend.domains.shared.db_base import Base
 from backend.domains.user.models import User
 from backend.domains.community.models import PostCategory, Post, Comment
 
 # Use an in-memory SQLite database for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Override the get_db dependency to use the test database
@@ -22,6 +31,48 @@ def override_get_db():
         db.close()
 
 app.dependency_overrides[get_db] = override_get_db
+
+
+def _get_user_by_token(authorization: str | None, required: bool = True) -> User | None:
+    """Extract user from Authorization header for test overrides."""
+    if not authorization:
+        if required:
+            raise HTTPException(status_code=401, detail="Missing Authorization header")
+        return None
+    parts = authorization.split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        if required:
+            raise HTTPException(status_code=401, detail="Invalid Authorization header")
+        return None
+    try:
+        user_id = int(parts[1])
+    except ValueError:
+        if required:
+            raise HTTPException(status_code=401, detail="Invalid bearer token")
+        return None
+
+    db = TestingSessionLocal()
+    try:
+        user = db.get(User, user_id)
+        if not user:
+            if required:
+                raise HTTPException(status_code=401, detail="User not found")
+            return None
+        return user
+    finally:
+        db.close()
+
+
+def override_get_required_user(authorization: str = Header(None)) -> User:
+    return _get_user_by_token(authorization, required=True)
+
+
+def override_get_optional_user(authorization: str = Header(None)) -> User | None:
+    return _get_user_by_token(authorization, required=False)
+
+
+app.dependency_overrides[dependencies.get_required_user] = override_get_required_user
+app.dependency_overrides[dependencies.get_optional_user] = override_get_optional_user
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_database():
@@ -49,10 +100,11 @@ def client() -> TestClient:
 @pytest.fixture
 def test_user(db_session: Session) -> User:
     """Fixture to create a regular test user."""
+    suffix = uuid4().hex
     user = User(
-        email="test@example.com",
-        username="testuser",
-        hashed_password="password",
+        clerk_user_id=f"clerk_test_user_{suffix}",
+        email=f"test_{suffix}@example.com",
+        name="testuser",
         role="user"
     )
     db_session.add(user)
@@ -63,10 +115,11 @@ def test_user(db_session: Session) -> User:
 @pytest.fixture
 def admin_user(db_session: Session) -> User:
     """Fixture to create an admin test user."""
+    suffix = uuid4().hex
     user = User(
-        email="admin@example.com",
-        username="adminuser",
-        hashed_password="password",
+        clerk_user_id=f"clerk_admin_user_{suffix}",
+        email=f"admin_{suffix}@example.com",
+        name="adminuser",
         role="admin"
     )
     db_session.add(user)
@@ -77,9 +130,10 @@ def admin_user(db_session: Session) -> User:
 @pytest.fixture
 def test_category(db_session: Session) -> PostCategory:
     """Fixture to create a test category."""
+    suffix = uuid4().hex
     category = PostCategory(
-        name="test-category",
-        display_name="Test Category",
+        name=f"test-category-{suffix}",
+        display_name=f"Test Category {suffix}",
         description="A category for testing purposes."
     )
     db_session.add(category)
@@ -126,7 +180,7 @@ def test_create_post(client: TestClient, test_user: User, test_category: PostCat
         "category_id": test_category.id
     }
     response = client.post("/api/v1/community/posts", json=post_data, headers=headers)
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
     assert data["title"] == post_data["title"]
     assert data["author"]["id"] == test_user.id
@@ -141,7 +195,7 @@ def test_get_post(client: TestClient, test_post: Post):
 
 def test_list_posts_by_category(client: TestClient, test_post: Post, test_category: PostCategory):
     """Test listing posts filtered by category."""
-    response = client.get(f"/api/v1/community/posts?category_id={test_category.id}")
+    response = client.get(f"/api/v1/community/posts?category={test_category.name}")
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)

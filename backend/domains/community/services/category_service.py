@@ -1,7 +1,7 @@
 
 from typing import List, Optional
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from backend.domains.user.models import User
 from backend.domains.community.models import PostCategory
@@ -9,18 +9,22 @@ from backend.domains.community.schemas import CategoryOverview, PostSummary, Pos
 from backend.domains.community.repository import PostRepository, SqlAlchemyPostRepository, PostCategoryRepository
 from backend.domains.community.policy import Action, check_policy, enforce_policy
 from backend.domains.shared.uow import SqlAlchemyUoW
-from backend.config.database import SessionLocal
 from backend.domains.community.exceptions import CategoryNotFoundException, PermissionDeniedException
 
 class CategoryService:
     def __init__(self, session: Session):
         self.session = session
+        self._session_factory = sessionmaker(
+            bind=session.bind,
+            class_=session.__class__,
+            expire_on_commit=False,
+        )
         self.category_repo = PostCategoryRepository(session)
         self.post_repo: PostRepository = SqlAlchemyPostRepository(session)
 
     def _create_session(self):
         """Create a new session for UoW transactions."""
-        return SessionLocal()
+        return self._session_factory()
 
     def get_categories(self) -> List[PostCategory]:
         return self.category_repo.list_ordered()

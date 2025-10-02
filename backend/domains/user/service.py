@@ -6,7 +6,7 @@ from datetime import datetime
 import hashlib
 import hmac
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy import desc, func
 
 from backend.domains.user.models import User
@@ -14,7 +14,6 @@ from backend.domains.translation.models import TranslationJob, TranslationUsageL
 from backend.domains.community.models import Announcement
 from backend.domains.user.repository import UserRepository, SqlAlchemyUserRepository
 from backend.domains.shared.uow import SqlAlchemyUoW
-from backend.config.database import SessionLocal
 from backend.domains.shared.events import DomainEvent
 from backend.config.settings import get_settings
 
@@ -55,12 +54,17 @@ class UserService:
     def __init__(self, session: Session):
         """Initialize with database session."""
         self.session = session
+        self._session_factory = sessionmaker(
+            bind=session.bind,
+            class_=session.__class__,
+            expire_on_commit=False,
+        )
         self.user_repo = SqlAlchemyUserRepository(session)
         self.settings = get_settings()
 
     def _create_session(self):
         """Create a new session for UoW transactions."""
-        return SessionLocal()
+        return self._session_factory()
     
     # User operations
     

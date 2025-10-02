@@ -3,7 +3,7 @@ from typing import List, Optional
 from datetime import datetime
 import uuid
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from backend.domains.user.models import User
 from backend.domains.community.models import Comment
@@ -11,19 +11,23 @@ from backend.domains.community.schemas import CommentCreate, CommentUpdate
 from backend.domains.community.repository import CommentRepository, SqlAlchemyCommentRepository, PostRepository, SqlAlchemyPostRepository
 from backend.domains.community.policy import Action, enforce_policy, check_policy
 from backend.domains.shared.uow import SqlAlchemyUoW
-from backend.config.database import SessionLocal
 from backend.domains.shared.events import CommentAddedEvent, CommentDeletedEvent
 from backend.domains.community.exceptions import PostNotFoundException, CommentNotFoundException, PermissionDeniedException
 
 class CommentService:
     def __init__(self, session: Session):
         self.session = session
+        self._session_factory = sessionmaker(
+            bind=session.bind,
+            class_=session.__class__,
+            expire_on_commit=False,
+        )
         self.comment_repo: CommentRepository = SqlAlchemyCommentRepository(session)
         self.post_repo: PostRepository = SqlAlchemyPostRepository(session)
 
     def _create_session(self):
         """Create a new session for UoW transactions."""
-        return SessionLocal()
+        return self._session_factory()
 
     async def create_comment(self, comment_data: CommentCreate, user: User) -> Comment:
         with SqlAlchemyUoW(self._create_session) as uow:
