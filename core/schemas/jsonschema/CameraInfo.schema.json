@@ -1,0 +1,50 @@
+{
+  "$defs": {
+    "CameraAngle": {
+      "description": "Camera angle types for composition.",
+      "enum": [
+        "eye-level",
+        "low-angle",
+        "high-angle",
+        "dutch-angle"
+      ],
+      "title": "CameraAngle",
+      "type": "string"
+    },
+    "CameraDistance": {
+      "description": "Camera distance/shot types for composition.",
+      "enum": [
+        "extreme close-up",
+        "close-up",
+        "medium",
+        "wide",
+        "extreme wide"
+      ],
+      "title": "CameraDistance",
+      "type": "string"
+    }
+  },
+  "description": "Camera composition information for a scene.",
+  "properties": {
+    "distance": {
+      "$ref": "#/$defs/CameraDistance",
+      "description": "Shot distance/type"
+    },
+    "angle": {
+      "$ref": "#/$defs/CameraAngle",
+      "description": "Camera angle"
+    },
+    "lens_suggestion": {
+      "description": "Suggested lens type (85mm portrait/24mm wide/etc)",
+      "title": "Lens Suggestion",
+      "type": "string"
+    }
+  },
+  "required": [
+    "distance",
+    "angle",
+    "lens_suggestion"
+  ],
+  "title": "CameraInfo",
+  "type": "object"
+}

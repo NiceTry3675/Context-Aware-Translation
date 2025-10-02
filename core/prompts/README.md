@@ -26,6 +26,7 @@ style_analysis:
 
 translation:
   main: # Main translation prompt template
+  turbo: # Turbo translation (no style deviation or character styles)
 ```
 
 ## Usage
@@ -48,6 +49,15 @@ prompt = PromptManager.MAIN_TRANSLATION.format(
 To modify prompts:
 
 1. Edit the `prompts.yaml` file directly
+
+## Structured Output for Validation
+
+The validation system uses Gemini Structured Output to return JSON per a response schema. Two lightweight prompt wrappers are provided:
+
+- `validation.structured_comprehensive`
+- `validation.structured_quick`
+
+The actual schema is defined in `core/validation/structured.py`. The validator builds a minimal instruction prompt and relies on schema enforcement; results are mapped to the existing report fields to keep frontend compatibility.
 2. Ensure all placeholder variables (e.g., `{segment_text}`) are preserved
 3. Test that the prompts still work with the translation system
 

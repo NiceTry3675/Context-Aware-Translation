@@ -1,0 +1,220 @@
+{
+  "$defs": {
+    "IllustrationStyle": {
+      "description": "Enumeration of available illustration styles.",
+      "enum": [
+        "default",
+        "realistic",
+        "artistic",
+        "watercolor",
+        "digital_art",
+        "sketch",
+        "anime",
+        "vintage",
+        "minimalist"
+      ],
+      "title": "IllustrationStyle",
+      "type": "string"
+    }
+  },
+  "description": "Configuration for illustration generation.\n\nThis model defines the settings and preferences for generating\nillustrations for translation segments.",
+  "properties": {
+    "enabled": {
+      "default": false,
+      "description": "Whether illustration generation is enabled",
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "style": {
+      "$ref": "#/$defs/IllustrationStyle",
+      "default": "default",
+      "description": "The artistic style for generated illustrations"
+    },
+    "style_hints": {
+      "default": "",
+      "description": "Additional style hints or preferences for illustration generation",
+      "title": "Style Hints",
+      "type": "string"
+    },
+    "segments_per_illustration": {
+      "default": 1,
+      "description": "Number of segments to combine for each illustration",
+      "title": "Segments Per Illustration",
+      "type": "integer"
+    },
+    "max_illustrations": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Maximum number of illustrations to generate (None for unlimited)",
+      "title": "Max Illustrations"
+    },
+    "skip_dialogue_heavy": {
+      "default": true,
+      "description": "Skip illustration for segments that are mostly dialogue",
+      "title": "Skip Dialogue Heavy",
+      "type": "boolean"
+    },
+    "min_segment_length": {
+      "default": 500,
+      "description": "Minimum segment length (characters) to generate illustration",
+      "title": "Min Segment Length",
+      "type": "integer"
+    },
+    "cache_enabled": {
+      "default": true,
+      "description": "Whether to cache generated illustrations",
+      "title": "Cache Enabled",
+      "type": "boolean"
+    },
+    "use_character_profile": {
+      "default": false,
+      "description": "Use character profile for consistent appearance across scenes",
+      "title": "Use Character Profile",
+      "type": "boolean"
+    },
+    "profile_lock_enabled": {
+      "default": false,
+      "description": "Lock character appearance using reference images for consistency",
+      "title": "Profile Lock Enabled",
+      "type": "boolean"
+    },
+    "base_image_generation_count": {
+      "default": 3,
+      "description": "Number of base character images to generate for selection",
+      "title": "Base Image Generation Count",
+      "type": "integer"
+    },
+    "allow_reference_images": {
+      "default": true,
+      "description": "Allow using reference images for generation",
+      "title": "Allow Reference Images",
+      "type": "boolean"
+    },
+    "reference_image_source": {
+      "default": "base_selection",
+      "description": "Source for reference images: 'base_selection', 'upload', 'none'",
+      "title": "Reference Image Source",
+      "type": "string"
+    },
+    "allow_custom_prompts": {
+      "default": true,
+      "description": "Allow custom prompt overrides for specific scenes",
+      "title": "Allow Custom Prompts",
+      "type": "boolean"
+    },
+    "prefer_custom_prompts": {
+      "default": false,
+      "description": "Prefer custom prompts over automatic generation when available",
+      "title": "Prefer Custom Prompts",
+      "type": "boolean"
+    },
+    "model_name": {
+      "default": "gemini-2.5-flash-image-preview",
+      "description": "AI model to use for image generation",
+      "title": "Model Name",
+      "type": "string"
+    },
+    "prompt_model_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Optional text model used to build illustration prompts. Defaults to the translation analysis model when not set.",
+      "title": "Prompt Model Name"
+    },
+    "image_quality": {
+      "default": "high",
+      "description": "Image quality setting: 'low', 'medium', 'high', 'ultra'",
+      "title": "Image Quality",
+      "type": "string"
+    },
+    "aspect_ratio": {
+      "default": "16:9",
+      "description": "Preferred aspect ratio for generated images",
+      "title": "Aspect Ratio",
+      "type": "string"
+    },
+    "image_width": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Target image width in pixels (None for model default)",
+      "title": "Image Width"
+    },
+    "image_height": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Target image height in pixels (None for model default)",
+      "title": "Image Height"
+    },
+    "max_retries": {
+      "default": 3,
+      "description": "Maximum retry attempts for failed generations",
+      "title": "Max Retries",
+      "type": "integer"
+    },
+    "fallback_to_prompt_only": {
+      "default": true,
+      "description": "Save prompt as JSON when image generation fails",
+      "title": "Fallback To Prompt Only",
+      "type": "boolean"
+    },
+    "safety_filter_level": {
+      "default": "medium",
+      "description": "Safety filter level: 'low', 'medium', 'high'",
+      "title": "Safety Filter Level",
+      "type": "string"
+    },
+    "retry_on_safety_filter": {
+      "default": true,
+      "description": "Retry with modified prompt when safety filter triggers",
+      "title": "Retry On Safety Filter",
+      "type": "boolean"
+    },
+    "use_world_atmosphere": {
+      "default": true,
+      "description": "Use AI-analyzed world atmosphere data for richer prompts",
+      "title": "Use World Atmosphere",
+      "type": "boolean"
+    },
+    "combine_segments_threshold": {
+      "default": 0.8,
+      "description": "Similarity threshold for combining adjacent segments (0.0-1.0)",
+      "title": "Combine Segments Threshold",
+      "type": "number"
+    },
+    "illustration_density": {
+      "default": "moderate",
+      "description": "Illustration frequency: 'sparse', 'moderate', 'dense'",
+      "title": "Illustration Density",
+      "type": "string"
+    }
+  },
+  "title": "IllustrationConfig",
+  "type": "object"
+}

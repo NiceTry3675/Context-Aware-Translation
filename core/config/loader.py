@@ -22,14 +22,17 @@ def load_config():
     
     # Generation settings to reduce repetition and enhance stability
     generation_config = {
-        "temperature": 0.7,
-        "top_p": 0.9,
-        "top_k": 40,
+        "temperature": 0.5,
+        "top_p": 0.6,
+        "top_k": 20,
+        # Target ~15k tokens for model output where supported
+        # Gemini/Vertex: max_output_tokens; other providers will map appropriately
+        "max_output_tokens": 25000,
     }
 
     return {
         # "gemini_api_key": gemini_api_key, # 서버 제공 키 사용 시 주석 해제
-        "gemini_model_name": 'gemini-2.5-flash-lite',
+        "gemini_model_name": 'gemini-flash-lite-latest',
         "safety_settings": safety_settings,
         "generation_config": generation_config,
         "enable_soft_retry": True,  # Enable retry with softer prompts for ProhibitedException

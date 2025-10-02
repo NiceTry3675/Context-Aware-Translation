@@ -1,0 +1,60 @@
+{
+  "$defs": {
+    "NarrationStyle": {
+      "description": "Narration style details.",
+      "properties": {
+        "description": {
+          "description": "Brief description of the narrator's voice (e.g., 'A neutral, third-person observer's voice')",
+          "title": "Description",
+          "type": "string"
+        },
+        "ending_style": {
+          "default": "해라체",
+          "description": "Korean sentence ending style for narration (almost always 해라체)",
+          "title": "Ending Style",
+          "type": "string"
+        }
+      },
+      "required": [
+        "description"
+      ],
+      "title": "NarrationStyle",
+      "type": "object"
+    }
+  },
+  "description": "Core narrative style definition for the entire work.",
+  "properties": {
+    "protagonist_name": {
+      "description": "The single most central character's name. If unclear, 'Protagonist'",
+      "title": "Protagonist Name",
+      "type": "string"
+    },
+    "narration_style": {
+      "$ref": "#/$defs/NarrationStyle",
+      "description": "Style and endings for narrative text"
+    },
+    "core_tone_keywords": {
+      "description": "3-5 keywords describing the overall mood (Korean)",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 5,
+      "minItems": 1,
+      "title": "Core Tone Keywords",
+      "type": "array"
+    },
+    "golden_rule": {
+      "description": "Overarching rule for the novel's feel and rhythm",
+      "title": "Golden Rule",
+      "type": "string"
+    }
+  },
+  "required": [
+    "protagonist_name",
+    "narration_style",
+    "core_tone_keywords",
+    "golden_rule"
+  ],
+  "title": "NarrativeStyleDefinition",
+  "type": "object"
+}

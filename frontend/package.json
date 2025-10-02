@@ -6,7 +6,13 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "codegen:api": "openapi-typescript ../openapi.json -o src/types/api.d.ts",
+    "codegen:schemas": "node scripts/gen-schemas.mjs",
+    "codegen": "npm run codegen:api && npm run codegen:schemas",
+    "prebuild": "npm run codegen",
+    "tsc": "tsc",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@clerk/localizations": "^3.20.1",
@@ -17,10 +23,13 @@
     "@mui/icons-material": "^7.2.0",
     "@mui/material": "^7.2.0",
     "@mui/material-nextjs": "^7.2.0",
+    "@types/diff": "^7.0.2",
     "@vercel/analytics": "^1.5.0",
+    "diff": "^8.0.2",
     "next": "15.3.5",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "zod": "^4.0.17"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -30,6 +39,10 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.3.5",
+    "json-schema-to-typescript": "^15.0.4",
+    "json-schema-to-zod": "^2.6.1",
+    "openapi-fetch": "^0.14.0",
+    "openapi-typescript": "^7.9.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

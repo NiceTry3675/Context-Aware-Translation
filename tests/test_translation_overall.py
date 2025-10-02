@@ -10,8 +10,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.config.loader import load_config
 from core.translation.models.gemini import GeminiModel
 from core.config.builder import DynamicConfigBuilder
-from core.translation.job import TranslationJob
-from core.translation.engine import TranslationEngine
+from core.translation.document import TranslationDocument  
+from core.translation.translation_pipeline import TranslationPipeline
 from core.utils.file_parser import parse_document
 
 class TestOverallTranslation(unittest.TestCase):
@@ -51,26 +51,24 @@ class TestOverallTranslation(unittest.TestCase):
         # Mock the Gemini API responses
         mock_gemini = Mock(spec=GeminiModel)
         
-        # Mock style definition response
-        mock_gemini.generate_text.side_effect = [
+        # Mock style definition response and enough translation responses for any number of segments
+        mock_responses = [
             # First call: define core narrative style
             "A cynical, conversational first-person narrative style with teenage slang ('냉소적이고 대화체의 1인칭 서술, 십대 슬랭 포함').",
-            
-            # Subsequent calls: mock translations for each segment
-            # We'll return Korean placeholder translations
-            "[번역된 텍스트 세그먼트 1]",
-            "[번역된 텍스트 세그먼트 2]",
-            "[번역된 텍스트 세그먼트 3]",
-            "[번역된 텍스트 세그먼트 4]",
-            "[번역된 텍스트 세그먼트 5]",
         ]
         
+        # Add enough mock translation responses (20 should be more than enough)
+        for i in range(1, 21):
+            mock_responses.append(f"[번역된 텍스트 세그먼트 {i}]")
+        
+        mock_gemini.generate_text.side_effect = mock_responses
+        
         # Create translation job with smaller segment size for testing
-        job = TranslationJob(test_file_path, target_segment_size=5000)
+        document = TranslationDocument(test_file_path, target_segment_size=5000)
         
         # Verify segments were created
-        self.assertGreater(len(job.segments), 0)
-        print(f"Created {len(job.segments)} segments from {self.max_chars} characters")
+        self.assertGreater(len(document.segments), 0)
+        print(f"Created {len(document.segments)} segments from {self.max_chars} characters")
         
         # Create dynamic config builder
         dyn_config_builder = DynamicConfigBuilder(mock_gemini, "The Catcher in the Rye")
@@ -80,25 +78,25 @@ class TestOverallTranslation(unittest.TestCase):
             mock_build_guides.return_value = (
                 {"Holden": "홀든", "Pencey Prep": "펜시 프렙"},  # glossary
                 {"Holden": "Uses informal, cynical teenage speech"},  # character styles
-                "Maintaining cynical narrative tone"  # style deviation
+                "Maintaining cynical narrative tone",  # style deviation
             )
             
             # Create and run translation engine
-            engine = TranslationEngine(mock_gemini, dyn_config_builder, self.mock_db, self.mock_job_id)
+            pipeline = TranslationPipeline(mock_gemini, dyn_config_builder, self.mock_db, self.mock_job_id)
             
             # Mock the crud update function
             with patch('backend.crud.update_job_progress'):
                 # Run the translation
-                engine.translate_job(job)
+                pipeline.translate_document(document)
         
         # Verify translation was completed
-        self.assertEqual(len(job.translated_segments), len(job.segments))
+        self.assertEqual(len(document.translated_segments), len(document.segments))
         
         # Verify output file was created
-        self.assertTrue(os.path.exists(job.output_filename))
+        self.assertTrue(os.path.exists(document.output_filename))
         
         # Read and verify the output
-        with open(job.output_filename, 'r', encoding='utf-8') as f:
+        with open(document.output_filename, 'r', encoding='utf-8') as f:
             output_content = f.read()
         
         # Check that output contains expected content
@@ -106,16 +104,16 @@ class TestOverallTranslation(unittest.TestCase):
         self.assertGreater(len(output_content), 0)
         
         # Verify glossary was populated
-        self.assertIn("Holden", job.glossary)
-        self.assertEqual(job.glossary["Holden"], "홀든")
+        self.assertIn("Holden", document.glossary)
+        self.assertEqual(document.glossary["Holden"], "홀든")
         
         # Clean up test file
         os.remove(test_file_path)
         
         print(f"Translation test completed successfully!")
-        print(f"Output file: {job.output_filename}")
-        print(f"Glossary entries: {len(job.glossary)}")
-        print(f"Character styles: {len(job.character_styles)}")
+        print(f"Output file: {document.output_filename}")
+        print(f"Glossary entries: {len(document.glossary)}")
+        print(f"Character styles: {len(document.character_styles)}")
     
     def test_translation_with_api_key_validation(self):
         """Test API key validation before translation."""
@@ -135,6 +133,15 @@ class TestOverallTranslation(unittest.TestCase):
             # Verify that valid API key passes
             is_valid = GeminiModel.validate_api_key("valid_key")
             self.assertTrue(is_valid)
+
+    def test_prompts_presence(self):
+        """Ensure validation prompts (including structured variants) are loaded."""
+        from core.prompts.manager import PromptManager
+        self.assertTrue(len(PromptManager.MAIN_TRANSLATION) > 0)
+        self.assertTrue(len(PromptManager.SOFT_RETRY_TRANSLATION) > 0)
+        # Structured validation prompts should exist in prompts.yaml
+        self.assertIsNotNone(PromptManager.VALIDATION_STRUCTURED_COMPREHENSIVE)
+        self.assertIsNotNone(PromptManager.VALIDATION_STRUCTURED_QUICK)
     
     def test_segment_creation(self):
         """Test that text is properly segmented."""
@@ -152,16 +159,16 @@ class TestOverallTranslation(unittest.TestCase):
         segment_sizes = [5000, 10000, 15000]
         
         for size in segment_sizes:
-            job = TranslationJob(test_file_path, target_segment_size=size)
+            document = TranslationDocument(test_file_path, target_segment_size=size)
             
             # Verify segments are reasonable (segments can be larger to avoid splitting paragraphs)
-            for i, segment in enumerate(job.segments):
+            for i, segment in enumerate(document.segments):
                 # Last segment can be any size, others should be close to target
-                if i < len(job.segments) - 1:
+                if i < len(document.segments) - 1:
                     # Allow up to 2x the target size to accommodate paragraph boundaries
                     self.assertLessEqual(len(segment.text), size * 2)
             
-            print(f"Segment size {size}: created {len(job.segments)} segments")
+            print(f"Segment size {size}: created {len(document.segments)} segments")
         
         # Clean up
         os.remove(test_file_path)
@@ -183,3 +190,4 @@ class TestOverallTranslation(unittest.TestCase):
 if __name__ == '__main__':
     # Run the tests
     unittest.main(verbosity=2)
+

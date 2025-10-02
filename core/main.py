@@ -2,6 +2,8 @@
 import os
 import sys
 import argparse
+import json
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
@@ -9,15 +11,18 @@ from dotenv import load_dotenv
 from core.config.loader import load_config
 from core.translation.models.gemini import GeminiModel
 from core.config.builder import DynamicConfigBuilder
-from core.translation.job import TranslationJob
-from core.translation.engine import TranslationEngine
-from core.errors.base import TranslationError
+from core.translation.document import TranslationDocument
+from core.translation.translation_pipeline import TranslationPipeline
+from shared.errors.base import TranslationError
 from core.utils.file_parser import parse_document
-from core.translation.style_analyzer import extract_sample_text, analyze_narrative_style_with_api, parse_style_analysis
+from core.translation.style_analyzer import StyleAnalyzer
+from core.translation.validator import TranslationValidator
+from core.translation.post_editor import PostEditEngine
 
 
 def translate(source_file: str, target_file: Optional[str] = None, api_key: Optional[str] = None, 
-              segment_size: int = 10000, verbose: bool = False) -> None:
+              segment_size: int = 10000, verbose: bool = False, with_validation: bool = False,
+              validation_sample_rate: float = 1.0, quick_validation: bool = False, post_edit: bool = False) -> None:
     """
     Translate a novel from a source language to Korean using the Context-Aware Translation system.
     
@@ -27,10 +32,20 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
         api_key: Google Gemini API key
         segment_size: Size of text segments for translation
         verbose: Enable verbose output
+        with_validation: Run validation after translation
+        validation_sample_rate: Percentage of segments to validate (0.0 to 1.0)
+        quick_validation: Use quick validation mode instead of comprehensive
+        post_edit: Apply post-editing to fix validation issues
     """
     try:
         # Load environment variables from .env file
         load_dotenv()
+        
+        # Generate a local job ID for CLI mode (timestamp-based)
+        job_id = int(datetime.now().strftime('%Y%m%d%H%M%S'))
+        if verbose:
+            print(f"Generated local job ID: {job_id}")
+            print(f"Logs will be saved to: logs/jobs/{job_id}/")
         
         # Validate source file
         if not os.path.exists(source_file):
@@ -39,18 +54,16 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
         # Load configuration
         config = load_config()
         
-        # Get API key from environment if not provided
+        # Require API key to be provided explicitly
         if not api_key:
-            api_key = os.environ.get('GEMINI_API_KEY')
-            if not api_key:
-                raise ValueError("API key required. Provide via --api-key or GEMINI_API_KEY environment variable")
+            raise ValueError("API key required. Provide via --api-key option.")
         
         # Validate API key
         if verbose:
             print("Validating API key...")
         
         # Use the model name from config for validation
-        model_name = config.get('gemini_model_name', 'gemini-2.5-flash-lite')
+        model_name = config.get('gemini_model_name', 'gemini-flash-lite-latest')
         if not GeminiModel.validate_api_key(api_key, model_name):
             raise ValueError("Invalid API key provided")
         
@@ -68,21 +81,23 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
             print(f"Creating translation job for: {source_file}")
             print(f"Segment size: {segment_size}")
         
-        job = TranslationJob(source_file, target_segment_size=segment_size)
+        document = TranslationDocument(source_file, target_segment_size=segment_size)
         
         if verbose:
-            print(f"Created {len(job.segments)} segments from source file")
+            print(f"Created {len(document.segments)} segments from source file")
         
         # Analyze protagonist name from the text
         if verbose:
             print("\n--- Analyzing Protagonist Name... ---")
         
         try:
-            sample_text = extract_sample_text(source_file)
+            # Create style analyzer
+            style_analyzer = StyleAnalyzer(gemini_model)
+            sample_text = style_analyzer.extract_sample_text(source_file)
             # Use the filename for logging purposes in the analyzer
             job_filename = Path(source_file).stem
-            style_analysis_text = analyze_narrative_style_with_api(sample_text, gemini_model, job_filename=job_filename)
-            parsed_style = parse_style_analysis(style_analysis_text)
+            style_analysis_text = style_analyzer.analyze_narrative_style(sample_text, job_filename=job_filename)
+            parsed_style = style_analyzer.parse_style_analysis(style_analysis_text)
             protagonist_name = parsed_style.get('protagonist_name')
 
             if not protagonist_name:
@@ -100,39 +115,148 @@ def translate(source_file: str, target_file: Optional[str] = None, api_key: Opti
         if verbose:
             print(f"\nInitializing dynamic config builder for protagonist: {protagonist_name}")
         
-        dyn_config_builder = DynamicConfigBuilder(gemini_model, protagonist_name)
+        # Always use structured output for configuration extraction
+        if verbose:
+            print("Using structured output for configuration extraction")
         
-        # Create translation engine (no database for CLI mode)
-        engine = TranslationEngine(gemini_model, dyn_config_builder, db=None, job_id=None)
+        dyn_config_builder = DynamicConfigBuilder(
+            gemini_model, 
+            protagonist_name
+        )
+        
+        # Create translation pipeline with local job ID
+        pipeline = TranslationPipeline(gemini_model, dyn_config_builder, db=None, job_id=job_id)
         
         # Run translation
         if verbose:
             print("Starting translation...")
             print("-" * 50)
         
-        # Verbose mode is already handled by the engine's progress display
+        # Verbose mode is already handled by the pipeline's progress display
         
         # Execute translation
-        engine.translate_job(job)
+        pipeline.translate_document(document)
         
         # Handle output file
         if target_file:
             # Move the output file to the target location
-            os.rename(job.output_filename, target_file)
+            os.rename(document.output_filename, target_file)
             output_path = target_file
         else:
-            output_path = job.output_filename
+            output_path = document.output_filename
         
         # Print summary
         print(f"\nTranslation completed successfully!")
         print(f"Output file: {output_path}")
-        print(f"Glossary entries: {len(job.glossary)}")
-        print(f"Character styles: {len(job.character_styles)}")
+        print(f"Glossary entries: {len(document.glossary)}")
+        print(f"Character styles: {len(document.character_styles)}")
         
-        if verbose and job.glossary:
+        if verbose and document.glossary:
             print("\nGlossary sample:")
-            for term, translation in list(job.glossary.items())[:5]:
+            for term, translation in list(document.glossary.items())[:5]:
                 print(f"  {term} → {translation}")
+        
+        # Run validation if requested
+        if with_validation:
+            print("\n" + "="*60)
+            print("Running Translation Validation")
+            print("="*60)
+            
+            validator = TranslationValidator(gemini_model, verbose=verbose)
+            validation_results, validation_summary = validator.validate_document(
+                document=document,
+                sample_rate=validation_sample_rate,
+                quick_mode=quick_validation
+            )
+            
+            # Save validation report to job-centric location
+            validation_report_path = f"logs/jobs/{job_id}/validation/validation_report.json"
+            os.makedirs(os.path.dirname(validation_report_path), exist_ok=True)
+            
+            # Prepare validation report data
+            validation_report = {
+                "summary": validation_summary,
+                "detailed_results": [
+                    {
+                        "segment_index": result.segment_index,
+                        "source_text": result.source_text,
+                        "translated_text": result.translated_text,
+                        "status": result.status,
+                        "issues": [
+                            {
+                                "dimension": case.dimension,
+                                "severity": case.severity,
+                                "issue_ko": case.issue_ko,
+                                "issue_en": case.issue_en,
+                                "suggestion": case.suggestion
+                            } for case in (result.structured_cases or [])
+                        ] if result.structured_cases else []
+                    } for result in validation_results
+                ],
+                "job_id": job_id,
+                "filename": document.user_base_filename,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # Save the report
+            with open(validation_report_path, 'w', encoding='utf-8') as f:
+                json.dump(validation_report, f, indent=2, ensure_ascii=False)
+            
+            if verbose:
+                print(f"\nValidation report saved to: {validation_report_path}")
+            
+            # Show additional details based on validation results
+            if validation_summary['pass_rate'] < 70:
+                print("\n⚠️  WARNING: Translation validation found significant issues!")
+                print("\nIssue Summary:")
+                if validation_summary['total_critical_issues'] > 0:
+                    print(f"  🔴 {validation_summary['total_critical_issues']} critical issues found")
+                if validation_summary['total_missing_content'] > 0:
+                    print(f"  ⚠️  {validation_summary['total_missing_content']} pieces of missing content")
+                if validation_summary['total_added_content'] > 0:
+                    print(f"  ➕ {validation_summary['total_added_content']} pieces of added content")
+                if validation_summary['total_name_inconsistencies'] > 0:
+                    print(f"  👤 {validation_summary['total_name_inconsistencies']} name inconsistencies")
+                
+                print(f"\nPlease review the validation report for full details.")
+                print(f"Report location: logs/jobs/{job_id}/validation/validation_report.json")
+            elif validation_summary['pass_rate'] >= 95:
+                print("\n✅ Excellent! Translation passed validation with high quality.")
+            elif validation_summary['pass_rate'] >= 85:
+                print("\n✅ Good! Translation passed validation with minor issues.")
+            
+            # Run post-edit if requested and validation was performed
+            if post_edit:
+                print("\n" + "="*60)
+                print("Running Post-Edit Process")
+                print("="*60)
+                
+                # Use the job-centric validation report path
+                validation_report_path = f"logs/jobs/{job_id}/validation/validation_report.json"
+                if not os.path.exists(validation_report_path):
+                    print("Error: Validation report not found. Post-edit requires validation to be run first.")
+                    print("Please run with --with-validation flag.")
+                else:
+                    post_editor = PostEditEngine(gemini_model, verbose=verbose, job_id=job_id)
+                    edited_segments = post_editor.post_edit_document(document, validation_report_path)
+                    
+                    # Save the post-edited translation
+                    if edited_segments and len(edited_segments) > 0:
+                        # Generate post-edited output filename
+                        base_name = os.path.splitext(output_path)[0]
+                        post_edit_output = f"{base_name}_postedited.txt"
+                        
+                        # Write post-edited translation
+                        document.save_translation(post_edit_output)
+                        print(f"\nPost-edited translation saved to: {post_edit_output}")
+                        print(f"Post-edit log saved to: logs/jobs/{job_id}/postedit/postedit_log.json")
+                        
+                        # Optionally run validation again on post-edited version
+                        if verbose:
+                            print("\nConsider running validation again on the post-edited version to verify improvements.")
+        elif post_edit and not with_validation:
+            print("\n⚠️  Warning: Post-edit requires validation to be run first.")
+            print("Please use --with-validation along with --post-edit")
     
     except TranslationError as e:
         print(f"Translation error: {e}", file=sys.stderr)
@@ -160,6 +284,15 @@ Examples:
 
   # Enable verbose output
   %(prog)s novel.txt -v
+  
+  # Translate with full validation
+  %(prog)s novel.txt --with-validation
+  
+  # Translate with quick validation on 30% of segments
+  %(prog)s novel.txt --with-validation --quick-validation --validation-sample-rate 0.3
+  
+  # Translate with validation and post-edit to fix issues
+  %(prog)s novel.txt --with-validation --post-edit
         """
     )
     
@@ -173,8 +306,20 @@ Examples:
                         help='Target segment size for translation (default: 10000)')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='Enable verbose output')
+    parser.add_argument('--with-validation', action='store_true',
+                        help='Run validation after translation to check quality')
+    parser.add_argument('--validation-sample-rate', type=float, default=1.0,
+                        help='Percentage of segments to validate (0.0-1.0, default: 1.0 for all segments)')
+    parser.add_argument('--quick-validation', action='store_true',
+                        help='Use quick validation mode (faster but less thorough)')
+    parser.add_argument('--post-edit', action='store_true',
+                        help='Apply AI-powered post-editing to fix validation issues (requires --with-validation)')
     
     args = parser.parse_args()
+    
+    # Validate sample rate
+    if args.validation_sample_rate < 0.0 or args.validation_sample_rate > 1.0:
+        parser.error("--validation-sample-rate must be between 0.0 and 1.0")
     
     # Run translation
     translate(
@@ -182,7 +327,11 @@ Examples:
         target_file=args.target,
         api_key=args.api_key,
         segment_size=args.segment_size,
-        verbose=args.verbose
+        verbose=args.verbose,
+        with_validation=args.with_validation,
+        validation_sample_rate=args.validation_sample_rate,
+        quick_validation=args.quick_validation,
+        post_edit=args.post_edit
     )
 
 

@@ -1,0 +1,124 @@
+"""Community domain schemas."""
+
+from __future__ import annotations
+from pydantic import BaseModel, field_serializer, Field
+from typing import Optional, List, TYPE_CHECKING
+import datetime
+
+# Import shared base schemas from the shared domain
+from backend.domains.shared.schemas import KSTTimezoneBase, UTC_ZONE, KST_ZONE
+
+# --- Author Schemas ---
+class AuthorSummary(BaseModel):
+    """Minimal author information for community content."""
+    id: int
+    name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+# --- PostCategory Schemas ---
+class PostCategoryBase(BaseModel):
+    name: str
+    display_name: str
+    description: Optional[str] = None
+    is_admin_only: bool = False
+    order: int = 0
+
+class PostCategoryCreate(PostCategoryBase):
+    pass
+
+class PostCategory(PostCategoryBase):
+    id: int
+    created_at: datetime.datetime
+
+    @field_serializer('created_at')
+    def serialize_created_at(self, dt: datetime.datetime) -> datetime.datetime:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC_ZONE)
+        return dt.astimezone(KST_ZONE)
+
+    class Config:
+        from_attributes = True
+
+
+class PostSummary(KSTTimezoneBase):
+    """Compact representation of a post for category overviews."""
+
+    id: int
+    title: str
+    author: AuthorSummary
+    is_pinned: bool
+    is_private: bool
+    view_count: int
+    comment_count: int = 0
+    images: list[str] = Field(default_factory=list)
+
+
+class CategoryOverview(PostCategory):
+    """Extended category information for overview responses."""
+
+    total_posts: int
+    can_post: bool
+    recent_posts: List[PostSummary] = Field(default_factory=list)
+
+# --- Post Schemas ---
+class PostBase(BaseModel):
+    title: str
+    content: str
+    category_id: int
+    is_pinned: bool = False
+    is_private: bool = False
+    images: list[str] = Field(default_factory=list)  # List of image URLs
+
+class PostCreate(PostBase):
+    pass
+
+class PostUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    is_private: Optional[bool] = None
+    is_pinned: Optional[bool] = None
+    images: Optional[list[str]] = None
+
+# --- Comment Schemas ---
+class CommentBase(BaseModel):
+    content: str
+    parent_id: Optional[int] = None
+    is_private: bool = False
+
+class CommentCreate(CommentBase):
+    post_id: int
+
+class CommentUpdate(BaseModel):
+    content: Optional[str] = None
+    is_private: Optional[bool] = None
+
+# Forward references will be updated after all imports
+class PostList(KSTTimezoneBase):
+    id: int
+    title: str
+    author: AuthorSummary
+    category: PostCategory
+    is_pinned: bool
+    is_private: bool
+    view_count: int
+    images: list[str] = Field(default_factory=list)
+    comment_count: int = 0
+
+class Post(PostBase, KSTTimezoneBase):
+    id: int
+    author: AuthorSummary
+    category: PostCategory
+    view_count: int
+    comments: List['Comment'] = Field(default_factory=list)
+
+class Comment(CommentBase, KSTTimezoneBase):
+    id: int
+    author: AuthorSummary
+    post_id: int
+    replies: List['Comment'] = Field(default_factory=list)
+
+# Update forward references for Comment self-reference
+Comment.model_rebuild()
+

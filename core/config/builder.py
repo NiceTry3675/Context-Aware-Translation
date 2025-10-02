@@ -1,10 +1,20 @@
 from ..translation.models.gemini import GeminiModel
+from ..translation.models.openrouter import OpenRouterModel
 from ..prompts.manager import PromptManager
 from .glossary import GlossaryManager
 from .character_style import CharacterStyleManager
-from ..errors import ProhibitedException
-from ..errors import prohibited_content_logger
-from typing import List, Dict, Optional
+from shared.errors import ProhibitedException
+from shared.errors import prohibited_content_logger
+from typing import List, Dict, Optional, Union
+from pydantic import ValidationError
+from ..schemas.narrative_style import (
+    StyleDeviation,
+    WorldAtmosphereAnalysis,
+    make_style_deviation_schema,
+    parse_style_deviation_response,
+    make_world_atmosphere_schema,
+    parse_world_atmosphere_response,
+)
 
 class DynamicConfigBuilder:
     """
@@ -12,31 +22,54 @@ class DynamicConfigBuilder:
     It uses specialized managers to handle different aspects of the analysis.
     """
 
-    def __init__(self, model: GeminiModel, protagonist_name: str, initial_glossary: Optional[List[Dict[str, str]]] = None):
+    def __init__(
+        self,
+        model: GeminiModel | OpenRouterModel,
+        protagonist_name: str,
+        initial_glossary: Optional[Union[List[Dict[str, str]], Dict[str, str]]] = None,
+        character_style_model: Optional[GeminiModel | OpenRouterModel] = None,
+        turbo_mode: bool = False,
+    ):
         """
         Initializes the builder with the shared Gemini model and managers.
         
         Args:
             model: The shared GeminiModel instance.
             protagonist_name: The name of the protagonist.
-            initial_glossary: An optional list of dictionaries to pre-populate the glossary.
+            initial_glossary: An optional dictionary or list of dictionaries to pre-populate the glossary.
         """
         self.model = model
-        self.character_style_manager = CharacterStyleManager(model, protagonist_name)
+
+        # Prefer a dedicated model for character style analysis if it supports structured output
+        character_style_backend = character_style_model if (
+            character_style_model and hasattr(character_style_model, 'generate_structured')
+        ) else model
+        if character_style_model and not hasattr(character_style_model, 'generate_structured'):
+            print("Warning: Selected style model does not support structured output for character styles. Falling back to dynamic guide model.")
+
+        self.character_style_manager = CharacterStyleManager(character_style_backend, protagonist_name)
+        self.turbo_mode = turbo_mode
         
         self.initial_glossary_dict = {}
         if initial_glossary:
-            for item in initial_glossary:
-                if isinstance(item, dict) and 'term' in item and 'translation' in item:
-                    self.initial_glossary_dict[item['term']] = item['translation']
+            # Accept either a dict { term: translation } or a list of { term, translation }
+            if isinstance(initial_glossary, dict):
+                self.initial_glossary_dict = {
+                    str(k): str(v) for k, v in initial_glossary.items()
+                }
+            elif isinstance(initial_glossary, list):
+                for item in initial_glossary:
+                    if isinstance(item, dict) and 'term' in item and 'translation' in item:
+                        self.initial_glossary_dict[str(item['term'])] = str(item['translation'])
         
         print(f"DynamicConfigBuilder initialized with protagonist '{protagonist_name}'.")
         if self.initial_glossary_dict:
             print(f"Pre-populating glossary with {len(self.initial_glossary_dict)} user-defined terms.")
+        print(f"DynamicConfigBuilder using structured output mode.")
 
     
 
-    def build_dynamic_guides(self, segment_text: str, core_narrative_style: str, current_glossary: dict, current_character_styles: dict, job_base_filename: str, segment_index: int) -> tuple[dict, dict, str]:
+    def build_dynamic_guides(self, segment_text: str, core_narrative_style: str, current_glossary: dict, current_character_styles: dict, job_base_filename: str, segment_index: int, previous_context: Optional[str] = None) -> tuple[dict, dict, str]:
         """
         Analyzes a text segment to build dynamic guidelines for translation.
 
@@ -50,52 +83,91 @@ class DynamicConfigBuilder:
             core_narrative_style: The core narrative style defined for the novel.
             current_glossary: The glossary dictionary from the TranslationJob.
             current_character_styles: The character styles dictionary from the TranslationJob.
+            job_base_filename: Base filename for logging.
+            segment_index: Index of the current segment.
+            previous_context: Optional previous segment text for context.
 
         Returns:
             A tuple containing the updated glossary, updated character styles,
-            and any style deviation information.
+            and style deviation information.
         """
         # 1. Initialize GlossaryManager with the user-defined glossary
         # The current_glossary from the job state is merged with the initial one.
         combined_glossary = {**self.initial_glossary_dict, **current_glossary}
-        glossary_manager = GlossaryManager(self.model, job_base_filename, initial_glossary=combined_glossary)
+        glossary_manager = GlossaryManager(
+            self.model, 
+            job_base_filename, 
+            initial_glossary=combined_glossary
+        )
         
-        # Update glossary based on the current segment
-        updated_glossary = glossary_manager.update_glossary(segment_text)
+        # Update glossary based on the current segment (skip in turbo mode)
+        if self.turbo_mode:
+            updated_glossary = {**self.initial_glossary_dict, **current_glossary}
+        else:
+            updated_glossary = glossary_manager.update_glossary(segment_text)
 
         # 2. Update character styles
-        updated_character_styles = self.character_style_manager.update_styles(
-            segment_text,
-            current_character_styles,
-            job_base_filename,
-            segment_index
-        )
+        # Update character styles (skip in turbo mode)
+        if self.turbo_mode:
+            updated_character_styles = current_character_styles
+        else:
+            updated_character_styles = self.character_style_manager.update_styles(
+                segment_text,
+                current_character_styles,
+                job_base_filename,
+                segment_index
+            )
 
         # 3. Analyze for style deviations
-        style_deviation_info = self._analyze_style_deviation(
-            segment_text,
-            core_narrative_style,
-            job_base_filename,
-            segment_index
-        )
+        # Analyze for style deviations (skip in turbo mode)
+        if self.turbo_mode:
+            style_deviation_info = "N/A"
+        else:
+            style_deviation_info = self._analyze_style_deviation(
+                segment_text,
+                core_narrative_style,
+                job_base_filename,
+                segment_index
+            )
 
         return updated_glossary, updated_character_styles, style_deviation_info
 
-    def _analyze_style_deviation(self, segment_text: str, core_narrative_style: str, job_base_filename: str = "unknown", segment_index: int = None) -> str:
-        """Analyzes the segment for deviations from the core narrative style."""
+    def analyze_world_atmosphere(
+        self,
+        segment_text: str,
+        previous_context: Optional[str],
+        glossary: dict,
+        job_base_filename: str = "unknown",
+        segment_index: Optional[int] = None,
+    ) -> Optional[WorldAtmosphereAnalysis]:
+        """Run world/atmosphere analysis on demand (e.g., for illustration requests)."""
+
+        return self._analyze_world_atmosphere(
+            segment_text=segment_text,
+            previous_context=previous_context,
+            glossary=glossary,
+            job_base_filename=job_base_filename,
+            segment_index=segment_index,
+        )
+
+    def _analyze_style_deviation(self, segment_text: str, core_narrative_style: str, job_base_filename: str = "unknown", segment_index: Optional[int] = None) -> str:
+        """Analyzes the segment for deviations from the core narrative style using structured output."""
+        return self._analyze_style_deviation_structured(segment_text, core_narrative_style, job_base_filename, segment_index)
+    
+    def _analyze_style_deviation_structured(self, segment_text: str, core_narrative_style: str, job_base_filename: str = "unknown", segment_index: Optional[int] = None) -> str:
+        """Analyzes style deviation using structured output."""
         prompt = PromptManager.ANALYZE_NARRATIVE_DEVIATION.format(
             core_narrative_style=core_narrative_style,
             segment_text=segment_text
         )
         try:
-            response = self.model.generate_text(prompt)
-            if "N/A" in response:
-                return "N/A"
-            else:
-                return response
+            schema = make_style_deviation_schema()
+            response = self.model.generate_structured(prompt, schema)
+            deviation = parse_style_deviation_response(response)
+            return deviation.to_prompt_format()
         except ProhibitedException as e:
             log_path = prohibited_content_logger.log_simple_prohibited_content(
-                api_call_type="style_deviation_analysis",
+                api_call_type="style_deviation_analysis_structured",
                 prompt=prompt,
                 source_text=segment_text,
                 error_message=str(e),
@@ -103,8 +175,79 @@ class DynamicConfigBuilder:
                 segment_index=segment_index,
                 context={"core_narrative_style": core_narrative_style}
             )
-            print(f"Warning: Style deviation analysis blocked by safety settings. Log saved to: {log_path}")
+            print(f"Warning: Structured style deviation analysis blocked by safety settings. Log saved to: {log_path}")
             return "N/A"
         except Exception as e:
-            print(f"Warning: Could not analyze style deviation. {e}")
+            print(f"Warning: Could not analyze style deviation (structured). {e}")
             return "N/A"
+    
+    def _analyze_world_atmosphere(self, segment_text: str, previous_context: Optional[str], glossary: dict, job_base_filename: str = "unknown", segment_index: Optional[int] = None) -> Optional[WorldAtmosphereAnalysis]:
+        """Analyzes world and atmosphere using structured output."""
+        prompt_manager = PromptManager()
+
+        # Format glossary for prompt
+        glossary_str = "\n".join([f"{term}: {translation}" for term, translation in glossary.items()]) if glossary else "N/A"
+
+        # Get the prompt template
+        try:
+            prompt_template = prompt_manager._prompts["world_atmosphere"]["analyze"]
+        except (KeyError, TypeError):
+            print("Warning: world_atmosphere.analyze prompt not found")
+            return None
+
+        prompt = prompt_template.format(
+            segment_text=segment_text,
+            previous_context=previous_context or "N/A",
+            glossary=glossary_str
+        )
+
+        try:
+            # Check if the model supports structured output
+            if hasattr(self.model, 'generate_structured'):
+                schema = make_world_atmosphere_schema()
+                response = self.model.generate_structured(prompt, schema)
+                if not response:
+                    print(f"[WORLD ATMOSPHERE] Analysis returned empty payload for segment {segment_index} (Job: {job_base_filename})")
+                    print(f"[WORLD ATMOSPHERE] Segment text length: {len(segment_text)} chars")
+                    return None
+
+                try:
+                    world_atmosphere = parse_world_atmosphere_response(response)
+                except ValidationError as validation_error:
+                    print(f"[WORLD ATMOSPHERE] Analysis produced invalid payload for segment {segment_index} (Job: {job_base_filename})")
+                    print(f"[WORLD ATMOSPHERE] Validation error: {validation_error}")
+                    print(f"[WORLD ATMOSPHERE] Response type: {type(response)}")
+                    return None
+
+                # Validate that we got a proper summary, not raw text
+                if world_atmosphere.segment_summary:
+                    # Check if summary looks like actual source text (too long and matches source)
+                    if (len(world_atmosphere.segment_summary) > 400 and
+                        world_atmosphere.segment_summary[:100] in segment_text):
+                        raise ValueError(f"World atmosphere analysis failed: segment_summary contains raw text instead of a summary. Length: {len(world_atmosphere.segment_summary)}")
+
+                print(f"[WORLD ATMOSPHERE] Analysis succeeded for segment {segment_index} (Job: {job_base_filename})")
+                return world_atmosphere
+            else:
+                # Model doesn't support structured output (e.g., OpenRouter)
+                print(f"[WORLD ATMOSPHERE] Model {type(self.model).__name__} doesn't support structured output. Skipping analysis.")
+                return None
+        except ProhibitedException as e:
+            log_path = prohibited_content_logger.log_simple_prohibited_content(
+                api_call_type="world_atmosphere_analysis",
+                prompt=prompt,
+                source_text=segment_text,
+                error_message=str(e),
+                job_filename=job_base_filename,
+                segment_index=segment_index,
+                context={"previous_context": previous_context, "glossary": glossary_str}
+            )
+            print(f"[WORLD ATMOSPHERE] Analysis blocked by safety settings for segment {segment_index} (Job: {job_base_filename})")
+            print(f"[WORLD ATMOSPHERE] Prohibited content log saved to: {log_path}")
+            print(f"[WORLD ATMOSPHERE] Reason: Content safety filter (possible violence, adult content, or policy violation)")
+            return None
+        except Exception as e:
+            print(f"[WORLD ATMOSPHERE] Analysis failed for segment {segment_index} (Job: {job_base_filename})")
+            print(f"[WORLD ATMOSPHERE] Error type: {type(e).__name__}")
+            print(f"[WORLD ATMOSPHERE] Error details: {e}")
+            raise  # Re-raise the exception to make it fail properly

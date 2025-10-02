@@ -1,0 +1,38 @@
+ 
+ -------------- celery@soryhyun-MS-7C94 v5.5.3 (immunity)
+--- ***** ----- 
+-- ******* ---- Linux-6.14.0-29-generic-x86_64-with-glibc2.39 2025-09-05 17:33:18
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         translation_system:0x794766df1e80
+- ** ---------- .> transport:   redis://localhost:6379//
+- ** ---------- .> results:     redis://localhost:6379/
+- *** --- * --- .> concurrency: 12 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> default          exchange=default(direct) key=default
+                .> post_edit        exchange=post_edit(direct) key=post_edit
+                .> translation      exchange=translation(direct) key=translation
+                .> validation       exchange=validation(direct) key=validation
+
+[tasks]
+  . backend.tasks.event_processor.cleanup_old_events
+  . backend.tasks.event_processor.process_outbox_events
+  . backend.tasks.illustrations.generate_illustrations
+  . backend.tasks.illustrations.regenerate_single
+  . backend.tasks.post_edit.process_post_edit_task
+  . backend.tasks.translation.process_translation_task
+  . backend.tasks.validation.process_validation_task
+  . celery.accumulate
+  . celery.backend_cleanup
+  . celery.chain
+  . celery.chord
+  . celery.chord_unlock
+  . celery.chunks
+  . celery.group
+  . celery.map
+  . celery.starmap
+
+
+worker: Warm shutdown (MainProcess)

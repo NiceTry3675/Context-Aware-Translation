@@ -1,0 +1,57 @@
+{
+  "$defs": {
+    "CharacterInteraction": {
+      "description": "Single interaction between protagonist and another character.",
+      "properties": {
+        "character_name": {
+          "description": "Name of the character the protagonist is speaking to",
+          "title": "Character Name",
+          "type": "string"
+        },
+        "speech_style": {
+          "description": "Korean speech style used (반말 for informal, 해요체 for polite informal, 하십시오체 for formal)",
+          "enum": [
+            "반말",
+            "해요체",
+            "하십시오체"
+          ],
+          "title": "Speech Style",
+          "type": "string"
+        }
+      },
+      "required": [
+        "character_name",
+        "speech_style"
+      ],
+      "title": "CharacterInteraction",
+      "type": "object"
+    }
+  },
+  "description": "Result of dialogue style analysis for a text segment.",
+  "properties": {
+    "protagonist_name": {
+      "description": "Name of the protagonist",
+      "title": "Protagonist Name",
+      "type": "string"
+    },
+    "interactions": {
+      "description": "List of character interactions found in this segment",
+      "items": {
+        "$ref": "#/$defs/CharacterInteraction"
+      },
+      "title": "Interactions",
+      "type": "array"
+    },
+    "has_dialogue": {
+      "default": false,
+      "description": "Whether the protagonist has any dialogue in this segment",
+      "title": "Has Dialogue",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "protagonist_name"
+  ],
+  "title": "DialogueAnalysisResult",
+  "type": "object"
+}

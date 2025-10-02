@@ -13,38 +13,37 @@ ngrok.exe
 .env
 
 # IDE / Editor specific
+.github/
 .vscode/
 .idea/
 .gemini/
 .qwen/
 CLAUDE.md
-TODO.md
+docs/TODO.md
 GEMINI.md
 QWEN.md
-
+AGENTS.md
 
 # Archives
 _archive/
 commit_message.txt
 
 # Translation output & logs
-
+# All job-related logs are now stored in /logs/jobs/{job-id}/
+/logs/jobs/
 
 # Vector DB files (if re-enabled)
 vector_db/
 
-# Ignore all files in data directories by default
-context_log/*
-debug_prompts/*
+# Source and translated files
 source_novel/*
 translated_novel/*
+illustrations/*
 
 # But exclude specific example files from being ignored
-!context_log/context_Metamorphosis.txt
-!debug_prompts/prompts_Metamorphosis.txt
 !source_novel/Metamorphosis.txt
 !translated_novel/Metamorphosis_translated.txt
-
+backend/TODO.md
 # Also keep the directory structure for empty folders that might result
 !*/.gitkeep
 
@@ -55,8 +54,31 @@ translated_novel/*
 error.txt
 log.txt
 
-# Uploaded files
+# Legacy directories (can be removed after migration)
 uploads/
+translated_novel/
+
+# Community files (kept separate from job files)
+community/images/
 
 # Database files
 database.db
+
+# Legacy log directories (deprecated - now using /logs/jobs/)
+/logs/validation_logs/
+/logs/postedit_logs/
+/logs/context_log/
+/logs/debug_prompts/
+/logs/progress_logs/
+/logs/prohibited_content_logs/
+/logs/errors/
+frontend/.next/
+.env.*
+frontend/node_modules/
+/TODO.md
+/node_modules/
+/logs/validation_task_logs/
+
+# Temporary files
+/tmp/translation_temp/
+/aws/

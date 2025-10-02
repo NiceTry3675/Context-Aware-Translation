@@ -22,6 +22,8 @@ export default function AnnouncementHandler() {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null);
   const [open, setOpen] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const [isClient, setIsClient] = useState(false);
+  const [showConnectionStatus, setShowConnectionStatus] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
@@ -34,7 +36,7 @@ export default function AnnouncementHandler() {
     console.log('🔌 공지 시스템 연결 중...', apiUrl);
     setConnectionStatus('connecting');
 
-    const eventSource = new EventSource(`${apiUrl}/api/v1/announcements/stream`);
+    const eventSource = new EventSource(`${apiUrl}/api/v1/community/announcements/stream`);
     eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
@@ -45,14 +47,17 @@ export default function AnnouncementHandler() {
 
     eventSource.onmessage = (event) => {
       try {
-        const data: Announcement = JSON.parse(event.data);
+        const data: Announcement[] = JSON.parse(event.data);
         console.log('📢 새 공지 수신:', data);
-        
-        if (data.is_active) {
-          setAnnouncement(data);
+
+        // Find the first active announcement
+        const activeAnnouncement = data.find(announcement => announcement.is_active);
+
+        if (activeAnnouncement) {
+          setAnnouncement(activeAnnouncement);
           setOpen(true);
         } else {
-          console.log('🔇 공지 비활성화됨:', data.id);
+          console.log('🔇 모든 공지 비활성화됨');
           setOpen(false);
           setTimeout(() => {
             setAnnouncement(null);
@@ -85,6 +90,13 @@ export default function AnnouncementHandler() {
   }, []);
 
   useEffect(() => {
+    // Ensure dev-only UI that may be mutated by extensions only renders on client
+    setIsClient(true);
+
+    // 로컬 스토리지에서 연결 상태 표시 설정 읽기 (기본값: true)
+    const storedShowConnectionStatus = localStorage.getItem('showConnectionStatus');
+    setShowConnectionStatus(storedShowConnectionStatus !== 'false');
+
     connectToSSE();
 
     return () => {
@@ -114,6 +126,12 @@ export default function AnnouncementHandler() {
     reconnectAttemptsRef.current = 0;
     connectToSSE();
   }, [connectToSSE]);
+
+  const handleToggleConnectionStatus = useCallback(() => {
+    const newShowStatus = !showConnectionStatus;
+    setShowConnectionStatus(newShowStatus);
+    localStorage.setItem('showConnectionStatus', newShowStatus.toString());
+  }, [showConnectionStatus]);
 
   return (
     <>
@@ -155,23 +173,43 @@ export default function AnnouncementHandler() {
         </Snackbar>
       )}
 
-      {process.env.NODE_ENV === 'development' && (
-        <div style={{
+      {process.env.NODE_ENV === 'development' && isClient && showConnectionStatus && (
+        <div suppressHydrationWarning style={{
           position: 'fixed',
           top: 10,
           right: 10,
-          padding: '4px 8px',
-          backgroundColor: connectionStatus === 'connected' ? '#4caf50' : 
-                         connectionStatus === 'connecting' ? '#ff9800' : '#f44336',
-          color: 'white',
-          borderRadius: '4px',
-          fontSize: '12px',
-          zIndex: 9999,
-          cursor: connectionStatus === 'disconnected' ? 'pointer' : 'default'
-        }} onClick={connectionStatus === 'disconnected' ? handleReconnect : undefined}>
-          {connectionStatus === 'connected' && '🟢'}
-          {connectionStatus === 'connecting' && '🟡 연결 중...'}
-          {connectionStatus === 'disconnected' && '🔴 연결 끊김 (클릭하여 재연결)'}
+          display: 'flex',
+          flexDirection: 'row',
+          gap: '8px',
+          zIndex: 9999
+        }}>
+          {/* 연결 상태 아이콘 */}
+          <div style={{
+            padding: '4px 8px',
+            backgroundColor: connectionStatus === 'connected' ? '#4caf50' :
+                           connectionStatus === 'connecting' ? '#ff9800' : '#f44336',
+            color: 'white',
+            borderRadius: '4px',
+            fontSize: '12px',
+            cursor: connectionStatus === 'disconnected' ? 'pointer' : 'default'
+          }} onClick={connectionStatus === 'disconnected' ? handleReconnect : undefined}>
+            {connectionStatus === 'connected' && '🟢'}
+            {connectionStatus === 'connecting' && '🟡 연결 중...'}
+            {connectionStatus === 'disconnected' && '🔴 연결 끊김 (클릭하여 재연결)'}
+          </div>
+
+          {/* 토글 버튼 */}
+          <div style={{
+            padding: '4px 8px',
+            backgroundColor: '#2196f3',
+            color: 'white',
+            borderRadius: '4px',
+            fontSize: '12px',
+            cursor: 'pointer',
+            userSelect: 'none'
+          }} onClick={handleToggleConnectionStatus}>
+            {showConnectionStatus ? '🔵 켜짐' : '⚪ 꺼짐'}
+          </div>
         </div>
       )}
     </>

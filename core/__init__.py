@@ -3,9 +3,9 @@ Core module for Context-Aware Translation system.
 This module provides the main components for literary translation.
 """
 
-# Translation components
-from .translation.engine import TranslationEngine
-from .translation.job import TranslationJob
+# Import translation components
+from .translation.translation_pipeline import TranslationPipeline
+from .translation.document import TranslationDocument
 from .translation.models.gemini import GeminiModel
 
 # Configuration components
@@ -24,16 +24,16 @@ from .utils.file_parser import parse_document
 from .utils.retry import retry_with_softer_prompt, retry_on_prohibited_segment
 
 # Error handling
-from .errors import (
+from shared.errors import (
     ProhibitedException,
     TranslationError,
     prohibited_content_logger
 )
 
 __all__ = [
-    # Translation
-    'TranslationEngine',
-    'TranslationJob',
+    # Translation components
+    'TranslationPipeline',
+    'TranslationDocument',
     'GeminiModel',
     
     # Configuration

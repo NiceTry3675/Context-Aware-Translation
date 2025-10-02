@@ -1,0 +1,21 @@
+{
+  "description": "Single term translation pair.",
+  "properties": {
+    "source": {
+      "description": "Source term in the source language",
+      "title": "Source",
+      "type": "string"
+    },
+    "korean": {
+      "description": "Korean translation",
+      "title": "Korean",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source",
+    "korean"
+  ],
+  "title": "TranslatedTerm",
+  "type": "object"
+}

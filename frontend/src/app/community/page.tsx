@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
+import { endpoints } from '@/lib/api';
+import UserDisplayName from '../components/UserDisplayName';
 import {
   Container, Box, Typography, Card, CardContent,
   Button, Alert, CircularProgress, Chip, Divider, List, ListItem, ListItemText, IconButton
@@ -18,51 +20,11 @@ import {
   Home as HomeIcon
 } from '@mui/icons-material';
 import theme from '../../theme';
-
-interface Author {
-  id: number;
-  clerk_user_id: string;
-  name: string;
-  role: string;
-  email: string;
-}
-
-interface PostCategory {
-  id: number;
-  name: string;
-  display_name: string;
-  description: string;
-  is_admin_only: boolean;
-  order: number;
-  created_at: string;
-}
-
-interface PostPreview {
-  id: number;
-  title: string;
-  author: Author;
-  category: PostCategory;
-  is_pinned: boolean;
-  is_private: boolean;
-  view_count: number;
-  comment_count: number;
-  created_at: string;
-}
-
-interface CategoryOverview {
-  id: number;
-  name: string;
-  display_name: string;
-  description: string;
-  is_admin_only: boolean;
-  order: number;
-  created_at: string;
-  recent_posts: PostPreview[];
-  total_posts: number;
-}
+import type { CategoryOverview } from '@/lib/api';
 
 const categoryIcons: { [key: string]: React.ReactNode } = {
   notice: <AnnouncementIcon sx={{ fontSize: 40 }} />,
+  announcement: <AnnouncementIcon sx={{ fontSize: 40 }} />,
   suggestion: <LightbulbIcon sx={{ fontSize: 40 }} />,
   qna: <QuestionAnswerIcon sx={{ fontSize: 40 }} />,
   free: <ForumIcon sx={{ fontSize: 40 }} />
@@ -70,6 +32,7 @@ const categoryIcons: { [key: string]: React.ReactNode } = {
 
 const categoryColors: { [key: string]: string } = {
   notice: theme.palette.error.main,
+  announcement: theme.palette.error.main,
   suggestion: theme.palette.success.main,
   qna: theme.palette.info.main,
   free: theme.palette.primary.main
@@ -82,15 +45,8 @@ export default function CommunityPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
   useEffect(() => {
     if (!isLoaded) return;
-
-    if (!isSignedIn) {
-      router.push('/');
-      return;
-    }
 
     fetchCategoriesOverview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -98,25 +54,17 @@ export default function CommunityPage() {
 
   const fetchCategoriesOverview = async () => {
     try {
-      console.log('Fetching categories overview from:', `${API_URL}/api/v1/community/categories/overview`);
       const token = await getToken();
-      const response = await fetch(`${API_URL}/api/v1/community/categories/overview`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Response not OK:', response.status, errorText);
-        throw new Error(`Failed to fetch categories: ${response.status} ${errorText}`);
+      const { data, error } = await endpoints.getCategoriesOverview(token || undefined);
+
+      if (error) {
+        throw new Error('Failed to fetch categories');
       }
-      
-      const data = await response.json();
+
       console.log('Categories fetched:', data);
       setCategories(data);
-      
-      if (data.length === 0) {
+
+      if (!data || data.length === 0) {
         setError('카테고리가 아직 생성되지 않았습니다. 관리자에게 문의해주세요.');
       }
     } catch (err) {
@@ -286,25 +234,25 @@ export default function CommunityPage() {
                   <Divider sx={{ mb: 2 }} />
 
                   {/* Recent Posts */}
-                  {category.recent_posts.length > 0 ? (
+                  {(category.recent_posts?.length ?? 0) > 0 ? (
                     <Box>
                       <Typography variant="h6" mb={2} color="text.secondary">
                         최근 게시글
                       </Typography>
                       <List sx={{ py: 0 }}>
-                        {category.recent_posts.map((post) => (
+                        {(category.recent_posts || []).map((post) => (
                           <ListItem 
                             key={post.id} 
                             sx={{ 
                               px: 0, 
-                              cursor: post.title.includes('🔒') ? 'not-allowed' : 'pointer',
+                              cursor: post.is_private ? 'not-allowed' : 'pointer',
                               '&:hover': {
-                                backgroundColor: post.title.includes('🔒') ? 'transparent' : 'action.hover',
+                                backgroundColor: post.is_private ? 'transparent' : 'action.hover',
                                 borderRadius: 1
                               }
                             }}
                             onClick={() => {
-                              if (!post.title.includes('🔒')) {
+                              if (!post.is_private) {
                                 router.push(`/community/${category.name}/${post.id}`)
                               }
                             }}
@@ -328,19 +276,22 @@ export default function CommunityPage() {
                               secondary={
                                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
                                   <Typography variant="caption" color="text.secondary">
-                                    {post.author.name || '사용자'}
+                                    <UserDisplayName author={post.author} variant="short" />
                                   </Typography>
                                   <Typography variant="caption" color="text.secondary">
                                     조회 {post.view_count}
                                   </Typography>
                                   <Typography variant="caption" color="text.secondary">
-                                    댓글 {post.comment_count}
+                                    댓글 {post.comment_count ?? 0}
                                   </Typography>
                                   <Typography variant="caption" color="text.secondary">
                                     {formatDate(post.created_at)}
                                   </Typography>
                                 </span>
                               }
+                              secondaryTypographyProps={{
+                                component: 'div'
+                              }}
                             />
                           </ListItem>
                         ))}

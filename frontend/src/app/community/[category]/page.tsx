@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth, useUser } from '@clerk/nextjs';
+import { buildAuthHeader } from '../../utils/authToken';
 import UserDisplayName from '../../components/UserDisplayName';
 import {
   Container, Box, Typography, Button, Alert,
@@ -21,35 +22,12 @@ import {
   ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import theme from '../../../theme';
+import type { components } from '@/types/api';
 
-interface PostCategory {
-  id: number;
-  name: string;
-  display_name: string;
-  description: string;
-  is_admin_only: boolean;
-}
-
-interface Author {
-  id: number;
-  clerk_user_id: string;
-  name: string;
-  role: string;
-  email: string;
-}
-
-interface PostList {
-  id: number;
-  title: string;
-  author: Author;
-  category: PostCategory;
-  is_pinned: boolean;
-  is_private: boolean;
-  view_count: number;
-  comment_count: number;
-  created_at: string;
-  updated_at: string | null;
-}
+// Type aliases for convenience
+type PostCategory = components['schemas']['PostCategory'];
+type Post = components['schemas']['Post'];
+type User = components['schemas']['User'];
 
 function CategoryPostsPageContent() {
   const router = useRouter();
@@ -58,7 +36,7 @@ function CategoryPostsPageContent() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   
-  const [posts, setPosts] = useState<PostList[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [category, setCategory] = useState<PostCategory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,11 +48,6 @@ function CategoryPostsPageContent() {
 
   useEffect(() => {
     if (!isLoaded) return;
-
-    if (!isSignedIn) {
-      router.push('/');
-      return;
-    }
 
     // 먼저 카테고리 정보를 가져온 다음 게시글을 가져옴
     fetchCategoryInfo();
@@ -100,13 +73,10 @@ function CategoryPostsPageContent() {
   const fetchPosts = async () => {
     try {
       console.log('Fetching posts for category:', categoryName);
-      const token = await getToken();
       const response = await fetch(
         `${API_URL}/api/v1/community/posts?category=${categoryName}&skip=${page * rowsPerPage}&limit=${rowsPerPage}${searchTerm ? `&search=${searchTerm}` : ''}`,
         {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: await buildAuthHeader(getToken)
         }
       );
       if (!response.ok) throw new Error('Failed to fetch posts');
@@ -324,8 +294,8 @@ function CategoryPostsPageContent() {
                           fontStyle: post.is_private ? 'italic' : 'normal'
                         }}
                       >
-                        {post.is_private && user?.id !== post.author.clerk_user_id && user?.publicMetadata?.role !== 'admin' 
-                          ? '🔒 비밀글입니다' 
+                        {post.is_private && user?.publicMetadata?.role !== 'admin'
+                          ? '🔒 비밀글입니다'
                           : post.title
                         }
                       </Typography>
@@ -335,11 +305,8 @@ function CategoryPostsPageContent() {
                     <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
                       <PersonIcon fontSize="small" color="action" />
                       <Typography variant="body2">
-                        <UserDisplayName author={post.author} variant="short" />
+                        <UserDisplayName author={post.author} variant="short" showRole />
                       </Typography>
-                      {post.author.role === 'admin' && (
-                        <Chip label="운영자" size="small" color="primary" />
-                      )}
                     </Box>
                   </TableCell>
                   <TableCell align="center">
@@ -351,7 +318,7 @@ function CategoryPostsPageContent() {
                   <TableCell align="center">
                     <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
                       <CommentIcon fontSize="small" color="action" />
-                      {post.comment_count}
+                      {post.comments?.length || 0}
                     </Box>
                   </TableCell>
                   <TableCell align="center">

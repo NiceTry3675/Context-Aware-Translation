@@ -36,3 +36,16 @@ error.txt
 database.db
 run_server.py
 commit_message.txt
+
+# Reduce Docker build context (not needed for backend image)
+frontend/
+docs/
+tests/
+logs/
+uploads/
+illustrations/
+translated_novel/
+_archive/
+source_novel/
+celery.log
+openapi.json

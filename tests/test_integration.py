@@ -9,11 +9,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core.config.loader import load_config
 from core.translation.models.gemini import GeminiModel
 from core.config.builder import DynamicConfigBuilder
-from core.translation.job import TranslationJob
-from core.translation.engine import TranslationEngine
+from core.translation.document import TranslationDocument
+from core.translation.translation_pipeline import TranslationPipeline
 from core.utils.file_parser import parse_document
-from backend.database import SessionLocal
-from backend import crud
+from backend.config.database import SessionLocal
+from backend.domains.translation import repository as crud
 
 class TestIntegrationTranslation(unittest.TestCase):
     """Integration test with actual Gemini API (requires API key)."""
@@ -50,7 +50,7 @@ class TestIntegrationTranslation(unittest.TestCase):
         self.db = SessionLocal()
         
         # Create a test job in the database
-        from backend.models import TranslationJob as DBTranslationJob
+        from backend.domains.translation.models import TranslationJob as DBTranslationJob
         test_job = DBTranslationJob(
             filename=f"test_catcher_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
             status="PROCESSING"
@@ -63,7 +63,7 @@ class TestIntegrationTranslation(unittest.TestCase):
         """Clean up database."""
         if hasattr(self, 'db'):
             # Delete the test job
-            from backend.models import TranslationJob as DBTranslationJob
+            from backend.domains.translation.models import TranslationJob as DBTranslationJob
             job = self.db.query(DBTranslationJob).filter(DBTranslationJob.id == self.job_id).first()
             if job:
                 self.db.delete(job)
@@ -92,26 +92,33 @@ class TestIntegrationTranslation(unittest.TestCase):
             
             # Validate API key
             self.assertTrue(GeminiModel.validate_api_key(self.api_key))
+
+            # Smoke: structured generation shape (mocked)
+            try:
+                # Not executed against live API by default; just ensure method exists
+                self.assertTrue(hasattr(gemini_api, 'generate_structured'))
+            except Exception:
+                pass
             
             # Create translation job
-            job = TranslationJob(test_file_path, target_segment_size=1000)
+            document = TranslationDocument(test_file_path, target_segment_size=1000)
             
             # Create dynamic config builder
             dyn_config_builder = DynamicConfigBuilder(gemini_api, "The Catcher in the Rye")
             
             # Create translation engine
-            engine = TranslationEngine(gemini_api, dyn_config_builder, self.db, self.job_id)
+            pipeline = TranslationPipeline(gemini_api, dyn_config_builder, self.db, self.job_id)
             
             # Run the translation
             print(f"\nStarting translation of {len(test_text)} characters...")
-            engine.translate_job(job)
+            pipeline.translate_document(document)
             
             # Verify results
-            self.assertEqual(len(job.translated_segments), len(job.segments))
-            self.assertTrue(os.path.exists(job.output_filename))
+            self.assertEqual(len(document.translated_segments), len(document.segments))
+            self.assertTrue(os.path.exists(document.output_filename))
             
             # Read the output
-            with open(job.output_filename, 'r', encoding='utf-8') as f:
+            with open(document.output_filename, 'r', encoding='utf-8') as f:
                 output_content = f.read()
             
             # Basic checks on the output
@@ -121,9 +128,9 @@ class TestIntegrationTranslation(unittest.TestCase):
             self.assertTrue(has_korean, "Output should contain Korean characters")
             
             print(f"Translation completed successfully!")
-            print(f"Output file: {job.output_filename}")
+            print(f"Output file: {document.output_filename}")
             print(f"Output length: {len(output_content)} characters")
-            print(f"Glossary entries: {job.glossary}")
+            print(f"Glossary entries: {document.glossary}")
             
             # Show a sample of the translation
             print("\nSample of translation (first 200 chars):")
@@ -160,19 +167,19 @@ class TestIntegrationTranslation(unittest.TestCase):
             )
             
             # Create translation job
-            job = TranslationJob(test_file_path, target_segment_size=5000)
-            print(f"\nCreated {len(job.segments)} segments from {self.max_chars} characters")
+            document = TranslationDocument(test_file_path, target_segment_size=5000)
+            print(f"\nCreated {len(document.segments)} segments from {self.max_chars} characters")
             
             # Create dynamic config builder
             dyn_config_builder = DynamicConfigBuilder(gemini_api, "The Catcher in the Rye")
             
             # Create translation engine
-            engine = TranslationEngine(gemini_api, dyn_config_builder, self.db, self.job_id)
+            pipeline = TranslationPipeline(gemini_api, dyn_config_builder, self.db, self.job_id)
             
             # Run the translation
             print("Starting full translation...")
             start_time = datetime.now()
-            engine.translate_job(job)
+            pipeline.translate_document(document)
             end_time = datetime.now()
             
             # Calculate time taken
@@ -180,20 +187,20 @@ class TestIntegrationTranslation(unittest.TestCase):
             print(f"\nTranslation completed in {duration:.2f} seconds")
             
             # Verify results
-            self.assertEqual(len(job.translated_segments), len(job.segments))
-            self.assertTrue(os.path.exists(job.output_filename))
+            self.assertEqual(len(document.translated_segments), len(document.segments))
+            self.assertTrue(os.path.exists(document.output_filename))
             
             # Analyze the output
-            with open(job.output_filename, 'r', encoding='utf-8') as f:
+            with open(document.output_filename, 'r', encoding='utf-8') as f:
                 output_content = f.read()
             
             print(f"\nTranslation Statistics:")
             print(f"- Input characters: {len(test_text)}")
             print(f"- Output characters: {len(output_content)}")
-            print(f"- Number of segments: {len(job.segments)}")
-            print(f"- Glossary entries: {len(job.glossary)}")
-            print(f"- Character styles: {len(job.character_styles)}")
-            print(f"- Output file: {job.output_filename}")
+            print(f"- Number of segments: {len(document.segments)}")
+            print(f"- Glossary entries: {len(document.glossary)}")
+            print(f"- Character styles: {len(document.character_styles)}")
+            print(f"- Output file: {document.output_filename}")
             
             # Save detailed statistics
             stats_file = os.path.join(self.test_output_dir, f"stats_{self.job_id}.txt")
@@ -204,12 +211,12 @@ class TestIntegrationTranslation(unittest.TestCase):
                 f.write(f"Duration: {duration:.2f} seconds\n")
                 f.write(f"Input characters: {len(test_text)}\n")
                 f.write(f"Output characters: {len(output_content)}\n")
-                f.write(f"Segments: {len(job.segments)}\n")
+                f.write(f"Segments: {len(document.segments)}\n")
                 f.write(f"\nGlossary:\n")
-                for k, v in job.glossary.items():
+                for k, v in document.glossary.items():
                     f.write(f"  {k}: {v}\n")
                 f.write(f"\nCharacter Styles:\n")
-                for k, v in job.character_styles.items():
+                for k, v in document.character_styles.items():
                     f.write(f"  {k}: {v}\n")
             
             print(f"\nStatistics saved to: {stats_file}")

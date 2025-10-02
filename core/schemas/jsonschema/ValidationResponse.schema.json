@@ -1,0 +1,84 @@
+{
+  "$defs": {
+    "ValidationCase": {
+      "description": "Individual validation issue found in translation.",
+      "properties": {
+        "current_korean_sentence": {
+          "description": "문제가 되는 현재 한국어 문장 (최대 1~2문장)",
+          "title": "Current Korean Sentence",
+          "type": "string"
+        },
+        "problematic_source_sentence": {
+          "description": "대응하는 원문 문장 (최대 1~2문장)",
+          "title": "Problematic Source Sentence",
+          "type": "string"
+        },
+        "reason": {
+          "description": "왜 문제인지",
+          "title": "Reason",
+          "type": "string"
+        },
+        "dimension": {
+          "description": "이슈 차원(카테고리)",
+          "enum": [
+            "completeness",
+            "accuracy",
+            "addition",
+            "name_consistency",
+            "dialogue_style",
+            "flow",
+            "other"
+          ],
+          "title": "Dimension",
+          "type": "string"
+        },
+        "severity": {
+          "description": "이슈의 심각도. 1(사소함), 2(중대함), 3(치명적) 중 하나의 숫자로 표기.",
+          "enum": [
+            "1",
+            "2",
+            "3"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "recommend_korean_sentence": {
+          "description": "권장 수정 번역문",
+          "title": "Recommend Korean Sentence",
+          "type": "string"
+        },
+        "tags": {
+          "description": "보조 라벨(예: terminology, formality, punctuation)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        }
+      },
+      "required": [
+        "current_korean_sentence",
+        "problematic_source_sentence",
+        "reason",
+        "dimension",
+        "severity",
+        "recommend_korean_sentence"
+      ],
+      "title": "ValidationCase",
+      "type": "object"
+    }
+  },
+  "description": "Response model for validation results.",
+  "properties": {
+    "cases": {
+      "description": "List of validation issues found. Empty list if no issues.",
+      "items": {
+        "$ref": "#/$defs/ValidationCase"
+      },
+      "title": "Cases",
+      "type": "array"
+    }
+  },
+  "title": "ValidationResponse",
+  "type": "object"
+}

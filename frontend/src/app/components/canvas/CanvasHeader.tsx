@@ -1,0 +1,87 @@
+'use client';
+
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  Box,
+  Container,
+  Paper,
+  Typography,
+  IconButton,
+  Stack,
+  Chip,
+  Tooltip,
+} from '@mui/material';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import FullscreenIcon from '@mui/icons-material/Fullscreen';
+import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import { Job } from '../../types/ui';
+
+interface CanvasHeaderProps {
+  selectedJob: Job | null;
+  fullscreen: boolean;
+  onToggleFullscreen: () => void;
+  onRefresh: () => void;
+}
+
+export default function CanvasHeader({
+  selectedJob,
+  fullscreen,
+  onToggleFullscreen,
+  onRefresh,
+}: CanvasHeaderProps) {
+  const router = useRouter();
+
+  return (
+    <Paper elevation={1} sx={{ borderRadius: 0, borderBottom: 1, borderColor: 'divider' }}>
+      <Container maxWidth={false}>
+        <Box sx={{ py: 2 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Typography variant="h6" component="h1">
+                번역 캔버스
+              </Typography>
+              {selectedJob && (
+                <Tooltip title={selectedJob.filename}>
+                  <Chip
+                    label={selectedJob.filename}
+                    size="small"
+                    sx={{
+                      maxWidth: 300,
+                      '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' }
+                    }}
+                  />
+                </Tooltip>
+              )}
+            </Stack>
+
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Tooltip title="새로고침">
+                <IconButton aria-label="새로고침" onClick={onRefresh}>
+                  <RefreshIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="토큰 사용량">
+                <IconButton aria-label="토큰 사용량" onClick={() => router.push('/usage')}>
+                  <BarChartIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="정보">
+                <IconButton aria-label="소개 페이지" onClick={() => router.push('/about')}>
+                  <InfoOutlinedIcon />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title={fullscreen ? "전체화면 종료" : "전체화면"}>
+                <IconButton aria-label={fullscreen ? '전체화면 종료' : '전체화면'} onClick={onToggleFullscreen}>
+                  {fullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
+                </IconButton>
+              </Tooltip>
+            </Stack>
+          </Stack>
+        </Box>
+      </Container>
+    </Paper>
+  );
+}

@@ -1,0 +1,35 @@
+{
+  "name": "context-aware-translation",
+  "version": "1.0.0",
+  "description": "AI-powered literary translation application",
+  "private": true,
+  "scripts": {
+    "openapi": "python backend/scripts/export_openapi.py",
+    "openapi:export": "python backend/scripts/export_openapi.py",
+    "codegen": "npm run openapi && npm --prefix frontend run codegen:api",
+    "codegen:all": "npm run codegen",
+    "dev:backend": "uvicorn backend.main:app --reload --port 8000",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "build:frontend": "npm --prefix frontend run build",
+    "prebuild": "npm run codegen",
+    "check:types": "npm run codegen && npm --prefix frontend run tsc -- --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/soryhyun/Context-Aware-Translation.git"
+  },
+  "keywords": [
+    "translation",
+    "ai",
+    "gemini",
+    "openrouter",
+    "fastapi",
+    "nextjs"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  }
+}

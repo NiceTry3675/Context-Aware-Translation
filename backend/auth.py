@@ -1,22 +1,47 @@
 import os
+import time
 from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from clerk_backend_api import Clerk
 from clerk_backend_api.models import ClerkErrors, SDKError
 from clerk_backend_api.security import AuthenticateRequestOptions
-from typing import Optional
+from typing import Optional, Dict, Tuple
 
 # Internal imports
-from . import crud, models, schemas
-from .database import SessionLocal
+from .domains.user import schemas as user_schemas
+from .domains.user.models import User
+from .config.database import SessionLocal
+from .domains.user.repository import SqlAlchemyUserRepository
 
 # Initialize the Clerk client with proper API key.
 clerk = Clerk(bearer_auth=os.environ.get("CLERK_SECRET_KEY"))
 
+# Feature flag: minimize Clerk Management API calls.
+# If False (default), we avoid calling Clerk Management API on each request
+# and rely on JWT claims for user info/role.
+USE_CLERK_MANAGEMENT_API = os.environ.get("USE_CLERK_MANAGEMENT_API", "false").lower() == "true"
+
+# In-process cache to avoid repeated Clerk JWT verification for identical tokens
+# Keyed by raw bearer token, value is (claims_payload_dict, expiry_epoch_seconds)
+_TOKEN_CACHE: Dict[str, Tuple[dict, float]] = {}
+_TOKEN_CACHE_MAX_TTL_SECONDS = float(os.environ.get("AUTH_TOKEN_CACHE_MAX_TTL_SECONDS", "60"))
+_TOKEN_CACHE_SAFETY_MARGIN_SECONDS = float(os.environ.get("AUTH_TOKEN_CACHE_SAFETY_MARGIN_SECONDS", "5"))
+
+def _extract_bearer_token(auth_header: Optional[str]) -> Optional[str]:
+    if not auth_header:
+        return None
+    parts = auth_header.split()
+    if len(parts) == 2 and parts[0].lower() == "bearer":
+        return parts[1]
+    return None
+
 async def get_clerk_user_info(clerk_user_id: str) -> dict:
     """Clerk Management API를 사용하여 완전한 사용자 정보 가져오기"""
     try:
+        if not USE_CLERK_MANAGEMENT_API:
+            # 관리 API 비활성화 시 None 반환하여 클레임 기반 경로로 유도
+            return None
         user = clerk.users.get(user_id=clerk_user_id)
         
         # Clerk User 객체에서 정보 추출
@@ -67,22 +92,54 @@ async def get_current_user_claims(request: Request) -> Optional[dict]:
     """
     # Check if the Authorization header exists before proceeding
     if "Authorization" not in request.headers:
+        print(f"--- [AUTH DEBUG] No Authorization header found in request to {request.url.path}")
         return None
+    
+    auth_header = request.headers.get("Authorization")
+    print(f"--- [AUTH DEBUG] Authorization header for {request.url.path}: {auth_header[:50] if auth_header else 'None'}...")
+
+    # Try in-process cache first to avoid repeated verification of the same token
+    token = _extract_bearer_token(auth_header)
+    now = time.time()
+    if token and token in _TOKEN_CACHE:
+        payload, expiry = _TOKEN_CACHE.get(token, ({}, 0))
+        if expiry - now > _TOKEN_CACHE_SAFETY_MARGIN_SECONDS:
+            return payload
         
     try:
-        options = AuthenticateRequestOptions(secret_key=os.environ.get("CLERK_SECRET_KEY"))
+        clerk_secret = os.environ.get("CLERK_SECRET_KEY")
+        if not clerk_secret:
+            print("--- [AUTH ERROR] CLERK_SECRET_KEY not found in environment variables!")
+            return None
+        print(f"--- [AUTH DEBUG] Using Clerk secret key: {clerk_secret[:10]}...")
+        
+        options = AuthenticateRequestOptions(secret_key=clerk_secret)
         request_state = clerk.authenticate_request(request=request, options=options)
 
         if request_state.is_signed_in:
             payload = request_state.payload
             print(f"--- [DEBUG] Full JWT Claims: {payload}")
             print(f"--- [DEBUG] Available keys: {list(payload.keys()) if payload else 'None'}")
+            # Cache the payload until min(exp, now + MAX_TTL) with a small safety margin
+            try:
+                exp = float(payload.get("exp")) if payload and payload.get("exp") else None
+            except Exception:
+                exp = None
+            if token:
+                if exp is not None:
+                    expiry = min(exp, now + _TOKEN_CACHE_MAX_TTL_SECONDS)
+                else:
+                    expiry = now + _TOKEN_CACHE_MAX_TTL_SECONDS
+                _TOKEN_CACHE[token] = (payload, expiry)
             return payload
+        else:
+            print(f"--- [AUTH DEBUG] Token present but not signed in. Request state: {request_state}")
         return None
 
-    except (ClerkErrors, SDKError):
+    except (ClerkErrors, SDKError) as e:
         # This can happen if the token is present but invalid (e.g., expired).
         # We treat this as an unauthenticated state for this optional check.
+        print(f"--- [AUTH DEBUG] Clerk authentication error: {e}")
         return None
     except Exception as e:
         print(f"--- [AUTH DEBUG] An unexpected error occurred during optional auth check: {e} ---")
@@ -90,10 +147,22 @@ async def get_current_user_claims(request: Request) -> Optional[dict]:
         # Returning None is safer to prevent accidental access on system failure.
         return None
 
+def _name_email_from_claims(claims_dict: dict) -> tuple[str | None, str | None]:
+    email_address = claims_dict.get('primary_email_address') or claims_dict.get('email')
+    name = (
+        claims_dict.get('name') or claims_dict.get('full_name') or
+        f"{claims_dict.get('first_name', '')} {claims_dict.get('last_name', '')}".strip() or
+        claims_dict.get('username') or  # Try username from Clerk
+        (email_address.split('@')[0] if email_address else None) or
+        f"user_{claims_dict.get('sub', 'unknown')[-8:]}"  # Fallback to user ID suffix
+    )
+    return name, email_address
+
+
 async def get_required_user(
     claims: dict = Depends(get_current_user_claims),
     db: Session = Depends(get_db)
-) -> models.User:
+) -> User:
     """
     Dependency that requires a user to be authenticated.
     It ensures a user exists in our database for the given Clerk JWT claims.
@@ -111,77 +180,92 @@ async def get_required_user(
     if not clerk_user_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Clerk user ID (sub) not found in token.")
 
-    db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
+    repo = SqlAlchemyUserRepository(db)
+    db_user = repo.get_by_clerk_id(clerk_user_id)
 
     if not db_user:
-        print(f"--- [INFO] User with Clerk ID {clerk_user_id} not found in DB. Creating new user record from API request. ---")
+        print(f"--- [INFO] User with Clerk ID {clerk_user_id} not found in DB. Creating from JWT claims. ---")
         try:
-            # Clerk Management API를 사용하여 완전한 사용자 정보 가져오기
-            clerk_user_info = await get_clerk_user_info(clerk_user_id)
-            
-            if clerk_user_info:
-                email_address = clerk_user_info.get('email')
-                name = (clerk_user_info.get('username') or 
-                       clerk_user_info.get('full_name') or
-                       (email_address.split('@')[0] if email_address else None))
-            else:
-                # Fallback to JWT claims if API fails
-                email_address = claims.get('primary_email_address') or claims.get('email')
-                name = (claims.get('name') or claims.get('full_name') or 
-                       f"{claims.get('first_name', '')} {claims.get('last_name', '')}".strip() or
-                       (email_address.split('@')[0] if email_address else None))
-
-            new_user_data = schemas.UserCreate(
+            name, email_address = _name_email_from_claims(claims)
+            new_user_data = user_schemas.UserCreate(
                 clerk_user_id=clerk_user_id,
                 email=email_address,
                 name=name
             )
-            db_user = crud.create_user(db, user=new_user_data)
-            print(f"--- [INFO] Successfully created user {db_user.id} for Clerk ID {clerk_user_id} with name: {name}. ---")
+            db_user = User(clerk_user_id=new_user_data.clerk_user_id, email=new_user_data.email, name=new_user_data.name)
+            db.add(db_user)
+            db.commit()
+            db.refresh(db_user)
+            print(f"--- [INFO] Created user {db_user.id} for Clerk ID {clerk_user_id} (claims-based). ---")
         except IntegrityError:
             db.rollback()
             print(f"--- [WARN] Race condition detected for Clerk ID {clerk_user_id}. User likely created by webhook. Refetching... ---")
-            db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
+            repo = SqlAlchemyUserRepository(db)
+            db_user = repo.get_by_clerk_id(clerk_user_id)
             if not db_user:
-                # This case is highly unlikely but good to handle.
                 raise HTTPException(status_code=500, detail="Failed to create or find user after race condition.")
     else:
-        # 기존 사용자의 이름이 없는 경우 업데이트
-        if not db_user.name:
-            print(f"--- [INFO] Updating existing user {db_user.id} name from None ---")
-            
-            # Clerk Management API를 사용하여 완전한 사용자 정보 가져오기
-            clerk_user_info = await get_clerk_user_info(clerk_user_id)
-            
-            if clerk_user_info:
-                # 사용자명 우선 순위로 변경
-                name = (clerk_user_info.get('username') or 
-                       clerk_user_info.get('full_name') or
-                       (clerk_user_info.get('email').split('@')[0] if clerk_user_info.get('email') else None))
-                email_address = clerk_user_info.get('email')
-                
-                # 이메일도 없는 경우 같이 업데이트
-                update_data = {}
-                if name:
-                    update_data['name'] = name
-                if email_address and not db_user.email:
-                    update_data['email'] = email_address
-                    
-                if update_data:
-                    user_update = schemas.UserUpdate(**update_data)
-                    db_user = crud.update_user(db, clerk_user_id, user_update)
-                    print(f"--- [INFO] Updated user {db_user.id} with: {update_data}. ---")
+        # 기존 사용자의 이름/이메일 보강: 우선 JWT 클레임, 부족하면 Clerk Management API 사용 (옵션)
+        update_data = {}
+        name, email_address = _name_email_from_claims(claims)
 
-    # Sync user role from Clerk every time they are fetched
+        # If name still missing or looks like fallback, optionally fetch richer info from Clerk
+        if USE_CLERK_MANAGEMENT_API and (not name or name.startswith("user_") or not db_user.name or db_user.name.startswith("user_")):
+            clerk_info = await get_clerk_user_info(db_user.clerk_user_id)
+            if clerk_info:
+                # Prefer Clerk username, then full name
+                enriched_name = clerk_info.get('username') or clerk_info.get('full_name') or name
+                if enriched_name:
+                    name = enriched_name
+                # Prefer Clerk primary email if missing
+                if not email_address and clerk_info.get('email'):
+                    email_address = clerk_info['email']
+
+        # Update name if we don't have one, or if it's a generated fallback, or if we found a better name
+        should_update_name = (
+            not db_user.name or
+            db_user.name.startswith("user_") or
+            (name and not name.startswith("user_") and name != db_user.name)
+        )
+        if name and should_update_name:
+            update_data['name'] = name
+
+        # Update email if we don't have one
+        if not db_user.email and email_address:
+            update_data['email'] = email_address
+        if update_data:
+            user_update = user_schemas.UserUpdate(**update_data)
+            if db_user:
+                for key, value in user_update.dict(exclude_unset=True).items():
+                    setattr(db_user, key, value)
+                db.commit()
+                db.refresh(db_user)
+            print(f"--- [INFO] Updated user {db_user.id} with: {update_data} (claims/Clerk). ---")
+
+    # Sync user role from JWT claims; if absent, optionally use Clerk Management API
     if db_user:
-        db_user = await sync_user_role_from_clerk(db, db_user)
+        db_user = await sync_user_role_from_claims(db, db_user, claims)
+        if db_user.role != "admin":
+            # If role still not admin and claims lacked role, try Clerk API when enabled
+            if USE_CLERK_MANAGEMENT_API:
+                try:
+                    clerk_info = await get_clerk_user_info(db_user.clerk_user_id)
+                    clerk_role = (clerk_info or {}).get('public_metadata', {}).get('role') if clerk_info else None
+                    if clerk_role and clerk_role != db_user.role:
+                        db_user.role = clerk_role
+                        db.commit()
+                        db.refresh(db_user)
+                        print(f"--- [INFO] Synced role from Clerk API for user {db_user.id} to '{clerk_role}'. ---")
+                except Exception as e:
+                    print(f"--- [WARN] Clerk API role sync failed for {db_user.clerk_user_id}: {e}")
 
     return db_user
+
 
 async def get_optional_user(
     claims: Optional[dict] = Depends(get_current_user_claims),
     db: Session = Depends(get_db)
-) -> Optional[models.User]:
+) -> Optional[User]:
     """
     Dependency that provides the user model if authenticated, but doesn't fail if not.
     Returns the user model instance or None.
@@ -194,72 +278,101 @@ async def get_optional_user(
     if not clerk_user_id:
         return None
 
-    db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
-    
-    # If user doesn't exist in DB but is authenticated, create them
-    if not db_user:
-        print(f"--- [INFO] Optional auth: User with Clerk ID {clerk_user_id} not found in DB. Creating new user. ---")
-        try:
-            # Clerk Management API를 사용하여 완전한 사용자 정보 가져오기
-            clerk_user_info = await get_clerk_user_info(clerk_user_id)
-            
-            if clerk_user_info:
-                email_address = clerk_user_info.get('email')
-                name = (clerk_user_info.get('username') or 
-                       clerk_user_info.get('full_name') or
-                       (email_address.split('@')[0] if email_address else None))
-            else:
-                # Fallback to JWT claims
-                email_address = claims.get('primary_email_address') or claims.get('email')
-                name = (claims.get('name') or claims.get('full_name') or 
-                       f"{claims.get('first_name', '')} {claims.get('last_name', '')}".strip() or
-                       (email_address.split('@')[0] if email_address else None))
+    repo = SqlAlchemyUserRepository(db)
+    db_user = repo.get_by_clerk_id(clerk_user_id)
 
-            new_user_data = schemas.UserCreate(
+    # If user doesn't exist in DB but is authenticated, create them (claims-based)
+    if not db_user:
+        print(f"--- [INFO] Optional auth: Creating user for Clerk ID {clerk_user_id} from JWT claims. ---")
+        try:
+            name, email_address = _name_email_from_claims(claims)
+            new_user_data = user_schemas.UserCreate(
                 clerk_user_id=clerk_user_id,
                 email=email_address,
                 name=name
             )
-            db_user = crud.create_user(db, user=new_user_data)
-            print(f"--- [INFO] Successfully created user {db_user.id} for Clerk ID {clerk_user_id} in optional auth. ---")
+            db_user = User(clerk_user_id=new_user_data.clerk_user_id, email=new_user_data.email, name=new_user_data.name)
+            db.add(db_user)
+            db.commit()
+            db.refresh(db_user)
+            print(f"--- [INFO] Created user {db_user.id} for Clerk ID {clerk_user_id} (optional, claims-based). ---")
         except IntegrityError:
             db.rollback()
             print(f"--- [WARN] Race condition detected for Clerk ID {clerk_user_id} during optional auth. Refetching... ---")
-            db_user = crud.get_user_by_clerk_id(db, clerk_id=clerk_user_id)
+            repo = SqlAlchemyUserRepository(db)
+            db_user = repo.get_by_clerk_id(clerk_user_id)
         except Exception as e:
             print(f"--- [ERROR] Failed to create user in optional auth: {e}")
             return None
+    else:
+        # 기존 사용자의 이름/이메일 보강: 우선 JWT, 부족하면 Clerk Management API 사용 (옵션)
+        update_data = {}
+        name, email_address = _name_email_from_claims(claims)
+
+        if USE_CLERK_MANAGEMENT_API and (not name or name.startswith("user_") or not db_user.name or db_user.name.startswith("user_")):
+            clerk_info = await get_clerk_user_info(db_user.clerk_user_id)
+            if clerk_info:
+                enriched_name = clerk_info.get('username') or clerk_info.get('full_name') or name
+                if enriched_name:
+                    name = enriched_name
+                if not email_address and clerk_info.get('email'):
+                    email_address = clerk_info['email']
+
+        should_update_name = (
+            not db_user.name or
+            db_user.name.startswith("user_") or
+            (name and not name.startswith("user_") and name != db_user.name)
+        )
+        if name and should_update_name:
+            update_data['name'] = name
+
+        if not db_user.email and email_address:
+            update_data['email'] = email_address
+        if update_data:
+            user_update = user_schemas.UserUpdate(**update_data)
+            if db_user:
+                for key, value in user_update.dict(exclude_unset=True).items():
+                    setattr(db_user, key, value)
+                db.commit()
+                db.refresh(db_user)
+            print(f"--- [INFO] Updated user {db_user.id} with: {update_data} (claims/Clerk). ---")
 
     if db_user:
-        db_user = await sync_user_role_from_clerk(db, db_user)
+        db_user = await sync_user_role_from_claims(db, db_user, claims)
+        if db_user.role != "admin" and USE_CLERK_MANAGEMENT_API:
+            try:
+                clerk_info = await get_clerk_user_info(db_user.clerk_user_id)
+                clerk_role = (clerk_info or {}).get('public_metadata', {}).get('role') if clerk_info else None
+                if clerk_role and clerk_role != db_user.role:
+                    db_user.role = clerk_role
+                    db.commit()
+                    db.refresh(db_user)
+                    print(f"--- [INFO] Synced role from Clerk API for user {db_user.id} to '{clerk_role}'. ---")
+            except Exception as e:
+                print(f"--- [WARN] Clerk API role sync failed for {db_user.clerk_user_id}: {e}")
 
     return db_user
 
-async def sync_user_role_from_clerk(db: Session, db_user: models.User) -> models.User:
+async def sync_user_role_from_claims(db: Session, db_user: User, claims: dict | None) -> User:
     """
-    Fetches user role from Clerk's publicMetadata and updates the local DB if they differ.
+    Prefer JWT claims public_metadata for role; avoid remote Clerk API calls.
     """
     try:
-        clerk_user_info = await get_clerk_user_info(db_user.clerk_user_id)
-        # Return early if no metadata is available
-        if not (clerk_user_info and clerk_user_info.get('public_metadata')):
+        if not claims:
             return db_user
-
-        clerk_role = clerk_user_info['public_metadata'].get('role', 'user')
-        
-        if db_user.role != clerk_role:
-            print(f"--- [INFO] Role mismatch for user {db_user.id}. DB: '{db_user.role}', Clerk: '{clerk_role}'. Syncing... ---")
+        public_metadata = claims.get('public_metadata') or {}
+        clerk_role = (public_metadata or {}).get('role')
+        if clerk_role and db_user.role != clerk_role:
+            print(f"--- [INFO] Role mismatch for user {db_user.id}. DB: '{db_user.role}', JWT: '{clerk_role}'. Syncing... ---")
             db_user.role = clerk_role
             db.commit()
             db.refresh(db_user)
-            print(f"--- [INFO] Synced role for user {db_user.id} to '{clerk_role}'. ---")
-            
+            print(f"--- [INFO] Synced role for user {db_user.id} to '{clerk_role}' (claims). ---")
     except Exception as e:
-        print(f"--- [WARN] Could not sync user role for {db_user.clerk_user_id}: {e}")
-    
+        print(f"--- [WARN] Could not sync user role from claims for {db_user.clerk_user_id}: {e}")
     return db_user
 
-async def is_admin(user: models.User) -> bool:
+async def is_admin(user: User) -> bool:
     """
     사용자가 관리자인지 확인
     1. 로컬 데이터베이스의 role 컬럼 확인
@@ -280,7 +393,7 @@ async def is_admin(user: models.User) -> bool:
     
     return False
 
-def is_admin_sync(user: models.User) -> bool:
+def is_admin_sync(user: User) -> bool:
     """
     동기 버전: 사용자가 관리자인지 확인
     주로 CRUD 함수들에서 사용 (로컬 DB만 확인)

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from '@clerk/nextjs';
 import { koKR } from "@clerk/localizations";
@@ -8,8 +7,10 @@ import CssBaseline from '@mui/material/CssBaseline';
 import theme from '../theme';
 import { Analytics } from '@vercel/analytics/react';
 import AnnouncementHandler from './components/AnnouncementHandler';
+import { Inter } from 'next/font/google';
 
 const inter = Inter({ subsets: ["latin"] });
+
 
 export const metadata: Metadata = {
   title: "냥번역 - Context-Aware AI Novel Translator",
