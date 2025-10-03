@@ -23,8 +23,8 @@ class Settings(BaseSettings):
         default=f"sqlite:///{Path(__file__).resolve().parent.parent.parent}/database.db",
         env="DATABASE_URL",
     )
-    pool_size: int = 5
-    max_overflow: int = 10
+    pool_size: int = Field(default=20, env="POOL_SIZE")
+    max_overflow: int = Field(default=20, env="MAX_OVERFLOW")
     pool_pre_ping: bool = True
     
     # Storage
@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     
     # Redis (for Celery and Caching)
     redis_url: str = Field(default="redis://localhost:6379", env="REDIS_URL")
-    redis_max_connections: int = 10
+    redis_max_connections: int = 50
     cache_ttl: int = 3600  # 1 hour default cache TTL
     
     # Security

@@ -31,6 +31,11 @@ PYTHON_VERSION=3.9
 3. **빌드 명령어**: 자동 감지 (requirements.txt 기반)
 4. **시작 명령어**: `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
 
+### Celery 워커 설정
+- 기본값으로도 프로덕션에서는 자동으로 동시 20개까지 처리합니다(`APP_ENV=production`일 때 `CELERY_CONCURRENCY`가 20으로 설정됨). 별도 설정 없이 시작해도 됩니다.
+- 더 높은/낮은 동시 처리량이 필요할 때만 `CELERY_CONCURRENCY`(정수)나 `CELERY_AUTOSCALE`(`최대,최소`)을 Railway 환경 변수로 지정하세요. 두 값을 동시에 넣으면 autoscale이 우선 적용됩니다.
+- 동시 처리량을 크게 조정한다면 데이터베이스 풀도 함께 늘리는 것이 좋습니다. 기본값이 이미 `POOL_SIZE=20`, `MAX_OVERFLOW=20`, `REDIS_MAX_CONNECTIONS=50`이므로 대부분의 경우 추가 설정이 필요하지 않습니다.
+
 ## 🔧 2단계: 데이터베이스 마이그레이션
 
 ### 방법 1: 자동 마이그레이션 (권장) ⭐

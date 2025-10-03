@@ -49,10 +49,19 @@ echo -e "${YELLOW}Starting Celery worker (logs will stream here)...${NC}"
 CELERY_LOGLEVEL=${CELERY_LOGLEVEL:-info}
 CELERY_QUEUES=${CELERY_QUEUES:-translation,validation,post_edit,illustrations,events,maintenance,default}
 CELERY_CONCURRENCY=${CELERY_CONCURRENCY:-1}
-celery -A backend.celery_app worker \
-  --loglevel="${CELERY_LOGLEVEL}" \
-  --concurrency="${CELERY_CONCURRENCY}" \
-  --queues="${CELERY_QUEUES}" &
+if [ -n "$CELERY_AUTOSCALE" ]; then
+  echo -e "${YELLOW}Using Celery autoscale: ${CELERY_AUTOSCALE}${NC}"
+  celery -A backend.celery_app worker \
+    --loglevel="${CELERY_LOGLEVEL}" \
+    --autoscale="${CELERY_AUTOSCALE}" \
+    --queues="${CELERY_QUEUES}" &
+else
+  echo -e "${YELLOW}Starting Celery worker with concurrency ${CELERY_CONCURRENCY}${NC}"
+  celery -A backend.celery_app worker \
+    --loglevel="${CELERY_LOGLEVEL}" \
+    --concurrency="${CELERY_CONCURRENCY}" \
+    --queues="${CELERY_QUEUES}" &
+fi
 CELERY_PID=$!
 
 # Check if Celery started successfully
