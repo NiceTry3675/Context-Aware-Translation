@@ -141,16 +141,16 @@ character_style:
     You are a specialist in Korean sociolinguistics. Your task is to analyze the dialogue of the protagonist, **{protagonist_name}**, and define the precise speech style they use towards other characters in this segment.
 
     **Analysis Instructions:**
-    1.  **Identify Interactions:** Find every instance where **{protagonist_name}** speaks directly to another character.
-    2.  **Determine Speech Style:** For each interaction, choose the most fitting Korean speech style from the options below. Base your decision on the context (relationship, situation, power dynamics).
+    1.  **Identify Distinct Characters:** List each unique character (or clearly named group/title) that **{protagonist_name}** speaks to in this segment. Do not repeat the same character name. If the protagonist talks to many people, cap the list at the ten most relevant listeners.
+    2.  **Determine Speech Style:** For each character, pick the single speech style that best represents how **{protagonist_name}** addresses them across the segment (consider overall tone if there are multiple exchanges). Base your decision on the context (relationship, situation, power dynamics).
         *   `반말`: For close friends, younger people, or subordinates.
         *   `해요체 (존댓말)`: For polite but informal situations (e.g., colleagues, friendly seniors).
         *   `하십시오체 (존댓말)`: For formal, official, or highly respectful situations (e.g., a formal presentation, speaking to a king).
     3.  **Format Output:**
-        - The output must be a list in the format: `Character Name: Speech Style`
-        - Each entry must be on a new line.
+        - Provide exactly one entry per character in the format: `Character Name: Speech Style`
+        - Keep each entry on its own line.
         - **No extra text or explanations.**
-    4.  **No Dialogue:** If the protagonist does not speak to anyone, or if the interaction is unclear, respond **only with "N/A"**.
+    4.  **No Dialogue or Ambiguity:** If the protagonist does not speak to anyone, or the recipient cannot be confidently identified, respond **only with "N/A"**.
 
     **Text Segment to Analyze:**
     ---
@@ -324,6 +324,11 @@ validation:
     Compare the given source text with the Korean translation and identify any issues with translation quality.
     Analyze each issue according to the criteria below and provide your answer strictly in the provided JSON schema format.
 
+    **JSON Output Rules (필수)**
+    - Return valid JSON that exactly matches the schema.
+    - If you must include double quotes inside a string value, escape them as `\"` or rephrase using single quotes instead.
+    - Do not add trailing commas or any commentary outside the JSON structure.
+
     SEVERITY (impact‑based)
     - 1 Minor: A stylistic or grammatical imperfection where the core meaning remains intact. The content is usable after a quick fix.
     - 2 Major: An error that leads to a partial loss of meaning, incorrect terminology, or a misleading nuance. Must be corrected to ensure accuracy.
@@ -380,6 +385,11 @@ validation:
   structured_quick: |
     You are a professional Translation Quality Assurance (LQA) expert.
     Compare the source text and the Korean translation. Identify only the most important issues (highest severity) and respond strictly in the JSON schema format.
+
+    **JSON Output Rules (필수)**
+    - Return valid JSON that exactly matches the schema.
+    - If you must include double quotes inside a string value, escape them as `\"` or rephrase using single quotes instead.
+    - Do not add trailing commas or any commentary outside the JSON structure.
 
     SEVERITY (impact‑based)
     - 1 Minor: A stylistic or grammatical imperfection where the core meaning remains intact. The content is usable after a quick fix.

@@ -8,7 +8,17 @@ echo "[entry] Starting backend container"
 : "${START_CELERY_BEAT:=false}"
 : "${ENABLE_LOCAL_REDIS:=auto}"  # auto|true|false
 : "${REDIS_URL:=}"
-: "${CELERY_CONCURRENCY:=1}"
+: "${CELERY_AUTOSCALE:=}"
+
+# Default Celery worker sizing: prefer autoscale if provided, otherwise
+# choose a sensible concurrency per environment (more aggressive in prod).
+if [ -z "${CELERY_CONCURRENCY}" ]; then
+  if [ "${APP_ENV:-development}" = "production" ]; then
+    CELERY_CONCURRENCY=20
+  else
+    CELERY_CONCURRENCY=1
+  fi
+fi
 
 # Start local Redis if requested or if REDIS_URL is empty/localhost
 start_local_redis=false
@@ -81,9 +91,15 @@ alembic -c backend/alembic.ini upgrade head || echo "[entry] Alembic upgrade fai
 
 # Start Celery processes if enabled
 if [ "$START_CELERY_WORKER" = "true" ]; then
-  echo "[entry] Starting Celery worker"
-  celery -A backend.celery_app worker --loglevel=info --concurrency="${CELERY_CONCURRENCY}" \
-    --queues=translation,validation,post_edit,illustrations,events,maintenance,default &
+  if [ -n "$CELERY_AUTOSCALE" ]; then
+    echo "[entry] Starting Celery worker (autoscale=${CELERY_AUTOSCALE})"
+    celery -A backend.celery_app worker --loglevel=info --autoscale="${CELERY_AUTOSCALE}" \
+      --queues=translation,validation,post_edit,illustrations,events,maintenance,default &
+  else
+    echo "[entry] Starting Celery worker (concurrency=${CELERY_CONCURRENCY})"
+    celery -A backend.celery_app worker --loglevel=info --concurrency="${CELERY_CONCURRENCY}" \
+      --queues=translation,validation,post_edit,illustrations,events,maintenance,default &
+  fi
 fi
 
 if [ "$START_CELERY_BEAT" = "true" ]; then

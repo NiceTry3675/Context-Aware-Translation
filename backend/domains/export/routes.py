@@ -14,7 +14,7 @@ async def download_file(
     job_id: int,
     user: User = Depends(get_required_user),
     db: Session = Depends(get_db)
-) -> FileResponse:
+) -> Response:
     """
     Download the output of a translation job.
     
@@ -28,7 +28,14 @@ async def download_file(
     """
     service = ExportDomainService(db)
     file_path, filename, media_type = await service.download_job_output(user, job_id)
-    return FileResponse(path=file_path, filename=filename, media_type=media_type)
+    from backend.utils.http import build_content_disposition
+    return FileResponse(
+        file_path,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": build_content_disposition(filename)
+        }
+    )
 
 
 async def export_job(
@@ -37,52 +44,63 @@ async def export_job(
     include_source: bool = True,
     include_illustrations: bool = True,
     page_size: str = "A4",
+    illustration_position: str = "middle",
     user: User = Depends(get_required_user),
     db: Session = Depends(get_db)
 ) -> Response:
     """
     Export translation job in different formats.
-    
+
     Args:
         job_id: Job ID
         format: Export format (pdf, etc.)
         include_source: Whether to include source text
         include_illustrations: Whether to include illustrations
         page_size: Page size format
+        illustration_position: Position of illustrations (start, middle, end)
         user: Current authenticated user (from dependency)
         db: Database session (from dependency)
-        
+
     Returns:
         Response with exported file
     """
     service = ExportDomainService(db)
-    
+
     if format == "pdf":
         from .schemas import PDFExportRequest
-        
+
         # Create PDF request
         request = PDFExportRequest(
             job_id=job_id,
             include_source=include_source,
             include_illustrations=include_illustrations,
-            page_size=page_size
+            page_size=page_size,
+            illustration_position=illustration_position
         )
-        
+
         # Generate PDF
         pdf_bytes = await service.generate_pdf(user, request)
         pdf_filename = service.get_pdf_filename(job_id)
-        
+
+        from backend.utils.http import build_content_disposition
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f'attachment; filename="{pdf_filename}"'
+                "Content-Disposition": build_content_disposition(pdf_filename)
             }
         )
     else:
         # Default to regular file download
         file_path, filename, media_type = await service.download_job_output(user, job_id)
-        return FileResponse(path=file_path, filename=filename, media_type=media_type)
+        from backend.utils.http import build_content_disposition
+        return FileResponse(
+            file_path,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": build_content_disposition(filename)
+            }
+        )
 
 
 async def download_pdf(
@@ -90,6 +108,7 @@ async def download_pdf(
     include_source: bool = Query(True),
     include_illustrations: bool = Query(True),
     page_size: str = Query("A4"),
+    illustration_position: str = Query("middle"),
     user: User = Depends(get_required_user),
     db: Session = Depends(get_db)
 ) -> Response:
@@ -103,16 +122,18 @@ async def download_pdf(
         include_source=include_source,
         include_illustrations=include_illustrations,
         page_size=page_size,
+        illustration_position=illustration_position,
     )
 
     pdf_bytes = await service.generate_pdf(user, request)
     pdf_filename = service.get_pdf_filename(job_id)
 
+    from backend.utils.http import build_content_disposition
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="{pdf_filename}"'
+            "Content-Disposition": build_content_disposition(pdf_filename)
         }
     )
 
@@ -132,11 +153,12 @@ async def download_glossary(
     glossary = await service.get_job_glossary(user, job_id, structured=structured)
     filename = service.get_glossary_filename(job_id)
     import json
+    from backend.utils.http import build_content_disposition
     return Response(
         content=json.dumps(glossary, ensure_ascii=False, indent=2),
         media_type="application/json",
         headers={
-            "Content-Disposition": f'attachment; filename="{filename}"'
+            "Content-Disposition": build_content_disposition(filename)
         }
     )
 

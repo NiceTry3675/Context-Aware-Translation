@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import traceback
 
+from backend.config import SessionLocal, dependencies
 from backend.config.db import get_db
-from backend.config import dependencies
 from backend.domains.user.models import User
 from backend.domains.community.schemas import (
     Post as PostSchema,
@@ -322,9 +322,7 @@ async def list_announcements(
     return [AnnouncementSchema.from_orm(a) for a in announcements]
 
 @router.get("/announcements/stream")
-async def stream_announcements(
-    announcement_service: AnnouncementService = Depends(get_announcement_service)
-):
+async def stream_announcements():
     """Stream announcements via Server-Sent Events (SSE)."""
     import asyncio
     import json
@@ -332,9 +330,10 @@ async def stream_announcements(
     async def event_generator():
         while True:
             try:
-                # Get active announcements
-                announcements = announcement_service.get_announcements(active_only=True)
-                announcements_data = [announcement_service.format_announcement_for_json(a) for a in announcements]
+                with SessionLocal() as session:
+                    service = AnnouncementService(session)
+                    announcements = service.get_announcements(active_only=True)
+                    announcements_data = [service.format_announcement_for_json(a) for a in announcements]
 
                 # Send the announcement data
                 yield f"data: {json.dumps(announcements_data)}\n\n"

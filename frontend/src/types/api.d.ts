@@ -330,6 +330,7 @@ export interface paths {
          *         include_source: Whether to include source text
          *         include_illustrations: Whether to include illustrations
          *         page_size: Page size format
+         *         illustration_position: Position of illustrations (start, middle, end)
          *         user: Current authenticated user (from dependency)
          *         db: Database session (from dependency)
          *
@@ -2715,6 +2716,7 @@ export interface operations {
                 include_source?: boolean;
                 include_illustrations?: boolean;
                 page_size?: string;
+                illustration_position?: string;
             };
             header?: never;
             path: {
@@ -2750,6 +2752,7 @@ export interface operations {
                 include_source?: boolean;
                 include_illustrations?: boolean;
                 page_size?: string;
+                illustration_position?: string;
             };
             header?: never;
             path: {

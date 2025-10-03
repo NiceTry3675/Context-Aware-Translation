@@ -17,6 +17,7 @@ class PDFExportRequest(ExportRequest):
     include_source: bool = True
     include_illustrations: bool = True
     page_size: Literal["A4", "Letter"] = "A4"
+    illustration_position: Literal["start", "middle", "end"] = "middle"
 
 
 class DownloadRequest(BaseModel):

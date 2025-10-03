@@ -44,6 +44,7 @@ import {
 import { Job } from '../../types/ui';
 import JobRowActions from './JobRowActions';
 import type { ApiProvider } from '../../hooks/useApiKey';
+import PdfDownloadDialog from '../jobs/components/PdfDownloadDialog';
 
 interface JobSidebarProps {
   jobs: Job[];
@@ -122,6 +123,8 @@ export default function JobSidebar({
   const { getToken } = useAuth();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
+  const [pdfDialogOpen, setPdfDialogOpen] = useState(false);
+  const [jobForPdf, setJobForPdf] = useState<Job | null>(null);
 
   const handleOpenDeleteDialog = (job: Job) => {
     setJobToDelete(job);
@@ -138,6 +141,53 @@ export default function JobSidebar({
       onJobDelete(jobToDelete.id);
     }
     handleCloseDeleteDialog();
+  };
+
+  const handleOpenPdfDialog = (job: Job) => {
+    setJobForPdf(job);
+    setPdfDialogOpen(true);
+  };
+
+  const handleClosePdfDialog = () => {
+    setJobForPdf(null);
+    setPdfDialogOpen(false);
+  };
+
+  const handlePdfDownload = async (illustrationPosition: string) => {
+    if (!jobForPdf) return;
+
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    try {
+      const token = await getCachedClerkToken(getToken);
+      const params = new URLSearchParams({
+        include_source: 'false',
+        include_illustrations: 'true',
+        illustration_position: illustrationPosition,
+      });
+
+      const response = await fetch(`${API_URL}/api/v1/jobs/${jobForPdf.id}/pdf?${params.toString()}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+      });
+
+      if (!response.ok) throw new Error('PDF download failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const baseFilename = jobForPdf.filename ? jobForPdf.filename.replace(/\.[^/.]+$/, '') : `translation_${jobForPdf.id}`;
+      a.download = `${baseFilename}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('PDF download error:', error);
+    }
+
+    handleClosePdfDialog();
   };
 
   const filteredJobs = jobs.filter(job =>
@@ -358,31 +408,9 @@ export default function JobSidebar({
                           <Tooltip title="PDF 다운로드">
                             <IconButton
                               size="small"
-                              onClick={async (e) => {
+                              onClick={(e) => {
                                 e.stopPropagation();
-                                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-                                try {
-                                  const token = await getCachedClerkToken(getToken);
-                                  const response = await fetch(`${API_URL}/api/v1/jobs/${job.id}/pdf?include_source=false&include_illustrations=true`, {
-                                    headers: {
-                                      'Authorization': token ? `Bearer ${token}` : '',
-                                    },
-                                  });
-                                  if (!response.ok) throw new Error('PDF download failed');
-                                  
-                                  const blob = await response.blob();
-                                  const url = window.URL.createObjectURL(blob);
-                                  const a = document.createElement('a');
-                                  a.href = url;
-                                  const baseFilename = job.filename ? job.filename.replace(/\.[^/.]+$/, '') : `translation_${job.id}`;
-                                  a.download = `${baseFilename}.pdf`;
-                                  document.body.appendChild(a);
-                                  a.click();
-                                  document.body.removeChild(a);
-                                  window.URL.revokeObjectURL(url);
-                                } catch (error) {
-                                  console.error('PDF download error:', error);
-                                }
+                                handleOpenPdfDialog(job);
                               }}
                             >
                               <PdfIcon fontSize="small" />
@@ -534,6 +562,15 @@ export default function JobSidebar({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {jobForPdf && (
+        <PdfDownloadDialog
+          open={pdfDialogOpen}
+          onClose={handleClosePdfDialog}
+          onDownload={handlePdfDownload}
+          jobId={jobForPdf.id}
+        />
+      )}
     </Box>
   );
 }

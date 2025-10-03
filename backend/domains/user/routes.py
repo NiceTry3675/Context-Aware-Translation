@@ -10,6 +10,7 @@ from svix import Webhook
 import asyncio
 import json
 
+from backend.config import SessionLocal
 from backend.config.dependencies import get_db, get_required_user
 from backend.domains.user.models import User
 from backend.domains.user.schemas import (
@@ -46,16 +47,15 @@ async def list_announcements(
     return [AnnouncementSchema.from_orm(a) for a in announcements]
 
 
-async def stream_announcements(
-    service: UserService = Depends(get_user_service)
-):
+async def stream_announcements():
     """Stream announcements via Server-Sent Events (SSE)."""
     async def event_generator():
         while True:
             try:
-                # Get active announcements
-                announcements = service.get_announcements(active_only=True)
-                announcements_data = [AnnouncementSchema.from_orm(a).dict() for a in announcements]
+                with SessionLocal() as session:
+                    service = UserService(session)
+                    announcements = service.get_announcements(active_only=True)
+                    announcements_data = [AnnouncementSchema.from_orm(a).dict() for a in announcements]
                 
                 # Send as SSE event
                 yield f"data: {json.dumps(announcements_data)}\n\n"

@@ -591,7 +591,7 @@
           "export"
         ],
         "summary": "Export Job",
-        "description": "Export translation job in different formats.\n\nArgs:\n    job_id: Job ID\n    format: Export format (pdf, etc.)\n    include_source: Whether to include source text\n    include_illustrations: Whether to include illustrations\n    page_size: Page size format\n    user: Current authenticated user (from dependency)\n    db: Database session (from dependency)\n    \nReturns:\n    Response with exported file",
+        "description": "Export translation job in different formats.\n\nArgs:\n    job_id: Job ID\n    format: Export format (pdf, etc.)\n    include_source: Whether to include source text\n    include_illustrations: Whether to include illustrations\n    page_size: Page size format\n    illustration_position: Position of illustrations (start, middle, end)\n    user: Current authenticated user (from dependency)\n    db: Database session (from dependency)\n\nReturns:\n    Response with exported file",
         "operationId": "export_job_api_v1_export__job_id__post",
         "parameters": [
           {
@@ -641,6 +641,16 @@
               "type": "string",
               "default": "A4",
               "title": "Page Size"
+            }
+          },
+          {
+            "name": "illustration_position",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "middle",
+              "title": "Illustration Position"
             }
           }
         ],
@@ -712,6 +722,16 @@
               "type": "string",
               "default": "A4",
               "title": "Page Size"
+            }
+          },
+          {
+            "name": "illustration_position",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "middle",
+              "title": "Illustration Position"
             }
           }
         ],
