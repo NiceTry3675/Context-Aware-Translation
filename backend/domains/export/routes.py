@@ -2,7 +2,7 @@
 
 from typing import Dict, Any
 from fastapi import Depends, Body, Query
-from fastapi.responses import FileResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy.orm import Session
 
 from backend.config.dependencies import get_db, get_required_user
@@ -29,10 +29,8 @@ async def download_file(
     service = ExportDomainService(db)
     file_path, filename, media_type = await service.download_job_output(user, job_id)
     from backend.utils.http import build_content_disposition
-    # Use streaming to avoid loading entire potentially large file into memory.
-    fileobj = open(file_path, 'rb')
-    return StreamingResponse(
-        fileobj,
+    return FileResponse(
+        file_path,
         media_type=media_type,
         headers={
             "Content-Disposition": build_content_disposition(filename)
@@ -96,9 +94,8 @@ async def export_job(
         # Default to regular file download
         file_path, filename, media_type = await service.download_job_output(user, job_id)
         from backend.utils.http import build_content_disposition
-        fileobj = open(file_path, 'rb')
-        return StreamingResponse(
-            fileobj,
+        return FileResponse(
+            file_path,
             media_type=media_type,
             headers={
                 "Content-Disposition": build_content_disposition(filename)
