@@ -144,7 +144,9 @@ def _persist_usage_events(
     default_retry_delay=60,
     retry_backoff=True,
     retry_jitter=True,
-    acks_late=True
+    acks_late=True,
+    time_limit=None,  # No time limit for illustration generation
+    soft_time_limit=None
 )
 def generate_illustrations_task(
     self,
@@ -630,7 +632,9 @@ def generate_illustrations_task(
     max_retries=2,
     default_retry_delay=30,
     retry_backoff=True,
-    acks_late=True
+    acks_late=True,
+    time_limit=None,  # No time limit for illustration regeneration
+    soft_time_limit=None
 )
 def regenerate_single_illustration(
     self,
@@ -958,7 +962,9 @@ __all__ = [
     max_retries=2,
     default_retry_delay=30,
     retry_backoff=True,
-    acks_late=True
+    acks_late=True,
+    time_limit=None,  # No time limit for base regeneration
+    soft_time_limit=None
 )
 def regenerate_single_base(
     self,

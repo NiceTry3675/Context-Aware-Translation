@@ -31,7 +31,9 @@ class TranslationTask(TrackedTask):
     bind=True,
     name="backend.celery_tasks.translation.process_translation_task",
     max_retries=3,
-    default_retry_delay=60
+    default_retry_delay=60,
+    time_limit=None,  # No time limit for translation tasks
+    soft_time_limit=None
 )
 def process_translation_task(
     self,

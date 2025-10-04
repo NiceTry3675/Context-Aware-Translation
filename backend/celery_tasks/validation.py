@@ -34,7 +34,9 @@ class ValidationTask(TrackedTask):
     bind=True,
     name="backend.celery_tasks.validation.process_validation_task",
     max_retries=3,
-    default_retry_delay=60
+    default_retry_delay=60,
+    time_limit=None,  # No time limit for validation tasks
+    soft_time_limit=None
 )
 def process_validation_task(
     self,
