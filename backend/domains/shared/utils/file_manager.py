@@ -110,14 +110,14 @@ class FileManager:
             
         return file_path
     
-    def get_translated_file_path(self, job) -> Tuple[str, str, str]:
+    def get_translated_file_path(self, job, prefer_epub: bool = False) -> Tuple[str, str, str]:
         """
         Get the translated file path and media type for a job.
-        
-        Prefers EPUB artifact for EPUB inputs, with safe fallback to TXT.
-        
+
         Args:
             job: Translation job instance
+            prefer_epub: When True, return the EPUB artifact if available. Defaults
+                to False so legacy TXT workflows keep functioning.
             
         Returns:
             Tuple of (file_path, user_filename, media_type)
@@ -128,8 +128,8 @@ class FileManager:
         # Base output dir
         output_dir = os.path.join(self.JOB_STORAGE_BASE, str(job.id), "output")
 
-        # 1) If source was EPUB, prefer returning the EPUB artifact when present
-        if original_ext == '.epub':
+        # 1) Optionally return the EPUB artifact when present
+        if prefer_epub and original_ext == '.epub':
             epub_filename = f"{original_filename_base}_translated.epub"
             epub_path = os.path.join(output_dir, epub_filename)
             if os.path.exists(epub_path):
