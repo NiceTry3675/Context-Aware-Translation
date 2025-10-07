@@ -72,11 +72,25 @@ export function useJobActions({ apiUrl, apiProvider, apiKey, providerConfig, onE
         throw new Error(errorData.detail || `Failed to download file from ${url}`);
       }
 
+      // Prefer server-provided filename if available
+      const cd = response.headers.get('Content-Disposition') || response.headers.get('content-disposition');
+      const headerFilename = (() => {
+        if (!cd) return null;
+        // Simple filename parser; handles: attachment; filename="foo.ext"; filename*=UTF-8''foo.ext
+        const filenameStarMatch = cd.match(/filename\*=(?:UTF-8'')?([^;\n]+)/i);
+        if (filenameStarMatch && filenameStarMatch[1]) {
+          try { return decodeURIComponent(filenameStarMatch[1].replace(/"/g, '')); } catch { /* noop */ }
+        }
+        const filenameMatch = cd.match(/filename="?([^";\n]+)"?/i);
+        if (filenameMatch && filenameMatch[1]) return filenameMatch[1];
+        return null;
+      })();
+
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
-      link.setAttribute('download', filename);
+      link.setAttribute('download', headerFilename || filename);
       document.body.appendChild(link);
       link.click();
       link.remove();

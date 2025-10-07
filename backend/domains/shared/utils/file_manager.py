@@ -114,6 +114,8 @@ class FileManager:
         """
         Get the translated file path and media type for a job.
         
+        Prefers EPUB artifact for EPUB inputs, with safe fallback to TXT.
+        
         Args:
             job: Translation job instance
             
@@ -121,17 +123,23 @@ class FileManager:
             Tuple of (file_path, user_filename, media_type)
         """
         original_filename_base, original_ext = os.path.splitext(job.filename)
-        
-        # Use .txt for translated files regardless of original format
-        translated_filename = "translated.txt"
-        user_translated_filename = f"{original_filename_base}_translated.txt"
-        
-        # Set media type
-        media_type = "text/plain"
-        
-        # Use job-centric directory structure
-        file_path = os.path.join(self.JOB_STORAGE_BASE, str(job.id), "output", translated_filename)
-        return file_path, user_translated_filename, media_type
+        original_ext = (original_ext or '').lower()
+
+        # Base output dir
+        output_dir = os.path.join(self.JOB_STORAGE_BASE, str(job.id), "output")
+
+        # 1) If source was EPUB, prefer returning the EPUB artifact when present
+        if original_ext == '.epub':
+            epub_filename = f"{original_filename_base}_translated.epub"
+            epub_path = os.path.join(output_dir, epub_filename)
+            if os.path.exists(epub_path):
+                return epub_path, epub_filename, "application/epub+zip"
+
+        # 2) Fallback to TXT (always produced by storage handler)
+        txt_filename = "translated.txt"
+        user_txt_filename = f"{original_filename_base}_translated.txt"
+        txt_path = os.path.join(output_dir, txt_filename)
+        return txt_path, user_txt_filename, "text/plain"
     
     def get_validation_report_path(self, job) -> str:
         """
