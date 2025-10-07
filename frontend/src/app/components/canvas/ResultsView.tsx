@@ -156,6 +156,22 @@ export default function ResultsView({
   const canRunPostEdit = selectedJob?.validation_status === 'COMPLETED' && selectedJob?.post_edit_status !== 'IN_PROGRESS';
   const canGenerateIllustrations = selectedJob?.status === 'COMPLETED' && selectedJob?.illustrations_status !== 'IN_PROGRESS';
 
+  const translationDataAvailable = Boolean(
+    translationContent ||
+    (translationSegments?.segments && translationSegments.segments.length > 0) ||
+    (postEditLog && Array.isArray((postEditLog as any).segments) && (postEditLog as any).segments.length > 0)
+  );
+
+  const activeTranslationStatuses = new Set(['PENDING', 'PROCESSING', 'IN_PROGRESS']);
+  const translationTabDisabled = !jobId || (
+    !translationDataAvailable && activeTranslationStatuses.has(selectedJob?.status || '')
+  );
+  const validationTabDisabled = !jobId;
+  const postEditTabDisabled = !jobId;
+  const illustrationTabDisabled = !jobId || (
+    selectedJob?.status !== 'COMPLETED' && selectedJob?.illustrations_status !== 'COMPLETED'
+  );
+
   const getTooltipTitle = (action: string, condition: boolean, inProgressStatus?: string, requiredStatus?: string) => {
     if (inProgressStatus === 'IN_PROGRESS') return `${action} 진행 중`;
     if (condition) return action;
@@ -225,21 +241,21 @@ export default function ResultsView({
       
       <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
         <Tabs value={tabValue} onChange={onTabChange}>
-          <Tab 
+          <Tab
             label="번역 결과"
-            disabled={!jobId || (!translationContent && selectedJob?.status !== 'COMPLETED')} 
+            disabled={translationTabDisabled}
           />
-          <Tab 
+          <Tab
             label="검증 결과"
-            disabled={!jobId || (!validationReport && selectedJob?.validation_status !== 'COMPLETED')} 
+            disabled={validationTabDisabled}
           />
-          <Tab 
+          <Tab
             label="포스트 에디팅"
-            disabled={!jobId || (!Array.isArray((postEditLog as any)?.segments) && selectedJob?.post_edit_status !== 'COMPLETED')} 
+            disabled={postEditTabDisabled}
           />
-          <Tab 
+          <Tab
             label="삽화"
-            disabled={!jobId || selectedJob?.status !== 'COMPLETED'} 
+            disabled={illustrationTabDisabled}
           />
         </Tabs>
       </Box>
@@ -356,13 +372,18 @@ export default function ResultsView({
           
           <TabPanel value={tabValue} index={2}>
             {postEditLog && Array.isArray((postEditLog as any).segments) ? (
-              <PostEditLogViewer 
+              <PostEditLogViewer
                 log={postEditLog}
                 onSegmentClick={onSegmentClick}
               />
-            ) : null}
+            ) : (
+              <Alert severity="info">
+                <AlertTitle>포스트 에디팅 결과 없음</AlertTitle>
+                포스트 에디팅을 실행하면 결과가 여기에 표시됩니다.
+              </Alert>
+            )}
           </TabPanel>
-          
+
           <TabPanel value={tabValue} index={3}>
             {jobId && (
               <CharacterBaseSelector

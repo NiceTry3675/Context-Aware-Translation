@@ -303,6 +303,8 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
           apiProvider={apiProvider}
           modelName={postEditModelName || dialogDefaultModel}
           onModelNameChange={setPostEditModelName}
+          selectedCases={selectedCases}
+          setSelectedCases={setSelectedCases}
         />
       </>
     );

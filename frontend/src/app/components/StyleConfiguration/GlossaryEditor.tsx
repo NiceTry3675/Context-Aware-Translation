@@ -164,8 +164,8 @@ export default function GlossaryEditor({
           <Typography>용어집 분석 중...</Typography>
         </Box>
       ) : glossaryData.length > 0 ? (
-        <TableContainer component={Paper} sx={{ mb: 2 }}>
-          <Table size="small">
+        <TableContainer component={Paper} sx={{ mb: 2, maxHeight: 360 }}>
+          <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
                 <TableCell>원문 (Term)</TableCell>
