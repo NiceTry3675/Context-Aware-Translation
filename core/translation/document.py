@@ -262,7 +262,32 @@ class TranslationDocument:
         print(f"\nSaving final output to {self._data.output_filename}...")
         if self._data.job_output_filename:
             print(f"Also saving to job directory: {self._data.job_output_filename}")
+        # Always persist the text output via existing mechanism (may use storage handler)
         self.save_partial_output()
+
+        # If the original input is EPUB, also emit a proper EPUB artifact locally
+        # even when a storage handler is present (which short-circuits file writes).
+        if self._data.input_format == '.epub':
+            try:
+                # Main output location
+                DocumentOutputManager.save_epub_output(
+                    self._data.filepath,
+                    self._data.translated_segments,
+                    self._data.output_filename,
+                    self._data.style_map,
+                )
+
+                # Job-scoped output location (if configured)
+                if self._data.job_output_filename:
+                    DocumentOutputManager.save_epub_output(
+                        self._data.filepath,
+                        self._data.translated_segments,
+                        self._data.job_output_filename,
+                        self._data.style_map,
+                    )
+            except Exception as exc:
+                # Surface but do not block TXT availability; EPUB is best-effort
+                print(f"Warning: Failed to write EPUB artifacts during final save: {exc}")
         print("Save complete.")
     
     def save_translation(self, output_path: Optional[str] = None):

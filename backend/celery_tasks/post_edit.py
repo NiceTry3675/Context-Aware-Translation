@@ -131,6 +131,7 @@ def process_post_edit_task(
             default_select_all=default_select_all,
             progress_callback=update_progress,
             job_id=job_id,
+            job_filename=job.filename,
             segment_logger=segment_logger
         )
         

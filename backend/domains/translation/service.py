@@ -855,7 +855,10 @@ class TranslationDomainService(DomainServiceBase):
                 raise HTTPException(status_code=404, detail="Filepath not found for this job.")
             
             # Use inherited file_manager property
-            file_path, user_translated_filename, media_type = self.file_manager.get_translated_file_path(db_job)
+            file_path, user_translated_filename, media_type = self.file_manager.get_translated_file_path(
+                db_job,
+                prefer_epub=True
+            )
             
             if not os.path.exists(file_path):
                 raise HTTPException(status_code=404, detail=f"Translated file not found at path: {file_path}")

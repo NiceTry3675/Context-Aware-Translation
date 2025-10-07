@@ -93,7 +93,10 @@ class ExportDomainService(DomainServiceBase):
         if not db_job.filepath:
             self.raise_not_found("Filepath for this job")
         
-        file_path, user_translated_filename, media_type = self.file_manager.get_translated_file_path(db_job)
+        file_path, user_translated_filename, media_type = self.file_manager.get_translated_file_path(
+            db_job,
+            prefer_epub=True
+        )
         
         if not os.path.exists(file_path):
             self.raise_not_found(f"Translated file at path: {file_path}")
@@ -313,7 +316,10 @@ class ExportDomainService(DomainServiceBase):
         
         # Check if we have a translation file (post-edit overwrites the original, so we use the same path)
         if db_job.filepath:
-            file_path, _, _ = self.file_manager.get_translated_file_path(db_job)
+            file_path, _, _ = self.file_manager.get_translated_file_path(
+                db_job,
+                prefer_epub=True
+            )
             if not os.path.exists(file_path):
                 # If translated file doesn't exist but validation is complete, we can extract from validation report
                 if db_job.validation_status != "COMPLETED" or not db_job.validation_report_path:

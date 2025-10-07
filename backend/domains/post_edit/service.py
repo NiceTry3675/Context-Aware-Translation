@@ -14,6 +14,8 @@ from sqlalchemy.orm import Session
 
 from core.translation.post_editor import PostEditEngine
 from core.translation.document import TranslationDocument
+from core.utils.document_io import DocumentOutputManager
+from backend.domains.translation.storage_adapter import create_storage_handler
 from shared.utils.logging import get_logger
 from backend.domains.translation.models import TranslationJob
 from backend.domains.translation.repository import TranslationJobRepository, SqlAlchemyTranslationJobRepository
@@ -146,7 +148,8 @@ class PostEditDomainService(DomainServiceBase):
         translation_document = TranslationDocument(
             job.filepath,
             original_filename=job.filename,
-            target_segment_size=job.segment_size
+            target_segment_size=job.segment_size,
+            job_id=job.id
         )
         
         # Use stored translation segments from DB for exact alignment
@@ -198,6 +201,7 @@ class PostEditDomainService(DomainServiceBase):
         default_select_all: bool = True,
         progress_callback: Optional[Callable[[int], None]] = None,
         job_id: Optional[int] = None,
+        job_filename: Optional[str] = None,
         segment_logger=None
     ) -> List[str]:
         """
@@ -210,7 +214,8 @@ class PostEditDomainService(DomainServiceBase):
             validation_report_path: Path to the validation report
             selected_cases: Optional specific validation cases to address
             progress_callback: Optional callback for progress updates
-            job_id: Optional job ID for logging
+            job_id: Optional job ID used for persistence hooks
+            job_filename: Optional original filename for storage synchronization
             
         Returns:
             List of edited segments
@@ -250,14 +255,55 @@ class PostEditDomainService(DomainServiceBase):
             job_id=job_id
         )
         
-        # Overwrite the translated file with the edited content
+        # Persist the edited content with legacy TXT compatibility
+        edited_content = '\n\n'.join(edited_segments)
+
+        if job_id and job_filename:
+            try:
+                storage_handler = create_storage_handler()
+                saved_paths = storage_handler(
+                    job_id=job_id,
+                    content=edited_content,
+                    original_filename=job_filename
+                )
+                if saved_paths:
+                    print(
+                        "--- [POST-EDIT] Storage artifacts refreshed: "
+                        f"{', '.join(saved_paths)} ---"
+                    )
+            except Exception as exc:
+                print(f"--- [POST-EDIT] Storage handler failed: {exc} ---")
+
         try:
-            edited_content = '\n'.join(edited_segments)
             self.file_manager.write_file(translated_path, edited_content)
             print(f"--- [POST-EDIT] Successfully updated translated file: {translated_path} ---")
         except IOError as e:
             print(f"--- [POST-EDIT] Error writing to translated file: {e} ---")
             raise e
+
+        # Keep the in-memory document aligned with the edited output
+        translation_document.translated_segments = edited_segments[:]
+
+        # Regenerate EPUB artifacts when the original input was an EPUB
+        data_model = translation_document.get_data_model()
+        if data_model.input_format == '.epub':
+            epub_targets = []
+            if data_model.output_filename:
+                epub_targets.append(data_model.output_filename)
+            if data_model.job_output_filename:
+                epub_targets.append(data_model.job_output_filename)
+
+            for epub_path in epub_targets:
+                try:
+                    DocumentOutputManager.save_epub_output(
+                        data_model.filepath,
+                        edited_segments,
+                        epub_path,
+                        data_model.style_map
+                    )
+                    print(f"--- [POST-EDIT] EPUB artifact refreshed: {epub_path} ---")
+                except Exception as exc:
+                    print(f"--- [POST-EDIT] Failed to update EPUB artifact at {epub_path}: {exc} ---")
 
         # Log completion if logger is available
         if segment_logger:
@@ -470,7 +516,8 @@ class PostEditDomainService(DomainServiceBase):
                 modified_cases,
                 default_select_all,
                 progress_callback,
-                job_id
+                job_id,
+                job.filename
             )
             
             # Get the log path

@@ -93,11 +93,11 @@ alembic -c backend/alembic.ini upgrade head || echo "[entry] Alembic upgrade fai
 if [ "$START_CELERY_WORKER" = "true" ]; then
   if [ -n "$CELERY_AUTOSCALE" ]; then
     echo "[entry] Starting Celery worker (autoscale=${CELERY_AUTOSCALE})"
-    celery -A backend.celery_app worker --loglevel=info --autoscale="${CELERY_AUTOSCALE}" \
+    C_FORCE_ROOT=true celery -A backend.celery_app worker --loglevel=info --autoscale="${CELERY_AUTOSCALE}" \
       --queues=translation,validation,post_edit,illustrations,events,maintenance,default &
   else
     echo "[entry] Starting Celery worker (concurrency=${CELERY_CONCURRENCY})"
-    celery -A backend.celery_app worker --loglevel=info --concurrency="${CELERY_CONCURRENCY}" \
+    C_FORCE_ROOT=true celery -A backend.celery_app worker --loglevel=info --concurrency="${CELERY_CONCURRENCY}" \
       --queues=translation,validation,post_edit,illustrations,events,maintenance,default &
   fi
 fi
