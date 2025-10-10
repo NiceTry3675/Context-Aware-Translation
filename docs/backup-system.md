@@ -100,7 +100,7 @@ The system automatically backs up once daily via Celery Beat:
 
 ```bash
 # Start Celery worker
-celery -A backend.celery_app worker --loglevel=info
+celery -A backend.celery_app worker --loglevel=info --pool=threads -c ${CELERY_CONCURRENCY:-8}
 
 # Start Celery beat scheduler (in separate terminal)
 celery -A backend.celery_app beat --loglevel=info

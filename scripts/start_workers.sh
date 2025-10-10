@@ -12,6 +12,9 @@ echo -e "${GREEN}Starting Celery Workers for Translation Processing...${NC}"
 echo -e "${YELLOW}Activating virtual environment...${NC}"
 source .venv/bin/activate
 
+# Reduce glibc arena fragmentation to keep RSS lower on multithreaded workers
+export MALLOC_ARENA_MAX=${MALLOC_ARENA_MAX:-2}
+
 # Check if Redis is running
 redis-cli ping > /dev/null 2>&1
 if [ $? -ne 0 ]; then
@@ -22,4 +25,4 @@ echo -e "${GREEN}✓ Redis is running${NC}"
 
 # Start Celery worker
 echo -e "${YELLOW}Starting Celery worker...${NC}"
-celery -A backend.celery_app worker --loglevel=info
+celery -A backend.celery_app worker --loglevel=info --pool=threads

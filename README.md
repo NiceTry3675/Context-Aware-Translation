@@ -313,8 +313,9 @@ python init_categories.py
     # Redis 시작
     redis-server --daemonize yes
     
-    # Celery 워커 시작 (별도 터미널)
-    celery -A backend.celery_app worker --loglevel=info
+    # Celery 워커 시작 (별도 터미널, threads 풀)
+    # 동시성은 CELERY_CONCURRENCY로 조정하세요(예: 8~16). autoscale은 threads 풀에서 지원되지 않습니다.
+    CELERY_CONCURRENCY=8 celery -A backend.celery_app worker --loglevel=info --pool=threads -c ${CELERY_CONCURRENCY}
     
     # FastAPI 서버 시작
     uvicorn backend.main:app --reload --port 8000
@@ -326,6 +327,10 @@ python init_categories.py
     ```
 
 이제 브라우저에서 `http://localhost:3000`에 접속하여 서비스를 사용할 수 있습니다.
+
+참고
+- 본 프로젝트는 Celery 워커를 threads 풀로 실행합니다. autoscale(`최대,최소`)은 threads 풀에서 동작하지 않습니다.
+- 로컬에서는 메모리 제약이 적으므로 `CELERY_CONCURRENCY`를 더 높게(예: 12~24) 설정해도 됩니다.
 
 ### 번역 워크플로우
 1. 메인 페이지에서 파일 업로드 및 번역 설정

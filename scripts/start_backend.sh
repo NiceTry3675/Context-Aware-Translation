@@ -46,22 +46,21 @@ fi
 
 # Start Celery worker (background, stream logs to this terminal like Railway)
 echo -e "${YELLOW}Starting Celery worker (logs will stream here)...${NC}"
+# Reduce glibc arena fragmentation to keep RSS lower on multithreaded workers
+export MALLOC_ARENA_MAX=${MALLOC_ARENA_MAX:-2}
 CELERY_LOGLEVEL=${CELERY_LOGLEVEL:-info}
 CELERY_QUEUES=${CELERY_QUEUES:-translation,validation,post_edit,illustrations,events,maintenance,default}
 CELERY_CONCURRENCY=${CELERY_CONCURRENCY:-1}
 if [ -n "$CELERY_AUTOSCALE" ]; then
-  echo -e "${YELLOW}Using Celery autoscale: ${CELERY_AUTOSCALE}${NC}"
-  celery -A backend.celery_app worker \
-    --loglevel="${CELERY_LOGLEVEL}" \
-    --autoscale="${CELERY_AUTOSCALE}" \
-    --queues="${CELERY_QUEUES}" &
-else
-  echo -e "${YELLOW}Starting Celery worker with concurrency ${CELERY_CONCURRENCY}${NC}"
-  celery -A backend.celery_app worker \
-    --loglevel="${CELERY_LOGLEVEL}" \
-    --concurrency="${CELERY_CONCURRENCY}" \
-    --queues="${CELERY_QUEUES}" &
+  echo -e "${YELLOW}Celery autoscale is not supported with the threads pool; ignoring CELERY_AUTOSCALE=${CELERY_AUTOSCALE}.${NC}"
+  unset CELERY_AUTOSCALE
 fi
+echo -e "${YELLOW}Starting Celery worker with concurrency ${CELERY_CONCURRENCY} (threads pool)${NC}"
+celery -A backend.celery_app worker \
+  --loglevel="${CELERY_LOGLEVEL}" \
+  --concurrency="${CELERY_CONCURRENCY}" \
+  --queues="${CELERY_QUEUES}" \
+  --pool=threads &
 CELERY_PID=$!
 
 # Check if Celery started successfully

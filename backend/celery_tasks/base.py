@@ -1,18 +1,22 @@
 """
 Base task class for Celery tasks with common functionality.
 """
-from celery import Task
-from celery.signals import task_prerun, task_postrun, task_failure
-from datetime import datetime
-from typing import Any, Dict, Optional, Sequence
 import logging
 import uuid
+from contextvars import ContextVar
+from datetime import datetime
+from typing import Any, Dict, Optional, Sequence
+
+from celery import Task
+from celery.signals import task_prerun, task_postrun, task_failure
 
 from ..config.database import SessionLocal
 from ..domains.tasks.models import TaskExecution, TaskStatus, TaskKind
 from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
+
+_db_session_ctx: ContextVar[Optional[Any]] = ContextVar("celery_db_session", default=None)
 
 
 def _extract_job_id(
@@ -47,23 +51,21 @@ class DatabaseTask(Task):
     retry_backoff_max = 600
     retry_jitter = True
     
-    def __init__(self):
-        """Initialize task."""
-        super().__init__()
-        self._db_session = None
-    
     @property
     def db_session(self):
-        """Get database session."""
-        if self._db_session is None:
-            self._db_session = SessionLocal()
-        return self._db_session
+        """Get database session scoped to the current task execution context."""
+        session = _db_session_ctx.get()
+        if session is None:
+            session = SessionLocal()
+            _db_session_ctx.set(session)
+        return session
     
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
         """Clean up database session after task execution."""
-        if self._db_session:
-            self._db_session.close()
-            self._db_session = None
+        session = _db_session_ctx.get()
+        if session is not None:
+            session.close()
+            _db_session_ctx.set(None)
         super().after_return(status, retval, task_id, args, kwargs, einfo)
 
 
