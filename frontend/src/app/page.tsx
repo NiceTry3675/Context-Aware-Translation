@@ -268,6 +268,8 @@ function CanvasContent() {
         apiProvider={state.apiProvider}
         modelName={postEditDialogModel}
         onModelNameChange={state.setPostEditModelName}
+        selectedCases={state.selectedCases}
+        setSelectedCases={state.setSelectedCases}
       />
 
       <IllustrationDialog

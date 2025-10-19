@@ -364,6 +364,8 @@ export default function TranslationSidebar({
         apiProvider={postEdit.apiProvider}
         modelName={postEdit.modelName}
         onModelNameChange={postEdit.setModelName}
+        selectedCases={selectedCases}
+        setSelectedCases={setSelectedCases}
       />
     </>
   );

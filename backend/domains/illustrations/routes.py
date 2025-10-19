@@ -936,13 +936,29 @@ def _legacy_generate_illustrations_task(
             job.illustrations_progress = progress
             db.commit()
         
+        # Merge with any existing illustrations so that "추가 생성" keeps previous results
+        existing_map: Dict[int, Dict[str, Any]] = {}
+        if isinstance(job.illustrations_data, list):
+            for entry in job.illustrations_data:
+                if isinstance(entry, dict):
+                    seg_idx = entry.get('segment_index')
+                    if isinstance(seg_idx, int):
+                        existing_map[seg_idx] = entry
+
+        for result in results:
+            seg_idx = result.get('segment_index')
+            if isinstance(seg_idx, int):
+                existing_map[seg_idx] = result
+
+        merged_results = sorted(existing_map.values(), key=lambda item: item.get('segment_index', 0))
+
         # Update job with final results
-        job.illustrations_data = results
-        job.illustrations_count = sum(1 for r in results if r['success'])
+        job.illustrations_data = merged_results
+        job.illustrations_count = sum(1 for r in merged_results if r.get('success'))
         job.illustrations_directory = str(generator.job_output_dir)
         job.illustrations_status = "COMPLETED"
         job.illustrations_progress = 100
-        
+
         db.commit()
         
     except Exception as e:
