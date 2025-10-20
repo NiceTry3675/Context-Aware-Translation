@@ -129,17 +129,18 @@ class TranslationPipeline:
         """
         start_time = time.time()
         error_type = None
-        original_text = ""
+        # Precompute full original text so failures still log correct length
+        original_text = "\n".join(s.text for s in document.segments)
         translated_text_final = ""
-        
+
         try:
             self._translate_document_internal(document)
-            original_text = "\n".join(s.text for s in document.segments)
-            translated_text_final = "\n".join(document.translated_segments)
         except TranslationError as e:
             error_type = e.__class__.__name__
             raise e
         finally:
+            # Use whatever translations exist (may be partial on failure)
+            translated_text_final = "\n".join(document.translated_segments)
             model_name = getattr(self.gemini_api, 'model_name', 'unknown_model')
             token_events = self.usage_collector.events() if self.usage_collector else None
             self.progress_tracker.record_usage_log(

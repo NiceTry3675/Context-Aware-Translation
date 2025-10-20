@@ -24,7 +24,7 @@ def send_announcement(message, environment='local'):
         secret_key = os.getenv("DEV_SECRET_KEY")
     else:  # production
         url = "https://catrans.up.railway.app/api/v1/community/announcements"
-        secret_key = os.getenv("PROD_SECRET_KEY")
+        secret_key = os.getenv("ADMIN_SECRET_KEY")
     
     # 공지 데이터 준비
     data = {
@@ -85,7 +85,7 @@ def deactivate_announcement(announcement_id, environment='local'):
         secret_key = os.getenv("DEV_SECRET_KEY")
     else:  # production
         url = f"https://catrans.up.railway.app/api/v1/community/announcements/{announcement_id}"
-        secret_key = os.getenv("PROD_SECRET_KEY")
+        secret_key = os.getenv("ADMIN_SECRET_KEY")
     
     try:
         print(f"🔇 공지 비활성화 중... (ID: {announcement_id})")
@@ -121,7 +121,7 @@ def deactivate_all_announcements(environment='local'):
         secret_key = os.getenv("DEV_SECRET_KEY")
     else:  # production
         url = "https://catrans.up.railway.app/api/v1/community/announcements"
-        secret_key = os.getenv("PROD_SECRET_KEY")
+        secret_key = os.getenv("ADMIN_SECRET_KEY")
     
     try:
         print("🔇 모든 공지 비활성화 중...")
