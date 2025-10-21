@@ -146,8 +146,19 @@ export default function PostEditDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose}>
-      <DialogTitle>포스트 에디팅 확인</DialogTitle>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          mx: { xs: 2, sm: 3 },
+          width: { xs: 'calc(100% - 32px)', sm: '100%' }
+        }
+      }}
+    >
+      <DialogTitle sx={{ pb: 1 }}>포스트 에디팅 확인</DialogTitle>
       <DialogContent>
         <Alert severity="info" sx={{ mb: 2 }}>
           포스트 에디팅은 검증 결과를 바탕으로 AI가 자동으로 번역을 수정합니다.

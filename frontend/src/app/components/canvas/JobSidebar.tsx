@@ -25,6 +25,9 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Drawer,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import {
   Article as ArticleIcon,
@@ -58,6 +61,8 @@ interface JobSidebarProps {
   defaultModelName?: string;
   apiKey?: string;
   providerConfig?: string;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 const getStatusIcon = (status: string) => {
@@ -118,7 +123,11 @@ export default function JobSidebar({
   defaultModelName,
   apiKey,
   providerConfig,
+  mobileOpen = false,
+  onMobileClose = () => {},
 }: JobSidebarProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [searchQuery, setSearchQuery] = useState('');
   const { getToken } = useAuth();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -204,14 +213,14 @@ export default function JobSidebar({
     });
   };
 
-  return (
+  const sidebarContent = (
     <Box
       sx={{
-        width: 380,
+        width: { xs: 280, sm: 320, md: 380 },
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        borderRight: 1,
+        borderRight: { xs: 0, md: 1 },
         borderColor: 'divider',
         backgroundColor: 'background.paper',
       }}
@@ -572,5 +581,30 @@ export default function JobSidebar({
         />
       )}
     </Box>
+  );
+
+  return (
+    <>
+      {isMobile ? (
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={onMobileClose}
+          ModalProps={{
+            keepMounted: true, // Better open performance on mobile
+          }}
+          sx={{
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
+              width: { xs: 280, sm: 320 },
+            },
+          }}
+        >
+          {sidebarContent}
+        </Drawer>
+      ) : (
+        sidebarContent
+      )}
+    </>
   );
 }
