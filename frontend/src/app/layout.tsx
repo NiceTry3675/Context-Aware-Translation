@@ -15,6 +15,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "냥번역 - Context-Aware AI Novel Translator",
   description: "소설 번역을 위한 AI 번역 서비스",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=5",
 };
 
 export default function RootLayout({

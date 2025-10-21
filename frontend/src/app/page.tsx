@@ -18,6 +18,7 @@ function CanvasContent() {
   const mainContainerRef = useRef<HTMLDivElement>(null);
   const state = useCanvasState();
   const editTimersRef = useRef<Record<string, any>>({});
+  const [mobileDrawerOpen, setMobileDrawerOpen] = React.useState(false);
   const resolveDialogModel = (model: string) => (
     state.apiProvider === 'openrouter'
       ? ensureOpenRouterGeminiModel(model)
@@ -25,6 +26,10 @@ function CanvasContent() {
   );
   const validationDialogModel = resolveDialogModel(state.validationModelName || state.selectedModel);
   const postEditDialogModel = resolveDialogModel(state.postEditModelName || state.selectedModel);
+
+  const handleDrawerToggle = () => {
+    setMobileDrawerOpen(!mobileDrawerOpen);
+  };
   
   const handleToggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -62,33 +67,42 @@ function CanvasContent() {
 
   return (
     <>
-      <Box 
-        sx={{ 
-          height: '100vh', 
-          display: 'flex', 
-          backgroundColor: 'background.default' 
+      <Box
+        sx={{
+          height: '100vh',
+          display: 'flex',
+          backgroundColor: 'background.default'
         }}
         ref={mainContainerRef}
       >
         <JobSidebar
           jobs={state.jobs}
           selectedJobId={state.jobId}
-          onJobSelect={state.handleJobChange}
+          onJobSelect={(jobId) => {
+            state.handleJobChange(jobId);
+            setMobileDrawerOpen(false); // Close drawer on mobile after selection
+          }}
           onJobDelete={state.handleJobDelete}
-          onNewTranslation={state.handleNewTranslation}
+          onNewTranslation={() => {
+            state.handleNewTranslation();
+            setMobileDrawerOpen(false); // Close drawer on mobile after action
+          }}
           onRefreshJobs={state.refreshJobPublic}
           loading={state.dataLoading}
           apiProvider={state.apiProvider}
           defaultModelName={state.selectedModel}
           apiKey={state.apiKey}
           providerConfig={state.providerConfig}
+          mobileOpen={mobileDrawerOpen}
+          onMobileClose={handleDrawerToggle}
         />
-        
-        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
           <CanvasHeader
             selectedJob={state.selectedJob}
             fullscreen={state.fullscreen}
             onToggleFullscreen={handleToggleFullscreen}
+            onMenuClick={handleDrawerToggle}
             onRefresh={() => {
               // Refresh the selected job metadata (public GET) and reload sidebar data
               if (state.jobId) {
@@ -98,7 +112,18 @@ function CanvasContent() {
             }}
           />
 
-          <Container maxWidth={false} sx={{ flex: 1, display: 'flex', flexDirection: 'column', py: 2, gap: 2, overflow: 'auto' }}>
+          <Container
+            maxWidth={false}
+            sx={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              py: { xs: 1, sm: 2 },
+              px: { xs: 1, sm: 2, md: 3 },
+              gap: 2,
+              overflow: 'auto'
+            }}
+          >
             {state.showNewTranslation ? (
               <NewTranslationForm
                 jobId={state.jobId}

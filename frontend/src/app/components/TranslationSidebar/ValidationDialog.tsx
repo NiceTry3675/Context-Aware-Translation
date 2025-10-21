@@ -47,10 +47,22 @@ export default function ValidationDialog({
   onModelNameChange,
 }: ValidationDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullScreen={false}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          mx: { xs: 2, sm: 3 },
+          width: { xs: 'calc(100% - 32px)', sm: '100%' }
+        }
+      }}
+    >
       <DialogTitle>검증 옵션</DialogTitle>
       <DialogContent>
-        <Stack spacing={3} sx={{ mt: 1, minWidth: 400 }}>
+        <Stack spacing={3} sx={{ mt: 1, minWidth: { xs: 0, sm: 400 } }}>
           {apiProvider && onModelNameChange && (
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>검증 모델 선택</Typography>

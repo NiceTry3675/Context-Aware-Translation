@@ -8,7 +8,7 @@ const inter = Inter({
   display: "swap",
 });
 
-// Create a theme instance.
+// Create a theme instance with mobile-first responsive breakpoints
 const theme = createTheme({
   palette: {
     mode: 'dark',
@@ -36,19 +36,46 @@ const theme = createTheme({
       secondary: 'rgba(255, 255, 255, 0.7)',
     },
   },
+  breakpoints: {
+    values: {
+      xs: 0,
+      sm: 600,
+      md: 900,
+      lg: 1200,
+      xl: 1536,
+    },
+  },
   typography: {
     fontFamily: inter.style.fontFamily,
     h1: {
-      fontSize: '3.5rem',
+      fontSize: 'clamp(2rem, 5vw, 3.5rem)',
       fontWeight: 700,
     },
     h2: {
-        fontSize: '2.5rem',
-        fontWeight: 700,
+      fontSize: 'clamp(1.5rem, 4vw, 2.5rem)',
+      fontWeight: 700,
     },
     h3: {
-        fontSize: '1.75rem',
-        fontWeight: 700,
+      fontSize: 'clamp(1.25rem, 3vw, 1.75rem)',
+      fontWeight: 700,
+    },
+    h4: {
+      fontSize: 'clamp(1.1rem, 2.5vw, 1.5rem)',
+      fontWeight: 600,
+    },
+    h5: {
+      fontSize: 'clamp(1rem, 2vw, 1.25rem)',
+      fontWeight: 600,
+    },
+    h6: {
+      fontSize: 'clamp(0.9rem, 1.5vw, 1.1rem)',
+      fontWeight: 600,
+    },
+    body1: {
+      fontSize: 'clamp(0.875rem, 1.5vw, 1rem)',
+    },
+    body2: {
+      fontSize: 'clamp(0.8rem, 1.2vw, 0.875rem)',
     },
   },
   components: {
