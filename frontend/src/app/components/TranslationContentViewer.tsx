@@ -126,7 +126,7 @@ export default function TranslationContentViewer({ content, sourceText, segments
               <Grid container spacing={0}>
                 {/* Source content */}
                 <Grid size={{ xs: 12, md: 6 }}>
-                  <Paper elevation={0} sx={{ p: 3, height: '100%', borderRadius: 0, borderRight: { md: 1 }, borderColor: 'divider' }}>
+                  <Paper elevation={0} sx={{ p: { xs: 1.5, sm: 2, md: 3 }, height: '100%', borderRadius: 0, borderRight: { md: 1 }, borderColor: 'divider' }}>
                     <Typography
                       variant="body2"
                       sx={{
@@ -141,7 +141,7 @@ export default function TranslationContentViewer({ content, sourceText, segments
 
                 {/* Translated content */}
                 <Grid size={{ xs: 12, md: 6 }}>
-                  <Paper elevation={0} sx={{ p: 3, height: '100%', borderRadius: 0 }}>
+                  <Paper elevation={0} sx={{ p: { xs: 1.5, sm: 2, md: 3 }, height: '100%', borderRadius: 0 }}>
                     <Typography
                       variant="body2"
                       sx={{
@@ -178,7 +178,7 @@ export default function TranslationContentViewer({ content, sourceText, segments
                 borderRadius: 1,
               }}
             >
-              <Paper elevation={0} sx={{ p: 3, borderRadius: 0 }}>
+              <Paper elevation={0} sx={{ p: { xs: 1.5, sm: 2, md: 3 }, borderRadius: 0 }}>
                 <Typography
                   variant="body2"
                   sx={{
