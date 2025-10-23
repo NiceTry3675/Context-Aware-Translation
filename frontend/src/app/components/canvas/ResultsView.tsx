@@ -180,14 +180,18 @@ export default function ResultsView({
 
   return (
     <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <Box sx={{ px: 2, pt: 1 }}>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
+      <Box sx={{ px: { xs: 1, sm: 2 }, pt: { xs: 0.5, sm: 1 } }}>
+        <Stack direction="row" spacing={{ xs: 0.5, sm: 1 }} alignItems="center" sx={{ flexWrap: 'wrap', gap: { xs: 0.5, sm: 1 } }}>
           <Button
             variant="outlined"
             startIcon={<AddCircleIcon />}
             onClick={onShowNewTranslation}
             size="small"
-            sx={{ mb: 1 }}
+            sx={{
+              mb: 1,
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              px: { xs: 1, sm: 2 },
+            }}
           >
             새 번역 시작
           </Button>
@@ -197,10 +201,14 @@ export default function ResultsView({
                 variant="contained"
                 color="success"
                 size="small"
-                startIcon={<CheckCircleIcon />}
+                startIcon={<CheckCircleIcon sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }} />}
                 onClick={onOpenValidationDialog}
                 disabled={!canRunValidation}
-                sx={{ mb: 1 }}
+                sx={{
+                  mb: 1,
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  px: { xs: 1, sm: 2 },
+                }}
               >
                 검증 실행
               </Button>
@@ -212,10 +220,14 @@ export default function ResultsView({
                 variant="contained"
                 color="info"
                 size="small"
-                startIcon={<EditIcon />}
+                startIcon={<EditIcon sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }} />}
                 onClick={onOpenPostEditDialog}
                 disabled={!canRunPostEdit}
-                sx={{ mb: 1 }}
+                sx={{
+                  mb: 1,
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  px: { xs: 1, sm: 2 },
+                }}
               >
                 포스트 에디팅 실행
               </Button>
@@ -227,10 +239,14 @@ export default function ResultsView({
                 variant="contained"
                 color="secondary"
                 size="small"
-                startIcon={<BrushIcon />}
+                startIcon={<BrushIcon sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }} />}
                 onClick={onOpenIllustrationDialog}
                 disabled={!canGenerateIllustrations}
-                sx={{ mb: 1 }}
+                sx={{
+                  mb: 1,
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                  px: { xs: 1, sm: 2 },
+                }}
               >
                 삽화 생성
               </Button>
@@ -239,8 +255,21 @@ export default function ResultsView({
         </Stack>
       </Box>
       
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}>
-        <Tabs value={tabValue} onChange={onTabChange}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', px: { xs: 1, sm: 2 } }}>
+        <Tabs
+          value={tabValue}
+          onChange={onTabChange}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
+          sx={{
+            '& .MuiTab-root': {
+              minWidth: { xs: 80, sm: 120 },
+              fontSize: { xs: '0.75rem', sm: '0.875rem' },
+              px: { xs: 1, sm: 2 },
+            },
+          }}
+        >
           <Tab
             label="번역 결과"
             disabled={translationTabDisabled}
@@ -261,8 +290,8 @@ export default function ResultsView({
       </Box>
 
       <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        
-        <Box sx={{ p: 3, flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+
+        <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 }, flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {isPolling && (
             <Alert severity="info" sx={{ mb: 2 }}>
               <AlertTitle>작업 진행 중</AlertTitle>

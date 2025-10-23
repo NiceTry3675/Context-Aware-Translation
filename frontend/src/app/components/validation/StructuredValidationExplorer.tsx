@@ -15,6 +15,10 @@ import {
   alpha,
   useTheme,
   Collapse,
+  useMediaQuery,
+  Drawer,
+  AppBar,
+  Toolbar,
 } from '@mui/material';
 import Checkbox from '@mui/material/Checkbox';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -25,6 +29,8 @@ import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import MenuIcon from '@mui/icons-material/Menu';
+import ListIcon from '@mui/icons-material/List';
 import { ValidationReport } from '../../utils/api';
 import { ValidationCase } from '@/core-schemas';
 type StructuredCase = ValidationCase;
@@ -54,6 +60,8 @@ function severityColor(theme: any, s: number) {
 
 export default function StructuredValidationExplorer({ report, onSegmentClick, selectedCases, onCaseSelectionChange, currentSegmentIndex, modifiedCases, onCaseEditChange }: StructuredValidationExplorerProps) {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [selectedSegment, setSelectedSegment] = useState<number>(report?.detailed_results?.[0]?.segment_index ?? 0);
   const [severityFilter, setSeverityFilter] = useState<{ [k: number]: boolean }>({ 3: true, 2: true, 1: true });
@@ -147,6 +155,14 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
     });
   };
 
+  const handleSegmentSelect = (idx: number) => {
+    setSelectedSegment(idx);
+    onSegmentClick?.(idx);
+    if (isMobile) {
+      setMobileDrawerOpen(false);
+    }
+  };
+
   const goPrev = () => {
     const pos = segments.findIndex((s: any) => s.segment_index === selectedSegment);
     if (pos > 0) {
@@ -166,96 +182,151 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
     }
   };
 
-  return (
-    <Box sx={{ display: 'flex', gap: 2, height: '100%' }}>
-      {/* Left: Segment list */}
-      <Paper sx={{ width: 360, flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', gap: 1 }}>
-          <TextField
+  const segmentListContent = (
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <Box sx={{ p: { xs: 1, sm: 1.5 }, borderBottom: 1, borderColor: 'divider', display: 'flex', gap: 1 }}>
+        <TextField
+          size="small"
+          fullWidth
+          placeholder="이유(reason) 검색"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <Tooltip title="필터">
+          <FilterAltIcon color="action" />
+        </Tooltip>
+      </Box>
+
+      {/* Severity filter chips */}
+      <Box sx={{ p: { xs: 1, sm: 1.5 }, borderBottom: 1, borderColor: 'divider', display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+        {[3, 2, 1].map((s) => (
+          <Chip
+            key={s}
             size="small"
-            fullWidth
-            placeholder="이유(reason) 검색"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            label={s === 3 ? '치명(3)' : s === 2 ? '중요(2)' : '경미(1)'}
+            color={severityFilter[s] ? (s === 3 ? 'error' : s === 2 ? 'warning' : 'info') : 'default'}
+            variant={severityFilter[s] ? 'filled' : 'outlined'}
+            onClick={() => setSeverityFilter({ ...severityFilter, [s]: !severityFilter[s] })}
+            sx={{ fontSize: { xs: '0.7rem', sm: '0.8125rem' } }}
           />
-          <Tooltip title="필터">
-            <FilterAltIcon color="action" />
-          </Tooltip>
-        </Box>
+        ))}
+      </Box>
 
-        {/* Severity filter chips */}
-        <Box sx={{ p: 1.5, borderBottom: 1, borderColor: 'divider', display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          {[3, 2, 1].map((s) => (
-            <Chip
-              key={s}
-              size="small"
-              label={s === 3 ? '치명(3)' : s === 2 ? '중요(2)' : '경미(1)'}
-              color={severityFilter[s] ? (s === 3 ? 'error' : s === 2 ? 'warning' : 'info') : 'default'}
-              variant={severityFilter[s] ? 'filled' : 'outlined'}
-              onClick={() => setSeverityFilter({ ...severityFilter, [s]: !severityFilter[s] })}
-            />
-          ))}
-        </Box>
-
-        {/* Segment items */}
-        <Box sx={{ overflow: 'auto', flex: 1 }}>
-            {segments.map((seg: any) => {
-            const idx = seg.segment_index;
-            const cases = filteredCasesFor(idx);
-              const sevMax = Math.max(0, ...cases.map((c) => normalizeSeverity((c as any).severity)));
-            const sevInfo = severityColor(theme, sevMax || 1);
-            const isSelected = idx === selectedSegment;
-            return (
-              <Box
-                key={idx}
-                onClick={() => {
-                  setSelectedSegment(idx);
-                  onSegmentClick?.(idx);
-                }}
-                sx={{
-                  p: 1.5,
-                  cursor: 'pointer',
-                  borderBottom: 1,
-                  borderColor: 'divider',
-                  bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.06) : 'transparent',
-                }}
-              >
-                <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Box sx={{ width: 24, height: 24, borderRadius: '50%', bgcolor: sevInfo.bg, color: sevInfo.fg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {sevInfo.icon}
-                    </Box>
-                    <Typography variant="body2">세그먼트 {idx + 1}</Typography>
-                  </Stack>
-                  <Stack direction="row" spacing={0.5}>
-                    <Chip size="small" variant="outlined" color="error" label={cases.filter(c => normalizeSeverity((c as any).severity) === 3).length} />
-                    <Chip size="small" variant="outlined" color="warning" label={cases.filter(c => normalizeSeverity((c as any).severity) === 2).length} />
-                    <Chip size="small" variant="outlined" color="info" label={cases.filter(c => normalizeSeverity((c as any).severity) === 1).length} />
-                  </Stack>
+      {/* Segment items */}
+      <Box sx={{ overflow: 'auto', flex: 1 }}>
+        {segments.map((seg: any) => {
+          const idx = seg.segment_index;
+          const cases = filteredCasesFor(idx);
+          const sevMax = Math.max(0, ...cases.map((c) => normalizeSeverity((c as any).severity)));
+          const sevInfo = severityColor(theme, sevMax || 1);
+          const isSelected = idx === selectedSegment;
+          return (
+            <Box
+              key={idx}
+              onClick={() => handleSegmentSelect(idx)}
+              sx={{
+                p: { xs: 1, sm: 1.5 },
+                cursor: 'pointer',
+                borderBottom: 1,
+                borderColor: 'divider',
+                bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.06) : 'transparent',
+              }}
+            >
+              <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Box sx={{ width: 24, height: 24, borderRadius: '50%', bgcolor: sevInfo.bg, color: sevInfo.fg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {sevInfo.icon}
+                  </Box>
+                  <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                    세그먼트 {idx + 1}
+                  </Typography>
                 </Stack>
-              </Box>
-            );
-          })}
-        </Box>
-      </Paper>
+                <Stack direction="row" spacing={0.5}>
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    color="error"
+                    label={cases.filter(c => normalizeSeverity((c as any).severity) === 3).length}
+                    sx={{ fontSize: '0.7rem', height: { xs: 18, sm: 20 } }}
+                  />
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    color="warning"
+                    label={cases.filter(c => normalizeSeverity((c as any).severity) === 2).length}
+                    sx={{ fontSize: '0.7rem', height: { xs: 18, sm: 20 } }}
+                  />
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    color="info"
+                    label={cases.filter(c => normalizeSeverity((c as any).severity) === 1).length}
+                    sx={{ fontSize: '0.7rem', height: { xs: 18, sm: 20 } }}
+                  />
+                </Stack>
+              </Stack>
+            </Box>
+          );
+        })}
+      </Box>
+    </Box>
+  );
+
+  return (
+    <Box sx={{ display: 'flex', gap: { xs: 0, md: 2 }, height: '100%' }}>
+      {/* Left: Segment list - Drawer on mobile, Paper on desktop */}
+      {isMobile ? (
+        <Drawer
+          variant="temporary"
+          open={mobileDrawerOpen}
+          onClose={() => setMobileDrawerOpen(false)}
+          ModalProps={{ keepMounted: true }}
+          sx={{
+            '& .MuiDrawer-paper': {
+              width: { xs: '85%', sm: 320 },
+              maxWidth: 400,
+            },
+          }}
+        >
+          {segmentListContent}
+        </Drawer>
+      ) : (
+        <Paper sx={{ width: { md: 320, lg: 360 }, flexShrink: 0, height: '100%' }}>
+          {segmentListContent}
+        </Paper>
+      )}
 
       {/* Right: Detail */}
       <Paper sx={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Box sx={{ p: 1.5, display: 'flex', alignItems: 'center', gap: 1, borderBottom: 1, borderColor: 'divider', flexWrap: 'wrap' }}>
+        <Box sx={{ p: { xs: 1, sm: 1.5 }, display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 }, borderBottom: 1, borderColor: 'divider', flexWrap: 'wrap' }}>
+          {isMobile && (
+            <IconButton
+              size="small"
+              onClick={() => setMobileDrawerOpen(true)}
+              aria-label="세그먼트 목록 열기"
+            >
+              <ListIcon />
+            </IconButton>
+          )}
           <IconButton onClick={goPrev} size="small">
             <NavigateBeforeIcon />
           </IconButton>
           <IconButton onClick={goNext} size="small">
             <NavigateNextIcon />
           </IconButton>
-          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+          <Divider orientation="vertical" flexItem sx={{ mx: { xs: 0.5, sm: 1 }, display: { xs: 'none', sm: 'block' } }} />
           {/* Severity summary */}
           {([3,2,1] as const).map(s => (
-            <Chip key={`sev-${s}`} size="small" variant="outlined" label={`S${s}: ${Object.values(segmentIndexToCases).flat().filter((c:any)=>normalizeSeverity(c.severity)===s).length}`}
+            <Chip
+              key={`sev-${s}`}
+              size="small"
+              variant="outlined"
+              label={`S${s}: ${Object.values(segmentIndexToCases).flat().filter((c:any)=>normalizeSeverity(c.severity)===s).length}`}
               color={s===3?'error':s===2?'warning':'info'}
+              sx={{ fontSize: { xs: '0.7rem', sm: '0.8125rem' }, display: { xs: 'none', sm: 'inline-flex' } }}
             />
           ))}
-          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+          <Divider orientation="vertical" flexItem sx={{ mx: 1, display: { xs: 'none', md: 'block' } }} />
           {/* Dimension filters */}
           {allDimensions.map((dim) => {
             const isOn = dimensionFilter[dim] !== false;
@@ -268,12 +339,13 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
                 color={isOn ? 'primary' : 'default'}
                 variant={isOn ? 'filled' : 'outlined'}
                 onClick={() => setDimensionFilter({ ...dimensionFilter, [dim]: !isOn })}
+                sx={{ fontSize: { xs: '0.7rem', sm: '0.8125rem' }, display: { xs: 'none', md: 'inline-flex' } }}
               />
             );
           })}
         </Box>
 
-        <Box sx={{ p: 2, overflow: 'auto', flex: 1 }}>
+        <Box sx={{ p: { xs: 1, sm: 1.5, md: 2 }, overflow: 'auto', flex: 1 }}>
           {currentCases.length === 0 ? (
             <Typography variant="body2" color="text.secondary">표시할 문제가 없습니다. 필터를 확인하세요.</Typography>
           ) : (

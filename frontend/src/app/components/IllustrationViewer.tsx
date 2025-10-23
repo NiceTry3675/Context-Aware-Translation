@@ -558,7 +558,7 @@ export default function IllustrationViewer({
 
   if (status === 'NOT_STARTED' || !status) {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
         <Alert severity="info" sx={{ mb: 2 }}>
           삽화가 아직 생성되지 않았습니다.
         </Alert>
@@ -578,7 +578,7 @@ export default function IllustrationViewer({
 
   if (status === 'IN_PROGRESS') {
     return (
-      <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+      <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 }, display: 'flex', alignItems: 'center', gap: 2 }}>
         <CircularProgress />
         <Typography>삽화 생성 중입니다...</Typography>
       </Box>
@@ -587,7 +587,7 @@ export default function IllustrationViewer({
 
   if (status === 'FAILED') {
     return (
-      <Box sx={{ p: 3 }}>
+      <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
         <Alert severity="error" sx={{ mb: 2 }}>
           삽화 생성 중 오류가 발생했습니다.
         </Alert>
@@ -606,9 +606,9 @@ export default function IllustrationViewer({
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
-        <Typography variant="h6">
+    <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ mb: { xs: 2, sm: 3 }, gap: 1 }}>
+        <Typography variant="h6" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
           생성된 삽화 ({count}개)
         </Typography>
         <Stack direction="row" spacing={1}>
@@ -637,7 +637,7 @@ export default function IllustrationViewer({
         </Stack>
       </Stack>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' }, gap: 3 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(4, 1fr)' }, gap: { xs: 1.5, sm: 2, md: 3 } }}>
         {illustrations.map((illustration) => (
           <Card key={illustration.segment_index} sx={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
               {loadedImages[illustration.segment_index] ? (

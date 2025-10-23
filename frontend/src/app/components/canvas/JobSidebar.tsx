@@ -305,15 +305,18 @@ export default function JobSidebar({
                     <Stack direction="row" alignItems="center" spacing={0.5}>
                       {(job.status === 'COMPLETED' || job.status === 'FAILED') && (
                         <>
-                          <JobRowActions 
-                            job={job} 
-                            onRefresh={onRefreshJobs} 
-                            compact={true}
-                            apiProvider={apiProvider}
-                            defaultModelName={defaultModelName}
-                            apiKey={apiKey}
-                            providerConfig={providerConfig}
-                          />
+                          {/* Show only essential buttons on mobile */}
+                          <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 0.5 }}>
+                            <JobRowActions
+                              job={job}
+                              onRefresh={onRefreshJobs}
+                              compact={true}
+                              apiProvider={apiProvider}
+                              defaultModelName={defaultModelName}
+                              apiKey={apiKey}
+                              providerConfig={providerConfig}
+                            />
+                          </Box>
                           <Tooltip title="다운로드">
                             <IconButton
                               size="small"
@@ -328,7 +331,7 @@ export default function JobSidebar({
                                     },
                                   });
                                   if (!response.ok) throw new Error('Download failed');
-                                  
+
                                   const blob = await response.blob();
                                   const url = window.URL.createObjectURL(blob);
                                   const a = document.createElement('a');
@@ -346,38 +349,40 @@ export default function JobSidebar({
                               <DownloadIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="용어집 다운로드">
-                            <IconButton
-                              size="small"
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-                                try {
-                                  const token = await getCachedClerkToken(getToken);
-                                  const response = await fetch(`${API_URL}/api/v1/jobs/${job.id}/glossary?structured=true`, {
-                                    headers: {
-                                      'Authorization': token ? `Bearer ${token}` : '',
-                                    },
-                                  });
-                                  if (!response.ok) throw new Error('Glossary download failed');
-                                  const blob = await response.blob();
-                                  const url = window.URL.createObjectURL(blob);
-                                  const a = document.createElement('a');
-                                  a.href = url;
-                                  const baseFilename = job.filename ? job.filename.replace(/\.[^/.]+$/, '') : `job_${job.id}`;
-                                  a.download = `${baseFilename}_glossary.json`;
-                                  document.body.appendChild(a);
-                                  a.click();
-                                  document.body.removeChild(a);
-                                  window.URL.revokeObjectURL(url);
-                                } catch (error) {
-                                  console.error('Glossary download error:', error);
-                                }
-                              }}
-                            >
-                              <MenuBookIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <Box sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
+                            <Tooltip title="용어집 다운로드">
+                              <IconButton
+                                size="small"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+                                  try {
+                                    const token = await getCachedClerkToken(getToken);
+                                    const response = await fetch(`${API_URL}/api/v1/jobs/${job.id}/glossary?structured=true`, {
+                                      headers: {
+                                        'Authorization': token ? `Bearer ${token}` : '',
+                                      },
+                                    });
+                                    if (!response.ok) throw new Error('Glossary download failed');
+                                    const blob = await response.blob();
+                                    const url = window.URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    const baseFilename = job.filename ? job.filename.replace(/\.[^/.]+$/, '') : `job_${job.id}`;
+                                    a.download = `${baseFilename}_glossary.json`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    window.URL.revokeObjectURL(url);
+                                  } catch (error) {
+                                    console.error('Glossary download error:', error);
+                                  }
+                                }}
+                              >
+                                <MenuBookIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
                           {job.status === 'FAILED' && (
                             <Tooltip title="작업 재개">
                               <IconButton
@@ -414,17 +419,19 @@ export default function JobSidebar({
                               </IconButton>
                             </Tooltip>
                           )}
-                          <Tooltip title="PDF 다운로드">
-                            <IconButton
-                              size="small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenPdfDialog(job);
-                              }}
-                            >
-                              <PdfIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                          <Box sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
+                            <Tooltip title="PDF 다운로드">
+                              <IconButton
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenPdfDialog(job);
+                                }}
+                              >
+                                <PdfIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
                         </>
                       )}
                       <Tooltip title="삭제">
@@ -461,10 +468,10 @@ export default function JobSidebar({
                       }
                       secondary={
                         <Stack spacing={0.5}>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" color="text.secondary" noWrap>
                             {formatDate(job.created_at)}
                           </Typography>
-                          <Stack direction="row" spacing={0.5}>
+                          <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
                             {getStatusChip(job)}
                             {job.validation_status === 'COMPLETED' && (
                               <Chip

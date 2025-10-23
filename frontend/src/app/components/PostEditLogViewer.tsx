@@ -98,19 +98,21 @@ export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogVi
       />
 
       {/* Filter Controls */}
-      <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+      <Paper elevation={1} sx={{ p: { xs: 1.5, sm: 2 }, mb: 2 }}>
         <Stack spacing={2}>
-          <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }} justifyContent="space-between">
             <ToggleButtonGroup
               value={displayMode}
               exclusive
               onChange={(e, mode) => mode && setDisplayMode(mode)}
               size="small"
+              fullWidth={false}
+              sx={{ width: { xs: '100%', sm: 'auto' } }}
             >
-              <ToggleButton value="changes">
+              <ToggleButton value="changes" sx={{ flex: { xs: 1, sm: 'initial' } }}>
                 변경 내역
               </ToggleButton>
-              <ToggleButton value="final">
+              <ToggleButton value="final" sx={{ flex: { xs: 1, sm: 'initial' } }}>
                 최종 결과
               </ToggleButton>
             </ToggleButtonGroup>
@@ -123,29 +125,32 @@ export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogVi
                   />
                 )}
                 label="변경 사항 강조"
+                sx={{ ml: { xs: 0, sm: 2 } }}
               />
             )}
           </Stack>
 
           {displayMode === 'changes' ? (
             <>
-              <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
                 <ToggleButtonGroup
                   value={viewMode}
                   exclusive
                   onChange={(e, newMode) => newMode && setViewMode(newMode)}
                   size="small"
+                  fullWidth={false}
+                  sx={{ width: { xs: '100%', sm: 'auto' } }}
                 >
-                  <ToggleButton value="all">
+                  <ToggleButton value="all" sx={{ flex: { xs: 1, sm: 'initial' } }}>
                     전체 ({segments.length})
                   </ToggleButton>
-                  <ToggleButton value="edited">
+                  <ToggleButton value="edited" sx={{ flex: { xs: 1, sm: 'initial' } }}>
                     <Badge badgeContent={summary.segments_edited || 0} color="primary">
                       <EditIcon fontSize="small" sx={{ mr: 0.5 }} />
                     </Badge>
                     수정됨
                   </ToggleButton>
-                  <ToggleButton value="unedited">
+                  <ToggleButton value="unedited" sx={{ flex: { xs: 1, sm: 'initial' }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
                     수정 안됨 ({(summary.total_segments || 0) - (summary.segments_edited || 0)})
                   </ToggleButton>
                 </ToggleButtonGroup>
@@ -153,24 +158,26 @@ export default function PostEditLogViewer({ log, onSegmentClick }: PostEditLogVi
 
               {/* Diff View Controls - only show when diff is enabled */}
               {showDiff && (
-                <Stack direction="row" spacing={2} alignItems="center">
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
                   <ToggleButtonGroup
                     value={diffViewMode}
                     exclusive
                     onChange={(e, newMode) => newMode && setDiffViewMode(newMode)}
                     size="small"
+                    fullWidth={false}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
-                    <ToggleButton value="unified">
+                    <ToggleButton value="unified" sx={{ flex: { xs: 1, sm: 'initial' } }}>
                       <CompareIcon fontSize="small" sx={{ mr: 0.5 }} />
                       통합 보기
                     </ToggleButton>
-                    <ToggleButton value="side-by-side">
+                    <ToggleButton value="side-by-side" sx={{ flex: { xs: 1, sm: 'initial' } }}>
                       <ViewColumnIcon fontSize="small" sx={{ mr: 0.5 }} />
                       나란히 보기
                     </ToggleButton>
                   </ToggleButtonGroup>
 
-                  <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 120 } }}>
                     <InputLabel>비교 단위</InputLabel>
                     <Select
                       value={diffMode}
