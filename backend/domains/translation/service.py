@@ -602,8 +602,8 @@ class TranslationDomainService(DomainServiceBase):
             # Use SQL-based offset/limit instead of Python slicing
             jobs = repo.list_by_user(user_id, limit=limit, offset=skip if skip > 0 else None)
 
-            # Convert SQLAlchemy models to lightweight Pydantic schemas while session is active
-            # This excludes large JSON fields like illustrations_data, character_profile, etc.
+            # Convert SQLAlchemy models to lightweight Pydantic schemas while session is active.
+            # We still include illustration metadata needed by the canvas UI, but omit other heavy JSON blobs.
             return [TranslationJobListItemSchema.model_validate(job) for job in jobs]
     
     def create_job(

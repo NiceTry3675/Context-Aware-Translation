@@ -41,12 +41,12 @@ class TranslationJobListItem(TranslationJobBase):
     post_edit_status: Optional[str] = None
     post_edit_progress: Optional[int] = None
     post_edit_completed_at: Optional[datetime.datetime] = None
-
-    # Illustration fields - lightweight (exclude data)
+    # Illustration fields - include data needed by canvas UI
     illustrations_enabled: Optional[bool] = None
     illustrations_status: Optional[str] = None
     illustrations_progress: Optional[int] = None
     illustrations_count: Optional[int] = None
+    illustrations_data: Optional[List[Dict[str, Any]]] = None
 
     class Config:
         from_attributes = True
@@ -126,5 +126,3 @@ class ResumeRequest(BaseModel):
     api_provider: Optional[str] = "gemini"
     provider_config: Optional[str] = None
     turbo_mode: Optional[bool] = False
-
-
