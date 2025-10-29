@@ -42,7 +42,10 @@ from backend.domains.shared import (
 )
 from backend.domains.translation import SqlAlchemyTranslationJobRepository
 from backend.domains.translation.models import TranslationJob
-from backend.domains.translation.schemas import TranslationJob as TranslationJobSchema
+from backend.domains.translation.schemas import (
+    TranslationJob as TranslationJobSchema,
+    TranslationJobListItem as TranslationJobListItemSchema
+)
 from backend.domains.user.models import User
 
 logger = logging.getLogger(__name__)
@@ -581,34 +584,27 @@ class TranslationDomainService(DomainServiceBase):
         user_id: int,
         skip: int = 0,
         limit: int = 100
-    ) -> List[TranslationJobSchema]:
+    ) -> List[TranslationJobListItemSchema]:
         """
         List all translation jobs for a user with skip/limit pagination.
-        
+
         Args:
             user_id: ID of the user
             skip: Number of jobs to skip
             limit: Maximum number of jobs to return
-            
+
         Returns:
-            List of translation jobs
+            List of translation jobs (lightweight schema)
         """
         with self.unit_of_work() as uow:
             repo = SqlAlchemyTranslationJobRepository(uow.session)
-            
-            # Get jobs with limit
-            jobs = repo.list_by_user(user_id, limit=limit + skip)
-            
-            # Apply skip manually for now
-            if skip > 0:
-                jobs = jobs[skip:]
-            
-            # Limit to requested amount
-            if len(jobs) > limit:
-                jobs = jobs[:limit]
-            
-            # Convert SQLAlchemy models to Pydantic schemas while session is active
-            return [TranslationJobSchema.model_validate(job) for job in jobs]
+
+            # Use SQL-based offset/limit instead of Python slicing
+            jobs = repo.list_by_user(user_id, limit=limit, offset=skip if skip > 0 else None)
+
+            # Convert SQLAlchemy models to lightweight Pydantic schemas while session is active.
+            # We still include illustration metadata needed by the canvas UI, but omit other heavy JSON blobs.
+            return [TranslationJobListItemSchema.model_validate(job) for job in jobs]
     
     def create_job(
         self,
@@ -922,54 +918,65 @@ class TranslationDomainService(DomainServiceBase):
     ) -> dict:
         """
         Get the complete content of a translation job.
-        
+
+        Note: This method returns ALL segments, which can be slow for large jobs.
+        Consider using get_job_segments() with pagination instead.
+
         Args:
             job_id: Job ID
-            
+
         Returns:
             Dict containing the job content and segments
-            
+
         Raises:
             HTTPException: If job not found or content not available
         """
         with self.unit_of_work() as uow:
             repo = SqlAlchemyTranslationJobRepository(uow.session)
             job = repo.get(job_id)
-            
+
             if job is None:
                 raise HTTPException(status_code=404, detail="Job not found")
-            
+
             # Allow access if translation is completed OR if validation/post-edit is completed
             can_access = (
                 job.status == "COMPLETED" or
                 (job.status == "VALIDATING" and job.validation_status == "COMPLETED") or
                 (job.status == "POST_EDITING" and job.post_edit_status == "COMPLETED")
             )
-            
+
             if not can_access:
                 raise HTTPException(
-                    status_code=400, 
+                    status_code=400,
                     detail=f"Job not accessible. Status: {job.status}, Validation: {job.validation_status}, Post-edit: {job.post_edit_status}"
                 )
-            
+
             # Try to get segments from database first
             segments = job.translation_segments or []
-            
-            # If no segments in DB, try to read from file
+
+            # If no segments in DB, try to read from file (fallback - not optimal)
             if not segments:
                 import json
                 from pathlib import Path
-                
+
                 from backend.config.settings import get_settings
                 base_dir = Path(get_settings().job_storage_base)
                 segments_path = base_dir / str(job_id) / "output" / "segments.json"
                 if segments_path.exists():
                     try:
+                        # Log warning - this is a performance bottleneck
+                        file_size = segments_path.stat().st_size
+                        if file_size > 1024 * 1024:  # > 1MB
+                            logger.warning(
+                                f"Loading large segments file ({file_size / 1024 / 1024:.2f}MB) "
+                                f"from disk for job {job_id}. Consider using paginated endpoint get_job_segments()."
+                            )
+
                         with open(segments_path, 'r', encoding='utf-8') as f:
                             segments = json.load(f)
                     except Exception as e:
-                        logger.error(f"Failed to read segments from file: {e}")
-            
+                        logger.error(f"Failed to read segments from file for job {job_id}: {e}")
+
             # Return the translation segments data
             return {
                 "job_id": job.id,
@@ -985,63 +992,71 @@ class TranslationDomainService(DomainServiceBase):
     ) -> dict:
         """
         Get segments from a translation job with pagination.
-        
+
         Args:
             job_id: Job ID
             offset: Number of segments to skip
             limit: Maximum number of segments to return
-            
+
         Returns:
             Dict containing paginated segments
-            
+
         Raises:
             HTTPException: If job not found or segments not available
         """
         with self.unit_of_work() as uow:
             repo = SqlAlchemyTranslationJobRepository(uow.session)
             job = repo.get(job_id)
-            
+
             if job is None:
                 raise HTTPException(status_code=404, detail="Job not found")
-            
+
             # Allow access if translation is completed OR if validation/post-edit is completed
             can_access = (
                 job.status in ["COMPLETED", "FAILED"] or
                 (job.status == "VALIDATING" and job.validation_status == "COMPLETED") or
                 (job.status == "POST_EDITING" and job.post_edit_status == "COMPLETED")
             )
-            
+
             if not can_access:
                 raise HTTPException(
-                    status_code=400, 
+                    status_code=400,
                     detail=f"Job not accessible. Status: {job.status}, Validation: {job.validation_status}, Post-edit: {job.post_edit_status}"
                 )
-            
+
             segments = job.translation_segments or []
-            
-            # If no segments in DB, try to read from file
+
+            # If no segments in DB, try to read from file (fallback - not optimal)
             if not segments:
                 import json
                 from pathlib import Path
-                
+
                 from backend.config.settings import get_settings
                 base_dir = Path(get_settings().job_storage_base)
                 segments_path = base_dir / str(job_id) / "output" / "segments.json"
                 if segments_path.exists():
                     try:
+                        # Log warning - this is a performance bottleneck
+                        file_size = segments_path.stat().st_size
+                        if file_size > 1024 * 1024:  # > 1MB
+                            logger.warning(
+                                f"Loading large segments file ({file_size / 1024 / 1024:.2f}MB) "
+                                f"from disk for job {job_id}. Consider storing segments in database."
+                            )
+
                         with open(segments_path, 'r', encoding='utf-8') as f:
                             segments = json.load(f)
                     except Exception as e:
-                        logger.error(f"Failed to read segments from file: {e}")
-            
+                        logger.error(f"Failed to read segments from file for job {job_id}: {e}")
+
             # If no segments available, return appropriate message
             if not segments and job.status == "FAILED":
                 raise HTTPException(status_code=404, detail="No segments available - job failed during processing")
             total = len(segments)
-            
-            # Apply pagination
+
+            # Apply pagination in Python (already loaded into memory)
             paginated_segments = segments[offset:offset + limit]
-            
+
             return {
                 "job_id": job.id,
                 "status": job.status,

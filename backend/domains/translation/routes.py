@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from backend.config.dependencies import get_db, get_required_user, is_admin
 from backend.domains.user.models import User
 from backend.domains.translation.models import TranslationJob as TranslationJobModel
-from backend.domains.translation.schemas import TranslationJob, ResumeRequest
+from backend.domains.translation.schemas import TranslationJob, TranslationJobListItem, ResumeRequest
 from backend.domains.translation.service import TranslationDomainService
 from backend.domains.shared.provider_context import provider_context_to_payload
 
@@ -28,18 +28,18 @@ async def list_jobs(
     limit: int = Query(100, ge=1, le=1000),
     user: User = Depends(get_required_user),
     service: TranslationDomainService = Depends(get_translation_service)
-) -> List[TranslationJob]:
+) -> List[TranslationJobListItem]:
     """
     List all translation jobs for the current user.
-    
+
     Args:
         skip: Number of jobs to skip for pagination
         limit: Maximum number of jobs to return
         user: Current authenticated user
         service: Translation domain service
-        
+
     Returns:
-        List of translation jobs
+        List of translation jobs (lightweight, without large JSON fields)
     """
     return service.list_jobs(user.id, skip=skip, limit=limit)
 

@@ -23,6 +23,34 @@ class TranslationJobCreate(TranslationJobBase):
     owner_id: int
     segment_size: int
 
+class TranslationJobListItem(TranslationJobBase):
+    """Lightweight schema for listing jobs - excludes large JSON fields"""
+    id: int
+    status: str
+    progress: int
+    segment_size: int
+    created_at: datetime.datetime
+    completed_at: Optional[datetime.datetime] = None
+    error_message: Optional[str] = None
+    owner_id: Optional[int] = None
+    validation_enabled: Optional[bool] = None
+    validation_status: Optional[str] = None
+    validation_progress: Optional[int] = None
+    validation_completed_at: Optional[datetime.datetime] = None
+    post_edit_enabled: Optional[bool] = None
+    post_edit_status: Optional[str] = None
+    post_edit_progress: Optional[int] = None
+    post_edit_completed_at: Optional[datetime.datetime] = None
+    # Illustration fields - include data needed by canvas UI
+    illustrations_enabled: Optional[bool] = None
+    illustrations_status: Optional[str] = None
+    illustrations_progress: Optional[int] = None
+    illustrations_count: Optional[int] = None
+    illustrations_data: Optional[List[Dict[str, Any]]] = None
+
+    class Config:
+        from_attributes = True
+
 class TranslationJob(TranslationJobBase):
     id: int
     status: str
@@ -98,5 +126,3 @@ class ResumeRequest(BaseModel):
     api_provider: Optional[str] = "gemini"
     provider_config: Optional[str] = None
     turbo_mode: Optional[bool] = False
-
-

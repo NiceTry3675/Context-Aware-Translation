@@ -1,6 +1,6 @@
 from typing import Protocol, Optional, List, Dict, Any
 from datetime import datetime
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, desc
 
 from backend.domains.translation.models import TranslationJob, TranslationUsageLog
@@ -37,9 +37,10 @@ class TranslationJobRepository(Protocol):
         self, 
         user_id: int, 
         limit: int = 100, 
-        cursor: Optional[int] = None
+        cursor: Optional[int] = None,
+        offset: Optional[int] = None
     ) -> List[TranslationJob]:
-        """List jobs for a specific user with cursor-based pagination."""
+        """List jobs for a specific user with cursor- or offset-based pagination."""
         ...
     
     def find_by_idempotency_key(
@@ -79,11 +80,17 @@ class TranslationJobRepository(Protocol):
 
 class SqlAlchemyTranslationJobRepository(SqlAlchemyRepository[TranslationJob]):
     """SQLAlchemy implementation of TranslationJobRepository."""
-    
+
     def __init__(self, session: Session):
         """Initialize with a SQLAlchemy session."""
         super().__init__(session, TranslationJob)
         self._idempotency_cache: Dict[str, int] = {}
+
+    def get(self, id: int) -> Optional[TranslationJob]:
+        """Get a job by ID with owner eagerly loaded to prevent N+1 queries."""
+        return self.session.query(TranslationJob).options(
+            joinedload(TranslationJob.owner)
+        ).filter(TranslationJob.id == id).first()
     
     def set_status(
         self, 
@@ -106,19 +113,25 @@ class SqlAlchemyTranslationJobRepository(SqlAlchemyRepository[TranslationJob]):
             self.session.flush()
     
     def list_by_user(
-        self, 
-        user_id: int, 
-        limit: int = 100, 
-        cursor: Optional[int] = None
+        self,
+        user_id: int,
+        limit: int = 100,
+        cursor: Optional[int] = None,
+        offset: Optional[int] = None
     ) -> List[TranslationJob]:
-        """List jobs for a specific user with cursor-based pagination."""
-        query = self.session.query(TranslationJob).filter(
+        """List jobs for a specific user with cursor-based or offset-based pagination."""
+        query = self.session.query(TranslationJob).options(
+            joinedload(TranslationJob.owner)
+        ).filter(
             TranslationJob.owner_id == user_id
         ).order_by(desc(TranslationJob.created_at))
-        
+
         if cursor:
             query = query.filter(TranslationJob.id < cursor)
-        
+
+        if offset:
+            query = query.offset(offset)
+
         return query.limit(limit).all()
     
     def find_by_idempotency_key(
