@@ -44,22 +44,10 @@ def upgrade() -> None:
     op.create_index(op.f('ix_outbox_events_processed'), 'outbox_events', ['processed'], unique=False)
     
     # Try to drop indexes if they exist (they may not exist in all databases)
-    try:
-        op.drop_index(op.f('idx_comments_is_private'), table_name='comments')
-    except:
-        pass
-    try:
-        op.drop_index(op.f('idx_comments_post_id'), table_name='comments')
-    except:
-        pass
-    try:
-        op.drop_index(op.f('idx_posts_category_created'), table_name='posts')
-    except:
-        pass
-    try:
-        op.drop_index(op.f('idx_posts_is_private'), table_name='posts')
-    except:
-        pass
+    op.execute("DROP INDEX IF EXISTS idx_comments_is_private")
+    op.execute("DROP INDEX IF EXISTS idx_comments_post_id")
+    op.execute("DROP INDEX IF EXISTS idx_posts_category_created")
+    op.execute("DROP INDEX IF EXISTS idx_posts_is_private")
     # ### end Alembic commands ###
 
 
