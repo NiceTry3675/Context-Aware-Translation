@@ -37,9 +37,10 @@ class TranslationJobRepository(Protocol):
         self, 
         user_id: int, 
         limit: int = 100, 
-        cursor: Optional[int] = None
+        cursor: Optional[int] = None,
+        offset: Optional[int] = None
     ) -> List[TranslationJob]:
-        """List jobs for a specific user with cursor-based pagination."""
+        """List jobs for a specific user with cursor- or offset-based pagination."""
         ...
     
     def find_by_idempotency_key(
