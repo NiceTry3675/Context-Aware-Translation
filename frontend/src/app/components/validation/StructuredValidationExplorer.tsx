@@ -314,6 +314,12 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
           <IconButton onClick={goNext} size="small">
             <NavigateNextIcon />
           </IconButton>
+          {/* Show segment counter on mobile next to navigation */}
+          {isMobile && (
+            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+              {selectedSegment + 1}/{segments.length}
+            </Typography>
+          )}
           <Divider orientation="vertical" flexItem sx={{ mx: { xs: 0.5, sm: 1 }, display: { xs: 'none', sm: 'block' } }} />
           {/* Severity summary */}
           {([3,2,1] as const).map(s => (
@@ -347,9 +353,9 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
 
         <Box sx={{ p: { xs: 1, sm: 1.5, md: 2 }, overflow: 'auto', flex: 1 }}>
           {currentCases.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">표시할 문제가 없습니다. 필터를 확인하세요.</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>표시할 문제가 없습니다. 필터를 확인하세요.</Typography>
           ) : (
-            <Stack spacing={1.5}>
+            <Stack spacing={{ xs: 1, sm: 1.5 }}>
               {currentCases.map((c, i) => {
                 const sevNum = normalizeSeverity((c as any).severity);
                 const sev = severityColor(theme, sevNum);
@@ -365,9 +371,9 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
                 const fix = (override?.recommend_korean_sentence ?? fixOrig);
                 const reasonId = `reason-${selectedSegment}-${absoluteIndex}`;
                 return (
-                  <Box key={i} sx={{ p: 1.5, border: `1px solid ${sev.fg}`, bgcolor: sev.bg, borderRadius: 1 }} onClick={() => toggleExpanded(absoluteIndex)} role="button" aria-expanded={isExpanded(absoluteIndex)} aria-controls={reasonId} tabIndex={0}>
+                  <Box key={i} sx={{ p: { xs: 1, sm: 1.5 }, border: `1px solid ${sev.fg}`, bgcolor: sev.bg, borderRadius: 1 }} onClick={() => toggleExpanded(absoluteIndex)} role="button" aria-expanded={isExpanded(absoluteIndex)} aria-controls={reasonId} tabIndex={0}>
                     {/* Header */}
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                    <Stack direction="row" spacing={{ xs: 0.5, sm: 1 }} alignItems="center" sx={{ mb: { xs: 0.75, sm: 1 }, flexWrap: 'wrap' }}>
                       <Checkbox
                         size="small"
                         checked={checked}
@@ -378,9 +384,9 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
                         }}
                       />
                       {sev.icon}
-                      <Chip size="small" label={dim} color="default" variant="outlined" />
+                      <Chip size="small" label={dim} color="default" variant="outlined" sx={{ fontSize: { xs: '0.7rem', sm: '0.8125rem' }, height: { xs: 20, sm: 24 } }} />
                       {c.tags && c.tags.length > 0 && (
-                        <Chip size="small" label={c.tags.join(', ')} variant="outlined" />
+                        <Chip size="small" label={c.tags.join(', ')} variant="outlined" sx={{ fontSize: { xs: '0.7rem', sm: '0.8125rem' }, height: { xs: 20, sm: 24 } }} />
                       )}
                       <Box sx={{ flex: 1 }} />
                       <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleExpanded(absoluteIndex); }}>
@@ -389,17 +395,17 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
                     </Stack>
 
                     {/* Main content: Source -> Current -> Suggestion (vertical) */}
-                    <Stack direction="column" spacing={1.25} alignItems="stretch">
-                      <Box sx={{ p: 1, border: '1px dashed', borderColor: sev.fg, borderRadius: 1, bgcolor: 'background.paper' }}>
-                        <Typography variant="caption" color="text.secondary">원문</Typography>
-                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{src || '-'}</Typography>
+                    <Stack direction="column" spacing={{ xs: 0.75, sm: 1.25 }} alignItems="stretch">
+                      <Box sx={{ p: { xs: 0.75, sm: 1 }, border: '1px dashed', borderColor: sev.fg, borderRadius: 1, bgcolor: 'background.paper' }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>원문</Typography>
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>{src || '-'}</Typography>
                       </Box>
-                      <Box sx={{ p: 1, border: '1px dashed', borderColor: sev.fg, borderRadius: 1, bgcolor: 'background.paper' }}>
-                        <Typography variant="caption" color="text.secondary">현재 번역</Typography>
-                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{cur || '-'}</Typography>
+                      <Box sx={{ p: { xs: 0.75, sm: 1 }, border: '1px dashed', borderColor: sev.fg, borderRadius: 1, bgcolor: 'background.paper' }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>현재 번역</Typography>
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>{cur || '-'}</Typography>
                       </Box>
-                      <Box sx={{ p: 1, border: '1px dashed', borderColor: sev.fg, borderRadius: 1, bgcolor: 'background.paper', position: 'relative' }}>
-                        <Typography variant="caption" color="text.secondary">수정 제안</Typography>
+                      <Box sx={{ p: { xs: 0.75, sm: 1 }, border: '1px dashed', borderColor: sev.fg, borderRadius: 1, bgcolor: 'background.paper', position: 'relative' }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>수정 제안</Typography>
                         <TextField
                           size="small"
                           fullWidth
@@ -410,10 +416,15 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
                           onClick={(e) => e.stopPropagation()}
                           onChange={(e) => onCaseEditChange?.(selectedSegment, absoluteIndex, { recommend_korean_sentence: e.target.value })}
                           placeholder={fixOrig || '-'}
+                          sx={{
+                            '& .MuiInputBase-root': {
+                              fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                            }
+                          }}
                         />
                         {fix && (
                           <Tooltip title="수정안 복사">
-                            <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigator.clipboard?.writeText(fix); }} sx={{ position: 'absolute', top: 2, right: 2 }}>
+                            <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigator.clipboard?.writeText(fix); }} sx={{ position: 'absolute', top: { xs: 1, sm: 2 }, right: { xs: 1, sm: 2 } }}>
                               <ContentCopyIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
@@ -421,7 +432,13 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
                       </Box>
                       {/* Easier reason toggle */}
                       <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                        <Button size="small" variant="text" startIcon={<ExpandMoreIcon sx={{ transform: isExpanded(absoluteIndex) ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />} onClick={(e) => { e.stopPropagation(); toggleExpanded(absoluteIndex); }}>
+                        <Button
+                          size="small"
+                          variant="text"
+                          startIcon={<ExpandMoreIcon sx={{ transform: isExpanded(absoluteIndex) ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />}
+                          onClick={(e) => { e.stopPropagation(); toggleExpanded(absoluteIndex); }}
+                          sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                        >
                           {isExpanded(absoluteIndex) ? '이유 접기' : '이유 보기'}
                         </Button>
                       </Box>
@@ -429,8 +446,8 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
 
                     {/* Reason (expand on click) */}
                     <Collapse in={isExpanded(absoluteIndex)} timeout="auto" unmountOnExit id={reasonId}>
-                      <Divider sx={{ my: 1 }} />
-                      <Typography variant="subtitle2" gutterBottom>이유</Typography>
+                      <Divider sx={{ my: { xs: 0.75, sm: 1 } }} />
+                      <Typography variant="subtitle2" gutterBottom sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>이유</Typography>
                       <TextField
                         size="small"
                         fullWidth
@@ -441,6 +458,11 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => onCaseEditChange?.(selectedSegment, absoluteIndex, { reason: e.target.value })}
                         placeholder={c.reason || '-'}
+                        sx={{
+                          '& .MuiInputBase-root': {
+                            fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                          }
+                        }}
                       />
                     </Collapse>
                   </Box>
@@ -450,11 +472,12 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
           )}
         </Box>
 
-        <Box sx={{ p: 1.5, borderTop: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="caption" color="text.secondary">
+        <Box sx={{ p: { xs: 1, sm: 1.5 }, borderTop: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+          {/* Hide segment counter on mobile (shown in header instead) */}
+          <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
             총 세그먼트: {segments.length} | 현재: {selectedSegment + 1}
           </Typography>
-          <Stack direction="row" spacing={1}>
+          <Stack direction="row" spacing={{ xs: 0.5, sm: 1 }} sx={{ flexWrap: 'wrap', gap: { xs: 0.5, sm: 1 } }}>
             <Button size="small" variant="text" onClick={() => {
               // toggle visible cases to true
               currentCases.forEach((c) => {
@@ -462,16 +485,30 @@ export default function StructuredValidationExplorer({ report, onSegmentClick, s
                 const absoluteIndex = absIndex >= 0 ? absIndex : 0;
                 onCaseSelectionChange?.(selectedSegment, absoluteIndex, true, allCases.length);
               });
-            }}>전체 선택</Button>
+            }} sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>전체 선택</Button>
             <Button size="small" variant="text" onClick={() => {
               currentCases.forEach((c) => {
                 const absIndex = allCases.indexOf(c);
                 const absoluteIndex = absIndex >= 0 ? absIndex : 0;
                 onCaseSelectionChange?.(selectedSegment, absoluteIndex, false, allCases.length);
               });
-            }}>전체 해제</Button>
-            <Button size="small" variant="outlined" onClick={goPrev} startIcon={<NavigateBeforeIcon />} disabled={segments.findIndex((s: any) => s.segment_index === selectedSegment) <= 0}>이전</Button>
-            <Button size="small" variant="contained" onClick={goNext} endIcon={<NavigateNextIcon />} disabled={segments.findIndex((s: any) => s.segment_index === selectedSegment) >= segments.length - 1}>다음</Button>
+            }} sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>전체 해제</Button>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={goPrev}
+              startIcon={<NavigateBeforeIcon />}
+              disabled={segments.findIndex((s: any) => s.segment_index === selectedSegment) <= 0}
+              sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' }, display: { xs: 'none', sm: 'inline-flex' } }}
+            >이전</Button>
+            <Button
+              size="small"
+              variant="contained"
+              onClick={goNext}
+              endIcon={<NavigateNextIcon />}
+              disabled={segments.findIndex((s: any) => s.segment_index === selectedSegment) >= segments.length - 1}
+              sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' }, display: { xs: 'none', sm: 'inline-flex' } }}
+            >다음</Button>
           </Stack>
         </Box>
       </Paper>
