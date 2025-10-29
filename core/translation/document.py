@@ -322,7 +322,12 @@ class TranslationDocument:
             return
 
         try:
-            cache_dir = Path("logs") / "jobs" / str(job_id) / "output"
+            # Align partial cache location with JOB_STORAGE_BASE to avoid path mismatches in prod
+            job_base = os.environ.get("JOB_STORAGE_BASE", "logs/jobs")
+            base_path = Path(job_base)
+            if not base_path.is_absolute():
+                base_path = Path(os.getcwd()) / base_path
+            cache_dir = base_path / str(job_id) / "output"
             cache_dir.mkdir(parents=True, exist_ok=True)
             cache_path = cache_dir / "partial_segments.json"
             with open(cache_path, 'w', encoding='utf-8') as cache_file:

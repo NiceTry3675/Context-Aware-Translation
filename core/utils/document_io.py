@@ -7,6 +7,7 @@ and file management operations.
 """
 
 import os
+import uuid
 import ebooklib
 from ebooklib import epub
 from bs4 import BeautifulSoup
@@ -79,8 +80,13 @@ class DocumentOutputManager:
         else:
             base_name = f"job_{job_id}"
         
-        # Setup output directory
-        output_dir = os.path.join("logs", "jobs", str(job_id), "output")
+        # Setup output directory based on JOB_STORAGE_BASE to stay aligned with backend
+        job_base = os.environ.get("JOB_STORAGE_BASE", "logs/jobs")
+        # Normalize relative path to absolute (mirrors backend settings behavior)
+        base_path = Path(job_base)
+        if not base_path.is_absolute():
+            base_path = Path(os.getcwd()) / base_path
+        output_dir = str(base_path / str(job_id) / "output")
         
         # Determine output filename based on format
         if input_format == '.epub':
@@ -162,52 +168,81 @@ class DocumentOutputManager:
             style_map: Optional style mapping for formatting
         """
         print(f"Saving EPUB output to {output_path}...")
-        
+
         try:
-            # Read the original book to preserve structure
-            original_book = epub.read_epub(original_filepath)
+            # Ensure output directory exists up front so fallbacks still succeed
+            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+            original_book = None
+            try:
+                original_book = epub.read_epub(original_filepath)
+            except Exception as metadata_error:
+                # Preserve translation even if EPUB metadata cannot be read
+                print(
+                    f"Warning: Unable to read original EPUB metadata from "
+                    f"{original_filepath}: {metadata_error}"
+                )
+
             translated_book = epub.EpubBook()
-            
-            # Copy basic metadata
-            translated_book.set_identifier(original_book.get_metadata('DC', 'identifier')[0][0] if original_book.get_metadata('DC', 'identifier') else 'translated_book')
-            translated_book.set_title(f"[TRANSLATED] {original_book.get_metadata('DC', 'title')[0][0] if original_book.get_metadata('DC', 'title') else 'Untitled'}")
+
+            # Copy metadata when available; otherwise provide sensible defaults.
+            identifier = None
+            title = None
+            if original_book:
+                identifier_meta = original_book.get_metadata('DC', 'identifier')
+                if identifier_meta:
+                    identifier = identifier_meta[0][0]
+                title_meta = original_book.get_metadata('DC', 'title')
+                if title_meta:
+                    title = title_meta[0][0]
+
+                if original_book.get_metadata('DC', 'creator'):
+                    original_author = original_book.get_metadata('DC', 'creator')[0][0]
+                    translated_book.add_author(f"{original_author} (Translated)")
+
+            if not identifier:
+                identifier = f"translated-{uuid.uuid4()}"
+            translated_book.set_identifier(identifier)
+
+            if not title:
+                title = f"[TRANSLATED] {Path(original_filepath).stem}"
+            else:
+                title = f"[TRANSLATED] {title}"
+            translated_book.set_title(title)
+
             translated_book.set_language('ko')  # Korean translation
-            
-            # Add author information
-            if original_book.get_metadata('DC', 'creator'):
-                original_author = original_book.get_metadata('DC', 'creator')[0][0]
-                translated_book.add_author(f"{original_author} (Translated)")
-            
+
             # Join all segments for the content
             full_translated_text = "\n\n".join(segments)
-            
+
             # Create a single chapter with all translated content
-            chapter = epub.EpubHtml(title='Translated Content',
-                                  file_name='translated_content.xhtml',
-                                  lang='ko')
-            
+            chapter = epub.EpubHtml(
+                title='Translated Content',
+                file_name='translated_content.xhtml',
+                lang='ko'
+            )
+
             # Convert plain text to HTML with proper paragraph formatting
             html_content = _convert_text_to_html(full_translated_text)
             chapter.content = html_content
-            
+
             # Add chapter to book
             translated_book.add_item(chapter)
-            
+
             # Copy navigation structure or create simple one
-            translated_book.toc = (epub.Link("translated_content.xhtml", "Translated Content", "content"),)
+            translated_book.toc = (
+                epub.Link("translated_content.xhtml", "Translated Content", "content"),
+            )
             translated_book.add_item(epub.EpubNcx())
             translated_book.add_item(epub.EpubNav())
-            
+
             # Define spine
             translated_book.spine = ['nav', chapter]
-            
-            # Ensure output directory exists
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            
+
             # Write the EPUB file
             epub.write_epub(output_path, translated_book, {})
             print(f"✓ EPUB saved to {output_path}")
-            
+
         except Exception as e:
             print(f"Error saving EPUB: {e}")
             # Fallback to text output if EPUB fails
