@@ -332,11 +332,33 @@ export default function JobSidebar({
                                   });
                                   if (!response.ok) throw new Error('Download failed');
 
+                                  // Prefer server-provided filename if available
+                                  const cd = response.headers.get('Content-Disposition') || response.headers.get('content-disposition');
+                                  const headerFilename = (() => {
+                                    if (!cd) return null;
+                                    // Handles: attachment; filename="foo.ext"; filename*=UTF-8''foo.ext
+                                    const filenameStarMatch = cd.match(/filename\*=(?:UTF-8'')?([^;\n]+)/i);
+                                    if (filenameStarMatch && filenameStarMatch[1]) {
+                                      try { return decodeURIComponent(filenameStarMatch[1].replace(/"/g, '')); } catch { /* noop */ }
+                                    }
+                                    const filenameMatch = cd.match(/filename="?([^";\n]+)"?/i);
+                                    if (filenameMatch && filenameMatch[1]) return filenameMatch[1];
+                                    return null;
+                                  })();
+
+                                  const contentType = response.headers.get('Content-Type') || response.headers.get('content-type') || '';
                                   const blob = await response.blob();
                                   const url = window.URL.createObjectURL(blob);
                                   const a = document.createElement('a');
                                   a.href = url;
-                                  a.download = job.filename || `translation_${job.id}.txt`;
+                                  // Fallback filename if header missing; infer by content type
+                                  const fallback = (() => {
+                                    const base = (job.filename || `translation_${job.id}`).replace(/\.[^/.]+$/, '');
+                                    const isEpub = /application\/epub\+zip/i.test(contentType);
+                                    const ext = isEpub ? 'epub' : 'txt';
+                                    return `${base}_translated.${ext}`;
+                                  })();
+                                  a.download = headerFilename || fallback;
                                   document.body.appendChild(a);
                                   a.click();
                                   document.body.removeChild(a);

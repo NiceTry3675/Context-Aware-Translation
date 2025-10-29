@@ -33,7 +33,9 @@ async def download_file(
         file_path,
         media_type=media_type,
         headers={
-            "Content-Disposition": build_content_disposition(filename)
+            "Content-Disposition": build_content_disposition(filename),
+            # Expose to JS (fetch) so filename can be read client-side
+            "Access-Control-Expose-Headers": "Content-Disposition, content-disposition",
         }
     )
 
@@ -87,7 +89,8 @@ async def export_job(
             content=pdf_bytes,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": build_content_disposition(pdf_filename)
+                "Content-Disposition": build_content_disposition(pdf_filename),
+                "Access-Control-Expose-Headers": "Content-Disposition, content-disposition",
             }
         )
     else:
@@ -98,7 +101,8 @@ async def export_job(
             file_path,
             media_type=media_type,
             headers={
-                "Content-Disposition": build_content_disposition(filename)
+                "Content-Disposition": build_content_disposition(filename),
+                "Access-Control-Expose-Headers": "Content-Disposition, content-disposition",
             }
         )
 
@@ -133,7 +137,8 @@ async def download_pdf(
         content=pdf_bytes,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": build_content_disposition(pdf_filename)
+            "Content-Disposition": build_content_disposition(pdf_filename),
+            "Access-Control-Expose-Headers": "Content-Disposition, content-disposition",
         }
     )
 
@@ -158,7 +163,8 @@ async def download_glossary(
         content=json.dumps(glossary, ensure_ascii=False, indent=2),
         media_type="application/json",
         headers={
-            "Content-Disposition": build_content_disposition(filename)
+            "Content-Disposition": build_content_disposition(filename),
+            "Access-Control-Expose-Headers": "Content-Disposition, content-disposition",
         }
     )
 
