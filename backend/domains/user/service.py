@@ -16,6 +16,7 @@ from backend.domains.user.repository import UserRepository, SqlAlchemyUserReposi
 from backend.domains.shared.uow import SqlAlchemyUoW
 from backend.domains.shared.events import DomainEvent
 from backend.config.settings import get_settings
+from backend.domains.user.crypto import encrypt_api_key, decrypt_api_key
 
 
 # Domain Events
@@ -587,7 +588,97 @@ class UserService:
             },
             'last_updated': last_updated,
         }
-    
+
+    # API Configuration operations
+
+    def get_api_configuration(self, user_id: int) -> Optional[dict]:
+        """
+        Get API configuration for a user (with decrypted keys).
+
+        Args:
+            user_id: User database ID
+
+        Returns:
+            Dictionary with API configuration or None
+        """
+        user = self.user_repo.get(user_id)
+        if not user:
+            return None
+
+        # Decrypt API credentials
+        api_key = decrypt_api_key(user.api_key_encrypted) if user.api_key_encrypted else None
+        provider_config = decrypt_api_key(user.provider_config_encrypted) if user.provider_config_encrypted else None
+
+        return {
+            'api_provider': user.api_provider,
+            'api_key': api_key,
+            'provider_config': provider_config,
+            'gemini_model': user.gemini_model,
+            'vertex_model': user.vertex_model,
+            'openrouter_model': user.openrouter_model,
+        }
+
+    async def update_api_configuration(
+        self,
+        user_id: int,
+        api_provider: Optional[str] = None,
+        api_key: Optional[str] = None,
+        provider_config: Optional[str] = None,
+        gemini_model: Optional[str] = None,
+        vertex_model: Optional[str] = None,
+        openrouter_model: Optional[str] = None,
+    ) -> dict:
+        """
+        Update API configuration for a user.
+
+        Args:
+            user_id: User database ID
+            api_provider: LLM provider (gemini/vertex/openrouter)
+            api_key: API key for gemini/openrouter
+            provider_config: Vertex JSON configuration
+            gemini_model: Model selection for Gemini
+            vertex_model: Model selection for Vertex
+            openrouter_model: Model selection for OpenRouter
+
+        Returns:
+            Updated API configuration
+        """
+        async with SqlAlchemyUoW(self._create_session) as uow:
+            user = self.user_repo.get(user_id)
+            if not user:
+                raise ValueError(f"User {user_id} not found")
+
+            # Update provider
+            if api_provider is not None:
+                user.api_provider = api_provider
+
+            # Update and encrypt API key
+            if api_key is not None:
+                if api_key:  # Only encrypt non-empty keys
+                    user.api_key_encrypted = encrypt_api_key(api_key)
+                else:
+                    user.api_key_encrypted = None
+
+            # Update and encrypt provider config
+            if provider_config is not None:
+                if provider_config:
+                    user.provider_config_encrypted = encrypt_api_key(provider_config)
+                else:
+                    user.provider_config_encrypted = None
+
+            # Update model selections
+            if gemini_model is not None:
+                user.gemini_model = gemini_model
+            if vertex_model is not None:
+                user.vertex_model = vertex_model
+            if openrouter_model is not None:
+                user.openrouter_model = openrouter_model
+
+            await uow.commit()
+
+            # Return decrypted configuration
+            return self.get_api_configuration(user_id)
+
     # Announcement operations (admin only)
     
     def get_announcements(

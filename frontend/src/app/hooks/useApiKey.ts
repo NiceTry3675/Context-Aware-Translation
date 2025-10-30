@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import { getDefaultModel, getPreferredDefaultModel, vertexModelOptions } from '../utils/constants/models';
+import { getCachedClerkToken } from '../utils/authToken';
 
 export type ApiProvider = 'gemini' | 'vertex' | 'openrouter';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 const STORAGE_KEYS = {
   provider: 'apiProvider',
@@ -18,6 +22,7 @@ const STORAGE_KEYS = {
 } as const;
 
 export function useApiKey() {
+  const { getToken, isSignedIn } = useAuth();
   const [apiKey, setApiKeyState] = useState<string>('');
   const [providerConfig, setProviderConfigState] = useState<string>('');
   const [apiProvider, setApiProvider] = useState<ApiProvider>('gemini');
@@ -25,41 +30,76 @@ export function useApiKey() {
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    const storedProvider = (localStorage.getItem(STORAGE_KEYS.provider) as ApiProvider | null) || 'gemini';
-    const geminiApiKey = localStorage.getItem(STORAGE_KEYS.credentials.gemini) || '';
-    const openrouterApiKey = localStorage.getItem(STORAGE_KEYS.credentials.openrouter) || '';
-    const vertexConfig = localStorage.getItem(STORAGE_KEYS.credentials.vertex) || '';
+    const initializeApiConfig = async () => {
+      // First, try to load from backend if user is signed in
+      let backendConfig: any = null;
+      if (isSignedIn) {
+        try {
+          const token = await getCachedClerkToken(getToken);
+          if (token) {
+            const response = await fetch(`${API_BASE_URL}/api/v1/users/me/api-config`, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
+            if (response.ok) {
+              backendConfig = await response.json();
+            }
+          }
+        } catch (error) {
+          console.warn('Failed to fetch API config from backend:', error);
+        }
+      }
 
-    setApiProvider(storedProvider);
-    if (storedProvider === 'vertex') {
-      setProviderConfigState(vertexConfig);
-      setApiKeyState('');
-    } else if (storedProvider === 'openrouter') {
-      setApiKeyState(openrouterApiKey);
-      setProviderConfigState('');
-    } else {
-      setApiKeyState(geminiApiKey);
-      setProviderConfigState('');
-    }
+      // If backend config exists, use it; otherwise fall back to localStorage
+      const storedProvider = backendConfig?.api_provider ||
+        (localStorage.getItem(STORAGE_KEYS.provider) as ApiProvider | null) || 'gemini';
 
-    const storedModel = localStorage.getItem(STORAGE_KEYS.model[storedProvider]);
-    const preferredModel = getPreferredDefaultModel(storedProvider);
-    const defaultModel = getDefaultModel(storedProvider);
-    let normalizedModel = storedModel || preferredModel || defaultModel;
+      const geminiApiKey = backendConfig?.api_key || localStorage.getItem(STORAGE_KEYS.credentials.gemini) || '';
+      const openrouterApiKey = backendConfig?.api_key || localStorage.getItem(STORAGE_KEYS.credentials.openrouter) || '';
+      const vertexConfig = backendConfig?.provider_config || localStorage.getItem(STORAGE_KEYS.credentials.vertex) || '';
 
-    if (storedProvider === 'vertex' && !vertexModelOptions.some((opt) => opt.value === normalizedModel)) {
-      normalizedModel = defaultModel;
-    }
+      setApiProvider(storedProvider);
+      if (storedProvider === 'vertex') {
+        setProviderConfigState(vertexConfig);
+        setApiKeyState('');
+      } else if (storedProvider === 'openrouter') {
+        setApiKeyState(openrouterApiKey);
+        setProviderConfigState('');
+      } else {
+        setApiKeyState(geminiApiKey);
+        setProviderConfigState('');
+      }
 
-    if (!storedModel && normalizedModel) {
-      localStorage.setItem(STORAGE_KEYS.model[storedProvider], normalizedModel);
-    } else if (storedModel && normalizedModel !== storedModel && storedProvider === 'vertex') {
-      localStorage.setItem(STORAGE_KEYS.model.vertex, normalizedModel);
-    }
+      // Determine model
+      let modelFromBackend = '';
+      if (backendConfig) {
+        if (storedProvider === 'gemini') modelFromBackend = backendConfig.gemini_model || '';
+        else if (storedProvider === 'vertex') modelFromBackend = backendConfig.vertex_model || '';
+        else if (storedProvider === 'openrouter') modelFromBackend = backendConfig.openrouter_model || '';
+      }
 
-    setSelectedModel(normalizedModel);
-    setIsInitialized(true);
-  }, []);
+      const storedModel = modelFromBackend || localStorage.getItem(STORAGE_KEYS.model[storedProvider]);
+      const preferredModel = getPreferredDefaultModel(storedProvider);
+      const defaultModel = getDefaultModel(storedProvider);
+      let normalizedModel = storedModel || preferredModel || defaultModel;
+
+      if (storedProvider === 'vertex' && !vertexModelOptions.some((opt) => opt.value === normalizedModel)) {
+        normalizedModel = defaultModel;
+      }
+
+      if (!storedModel && normalizedModel) {
+        localStorage.setItem(STORAGE_KEYS.model[storedProvider], normalizedModel);
+      } else if (storedModel && normalizedModel !== storedModel && storedProvider === 'vertex') {
+        localStorage.setItem(STORAGE_KEYS.model.vertex, normalizedModel);
+      }
+
+      setSelectedModel(normalizedModel);
+      setIsInitialized(true);
+    };
+
+    void initializeApiConfig();
+  }, [getToken, isSignedIn]);
 
   const persistModel = (provider: ApiProvider, model: string) => {
     localStorage.setItem(STORAGE_KEYS.model[provider], model);

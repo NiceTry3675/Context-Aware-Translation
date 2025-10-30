@@ -19,6 +19,8 @@ from backend.domains.user.schemas import (
     UserCreate,
     UserUpdate,
     TokenUsageDashboard,
+    ApiConfiguration,
+    ApiConfigurationUpdate,
 )
 from backend.domains.user.service import UserService
 from backend.domains.user.repository import SqlAlchemyUserRepository
@@ -162,3 +164,33 @@ async def get_token_usage(
     """Return the authenticated user's token usage summary."""
     summary = service.get_token_usage_dashboard(current_user.id)
     return TokenUsageDashboard.model_validate(summary)
+
+
+async def get_api_configuration(
+    current_user: User = Depends(get_required_user),
+    service: UserService = Depends(get_user_service),
+) -> ApiConfiguration:
+    """Get the authenticated user's API configuration."""
+    config = service.get_api_configuration(current_user.id)
+    if config is None:
+        # Return empty configuration
+        return ApiConfiguration()
+    return ApiConfiguration.model_validate(config)
+
+
+async def update_api_configuration(
+    config: ApiConfigurationUpdate,
+    current_user: User = Depends(get_required_user),
+    service: UserService = Depends(get_user_service),
+) -> ApiConfiguration:
+    """Update the authenticated user's API configuration."""
+    updated_config = await service.update_api_configuration(
+        user_id=current_user.id,
+        api_provider=config.api_provider,
+        api_key=config.api_key,
+        provider_config=config.provider_config,
+        gemini_model=config.gemini_model,
+        vertex_model=config.vertex_model,
+        openrouter_model=config.openrouter_model,
+    )
+    return ApiConfiguration.model_validate(updated_config)
