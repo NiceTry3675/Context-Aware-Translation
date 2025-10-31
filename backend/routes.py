@@ -20,7 +20,7 @@ from backend.domains.translation.schemas import TranslationJob
 from backend.domains.validation.schemas import StructuredValidationReport
 from backend.domains.post_edit.schemas import StructuredPostEditLog
 from backend.domains.community.schemas import Post, PostList, Comment, PostCategory, CategoryOverview
-from backend.domains.user.schemas import User, Announcement, TokenUsageDashboard
+from backend.domains.user.schemas import User, Announcement, TokenUsageDashboard, ApiConfiguration
 from backend.domains.tasks.schemas import TaskExecutionResponse, TaskExecutionListResponse, TaskStatsSimple
 from backend.domains.analysis.schemas import StyleAnalysisResponse, GlossaryAnalysisResponse, CharacterAnalysisResponse
 
@@ -184,6 +184,20 @@ router.add_api_route(
     user.get_token_usage,
     methods=["GET"],
     response_model=TokenUsageDashboard,
+    tags=["users"]
+)
+router.add_api_route(
+    "/users/me/api-config",
+    user.get_api_configuration,
+    methods=["GET"],
+    response_model=ApiConfiguration,
+    tags=["users"]
+)
+router.add_api_route(
+    "/users/me/api-config",
+    user.update_api_configuration,
+    methods=["PUT"],
+    response_model=ApiConfiguration,
     tags=["users"]
 )
 # Announcement endpoints moved to community domain

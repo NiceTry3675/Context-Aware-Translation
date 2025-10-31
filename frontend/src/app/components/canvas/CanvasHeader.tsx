@@ -17,6 +17,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import SettingsIcon from '@mui/icons-material/Settings';
 import MenuIcon from '@mui/icons-material/Menu';
 import { Job } from '../../types/ui';
 
@@ -95,6 +96,16 @@ export default function CanvasHeader({
                   sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
                 >
                   <BarChartIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="API 설정">
+                <IconButton
+                  aria-label="API 설정"
+                  onClick={() => router.push('/settings')}
+                  size="small"
+                  sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
+                >
+                  <SettingsIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
               <Tooltip title="정보">
