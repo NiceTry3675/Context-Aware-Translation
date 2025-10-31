@@ -1,24 +1,38 @@
-"""
-Simple encryption utility for storing API keys securely.
-Uses Fernet symmetric encryption from cryptography library.
-"""
+"""Utility helpers for encrypting API credentials."""
+
+import logging
 import os
-from cryptography.fernet import Fernet
 from typing import Optional
 
-# Get encryption key from environment variable
-# In production, this should be stored securely (e.g., in secrets manager)
-ENCRYPTION_KEY = os.getenv("API_KEY_ENCRYPTION_KEY")
+from cryptography.fernet import Fernet
 
-# If no key is set, generate one (for development only)
-if not ENCRYPTION_KEY:
-    # Generate a key and warn the user
-    ENCRYPTION_KEY = Fernet.generate_key().decode()
-    print(f"WARNING: No API_KEY_ENCRYPTION_KEY found in environment. Using temporary key: {ENCRYPTION_KEY}")
-    print("For production, set API_KEY_ENCRYPTION_KEY environment variable to a secure key.")
+from backend.config.settings import get_settings
+
+
+def _load_encryption_key() -> bytes:
+    """Return the Fernet key, generating a temporary one for development."""
+
+    raw_key = os.getenv("API_KEY_ENCRYPTION_KEY")
+
+    if raw_key:
+        return raw_key.encode()
+
+    settings = get_settings()
+    if getattr(settings, "is_production", False):
+        raise ValueError("API_KEY_ENCRYPTION_KEY must be set in a production environment.")
+
+    generated_key = Fernet.generate_key()
+    logging.warning(
+        "No API_KEY_ENCRYPTION_KEY found. Generated a temporary key for development. "
+        "All encrypted data will be lost on restart."
+    )
+    return generated_key
+
+
+ENCRYPTION_KEY = _load_encryption_key()
 
 # Initialize Fernet cipher
-_fernet = Fernet(ENCRYPTION_KEY.encode() if isinstance(ENCRYPTION_KEY, str) else ENCRYPTION_KEY)
+_fernet = Fernet(ENCRYPTION_KEY)
 
 
 def encrypt_api_key(plain_text: Optional[str]) -> Optional[str]:

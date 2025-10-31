@@ -52,22 +52,25 @@ export function useApiKey() {
       }
 
       // If backend config exists, use it; otherwise fall back to localStorage
-      const storedProvider = backendConfig?.api_provider ||
-        (localStorage.getItem(STORAGE_KEYS.provider) as ApiProvider | null) || 'gemini';
-
-      const geminiApiKey = backendConfig?.api_key || localStorage.getItem(STORAGE_KEYS.credentials.gemini) || '';
-      const openrouterApiKey = backendConfig?.api_key || localStorage.getItem(STORAGE_KEYS.credentials.openrouter) || '';
-      const vertexConfig = backendConfig?.provider_config || localStorage.getItem(STORAGE_KEYS.credentials.vertex) || '';
+      const storedProvider =
+        backendConfig?.api_provider ||
+        (localStorage.getItem(STORAGE_KEYS.provider) as ApiProvider | null) ||
+        'gemini';
 
       setApiProvider(storedProvider);
+
       if (storedProvider === 'vertex') {
+        const vertexConfig =
+          backendConfig?.provider_config ??
+          localStorage.getItem(STORAGE_KEYS.credentials.vertex) ??
+          '';
         setProviderConfigState(vertexConfig);
         setApiKeyState('');
-      } else if (storedProvider === 'openrouter') {
-        setApiKeyState(openrouterApiKey);
-        setProviderConfigState('');
       } else {
-        setApiKeyState(geminiApiKey);
+        const localKey =
+          localStorage.getItem(STORAGE_KEYS.credentials[storedProvider]) ?? '';
+        const apiKey = backendConfig?.api_key ?? localKey;
+        setApiKeyState(apiKey);
         setProviderConfigState('');
       }
 

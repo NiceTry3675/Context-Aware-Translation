@@ -82,15 +82,10 @@ export default function SettingsPage() {
       const config: ApiConfiguration = await response.json();
 
       // Update state with fetched config
-      if (config.api_provider) {
-        setApiProvider(config.api_provider);
-      }
-      if (config.api_key) {
-        setApiKey(config.api_key);
-      }
-      if (config.provider_config) {
-        setProviderConfig(config.provider_config);
-      }
+      const provider = config.api_provider || 'gemini';
+      setApiProvider(provider);
+      setApiKey(config.api_key ?? '');
+      setProviderConfig(config.provider_config ?? '');
       if (config.gemini_model) {
         setGeminiModel(config.gemini_model);
       }

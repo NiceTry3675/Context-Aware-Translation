@@ -172,9 +172,6 @@ async def get_api_configuration(
 ) -> ApiConfiguration:
     """Get the authenticated user's API configuration."""
     config = service.get_api_configuration(current_user.id)
-    if config is None:
-        # Return empty configuration
-        return ApiConfiguration()
     return ApiConfiguration.model_validate(config)
 
 

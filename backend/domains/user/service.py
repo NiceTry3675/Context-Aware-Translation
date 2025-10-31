@@ -644,40 +644,43 @@ class UserService:
             Updated API configuration
         """
         async with SqlAlchemyUoW(self._create_session) as uow:
-            user = self.user_repo.get(user_id)
+            repo = SqlAlchemyUserRepository(uow.session)
+            user = repo.get(user_id)
             if not user:
                 raise ValueError(f"User {user_id} not found")
 
-            # Update provider
-            if api_provider is not None:
-                user.api_provider = api_provider
+            fields_to_update = {
+                "api_provider": api_provider,
+                "gemini_model": gemini_model,
+                "vertex_model": vertex_model,
+                "openrouter_model": openrouter_model,
+            }
+            for field, value in fields_to_update.items():
+                if value is not None:
+                    setattr(user, field, value)
 
-            # Update and encrypt API key
             if api_key is not None:
-                if api_key:  # Only encrypt non-empty keys
-                    user.api_key_encrypted = encrypt_api_key(api_key)
-                else:
-                    user.api_key_encrypted = None
+                user.api_key_encrypted = encrypt_api_key(api_key) if api_key else None
 
-            # Update and encrypt provider config
             if provider_config is not None:
-                if provider_config:
-                    user.provider_config_encrypted = encrypt_api_key(provider_config)
-                else:
-                    user.provider_config_encrypted = None
+                user.provider_config_encrypted = (
+                    encrypt_api_key(provider_config) if provider_config else None
+                )
 
-            # Update model selections
-            if gemini_model is not None:
-                user.gemini_model = gemini_model
-            if vertex_model is not None:
-                user.vertex_model = vertex_model
-            if openrouter_model is not None:
-                user.openrouter_model = openrouter_model
+            uow.session.flush()
+
+            updated_config = {
+                'api_provider': user.api_provider,
+                'api_key': decrypt_api_key(user.api_key_encrypted) if user.api_key_encrypted else None,
+                'provider_config': decrypt_api_key(user.provider_config_encrypted) if user.provider_config_encrypted else None,
+                'gemini_model': user.gemini_model,
+                'vertex_model': user.vertex_model,
+                'openrouter_model': user.openrouter_model,
+            }
 
             await uow.commit()
 
-            # Return decrypted configuration
-            return self.get_api_configuration(user_id)
+            return updated_config
 
     # Announcement operations (admin only)
     

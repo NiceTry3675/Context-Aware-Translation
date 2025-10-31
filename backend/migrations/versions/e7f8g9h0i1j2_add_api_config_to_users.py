@@ -1,7 +1,7 @@
 """Add API configuration fields to users
 
 Revision ID: e7f8g9h0i1j2
-Revises: 1a2b3c4d5e6f
+Revises: 292087d8217d
 Create Date: 2025-10-30
 """
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'e7f8g9h0i1j2'
-down_revision = '1a2b3c4d5e6f'
+down_revision = '292087d8217d'
 branch_labels = None
 depends_on = None
 
