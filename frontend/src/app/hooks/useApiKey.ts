@@ -5,6 +5,15 @@ import { getCachedClerkToken } from '../utils/authToken';
 
 export type ApiProvider = 'gemini' | 'vertex' | 'openrouter';
 
+type ApiConfigurationResponse = {
+  api_provider: ApiProvider | null;
+  api_key: string | null;
+  provider_config: string | null;
+  gemini_model: string | null;
+  vertex_model: string | null;
+  openrouter_model: string | null;
+};
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 const STORAGE_KEYS = {
@@ -21,6 +30,9 @@ const STORAGE_KEYS = {
   },
 } as const;
 
+const isApiProvider = (value: unknown): value is ApiProvider =>
+  value === 'gemini' || value === 'vertex' || value === 'openrouter';
+
 export function useApiKey() {
   const { getToken, isSignedIn } = useAuth();
   const [apiKey, setApiKeyState] = useState<string>('');
@@ -32,7 +44,7 @@ export function useApiKey() {
   useEffect(() => {
     const initializeApiConfig = async () => {
       // First, try to load from backend if user is signed in
-      let backendConfig: any = null;
+      let backendConfig: ApiConfigurationResponse | null = null;
       if (isSignedIn) {
         try {
           const token = await getCachedClerkToken(getToken);
@@ -52,10 +64,10 @@ export function useApiKey() {
       }
 
       // If backend config exists, use it; otherwise fall back to localStorage
-      const storedProvider =
-        backendConfig?.api_provider ||
-        (localStorage.getItem(STORAGE_KEYS.provider) as ApiProvider | null) ||
-        'gemini';
+      const rawProvider =
+        backendConfig?.api_provider ??
+        localStorage.getItem(STORAGE_KEYS.provider);
+      const storedProvider: ApiProvider = isApiProvider(rawProvider) ? rawProvider : 'gemini';
 
       setApiProvider(storedProvider);
 
