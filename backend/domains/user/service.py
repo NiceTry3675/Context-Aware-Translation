@@ -682,9 +682,7 @@ class UserService:
                 'openrouter_model': user.openrouter_model,
             }
 
-            await uow.commit()
-
-            return updated_config
+        return updated_config
 
     # Announcement operations (admin only)
     

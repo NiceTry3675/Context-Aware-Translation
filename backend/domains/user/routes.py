@@ -172,6 +172,8 @@ async def get_api_configuration(
 ) -> ApiConfiguration:
     """Get the authenticated user's API configuration."""
     config = service.get_api_configuration(current_user.id)
+    if config is None:
+        raise HTTPException(status_code=404, detail="User configuration not found")
     return ApiConfiguration.model_validate(config)
 
 
