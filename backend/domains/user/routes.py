@@ -181,13 +181,9 @@ async def update_api_configuration(
     service: UserService = Depends(get_user_service),
 ) -> ApiConfiguration:
     """Update the authenticated user's API configuration."""
+    update_data = config.model_dump(exclude_unset=True)
     updated_config = await service.update_api_configuration(
         user_id=current_user.id,
-        api_provider=config.api_provider,
-        api_key=config.api_key,
-        provider_config=config.provider_config,
-        gemini_model=config.gemini_model,
-        vertex_model=config.vertex_model,
-        openrouter_model=config.openrouter_model,
+        **update_data,
     )
     return ApiConfiguration.model_validate(updated_config)

@@ -19,6 +19,10 @@ from backend.config.settings import get_settings
 from backend.domains.user.crypto import encrypt_api_key, decrypt_api_key
 
 
+# Sentinel used to detect omitted fields during partial updates
+_FIELD_NOT_SET = object()
+
+
 # Domain Events
 class UserCreatedEvent(DomainEvent):
     """Event raised when a new user is created."""
@@ -621,12 +625,12 @@ class UserService:
     async def update_api_configuration(
         self,
         user_id: int,
-        api_provider: Optional[str] = None,
-        api_key: Optional[str] = None,
-        provider_config: Optional[str] = None,
-        gemini_model: Optional[str] = None,
-        vertex_model: Optional[str] = None,
-        openrouter_model: Optional[str] = None,
+        api_provider: Optional[str] = _FIELD_NOT_SET,
+        api_key: Optional[str] = _FIELD_NOT_SET,
+        provider_config: Optional[str] = _FIELD_NOT_SET,
+        gemini_model: Optional[str] = _FIELD_NOT_SET,
+        vertex_model: Optional[str] = _FIELD_NOT_SET,
+        openrouter_model: Optional[str] = _FIELD_NOT_SET,
     ) -> dict:
         """
         Update API configuration for a user.
@@ -656,13 +660,13 @@ class UserService:
                 "openrouter_model": openrouter_model,
             }
             for field, value in fields_to_update.items():
-                if value is not None:
+                if value is not _FIELD_NOT_SET:
                     setattr(user, field, value)
 
-            if api_key is not None:
+            if api_key is not _FIELD_NOT_SET:
                 user.api_key_encrypted = encrypt_api_key(api_key) if api_key else None
 
-            if provider_config is not None:
+            if provider_config is not _FIELD_NOT_SET:
                 user.provider_config_encrypted = (
                     encrypt_api_key(provider_config) if provider_config else None
                 )
