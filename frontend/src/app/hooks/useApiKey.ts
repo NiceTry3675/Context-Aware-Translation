@@ -71,18 +71,36 @@ export function useApiKey() {
 
       setApiProvider(storedProvider);
 
+      const hasBackendConfig = backendConfig !== null;
+
       if (storedProvider === 'vertex') {
-        const vertexConfig =
-          backendConfig?.provider_config ??
-          localStorage.getItem(STORAGE_KEYS.credentials.vertex) ??
-          '';
-        setProviderConfigState(vertexConfig);
+        if (hasBackendConfig) {
+          const backendVertexConfig = backendConfig.provider_config ?? '';
+          if (backendConfig.provider_config === null) {
+            localStorage.removeItem(STORAGE_KEYS.credentials.vertex);
+          } else if (backendConfig.provider_config) {
+            localStorage.setItem(STORAGE_KEYS.credentials.vertex, backendConfig.provider_config);
+          }
+          setProviderConfigState(backendVertexConfig);
+        } else {
+          const vertexConfig = localStorage.getItem(STORAGE_KEYS.credentials.vertex) ?? '';
+          setProviderConfigState(vertexConfig);
+        }
         setApiKeyState('');
       } else {
-        const localKey =
-          localStorage.getItem(STORAGE_KEYS.credentials[storedProvider]) ?? '';
-        const apiKey = backendConfig?.api_key ?? localKey;
-        setApiKeyState(apiKey);
+        if (hasBackendConfig) {
+          const backendApiKey = backendConfig.api_key ?? '';
+          const credentialStorageKey = STORAGE_KEYS.credentials[storedProvider];
+          if (backendConfig.api_key === null) {
+            localStorage.removeItem(credentialStorageKey);
+          } else if (backendConfig.api_key) {
+            localStorage.setItem(credentialStorageKey, backendConfig.api_key);
+          }
+          setApiKeyState(backendApiKey);
+        } else {
+          const localKey = localStorage.getItem(STORAGE_KEYS.credentials[storedProvider]) ?? '';
+          setApiKeyState(localKey);
+        }
         setProviderConfigState('');
       }
 

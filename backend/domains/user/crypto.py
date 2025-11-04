@@ -15,7 +15,18 @@ def _load_encryption_key() -> bytes:
     raw_key = os.getenv("API_KEY_ENCRYPTION_KEY")
 
     if raw_key:
-        return raw_key.encode()
+        cleaned_key = raw_key.strip()
+        if not cleaned_key:
+            raise ValueError("API_KEY_ENCRYPTION_KEY is empty after stripping whitespace.")
+        key_bytes = cleaned_key.encode()
+        try:
+            # Validate provided key to avoid runtime failures during import.
+            Fernet(key_bytes)
+        except (ValueError, TypeError) as exc:
+            raise ValueError(
+                "Invalid API_KEY_ENCRYPTION_KEY provided. It must be a 32-byte URL-safe base64-encoded string."
+            ) from exc
+        return key_bytes
 
     settings = get_settings()
     if getattr(settings, "is_production", False):
