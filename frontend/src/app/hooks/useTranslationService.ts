@@ -21,6 +21,8 @@ interface UseTranslationServiceOptions {
   apiUrl: string;
   apiProvider: ApiProvider;
   apiKey: string;
+  backupApiKeys?: string[];
+  requestsPerMinute?: number;
   providerConfig: string;
   selectedModel: string;
   selectedStyleModel?: string;
@@ -32,6 +34,8 @@ export function useTranslationService({
   apiUrl,
   apiProvider,
   apiKey,
+  backupApiKeys,
+  requestsPerMinute,
   providerConfig,
   selectedModel,
   selectedStyleModel,
@@ -59,8 +63,11 @@ export function useTranslationService({
       throw new Error("번역을 시작하려면 먼저 로그인해주세요.");
     }
     
-    if (apiProvider !== 'vertex' && !apiKey) {
-      throw new Error("API 키를 먼저 입력해주세요.");
+    if (apiProvider === 'gemini' && !apiKey && !(backupApiKeys && backupApiKeys.length > 0)) {
+      throw new Error("Gemini API 키를 먼저 입력해주세요.");
+    }
+    if (apiProvider === 'openrouter' && !apiKey) {
+      throw new Error("OpenRouter API 키를 먼저 입력해주세요.");
     }
     if (apiProvider === 'vertex' && !providerConfig.trim()) {
       throw new Error("Vertex 서비스 계정 JSON을 입력해주세요.");
@@ -86,6 +93,14 @@ export function useTranslationService({
         styleFormData.append('provider_config', providerConfig);
       } else {
         styleFormData.append('api_key', apiKey);
+        if (apiProvider === 'gemini') {
+          if (backupApiKeys && backupApiKeys.length > 0) {
+            styleFormData.append('backup_api_keys', JSON.stringify(backupApiKeys));
+          }
+          if (requestsPerMinute && requestsPerMinute > 0) {
+            styleFormData.append('requests_per_minute', requestsPerMinute.toString());
+          }
+        }
       }
 
       const styleResponse = await fetch(`${apiUrl}/api/v1/analysis/style`, {
@@ -122,6 +137,14 @@ export function useTranslationService({
           glossaryFormData.append('provider_config', providerConfig);
         } else {
           glossaryFormData.append('api_key', apiKey);
+          if (apiProvider === 'gemini') {
+            if (backupApiKeys && backupApiKeys.length > 0) {
+              glossaryFormData.append('backup_api_keys', JSON.stringify(backupApiKeys));
+            }
+            if (requestsPerMinute && requestsPerMinute > 0) {
+              glossaryFormData.append('requests_per_minute', requestsPerMinute.toString());
+            }
+          }
         }
 
         try {
@@ -157,7 +180,20 @@ export function useTranslationService({
     } finally {
       setIsAnalyzing(false);
     }
-  }, [apiUrl, apiProvider, apiKey, providerConfig, selectedModel, selectedStyleModel, selectedGlossaryModel, isLoaded, isSignedIn, openSignIn]);
+  }, [
+    apiUrl,
+    apiProvider,
+    apiKey,
+    backupApiKeys,
+    requestsPerMinute,
+    providerConfig,
+    selectedModel,
+    selectedStyleModel,
+    selectedGlossaryModel,
+    isLoaded,
+    isSignedIn,
+    openSignIn,
+  ]);
 
   const startTranslation = useCallback(async (
     file: File,
@@ -173,6 +209,15 @@ export function useTranslationService({
       openSignIn({ redirectUrl: '/' });
       throw new Error("번역을 시작하려면 먼저 로그인해주세요.");
     }
+    if (apiProvider === 'gemini' && !apiKey && !(backupApiKeys && backupApiKeys.length > 0)) {
+      throw new Error("Gemini API 키를 먼저 입력해주세요.");
+    }
+    if (apiProvider === 'openrouter' && !apiKey) {
+      throw new Error("OpenRouter API 키를 먼저 입력해주세요.");
+    }
+    if (apiProvider === 'vertex' && !providerConfig.trim()) {
+      throw new Error("Vertex 서비스 계정 JSON을 입력해주세요.");
+    }
 
     setUploading(true);
     setError(null);
@@ -186,6 +231,14 @@ export function useTranslationService({
       formData.append("provider_config", providerConfig);
     } else {
       formData.append("api_key", apiKey);
+      if (apiProvider === 'gemini') {
+        if (backupApiKeys && backupApiKeys.length > 0) {
+          formData.append("backup_api_keys", JSON.stringify(backupApiKeys));
+        }
+        if (requestsPerMinute && requestsPerMinute > 0) {
+          formData.append("requests_per_minute", requestsPerMinute.toString());
+        }
+      }
     }
     if (selectedStyleModel && selectedStyleModel !== selectedModel) {
       formData.append("style_model_name", selectedStyleModel);
@@ -263,6 +316,8 @@ export function useTranslationService({
     apiUrl,
     apiProvider,
     apiKey,
+    backupApiKeys,
+    requestsPerMinute,
     providerConfig,
     selectedModel,
     selectedStyleModel,

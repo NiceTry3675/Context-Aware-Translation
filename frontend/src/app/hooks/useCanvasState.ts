@@ -42,6 +42,10 @@ export function useCanvasState() {
   const {
     apiKey,
     setApiKey,
+    backupApiKeys,
+    setBackupApiKeys,
+    requestsPerMinute,
+    setRequestsPerMinute,
     providerConfig,
     setProviderConfig,
     apiProvider,
@@ -96,6 +100,8 @@ export function useCanvasState() {
     apiUrl: API_URL,
     apiProvider,
     apiKey,
+    backupApiKeys,
+    requestsPerMinute,
     providerConfig,
     selectedModel,
     selectedStyleModel: taskOverridesEnabled ? (taskModelOverrides.styleModel || selectedModel) : undefined,
@@ -184,6 +190,8 @@ export function useCanvasState() {
     apiUrl: API_URL,
     apiProvider,
     apiKey,
+    backupApiKeys,
+    requestsPerMinute,
     providerConfig,
     onSuccess: () => {
       if (jobId) {
@@ -469,6 +477,10 @@ export function useCanvasState() {
     // Translation setup state
     apiKey,
     setApiKey,
+    backupApiKeys,
+    setBackupApiKeys,
+    requestsPerMinute,
+    setRequestsPerMinute,
     providerConfig,
     setProviderConfig,
     apiProvider,

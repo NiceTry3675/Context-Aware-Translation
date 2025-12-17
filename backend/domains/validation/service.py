@@ -57,6 +57,9 @@ class ValidationDomainService(DomainServiceBase):
         api_key: Optional[str],
         model_name: str = "gemini-flash-lite-latest",
         provider_context: Optional[ProviderContext] = None,
+        *,
+        backup_api_keys: list[str] | None = None,
+        requests_per_minute: int | None = None,
     ) -> Tuple[TranslationValidator, TranslationDocument, str, Any, Any]:
         """
         Prepare the validator and translation job for validation.
@@ -111,6 +114,8 @@ class ValidationDomainService(DomainServiceBase):
                 model_name,
                 provider_context=provider_context,
                 usage_callback=usage_collector.record_event,
+                backup_api_keys=backup_api_keys,
+                requests_per_minute=requests_per_minute,
             )
             logger.info(f"[VALIDATION PREP] Model API created: {type(model_api)}")
 

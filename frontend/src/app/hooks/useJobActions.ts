@@ -9,12 +9,14 @@ interface UseJobActionsOptions {
   apiUrl: string;
   apiProvider: ApiProvider;
   apiKey?: string;
+  backupApiKeys?: string[];
+  requestsPerMinute?: number;
   providerConfig?: string;
   onError?: (error: string) => void;
   onSuccess?: () => void;
 }
 
-export function useJobActions({ apiUrl, apiProvider, apiKey, providerConfig, onError, onSuccess }: UseJobActionsOptions) {
+export function useJobActions({ apiUrl, apiProvider, apiKey, backupApiKeys, requestsPerMinute, providerConfig, onError, onSuccess }: UseJobActionsOptions) {
   const { getToken, isSignedIn } = useAuth();
   const { openSignIn } = useClerk();
   const [loading, setLoading] = useState(false);
@@ -24,6 +26,13 @@ export function useJobActions({ apiUrl, apiProvider, apiKey, providerConfig, onE
     if (apiProvider === 'vertex') {
       if (!providerConfig || !providerConfig.trim()) {
         const message = `Vertex ${actionLabel}을(를) 실행하려면 서비스 계정 JSON이 필요합니다.`;
+        setError(message);
+        onError?.(message);
+        return false;
+      }
+    } else if (apiProvider === 'gemini') {
+      if (!apiKey && !(backupApiKeys && backupApiKeys.length > 0)) {
+        const message = `${actionLabel}을(를) 실행하려면 Gemini API 키가 필요합니다.`;
         setError(message);
         onError?.(message);
         return false;
@@ -44,6 +53,14 @@ export function useJobActions({ apiUrl, apiProvider, apiKey, providerConfig, onE
     };
     if (apiProvider === 'vertex' && providerConfig) {
       payload.provider_config = providerConfig;
+    }
+    if (apiProvider === 'gemini') {
+      if (backupApiKeys && backupApiKeys.length > 0) {
+        payload.backup_api_keys = backupApiKeys;
+      }
+      if (requestsPerMinute && requestsPerMinute > 0) {
+        payload.requests_per_minute = requestsPerMinute;
+      }
     }
     return payload;
   };
@@ -144,7 +161,7 @@ export function useJobActions({ apiUrl, apiProvider, apiKey, providerConfig, onE
     } finally {
       setLoading(false);
     }
-  }, [apiUrl, apiProvider, apiKey, providerConfig, getToken, onError, onSuccess]);
+  }, [apiUrl, apiProvider, apiKey, backupApiKeys, requestsPerMinute, providerConfig, getToken, onError, onSuccess]);
 
   const handleTriggerPostEdit = useCallback(async (
     jobId: number,
@@ -186,7 +203,7 @@ export function useJobActions({ apiUrl, apiProvider, apiKey, providerConfig, onE
     } finally {
       setLoading(false);
     }
-  }, [apiUrl, apiProvider, apiKey, providerConfig, getToken, onError, onSuccess]);
+  }, [apiUrl, apiProvider, apiKey, backupApiKeys, requestsPerMinute, providerConfig, getToken, onError, onSuccess]);
 
   const handleDownloadValidationReport = useCallback(async (jobId: number) => {
     await handleDownload(

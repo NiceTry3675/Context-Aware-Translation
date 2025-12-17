@@ -96,6 +96,9 @@ class PostEditDomainService(DomainServiceBase):
         api_key: Optional[str],
         model_name: str = "gemini-flash-lite-latest",
         provider_context: Optional[ProviderContext] = None,
+        *,
+        backup_api_keys: list[str] | None = None,
+        requests_per_minute: int | None = None,
     ) -> Tuple[PostEditEngine, TranslationDocument, str, Any, Any]:
         """
         Prepare the post-editor and translation job for post-editing.
@@ -141,6 +144,8 @@ class PostEditDomainService(DomainServiceBase):
             model_name,
             provider_context=provider_context,
             usage_callback=usage_collector.record_event,
+            backup_api_keys=backup_api_keys,
+            requests_per_minute=requests_per_minute,
         )
         post_editor = PostEditEngine(model_api, logger=segment_logger)
         

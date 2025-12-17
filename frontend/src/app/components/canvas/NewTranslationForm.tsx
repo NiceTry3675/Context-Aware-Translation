@@ -23,6 +23,8 @@ interface NewTranslationFormProps {
   jobId: string | null;
   apiProvider: ApiProvider;
   apiKey: string;
+  backupApiKeys: string[];
+  requestsPerMinute: number;
   providerConfig: string;
   selectedModel: string;
   taskModelOverrides?: TaskModelOverridesType;
@@ -38,6 +40,8 @@ interface NewTranslationFormProps {
   glossaryAnalysisError: string;
   onProviderChange: (provider: ApiProvider) => void;
   onApiKeyChange: (key: string) => void;
+  onBackupApiKeysChange: (keys: string[]) => void;
+  onRequestsPerMinuteChange: (value: number) => void;
   onProviderConfigChange: (value: string) => void;
   onModelChange: (model: string) => void;
   onTaskModelOverridesChange?: (overrides: TaskModelOverridesType) => void;
@@ -55,6 +59,8 @@ export default function NewTranslationForm({
   jobId,
   apiProvider,
   apiKey,
+  backupApiKeys,
+  requestsPerMinute,
   providerConfig,
   selectedModel,
   taskModelOverrides,
@@ -70,6 +76,8 @@ export default function NewTranslationForm({
   glossaryAnalysisError,
   onProviderChange,
   onApiKeyChange,
+  onBackupApiKeysChange,
+  onRequestsPerMinuteChange,
   onProviderConfigChange,
   onModelChange,
   onTaskModelOverridesChange,
@@ -99,10 +107,14 @@ export default function NewTranslationForm({
           <ApiSetup
             apiProvider={apiProvider}
             apiKey={apiKey}
+            backupApiKeys={backupApiKeys}
+            requestsPerMinute={requestsPerMinute}
             providerConfig={providerConfig}
             selectedModel={selectedModel}
             onProviderChange={onProviderChange}
             onApiKeyChange={onApiKeyChange}
+            onBackupApiKeysChange={onBackupApiKeysChange}
+            onRequestsPerMinuteChange={onRequestsPerMinuteChange}
             onProviderConfigChange={onProviderConfigChange}
             onModelChange={onModelChange}
           />

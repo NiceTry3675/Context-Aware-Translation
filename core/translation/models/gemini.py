@@ -1,4 +1,8 @@
 import json
+import hashlib
+import os
+import random
+import threading
 import time
 from datetime import datetime
 from typing import Callable, Optional, Tuple
@@ -45,6 +49,11 @@ def _error_message(exc: Exception) -> str:
     message = getattr(exc, "message", None)
     return message if isinstance(message, str) and message else str(exc)
 
+def _key_id(api_key: str) -> str:
+    """Generate a stable, non-reversible identifier for an API key (for logs/Redis keys)."""
+    digest = hashlib.sha256(api_key.encode("utf-8")).hexdigest()
+    return digest[:12]
+
 
 def _is_permission_denied_error(exc: Exception) -> bool:
     if google_api_exceptions and isinstance(exc, google_api_exceptions.PermissionDenied):
@@ -68,6 +77,213 @@ def _looks_like_safety_block(exc: Exception) -> bool:
     candidate = f"{_error_message(exc)}".upper()
     return any(token in candidate for token in ("PROHIBITED", "SAFETY", "BLOCK"))
 
+def _is_not_found_error(exc: Exception) -> bool:
+    if google_api_exceptions and isinstance(exc, google_api_exceptions.NotFound):
+        return True
+    code = _error_code(exc)
+    if code == 404:
+        return True
+    return "NOT_FOUND" in _error_status(exc)
+
+
+def _is_rate_limited_error(exc: Exception) -> bool:
+    if google_api_exceptions and isinstance(exc, (google_api_exceptions.ResourceExhausted, google_api_exceptions.TooManyRequests)):
+        return True
+    code = _error_code(exc)
+    if code == 429:
+        return True
+    status = _error_status(exc)
+    if "RESOURCE_EXHAUSTED" in status or "TOO_MANY_REQUESTS" in status:
+        return True
+    message = _error_message(exc).upper()
+    return any(token in message for token in ("RESOURCE_EXHAUSTED", "TOO MANY REQUESTS", "RATE LIMIT", "QUOTA"))
+
+
+def _is_transient_error(exc: Exception) -> bool:
+    if google_api_exceptions and isinstance(
+        exc,
+        (
+            google_api_exceptions.InternalServerError,
+            google_api_exceptions.ServiceUnavailable,
+            google_api_exceptions.DeadlineExceeded,
+            google_api_exceptions.Aborted,
+        ),
+    ):
+        return True
+    code = _error_code(exc)
+    if code in (500, 502, 503, 504):
+        return True
+    status = _error_status(exc)
+    return any(token in status for token in ("INTERNAL", "UNAVAILABLE", "DEADLINE_EXCEEDED", "ABORTED"))
+
+
+def _retry_delay_seconds(exc: Exception) -> Optional[float]:
+    """Best-effort retry delay extraction (when SDK provides it)."""
+    for attr in ("retry_delay", "retry_after", "retry_after_seconds"):
+        value = getattr(exc, attr, None)
+        if value is None:
+            continue
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+class _ApiKeyPool:
+    """In-memory API key rotation with cooldown + disable support."""
+
+    def __init__(self, api_keys: list[str]):
+        self._api_keys = api_keys[:]
+        self._current_index = 0
+        self._disabled: set[str] = set()
+        self._cooldown_until: dict[str, float] = {}
+        self._lock = threading.Lock()
+
+    @property
+    def api_keys(self) -> tuple[str, ...]:
+        return tuple(self._api_keys)
+
+    def current(self, now: float) -> Optional[str]:
+        with self._lock:
+            if not self._api_keys:
+                return None
+            key = self._api_keys[self._current_index]
+            if key in self._disabled:
+                return None
+            until = self._cooldown_until.get(key)
+            if until is not None and until > now:
+                return None
+            return key
+
+    def mark_disabled(self, api_key: str) -> None:
+        with self._lock:
+            self._disabled.add(api_key)
+            self._cooldown_until.pop(api_key, None)
+
+    def mark_cooldown(self, api_key: str, *, seconds: float, now: float) -> None:
+        if seconds <= 0:
+            return
+        with self._lock:
+            if api_key in self._disabled:
+                return
+            self._cooldown_until[api_key] = max(self._cooldown_until.get(api_key, 0.0), now + seconds)
+
+    def next_available(self, now: float) -> Optional[str]:
+        with self._lock:
+            if not self._api_keys:
+                return None
+            start = self._current_index
+            for offset in range(len(self._api_keys)):
+                idx = (start + offset) % len(self._api_keys)
+                key = self._api_keys[idx]
+                if key in self._disabled:
+                    continue
+                until = self._cooldown_until.get(key)
+                if until is not None and until > now:
+                    continue
+                self._current_index = idx
+                return key
+            return None
+
+    def rotate(self, now: float) -> Optional[str]:
+        with self._lock:
+            if not self._api_keys:
+                return None
+            self._current_index = (self._current_index + 1) % len(self._api_keys)
+        return self.next_available(now)
+
+    def next_ready_in_seconds(self, now: float) -> Optional[float]:
+        with self._lock:
+            candidates = []
+            for key in self._api_keys:
+                if key in self._disabled:
+                    continue
+                until = self._cooldown_until.get(key)
+                if until is None or until <= now:
+                    return 0.0
+                candidates.append(until)
+            if not candidates:
+                return None
+            return max(0.0, min(candidates) - now)
+
+
+class _RequestsPerMinuteLimiter:
+    """Per-API-key request pacing; uses Redis when available for cross-worker coordination."""
+
+    def __init__(self, requests_per_minute: int, *, redis_url: str | None = None):
+        self._rpm = int(requests_per_minute)
+        self._interval_ms = int((60.0 / max(1, self._rpm)) * 1000.0)
+        self._redis_url = redis_url or os.getenv("REDIS_URL")
+        self._redis = None
+        self._redis_lock = threading.Lock()
+        self._local_next_allowed_ms: dict[str, int] = {}
+        self._lua = None
+
+    def _get_redis(self):
+        if not self._redis_url:
+            return None
+        with self._redis_lock:
+            if self._redis is not None:
+                return self._redis
+            try:
+                import redis  # type: ignore
+
+                self._redis = redis.Redis.from_url(self._redis_url, decode_responses=True)
+                self._redis.ping()
+            except Exception:
+                self._redis = None
+            return self._redis
+
+    def _redis_next_allowed_ms(self, key_id: str, now_ms: int) -> Optional[int]:
+        r = self._get_redis()
+        if r is None:
+            return None
+        if self._lua is None:
+            self._lua = r.register_script(
+                """
+                local current = redis.call('GET', KEYS[1])
+                local now = tonumber(ARGV[1])
+                local interval = tonumber(ARGV[2])
+                local allowed = now
+                if current then
+                  local next_allowed = tonumber(current)
+                  if next_allowed and next_allowed > now then
+                    allowed = next_allowed
+                  end
+                end
+                local new_next = allowed + interval
+                redis.call('SET', KEYS[1], new_next)
+                local ttl = math.max(interval * 2, 120000)
+                redis.call('PEXPIRE', KEYS[1], ttl)
+                return allowed
+                """
+            )
+        try:
+            redis_key = f"gemini:rpm:{key_id}"
+            allowed = self._lua(keys=[redis_key], args=[now_ms, self._interval_ms])
+            return int(allowed) if allowed is not None else None
+        except Exception:
+            return None
+
+    def wait(self, api_key: str) -> None:
+        if self._rpm <= 0:
+            return
+        key_id = _key_id(api_key)
+        now_ms = int(time.time() * 1000)
+
+        allowed_ms = self._redis_next_allowed_ms(key_id, now_ms)
+        if allowed_ms is None:
+            # Local fallback (per-process only)
+            next_allowed = self._local_next_allowed_ms.get(key_id, 0)
+            allowed_ms = max(now_ms, next_allowed)
+            self._local_next_allowed_ms[key_id] = allowed_ms + self._interval_ms
+
+        delay_ms = allowed_ms - now_ms
+        if delay_ms > 0:
+            time.sleep(delay_ms / 1000.0)
+
+
 class GeminiModel:
     """
     A wrapper class for the Google Gemini API to handle text generation,
@@ -82,6 +298,10 @@ class GeminiModel:
         enable_soft_retry: bool = True,
         client: genai.Client | None = None,
         usage_callback: Callable[[UsageEvent], None] | None = None,
+        *,
+        backup_api_keys: list[str] | None = None,
+        requests_per_minute: int | None = None,
+        client_factory: Callable[[str], genai.Client] | None = None,
     ):
         """
         Initializes the Gemini model client.
@@ -96,12 +316,44 @@ class GeminiModel:
         if client is not None:
             self.client = client
             self.api_key = None
+            self._api_key_pool = None
+            self._clients_by_key: dict[str, genai.Client] = {}
+            self._client_factory = None
+            self._rpm_limiter = None
         else:
-            if not api_key:
+            api_keys: list[str] = []
+            if isinstance(api_key, str) and api_key.strip():
+                api_keys.append(api_key.strip())
+            if backup_api_keys:
+                api_keys.extend([k.strip() for k in backup_api_keys if isinstance(k, str) and k.strip()])
+            # Deduplicate while preserving order
+            seen: set[str] = set()
+            deduped: list[str] = []
+            for k in api_keys:
+                if k in seen:
+                    continue
+                seen.add(k)
+                deduped.append(k)
+            if not deduped:
                 raise ValueError("API key or Vertex credentials required.")
-            # google-genai client (unified Gemini API)
-            self.client = genai.Client(api_key=api_key)
-            self.api_key = api_key
+
+            self._api_key_pool = _ApiKeyPool(deduped)
+            self._clients_by_key = {}
+            self._client_factory = client_factory or (lambda k: genai.Client(api_key=k))
+
+            # Initialize with the first available key
+            first_key = self._api_key_pool.next_available(time.time())
+            if not first_key:
+                raise ValueError("No usable API keys provided.")
+            self.client = self._client_factory(first_key)
+            self._clients_by_key[first_key] = self.client
+            self.api_key = first_key
+            self._rpm_limiter = (
+                _RequestsPerMinuteLimiter(int(requests_per_minute))
+                if requests_per_minute is not None and int(requests_per_minute) > 0
+                else None
+            )
+        self._client_lock = threading.Lock()
         self.model_name = model_name
         self.safety_settings = safety_settings
         self.generation_config = generation_config
@@ -109,6 +361,68 @@ class GeminiModel:
         self.usage_callback = usage_callback
         self.last_usage: UsageEvent | None = None
         print(f"GeminiModel initialized with model: {model_name}, soft_retry: {enable_soft_retry}")
+
+    def _active_api_key(self) -> Optional[str]:
+        return self.api_key if isinstance(self.api_key, str) and self.api_key else None
+
+    def _select_client_for_request(self) -> tuple[Optional[str], genai.Client]:
+        """Select a usable client (and its key) for the next request.
+
+        For Vertex-injected clients, returns (None, self.client).
+        """
+        if self._api_key_pool is None:
+            return None, self.client
+
+        while True:
+            now = time.time()
+            key = self._api_key_pool.current(now) or self._api_key_pool.next_available(now)
+            if key is None:
+                ready_in = self._api_key_pool.next_ready_in_seconds(now)
+                if ready_in is None:
+                    raise ValueError("No usable API keys available.")
+                if ready_in > 0:
+                    time.sleep(min(ready_in, 10.0))
+                    continue
+                # ready_in == 0.0 but key selection still failed; loop again
+                continue
+
+            with self._client_lock:
+                client = self._clients_by_key.get(key)
+                if client is None:
+                    if not self._client_factory:
+                        raise ValueError("Client factory missing for Gemini API key mode.")
+                    client = self._client_factory(key)
+                    self._clients_by_key[key] = client
+                # Keep backward-compatible attributes updated for logs/debugging
+                self.client = client
+                self.api_key = key
+                return key, client
+
+    def _pace_requests_if_needed(self, api_key: Optional[str]) -> None:
+        if not api_key or not self._rpm_limiter:
+            return
+        self._rpm_limiter.wait(api_key)
+
+    def _rotate_or_disable_key(self, api_key: Optional[str], *, cooldown_seconds: float | None = None) -> bool:
+        """Rotate away from the current key when possible.
+
+        Returns True if rotation selected another usable key, False otherwise.
+        """
+        if not api_key or self._api_key_pool is None:
+            return False
+        now = time.time()
+        if cooldown_seconds is not None and cooldown_seconds > 0:
+            self._api_key_pool.mark_cooldown(api_key, seconds=cooldown_seconds, now=now)
+        else:
+            self._api_key_pool.mark_disabled(api_key)
+
+        next_key = self._api_key_pool.rotate(now)
+        return bool(next_key and next_key != api_key)
+
+    def _compute_backoff_seconds(self, attempt: int, *, base: float, cap: float, jitter_ratio: float = 0.25) -> float:
+        delay = min(cap, base * (2 ** max(0, attempt)))
+        jitter = delay * jitter_ratio * random.random()
+        return delay + jitter
 
     def _emit_usage_event(self, response) -> None:
         """Extract usage metadata from a response and notify listeners."""
@@ -282,10 +596,12 @@ class GeminiModel:
         return repair
 
     def _retry_or_raise(self, error: Exception, attempt: int, max_retries: int, label: str) -> None:
+        """Legacy helper (kept for backward compatibility); uses exponential backoff."""
         print(f"\nRetriable {label} failed on attempt {attempt + 1}/{max_retries}. Error: {error}")
         if attempt < max_retries - 1:
-            print("Retrying in 5 seconds...")
-            time.sleep(5)
+            delay = self._compute_backoff_seconds(attempt, base=1.0, cap=10.0)
+            print(f"Retrying in {delay:.1f} seconds...")
+            time.sleep(delay)
         else:
             raise Exception(f"All {max_retries} {label} attempts failed. Last error: {error}") from error
 
@@ -300,9 +616,18 @@ class GeminiModel:
         try:
             client = genai.Client(api_key=api_key)
             return GeminiModel.validate_with_client(client, model_name)
-        except API_ERROR_TYPES:
-            # Permission or invalid argument for bad keys, NotFound for invalid models.
-            return False
+        except API_ERROR_TYPES as exc:
+            # Hard failures: bad key / model / permission.
+            if _looks_like_safety_block(exc):
+                # Safety blocks don't indicate key validity; treat as valid for access checks.
+                return True
+            if _is_permission_denied_error(exc) or _is_invalid_argument_error(exc) or _is_not_found_error(exc):
+                return False
+            # Soft failures: rate limits / transient issues shouldn't block starting a job.
+            if _is_rate_limited_error(exc) or _is_transient_error(exc):
+                return True
+            # Conservative default: unknown API errors => allow (caller will handle at runtime).
+            return True
         except Exception:
             # Conservatively return False on other errors.
             return False
@@ -317,8 +642,14 @@ class GeminiModel:
             except Exception:
                 client.models.generate_content(model=model_name, contents="ping")
                 return True
-        except API_ERROR_TYPES:
-            return False
+        except API_ERROR_TYPES as exc:
+            if _looks_like_safety_block(exc):
+                return True
+            if _is_permission_denied_error(exc) or _is_invalid_argument_error(exc) or _is_not_found_error(exc):
+                return False
+            if _is_rate_limited_error(exc) or _is_transient_error(exc):
+                return True
+            return True
         except Exception:
             return False
 
@@ -338,9 +669,13 @@ class GeminiModel:
         """
         Base text generation method without soft retry logic.
         """
+        last_error: Exception | None = None
         for attempt in range(max_retries):
             try:
-                response = self.client.models.generate_content(
+                api_key, client = self._select_client_for_request()
+                self._pace_requests_if_needed(api_key)
+
+                response = client.models.generate_content(
                     model=self.model_name,
                     contents=prompt,
                     config=self._build_generation_config(None),
@@ -383,22 +718,58 @@ class GeminiModel:
                 raise
 
             except API_ERROR_TYPES as e:
-                if _is_permission_denied_error(e) or _is_invalid_argument_error(e):
-                    if _looks_like_safety_block(e):
-                        raise ProhibitedException(
-                            message=_error_message(e),
-                            prompt=prompt,
-                            api_call_type="text_generation"
-                        )
+                last_error = e
+                # Safety signals should route to the sanitizer (do not rotate keys)
+                if _looks_like_safety_block(e):
+                    raise ProhibitedException(
+                        message=_error_message(e),
+                        prompt=prompt,
+                        api_call_type="text_generation",
+                    )
+
+                if _is_invalid_argument_error(e) or _is_not_found_error(e):
                     print(f"\nNon-retriable API error: {e}")
                     raise e
-                self._retry_or_raise(e, attempt, max_retries, "API call")
+
+                if _is_permission_denied_error(e):
+                    rotated = self._rotate_or_disable_key(self._active_api_key())
+                    if rotated and attempt < max_retries - 1:
+                        continue
+                    print(f"\nPermission denied API error: {e}")
+                    raise e
+
+                if _is_rate_limited_error(e):
+                    retry_after = _retry_delay_seconds(e)
+                    delay = retry_after if retry_after is not None else self._compute_backoff_seconds(attempt, base=2.0, cap=30.0)
+                    rotated = self._rotate_or_disable_key(self._active_api_key(), cooldown_seconds=delay)
+                    if rotated and attempt < max_retries - 1:
+                        continue
+                    if attempt < max_retries - 1:
+                        time.sleep(delay)
+                        continue
+                    raise Exception(f"All {max_retries} API call attempts failed. Last error: {e}") from e
+
+                # Transient/unknown API errors: retry with backoff
+                delay = _retry_delay_seconds(e)
+                if delay is None:
+                    delay = self._compute_backoff_seconds(attempt, base=1.0, cap=15.0)
+                if attempt < max_retries - 1:
+                    time.sleep(delay)
+                    continue
+                raise Exception(f"All {max_retries} API call attempts failed. Last error: {e}") from e
 
             except Exception as e:
-                self._retry_or_raise(e, attempt, max_retries, "API call")
-        
-        return ""  # Should not be reached
-    
+                last_error = e
+                if isinstance(e, ValueError) and "No usable API keys" in str(e):
+                    raise
+                if attempt < max_retries - 1:
+                    delay = self._compute_backoff_seconds(attempt, base=1.0, cap=10.0)
+                    time.sleep(delay)
+                    continue
+                raise Exception(f"All {max_retries} API call attempts failed. Last error: {e}") from e
+
+        raise Exception(f"All {max_retries} API call attempts failed. Last error: {last_error}") from last_error
+
     @retry_with_softer_prompt(max_retries=3, delay=2.0)
     def _generate_text_with_soft_retry(self, prompt: str, max_retries: int = 3) -> str:
         """
@@ -437,11 +808,15 @@ class GeminiModel:
         
         # We do not use soft retry here by default, because schema prompts are minimal.
         # If desired, we could add a similar decorator later.
+        last_error: Exception | None = None
         for attempt in range(max_retries):
             try:
                 # Note: For structured output, passing schema either via generation_config
                 # or constructor works; we pass here to avoid global state on the model.
-                response = self.client.models.generate_content(
+                api_key, client = self._select_client_for_request()
+                self._pace_requests_if_needed(api_key)
+
+                response = client.models.generate_content(
                     model=self.model_name,
                     contents=prompt,
                     config=self._build_generation_config({
@@ -449,6 +824,16 @@ class GeminiModel:
                         "response_schema": response_schema,
                     }),
                 )
+
+                # Safety block detection (route to sanitizer; do not rotate keys)
+                if response and hasattr(response, "prompt_feedback") and getattr(response.prompt_feedback, "block_reason", None):
+                    block_reason = response.prompt_feedback.block_reason
+                    raise ProhibitedException(
+                        message=f"Prompt blocked by safety settings. Reason: {block_reason}",
+                        prompt=prompt,
+                        api_response=str(response.prompt_feedback),
+                        api_call_type="structured_output",
+                    )
                 
                 # If using Pydantic models, use the parsed response
                 if is_pydantic:
@@ -505,14 +890,53 @@ class GeminiModel:
                 raise ValueError("Structured API returned an empty response.")
 
             except API_ERROR_TYPES as e:
-                if _is_permission_denied_error(e) or _is_invalid_argument_error(e):
+                last_error = e
+                if _looks_like_safety_block(e):
+                    raise ProhibitedException(
+                        message=_error_message(e),
+                        prompt=prompt,
+                        api_call_type="structured_output",
+                    )
+                if _is_invalid_argument_error(e) or _is_not_found_error(e):
                     print(f"\nNon-retriable structured API error: {e}")
                     raise e
-                self._retry_or_raise(e, attempt, max_retries, "structured API call")
-            except Exception as e:
-                self._retry_or_raise(e, attempt, max_retries, "structured API call")
+                if _is_permission_denied_error(e):
+                    rotated = self._rotate_or_disable_key(self._active_api_key())
+                    if rotated and attempt < max_retries - 1:
+                        continue
+                    print(f"\nPermission denied structured API error: {e}")
+                    raise e
+                if _is_rate_limited_error(e):
+                    retry_after = _retry_delay_seconds(e)
+                    delay = retry_after if retry_after is not None else self._compute_backoff_seconds(attempt, base=2.0, cap=30.0)
+                    rotated = self._rotate_or_disable_key(self._active_api_key(), cooldown_seconds=delay)
+                    if rotated and attempt < max_retries - 1:
+                        continue
+                    if attempt < max_retries - 1:
+                        time.sleep(delay)
+                        continue
+                    raise Exception(f"All {max_retries} structured API call attempts failed. Last error: {e}") from e
 
-        return {} if not is_pydantic else None
+                delay = _retry_delay_seconds(e)
+                if delay is None:
+                    delay = self._compute_backoff_seconds(attempt, base=1.0, cap=15.0)
+                if attempt < max_retries - 1:
+                    time.sleep(delay)
+                    continue
+                raise Exception(f"All {max_retries} structured API call attempts failed. Last error: {e}") from e
+            except Exception as e:
+                last_error = e
+                if isinstance(e, ProhibitedException):
+                    raise
+                if isinstance(e, ValueError) and "No usable API keys" in str(e):
+                    raise
+                if attempt < max_retries - 1:
+                    delay = self._compute_backoff_seconds(attempt, base=1.0, cap=10.0)
+                    time.sleep(delay)
+                    continue
+                raise Exception(f"All {max_retries} structured API call attempts failed. Last error: {e}") from e
+
+        raise Exception(f"All {max_retries} structured API call attempts failed. Last error: {last_error}") from last_error
 
     @staticmethod
     def _clean_json_text(raw: str) -> str:

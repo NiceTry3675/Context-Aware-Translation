@@ -47,6 +47,8 @@ async def list_jobs(
 def create_job(
     file: UploadFile = File(...),
     api_key: str = Form(...),
+    backup_api_keys: Optional[str] = Form(None),
+    requests_per_minute: Optional[int] = Form(None),
     model_name: str = Form("gemini-flash-lite-latest"),
     translation_model_name: Optional[str] = Form(None),
     style_model_name: Optional[str] = Form(None),
@@ -92,6 +94,8 @@ def create_job(
         user=user,
         file=file,
         api_key=api_key,
+        backup_api_keys=backup_api_keys,
+        requests_per_minute=requests_per_minute,
         model_name=model_name,
         translation_model_name=translation_model_name,
         style_model_name=style_model_name,
@@ -252,6 +256,8 @@ async def resume_job(
     process_translation_task.delay(
         job_id=job_id,
         api_key=request.api_key or "",
+        backup_api_keys=request.backup_api_keys,
+        requests_per_minute=request.requests_per_minute,
         model_name=(request.model_name or provider_context.default_model or service.config.get("default_model", "gemini-flash-lite-latest")),
         translation_model_name=request.translation_model_name,
         style_model_name=request.style_model_name,

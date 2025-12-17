@@ -3,6 +3,7 @@ Base task class for Celery tasks with common functionality.
 """
 import logging
 import uuid
+import hashlib
 from contextvars import ContextVar
 from datetime import datetime
 from typing import Any, Dict, Optional, Sequence
@@ -17,6 +18,60 @@ from sqlalchemy.exc import IntegrityError
 logger = logging.getLogger(__name__)
 
 _db_session_ctx: ContextVar[Optional[Any]] = ContextVar("celery_db_session", default=None)
+
+_SENSITIVE_KEYS = {
+    # User-provided secrets
+    "api_key",
+    "backup_api_keys",
+    "provider_config",
+    # Vertex credential payloads
+    "credentials",
+    "private_key",
+    "service_account",
+}
+
+
+def _stable_secret_id(value: str) -> str:
+    digest = hashlib.sha256(value.encode("utf-8")).hexdigest()
+    return digest[:12]
+
+
+def _redact_task_payload(value: Any) -> Any:
+    """Redact secrets before persisting task args/kwargs to the DB.
+
+    Celery task invocation still receives the original args/kwargs; this is for
+    TaskExecution tracking only.
+    """
+    if isinstance(value, dict):
+        redacted: dict[str, Any] = {}
+        for k, v in value.items():
+            if k in _SENSITIVE_KEYS:
+                if k == "api_key" and isinstance(v, str) and v:
+                    redacted[k] = {"redacted": True, "key_id": _stable_secret_id(v)}
+                    continue
+                if k == "backup_api_keys" and isinstance(v, list):
+                    key_ids = []
+                    for item in v:
+                        if isinstance(item, str) and item:
+                            key_ids.append(_stable_secret_id(item))
+                    redacted[k] = {"redacted": True, "key_ids": key_ids}
+                    continue
+                if k == "credentials" and isinstance(v, dict):
+                    safe = {}
+                    for safe_key in ("project_id", "client_email", "type"):
+                        if safe_key in v and isinstance(v.get(safe_key), str):
+                            safe[safe_key] = v[safe_key]
+                    safe["redacted"] = True
+                    redacted[k] = safe
+                    continue
+                redacted[k] = {"redacted": True}
+                continue
+
+            redacted[k] = _redact_task_payload(v)
+        return redacted
+    if isinstance(value, list):
+        return [_redact_task_payload(v) for v in value]
+    return value
 
 
 def _extract_job_id(
@@ -100,8 +155,8 @@ def task_prerun_handler(sender=None, task_id=None, task=None, args=None, kwargs=
                 name=task.name,
                 kind=task.task_kind,
                 status=TaskStatus.STARTED,
-                args=list(args) if args else [],
-                kwargs=dict(kwargs) if kwargs else {},
+                args=_redact_task_payload(list(args) if args else []),
+                kwargs=_redact_task_payload(dict(kwargs) if kwargs else {}),
                 start_time=datetime.utcnow(),
                 queue_time=datetime.utcnow(),  # Approximation
                 attempts=1
@@ -248,8 +303,8 @@ def create_task_execution(
             status=TaskStatus.PENDING,
             job_id=job_id,
             user_id=user_id,
-            args=args or [],
-            kwargs=kwargs or {},
+            args=_redact_task_payload(args or []),
+            kwargs=_redact_task_payload(kwargs or {}),
             queue_time=datetime.utcnow()
         )
         

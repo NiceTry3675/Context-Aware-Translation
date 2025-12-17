@@ -38,6 +38,8 @@ def process_post_edit_task(
     self,
     job_id: int,
     api_key: Optional[str],
+    backup_api_keys: Optional[list[str]] = None,
+    requests_per_minute: Optional[int] = None,
     model_name: str = "gemini-flash-lite-latest",
     selected_cases: Optional[dict] = None,
     modified_cases: Optional[dict] = None,
@@ -78,7 +80,7 @@ def process_post_edit_task(
             f"Starting post-edit for Job ID: {job_id}, Model: {model_name}, Provider: {provider_name}"
         )
 
-        if not api_key and provider_name != "vertex":
+        if provider_name != "vertex" and not (api_key or backup_api_keys):
             raise ValueError("API key is required for post-editing")
         
         # Update task progress
@@ -95,6 +97,8 @@ def process_post_edit_task(
             session=db,
             job_id=job_id,
             api_key=api_key,
+            backup_api_keys=backup_api_keys,
+            requests_per_minute=requests_per_minute,
             model_name=model_name,
             provider_context=context,
         )
@@ -240,6 +244,8 @@ def process_post_edit_task(
 def run_post_edit_in_background(
     job_id: int,
     api_key: str,
+    backup_api_keys: Optional[list[str]] = None,
+    requests_per_minute: Optional[int] = None,
     model_name: str = "gemini-flash-lite-latest"
 ):
     """
@@ -249,6 +255,8 @@ def run_post_edit_in_background(
     task = process_post_edit_task.delay(
         job_id=job_id,
         api_key=api_key,
+        backup_api_keys=backup_api_keys,
+        requests_per_minute=requests_per_minute,
         model_name=model_name
     )
     

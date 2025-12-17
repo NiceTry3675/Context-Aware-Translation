@@ -60,6 +60,8 @@ interface JobSidebarProps {
   apiProvider?: ApiProvider;
   defaultModelName?: string;
   apiKey?: string;
+  backupApiKeys?: string[];
+  requestsPerMinute?: number;
   providerConfig?: string;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
@@ -122,6 +124,8 @@ export default function JobSidebar({
   apiProvider,
   defaultModelName,
   apiKey,
+  backupApiKeys,
+  requestsPerMinute,
   providerConfig,
   mobileOpen = false,
   onMobileClose = () => {},
@@ -314,6 +318,8 @@ export default function JobSidebar({
                               apiProvider={apiProvider}
                               defaultModelName={defaultModelName}
                               apiKey={apiKey}
+                              backupApiKeys={backupApiKeys}
+                              requestsPerMinute={requestsPerMinute}
                               providerConfig={providerConfig}
                             />
                           </Box>
@@ -419,6 +425,14 @@ export default function JobSidebar({
                                       api_key: apiProvider === 'vertex' ? '' : (apiKey || ''),
                                       model_name: defaultModelName || 'gemini-flash-lite-latest',
                                     };
+                                    if (apiProvider === 'gemini') {
+                                      if (backupApiKeys && backupApiKeys.length > 0) {
+                                        body.backup_api_keys = backupApiKeys;
+                                      }
+                                      if (requestsPerMinute && requestsPerMinute > 0) {
+                                        body.requests_per_minute = requestsPerMinute;
+                                      }
+                                    }
                                     if (apiProvider === 'vertex' && providerConfig) {
                                       body.provider_config = providerConfig;
                                     }
