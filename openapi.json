@@ -12,7 +12,7 @@
           "jobs"
         ],
         "summary": "List Jobs",
-        "description": "List all translation jobs for the current user.\n\nArgs:\n    skip: Number of jobs to skip for pagination\n    limit: Maximum number of jobs to return\n    user: Current authenticated user\n    service: Translation domain service\n    \nReturns:\n    List of translation jobs",
+        "description": "List all translation jobs for the current user.\n\nArgs:\n    skip: Number of jobs to skip for pagination\n    limit: Maximum number of jobs to return\n    user: Current authenticated user\n    service: Translation domain service\n\nReturns:\n    List of translation jobs (lightweight, without large JSON fields)",
         "operationId": "list_jobs_api_v1_jobs_get",
         "parameters": [
           {
@@ -2943,6 +2943,68 @@
         }
       }
     },
+    "/api/v1/users/me/api-config": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Get Api Configuration",
+        "description": "Get the authenticated user's API configuration.",
+        "operationId": "get_api_configuration_api_v1_users_me_api_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiConfiguration"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Update Api Configuration",
+        "description": "Update the authenticated user's API configuration.",
+        "operationId": "update_api_configuration_api_v1_users_me_api_config_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiConfigurationUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiConfiguration"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/posts/{post_id}": {
       "delete": {
         "tags": [
@@ -3138,6 +3200,150 @@
           "message"
         ],
         "title": "AnnouncementCreate"
+      },
+      "ApiConfiguration": {
+        "properties": {
+          "api_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Provider"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config"
+          },
+          "gemini_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemini Model"
+          },
+          "vertex_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vertex Model"
+          },
+          "openrouter_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Openrouter Model"
+          }
+        },
+        "type": "object",
+        "title": "ApiConfiguration"
+      },
+      "ApiConfigurationUpdate": {
+        "properties": {
+          "api_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Provider"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "provider_config": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Config"
+          },
+          "gemini_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemini Model"
+          },
+          "vertex_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vertex Model"
+          },
+          "openrouter_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Openrouter Model"
+          }
+        },
+        "type": "object",
+        "title": "ApiConfigurationUpdate"
       },
       "AuthorSummary": {
         "properties": {
@@ -5494,6 +5700,50 @@
             "type": "string",
             "title": "Role",
             "default": "user"
+          },
+          "api_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Provider"
+          },
+          "gemini_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gemini Model"
+          },
+          "vertex_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vertex Model"
+          },
+          "openrouter_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Openrouter Model"
           }
         },
         "type": "object",

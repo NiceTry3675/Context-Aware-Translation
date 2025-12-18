@@ -22,6 +22,30 @@ class User(UserBase, KSTTimezoneBase):
     id: int
     clerk_user_id: str
     role: str = "user"
+    api_provider: Optional[str] = None
+    gemini_model: Optional[str] = None
+    vertex_model: Optional[str] = None
+    openrouter_model: Optional[str] = None
+
+# --- API Configuration Schemas ---
+class ApiConfigurationBase(BaseModel):
+    api_provider: Optional[str] = None  # "gemini", "vertex", "openrouter"
+    api_key: Optional[str] = None  # For gemini/openrouter
+    provider_config: Optional[str] = None  # Vertex JSON config
+    gemini_model: Optional[str] = None
+    vertex_model: Optional[str] = None
+    openrouter_model: Optional[str] = None
+
+class ApiConfigurationUpdate(ApiConfigurationBase):
+    pass
+
+class ApiConfiguration(BaseModel):
+    api_provider: Optional[str] = None
+    api_key: Optional[str] = None  # Will be decrypted from storage
+    provider_config: Optional[str] = None  # Will be decrypted from storage
+    gemini_model: Optional[str] = None
+    vertex_model: Optional[str] = None
+    openrouter_model: Optional[str] = None
 
 # --- TranslationUsageLog Schemas ---
 class TranslationUsageLogBase(BaseModel):

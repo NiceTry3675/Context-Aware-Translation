@@ -16,6 +16,11 @@ from backend.domains.user.repository import UserRepository, SqlAlchemyUserReposi
 from backend.domains.shared.uow import SqlAlchemyUoW
 from backend.domains.shared.events import DomainEvent
 from backend.config.settings import get_settings
+from backend.domains.user.crypto import encrypt_api_key, decrypt_api_key
+
+
+# Sentinel used to detect omitted fields during partial updates
+_FIELD_NOT_SET = object()
 
 
 # Domain Events
@@ -587,7 +592,98 @@ class UserService:
             },
             'last_updated': last_updated,
         }
-    
+
+    # API Configuration operations
+
+    def get_api_configuration(self, user_id: int) -> Optional[dict]:
+        """
+        Get API configuration for a user (with decrypted keys).
+
+        Args:
+            user_id: User database ID
+
+        Returns:
+            Dictionary with API configuration or None
+        """
+        user = self.user_repo.get(user_id)
+        if not user:
+            return None
+
+        # Decrypt API credentials
+        api_key = decrypt_api_key(user.api_key_encrypted) if user.api_key_encrypted else None
+        provider_config = decrypt_api_key(user.provider_config_encrypted) if user.provider_config_encrypted else None
+
+        return {
+            'api_provider': user.api_provider,
+            'api_key': api_key,
+            'provider_config': provider_config,
+            'gemini_model': user.gemini_model,
+            'vertex_model': user.vertex_model,
+            'openrouter_model': user.openrouter_model,
+        }
+
+    async def update_api_configuration(
+        self,
+        user_id: int,
+        api_provider: Optional[str] = _FIELD_NOT_SET,
+        api_key: Optional[str] = _FIELD_NOT_SET,
+        provider_config: Optional[str] = _FIELD_NOT_SET,
+        gemini_model: Optional[str] = _FIELD_NOT_SET,
+        vertex_model: Optional[str] = _FIELD_NOT_SET,
+        openrouter_model: Optional[str] = _FIELD_NOT_SET,
+    ) -> dict:
+        """
+        Update API configuration for a user.
+
+        Args:
+            user_id: User database ID
+            api_provider: LLM provider (gemini/vertex/openrouter)
+            api_key: API key for gemini/openrouter
+            provider_config: Vertex JSON configuration
+            gemini_model: Model selection for Gemini
+            vertex_model: Model selection for Vertex
+            openrouter_model: Model selection for OpenRouter
+
+        Returns:
+            Updated API configuration
+        """
+        async with SqlAlchemyUoW(self._create_session) as uow:
+            repo = SqlAlchemyUserRepository(uow.session)
+            user = repo.get(user_id)
+            if not user:
+                raise ValueError(f"User {user_id} not found")
+
+            fields_to_update = {
+                "api_provider": api_provider,
+                "gemini_model": gemini_model,
+                "vertex_model": vertex_model,
+                "openrouter_model": openrouter_model,
+            }
+            for field, value in fields_to_update.items():
+                if value is not _FIELD_NOT_SET:
+                    setattr(user, field, value)
+
+            if api_key is not _FIELD_NOT_SET:
+                user.api_key_encrypted = encrypt_api_key(api_key) if api_key else None
+
+            if provider_config is not _FIELD_NOT_SET:
+                user.provider_config_encrypted = (
+                    encrypt_api_key(provider_config) if provider_config else None
+                )
+
+            uow.session.flush()
+
+            updated_config = {
+                'api_provider': user.api_provider,
+                'api_key': decrypt_api_key(user.api_key_encrypted) if user.api_key_encrypted else None,
+                'provider_config': decrypt_api_key(user.provider_config_encrypted) if user.provider_config_encrypted else None,
+                'gemini_model': user.gemini_model,
+                'vertex_model': user.vertex_model,
+                'openrouter_model': user.openrouter_model,
+            }
+
+        return updated_config
+
     # Announcement operations (admin only)
     
     def get_announcements(

@@ -22,7 +22,7 @@ export interface paths {
          *         service: Translation domain service
          *
          *     Returns:
-         *         List of translation jobs
+         *         List of translation jobs (lightweight, without large JSON fields)
          */
         get: operations["list_jobs_api_v1_jobs_get"];
         put?: never;
@@ -1205,6 +1205,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/me/api-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Api Configuration
+         * @description Get the authenticated user's API configuration.
+         */
+        get: operations["get_api_configuration_api_v1_users_me_api_config_get"];
+        /**
+         * Update Api Configuration
+         * @description Update the authenticated user's API configuration.
+         */
+        put: operations["update_api_configuration_api_v1_users_me_api_config_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/posts/{post_id}": {
         parameters: {
             query?: never;
@@ -1349,6 +1373,36 @@ export interface components {
              * @default true
              */
             is_active: boolean;
+        };
+        /** ApiConfiguration */
+        ApiConfiguration: {
+            /** Api Provider */
+            api_provider?: string | null;
+            /** Api Key */
+            api_key?: string | null;
+            /** Provider Config */
+            provider_config?: string | null;
+            /** Gemini Model */
+            gemini_model?: string | null;
+            /** Vertex Model */
+            vertex_model?: string | null;
+            /** Openrouter Model */
+            openrouter_model?: string | null;
+        };
+        /** ApiConfigurationUpdate */
+        ApiConfigurationUpdate: {
+            /** Api Provider */
+            api_provider?: string | null;
+            /** Api Key */
+            api_key?: string | null;
+            /** Provider Config */
+            provider_config?: string | null;
+            /** Gemini Model */
+            gemini_model?: string | null;
+            /** Vertex Model */
+            vertex_model?: string | null;
+            /** Openrouter Model */
+            openrouter_model?: string | null;
         };
         /**
          * AuthorSummary
@@ -2272,6 +2326,14 @@ export interface components {
              * @default user
              */
             role: string;
+            /** Api Provider */
+            api_provider?: string | null;
+            /** Gemini Model */
+            gemini_model?: string | null;
+            /** Vertex Model */
+            vertex_model?: string | null;
+            /** Openrouter Model */
+            openrouter_model?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -4275,6 +4337,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TokenUsageDashboard"];
+                };
+            };
+        };
+    };
+    get_api_configuration_api_v1_users_me_api_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiConfiguration"];
+                };
+            };
+        };
+    };
+    update_api_configuration_api_v1_users_me_api_config_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApiConfigurationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiConfiguration"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
