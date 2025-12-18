@@ -1,6 +1,7 @@
 """Analysis domain service - consolidates all analysis operations."""
 
 import os
+import json
 from fastapi import HTTPException, UploadFile
 from typing import Any, Dict, Tuple
 
@@ -16,10 +17,35 @@ class AnalysisService(ServiceBase):
     
     def __init__(self):
         super().__init__()
+
+    @staticmethod
+    def _parse_backup_api_keys(raw: Any) -> list[str] | None:
+        if raw is None:
+            return None
+        if isinstance(raw, list):
+            keys = [str(k).strip() for k in raw if k and str(k).strip()]
+            return keys or None
+        if not isinstance(raw, str):
+            raw = str(raw)
+        text = raw.strip()
+        if not text:
+            return None
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, list):
+                keys = [str(k).strip() for k in parsed if k and str(k).strip()]
+                return keys or None
+        except Exception:
+            pass
+        # Fallback: newline/comma separated
+        keys = [k.strip() for k in text.replace(",", "\n").splitlines() if k.strip()]
+        return keys or None
     
     def _prepare_model(
         self,
         api_key: str,
+        backup_api_keys: Any,
+        requests_per_minute: int | None,
         model_name: str,
         api_provider: str,
         provider_config: Any,
@@ -44,6 +70,8 @@ class AnalysisService(ServiceBase):
             api_key,
             resolved_model,
             provider_context=provider_context,
+            backup_api_keys=self._parse_backup_api_keys(backup_api_keys),
+            requests_per_minute=requests_per_minute,
         )
 
         return model_api, provider_context, resolved_model
@@ -54,6 +82,8 @@ class AnalysisService(ServiceBase):
         api_key: str,
         model_name: str = "gemini-flash-lite-latest",
         *,
+        backup_api_keys: Any = None,
+        requests_per_minute: int | None = None,
         api_provider: str = "gemini",
         provider_config: Any = None,
     ) -> StyleAnalysisResponse:
@@ -73,6 +103,8 @@ class AnalysisService(ServiceBase):
         """
         model_api, _, _ = self._prepare_model(
             api_key,
+            backup_api_keys,
+            requests_per_minute,
             model_name,
             api_provider,
             provider_config,
@@ -110,6 +142,8 @@ class AnalysisService(ServiceBase):
         api_key: str,
         model_name: str = "gemini-flash-lite-latest",
         *,
+        backup_api_keys: Any = None,
+        requests_per_minute: int | None = None,
         api_provider: str = "gemini",
         provider_config: Any = None,
     ) -> GlossaryAnalysisResponse:
@@ -129,6 +163,8 @@ class AnalysisService(ServiceBase):
         """
         model_api, _, _ = self._prepare_model(
             api_key,
+            backup_api_keys,
+            requests_per_minute,
             model_name,
             api_provider,
             provider_config,
@@ -168,6 +204,8 @@ class AnalysisService(ServiceBase):
         api_key: str,
         model_name: str = "gemini-flash-lite-latest",
         *,
+        backup_api_keys: Any = None,
+        requests_per_minute: int | None = None,
         api_provider: str = "gemini",
         provider_config: Any = None,
     ) -> CharacterAnalysisResponse:
@@ -187,6 +225,8 @@ class AnalysisService(ServiceBase):
         """
         model_api, _, _ = self._prepare_model(
             api_key,
+            backup_api_keys,
+            requests_per_minute,
             model_name,
             api_provider,
             provider_config,

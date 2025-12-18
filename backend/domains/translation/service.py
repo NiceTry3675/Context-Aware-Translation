@@ -68,6 +68,28 @@ class TranslationDomainService(DomainServiceBase):
             session_factory: Factory function that creates SQLAlchemy sessions
         """
         super().__init__(session_factory=session_factory)
+
+    @staticmethod
+    def _parse_backup_api_keys(raw: object | None) -> list[str] | None:
+        if raw is None:
+            return None
+        if isinstance(raw, list):
+            keys = [str(k).strip() for k in raw if k and str(k).strip()]
+            return keys or None
+        if not isinstance(raw, str):
+            raw = str(raw)
+        text = raw.strip()
+        if not text:
+            return None
+        try:
+            parsed = json.loads(text)
+            if isinstance(parsed, list):
+                keys = [str(k).strip() for k in parsed if k and str(k).strip()]
+                return keys or None
+        except Exception:
+            pass
+        keys = [k.strip() for k in text.replace(",", "\n").splitlines() if k.strip()]
+        return keys or None
     
     def create_translation_job(
         self,
@@ -381,6 +403,8 @@ class TranslationDomainService(DomainServiceBase):
         job: TranslationJob,  # Pass the full job object
         api_key: Optional[str],
         model_name: str,
+        backup_api_keys: object | None = None,
+        requests_per_minute: int | None = None,
         style_data: Optional[str] = None,
         glossary_data: Optional[str] = None,
         translation_model_name: Optional[str] = None,
@@ -391,6 +415,9 @@ class TranslationDomainService(DomainServiceBase):
         turbo_mode: bool = False,
     ) -> Dict[str, Any]:
         """Prepare all the necessary components for a translation job."""
+        # Normalise backup keys (FormData may provide JSON string)
+        normalized_backup_keys = self._parse_backup_api_keys(backup_api_keys)
+
         # Fallbacks: if specific per-task models are not provided, use the top-level model_name
         translation_model_name = translation_model_name or model_name
         style_model_name = style_model_name or model_name
@@ -405,6 +432,8 @@ class TranslationDomainService(DomainServiceBase):
             translation_model_name,
             provider_context=provider_context,
             usage_callback=usage_collector.record_event,
+            backup_api_keys=normalized_backup_keys,
+            requests_per_minute=requests_per_minute,
         )
         style_model_api = (
             self.validate_and_create_model(
@@ -412,6 +441,8 @@ class TranslationDomainService(DomainServiceBase):
                 style_model_name,
                 provider_context=provider_context,
                 usage_callback=usage_collector.record_event,
+                backup_api_keys=normalized_backup_keys,
+                requests_per_minute=requests_per_minute,
             )
             if style_model_name else model_api
         )
@@ -421,6 +452,8 @@ class TranslationDomainService(DomainServiceBase):
                 glossary_model_name,
                 provider_context=provider_context,
                 usage_callback=usage_collector.record_event,
+                backup_api_keys=normalized_backup_keys,
+                requests_per_minute=requests_per_minute,
             )
             if glossary_model_name else model_api
         )
@@ -466,6 +499,8 @@ class TranslationDomainService(DomainServiceBase):
                 style_model_name,
                 provider_context=provider_context,
                 usage_callback=usage_collector.record_event,
+                backup_api_keys=normalized_backup_keys,
+                requests_per_minute=requests_per_minute,
             )
             
             # Create StyleAnalysis instance with model API
@@ -506,6 +541,8 @@ class TranslationDomainService(DomainServiceBase):
                 glossary_model_name,
                 provider_context=provider_context,
                 usage_callback=usage_collector.record_event,
+                backup_api_keys=normalized_backup_keys,
+                requests_per_minute=requests_per_minute,
             )
             
             # Create GlossaryAnalysis instance with model API
@@ -611,6 +648,8 @@ class TranslationDomainService(DomainServiceBase):
         user: User,
         file: UploadFile,
         api_key: Optional[str],
+        backup_api_keys: object | None = None,
+        requests_per_minute: int | None = None,
         model_name: str = "gemini-flash-lite-latest",
         translation_model_name: Optional[str] = None,
         style_model_name: Optional[str] = None,
@@ -667,11 +706,15 @@ class TranslationDomainService(DomainServiceBase):
             "default_model", fallback_model
         )
 
+        normalized_backup_keys = self._parse_backup_api_keys(backup_api_keys)
+
         # Validate credentials using inherited helper (raises if invalid)
         self.validate_and_create_model(
             api_key,
             model_name,
             provider_context=provider_context,
+            backup_api_keys=normalized_backup_keys,
+            requests_per_minute=requests_per_minute,
         )
         
         # Create job
@@ -718,6 +761,8 @@ class TranslationDomainService(DomainServiceBase):
         process_translation_task.delay(
             job_id=job_id,
             api_key=api_key,
+            backup_api_keys=normalized_backup_keys,
+            requests_per_minute=requests_per_minute,
             model_name=model_name,
             style_data=style_data,
             glossary_data=glossary_data,

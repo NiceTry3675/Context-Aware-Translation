@@ -92,6 +92,8 @@ function CanvasContent() {
           apiProvider={state.apiProvider}
           defaultModelName={state.selectedModel}
           apiKey={state.apiKey}
+          backupApiKeys={state.backupApiKeys}
+          requestsPerMinute={state.requestsPerMinute}
           providerConfig={state.providerConfig}
           mobileOpen={mobileDrawerOpen}
           onMobileClose={handleDrawerToggle}
@@ -129,6 +131,8 @@ function CanvasContent() {
                 jobId={state.jobId}
                 apiProvider={state.apiProvider}
                 apiKey={state.apiKey}
+                backupApiKeys={state.backupApiKeys}
+                requestsPerMinute={state.requestsPerMinute}
                 providerConfig={state.providerConfig}
                 selectedModel={state.selectedModel}
                 taskModelOverrides={state.taskModelOverrides}
@@ -144,6 +148,8 @@ function CanvasContent() {
                 glossaryAnalysisError={state.glossaryAnalysisError}
                 onProviderChange={state.setApiProvider}
                 onApiKeyChange={state.setApiKey}
+                onBackupApiKeysChange={state.setBackupApiKeys}
+                onRequestsPerMinuteChange={state.setRequestsPerMinute}
                 onProviderConfigChange={state.setProviderConfig}
                 onModelChange={state.setSelectedModel}
                 onTaskModelOverridesChange={state.setTaskModelOverrides}

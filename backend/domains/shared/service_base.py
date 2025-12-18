@@ -66,6 +66,9 @@ class ServiceBase:
         model_name: str,
         provider_context: Optional[ProviderContext] = None,
         usage_callback: Callable[[UsageEvent], None] | None = None,
+        *,
+        backup_api_keys: list[str] | None = None,
+        requests_per_minute: int | None = None,
     ) -> Union[GeminiModel, OpenRouterModel]:
         """
         Create a model API instance using the factory.
@@ -83,6 +86,8 @@ class ServiceBase:
             config=self.config,
             provider_context=provider_context,
             usage_callback=usage_callback,
+            backup_api_keys=backup_api_keys,
+            requests_per_minute=requests_per_minute,
         )
 
     def validate_api_key(
@@ -90,6 +95,8 @@ class ServiceBase:
         api_key: Optional[str],
         model_name: str,
         provider_context: Optional[ProviderContext] = None,
+        *,
+        backup_api_keys: list[str] | None = None,
     ) -> bool:
         """
         Validate API key using the factory.
@@ -105,6 +112,7 @@ class ServiceBase:
             api_key=api_key,
             model_name=model_name,
             provider_context=provider_context,
+            backup_api_keys=backup_api_keys,
         )
 
     def validate_and_create_model(
@@ -113,6 +121,9 @@ class ServiceBase:
         model_name: str,
         provider_context: Optional[ProviderContext] = None,
         usage_callback: Callable[[UsageEvent], None] | None = None,
+        *,
+        backup_api_keys: list[str] | None = None,
+        requests_per_minute: int | None = None,
     ) -> Union[GeminiModel, OpenRouterModel]:
         """
         Validate API key and create model in one step.
@@ -128,7 +139,12 @@ class ServiceBase:
             HTTPException: If API key is invalid
         """
         try:
-            if not self.validate_api_key(api_key, model_name, provider_context=provider_context):
+            if not self.validate_api_key(
+                api_key,
+                model_name,
+                provider_context=provider_context,
+                backup_api_keys=backup_api_keys,
+            ):
                 self.raise_invalid_api_key()
         except ValueError as exc:
             self.raise_validation_error(str(exc))
@@ -137,6 +153,8 @@ class ServiceBase:
             model_name,
             provider_context=provider_context,
             usage_callback=usage_callback,
+            backup_api_keys=backup_api_keys,
+            requests_per_minute=requests_per_minute,
         )
 
     def build_provider_context(

@@ -31,10 +31,12 @@ interface JobRowActionsProps {
   apiProvider?: ApiProvider;
   defaultModelName?: string;
   apiKey?: string;
+  backupApiKeys?: string[];
+  requestsPerMinute?: number;
   providerConfig?: string;
 }
 
-export default function JobRowActions({ job, onRefresh, compact = false, apiProvider, defaultModelName, apiKey, providerConfig }: JobRowActionsProps) {
+export default function JobRowActions({ job, onRefresh, compact = false, apiProvider, defaultModelName, apiKey, backupApiKeys, requestsPerMinute, providerConfig }: JobRowActionsProps) {
   const onRowRefresh = () => onRefresh(job.id);
   const jobId = job.id.toString();
   const provider = apiProvider || 'gemini';
@@ -60,6 +62,8 @@ export default function JobRowActions({ job, onRefresh, compact = false, apiProv
     apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
     apiProvider: apiProvider || 'gemini',
     apiKey,
+    backupApiKeys,
+    requestsPerMinute,
     providerConfig,
     onSuccess: onRowRefresh,
     onError: (error) => console.error(error),

@@ -22,7 +22,7 @@ export interface paths {
          *         service: Translation domain service
          *
          *     Returns:
-         *         List of translation jobs
+         *         List of translation jobs (lightweight, without large JSON fields)
          */
         get: operations["list_jobs_api_v1_jobs_get"];
         put?: never;
@@ -1369,6 +1369,10 @@ export interface components {
             file: string;
             /** Api Key */
             api_key: string;
+            /** Backup Api Keys */
+            backup_api_keys?: string | null;
+            /** Requests Per Minute */
+            requests_per_minute?: number | null;
             /**
              * Model Name
              * @default gemini-flash-lite-latest
@@ -1391,6 +1395,10 @@ export interface components {
             file: string;
             /** Api Key */
             api_key: string;
+            /** Backup Api Keys */
+            backup_api_keys?: string | null;
+            /** Requests Per Minute */
+            requests_per_minute?: number | null;
             /**
              * Model Name
              * @default gemini-flash-lite-latest
@@ -1413,6 +1421,10 @@ export interface components {
             file: string;
             /** Api Key */
             api_key: string;
+            /** Backup Api Keys */
+            backup_api_keys?: string | null;
+            /** Requests Per Minute */
+            requests_per_minute?: number | null;
             /**
              * Model Name
              * @default gemini-flash-lite-latest
@@ -1435,6 +1447,10 @@ export interface components {
             file: string;
             /** Api Key */
             api_key: string;
+            /** Backup Api Keys */
+            backup_api_keys?: string | null;
+            /** Requests Per Minute */
+            requests_per_minute?: number | null;
             /**
              * Model Name
              * @default gemini-flash-lite-latest
@@ -1879,6 +1895,10 @@ export interface components {
             model_name?: string | null;
             /** Api Key */
             api_key?: string | null;
+            /** Backup Api Keys */
+            backup_api_keys?: string[] | null;
+            /** Requests Per Minute */
+            requests_per_minute?: number | null;
             /** Api Provider */
             api_provider?: string | null;
             /** Provider Config */
@@ -1964,6 +1984,10 @@ export interface components {
         ResumeRequest: {
             /** Api Key */
             api_key?: string | null;
+            /** Backup Api Keys */
+            backup_api_keys?: string[] | null;
+            /** Requests Per Minute */
+            requests_per_minute?: number | null;
             /**
              * Model Name
              * @default gemini-flash-lite-latest
@@ -2301,6 +2325,10 @@ export interface components {
             model_name?: string | null;
             /** Api Key */
             api_key?: string | null;
+            /** Backup Api Keys */
+            backup_api_keys?: string[] | null;
+            /** Requests Per Minute */
+            requests_per_minute?: number | null;
             /** Api Provider */
             api_provider?: string | null;
             /** Provider Config */

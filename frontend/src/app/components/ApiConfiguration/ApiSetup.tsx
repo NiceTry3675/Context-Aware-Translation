@@ -1,29 +1,37 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
-import { Typography, ToggleButtonGroup, ToggleButton, TextField, Box, Link, Stack, Button, FormHelperText } from '@mui/material';
-import { OpenInNew as OpenInNewIcon, UploadFile as UploadFileIcon } from '@mui/icons-material';
+import { Typography, ToggleButtonGroup, ToggleButton, TextField, Box, Link, Stack, Button, FormHelperText, IconButton } from '@mui/material';
+import { OpenInNew as OpenInNewIcon, UploadFile as UploadFileIcon, Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import ModelSelector from '../translation/ModelSelector';
 import type { ApiProvider } from '../../hooks/useApiKey';
 
 interface ApiSetupProps {
   apiProvider: ApiProvider;
   apiKey: string;
+  backupApiKeys: string[];
+  requestsPerMinute: number;
   providerConfig: string;
   onProviderConfigChange: (value: string) => void;
   selectedModel: string;
   onProviderChange: (provider: ApiProvider) => void;
   onApiKeyChange: (key: string) => void;
+  onBackupApiKeysChange: (keys: string[]) => void;
+  onRequestsPerMinuteChange: (value: number) => void;
   onModelChange: (model: string) => void;
 }
 
 export default function ApiSetup({
   apiProvider,
   apiKey,
+  backupApiKeys,
+  requestsPerMinute,
   providerConfig,
   selectedModel,
   onProviderChange,
   onApiKeyChange,
+  onBackupApiKeysChange,
+  onRequestsPerMinuteChange,
   onProviderConfigChange,
   onModelChange,
 }: ApiSetupProps) {
@@ -71,6 +79,25 @@ export default function ApiSetup({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiProvider]);
+
+  const handleBackupKeyChange = (index: number, value: string) => {
+    const next = [...(backupApiKeys || [])];
+    next[index] = value;
+    onBackupApiKeysChange(next);
+  };
+
+  const handleAddBackupKey = () => {
+    onBackupApiKeysChange([...(backupApiKeys || []), '']);
+  };
+
+  const handleRemoveBackupKey = (index: number) => {
+    onBackupApiKeysChange((backupApiKeys || []).filter((_, i) => i !== index));
+  };
+
+  const handleRequestsPerMinuteChange = (raw: string) => {
+    const n = parseInt(raw, 10);
+    onRequestsPerMinuteChange(Number.isFinite(n) && n > 0 ? n : 0);
+  };
 
   return (
     <>
@@ -170,6 +197,48 @@ export default function ApiSetup({
             fullWidth
             placeholder={apiProvider === 'openrouter' ? 'sk-or-... 형식의 키를 입력하세요' : ''}
           />
+          {apiProvider === 'gemini' && (
+            <Stack spacing={1.5} sx={{ mt: 1 }}>
+              <Typography variant="subtitle1">백업 API 키 (선택)</Typography>
+              <Typography variant="body2" color="text.secondary">
+                기본 키가 일시적으로 제한되면 자동으로 다음 키로 전환합니다. (Vertex/OpenRouter에는 적용되지 않습니다.)
+              </Typography>
+              {(backupApiKeys || []).map((key, idx) => (
+                <Stack key={idx} direction="row" spacing={1} alignItems="center">
+                  <TextField
+                    type="password"
+                    label={`Backup Key ${idx + 1}`}
+                    value={key}
+                    onChange={(e) => handleBackupKeyChange(idx, e.target.value)}
+                    fullWidth
+                  />
+                  <IconButton
+                    aria-label="Remove backup key"
+                    onClick={() => handleRemoveBackupKey(idx)}
+                    size="small"
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
+              ))}
+              <Box>
+                <Button variant="outlined" startIcon={<AddIcon />} onClick={handleAddBackupKey}>
+                  백업 키 추가
+                </Button>
+              </Box>
+
+              <TextField
+                type="number"
+                label="요청/분 (RPM) 제한"
+                value={requestsPerMinute > 0 ? requestsPerMinute : ''}
+                onChange={(e) => handleRequestsPerMinuteChange(e.target.value)}
+                fullWidth
+                placeholder="예: 30 (0 또는 비우면 제한 없음)"
+                inputProps={{ min: 0, step: 1 }}
+                helperText="무료 티어 제한을 피하기 위해 Gemini 호출 속도를 제한합니다. 0 또는 비우면 비활성화."
+              />
+            </Stack>
+          )}
           <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Link 
               href={apiProvider === 'gemini' 
