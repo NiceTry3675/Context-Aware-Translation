@@ -45,6 +45,7 @@ def process_validation_task(
     backup_api_keys: Optional[list[str]] = None,
     requests_per_minute: Optional[int] = None,
     model_name: str = "gemini-flash-lite-latest",
+    thinking_level: Optional[str] = None,
     validation_mode: str = "comprehensive",
     sample_rate: float = 1.0,
     user_id: Optional[int] = None,
@@ -94,7 +95,7 @@ def process_validation_task(
         task_logger.info(f"[VALIDATION TASK] Starting validation task for job_id={job_id}")
         api_key_display = f"{api_key[:8]}..." if api_key else "None"
         task_logger.info(
-            f"[VALIDATION TASK] Parameters: api_key={api_key_display}, model={model_name}, mode={validation_mode}, sample_rate={sample_rate}, provider={provider_name}"
+            f"[VALIDATION TASK] Parameters: api_key={api_key_display}, model={model_name}, thinking_level={thinking_level}, mode={validation_mode}, sample_rate={sample_rate}, provider={provider_name}"
         )
         
         # Check if API key is provided when required
@@ -144,6 +145,7 @@ def process_validation_task(
                 backup_api_keys=backup_api_keys,
                 requests_per_minute=requests_per_minute,
                 model_name=model_name,
+                thinking_level=thinking_level,
                 provider_context=context,
             )
             task_logger.info(f"[VALIDATION TASK] Validation components prepared successfully")
@@ -255,6 +257,7 @@ def process_validation_task(
                         backup_api_keys=backup_api_keys,
                         requests_per_minute=requests_per_minute,
                         model_name=model_name,
+                        thinking_level=thinking_level,
                         default_select_all=True,
                         user_id=user_id,
                         provider_context=provider_context,

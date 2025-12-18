@@ -231,6 +231,13 @@ export function useTranslationService({
     const formData = new FormData();
     formData.append("file", file);
     formData.append("model_name", selectedModel);
+    if (
+      settings.thinkingLevel
+      && (apiProvider === 'gemini' || apiProvider === 'vertex')
+      && (selectedModel.includes('gemini-3-flash') || selectedModel.includes('gemini-3-pro'))
+    ) {
+      formData.append("thinking_level", settings.thinkingLevel);
+    }
     formData.append("api_provider", apiProvider);
     if (apiProvider === 'vertex') {
       formData.append("api_key", '');

@@ -143,6 +143,8 @@ export default function NewTranslationForm({
             settings={translationSettings}
             onChange={onTranslationSettingsChange}
             isTurboLocked={isTurboLocked}
+            apiProvider={apiProvider}
+            selectedModel={selectedModel}
           />
         </CardContent>
 

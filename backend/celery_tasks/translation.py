@@ -47,6 +47,7 @@ def process_translation_task(
     translation_model_name: Optional[str] = None,
     style_model_name: Optional[str] = None,
     glossary_model_name: Optional[str] = None,
+    thinking_level: Optional[str] = None,
     user_id: Optional[int] = None,
     provider_context: Optional[Dict[str, object]] = None,
     resume: bool = False,
@@ -105,7 +106,13 @@ def process_translation_task(
         # Update job status
         repo.set_status(job_id, "PROCESSING")
         db.commit()
-        logger.info(f"Starting translation for Job ID: {job_id}, File: {job.filename}, Model: {model_name}")
+        logger.info(
+            "Starting translation for Job ID: %s, File: %s, Model: %s, thinking_level: %s",
+            job_id,
+            job.filename,
+            model_name,
+            thinking_level,
+        )
         
         if translation_model_name or style_model_name or glossary_model_name:
             logger.info(f"Per-task models: "
@@ -135,6 +142,7 @@ def process_translation_task(
             translation_model_name=translation_model_name,
             style_model_name=style_model_name,
             glossary_model_name=glossary_model_name,
+            thinking_level=thinking_level,
             provider_context=context,
             resume=resume,
             turbo_mode=turbo_mode,
@@ -193,6 +201,7 @@ def process_translation_task(
                     backup_api_keys=backup_api_keys,
                     requests_per_minute=requests_per_minute,
                     model_name=model_name,
+                    thinking_level=thinking_level,
                     validation_mode=validation_mode,
                     sample_rate=sample_rate,
                     user_id=user_id,

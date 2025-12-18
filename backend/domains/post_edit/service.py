@@ -95,6 +95,7 @@ class PostEditDomainService(DomainServiceBase):
         job_id: int,
         api_key: Optional[str],
         model_name: str = "gemini-flash-lite-latest",
+        thinking_level: Optional[str] = None,
         provider_context: Optional[ProviderContext] = None,
         *,
         backup_api_keys: list[str] | None = None,
@@ -146,6 +147,7 @@ class PostEditDomainService(DomainServiceBase):
             usage_callback=usage_collector.record_event,
             backup_api_keys=backup_api_keys,
             requests_per_minute=requests_per_minute,
+            thinking_level=thinking_level,
         )
         post_editor = PostEditEngine(model_api, logger=segment_logger)
         

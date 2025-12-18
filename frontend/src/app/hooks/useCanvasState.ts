@@ -76,6 +76,23 @@ export function useCanvasState() {
   const isTurboModeLocked = apiProvider === 'openrouter' && !isOpenRouterGeminiModel(selectedModel);
 
   useEffect(() => {
+    const allowed: ReadonlyArray<string> | null = (() => {
+      if (selectedModel.includes('gemini-3-flash')) return ['minimal', 'low', 'medium', 'high'];
+      if (selectedModel.includes('gemini-3-pro')) return ['low', 'high'];
+      return null;
+    })();
+
+    if (!allowed) return;
+
+    setTranslationSettings((prev) => {
+      const fallback = 'low' as const;
+      if (!prev.thinkingLevel) return { ...prev, thinkingLevel: fallback };
+      if (allowed.includes(prev.thinkingLevel)) return prev;
+      return { ...prev, thinkingLevel: fallback };
+    });
+  }, [selectedModel]);
+
+  useEffect(() => {
     if (!isTurboModeLocked) {
       return;
     }

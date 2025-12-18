@@ -40,6 +40,7 @@ export interface TranslationSettings {
   chunk_size?: number;
   segmentSize: number;  // UI display name for chunk_size
   context_window?: number;
+  thinkingLevel?: 'minimal' | 'low' | 'medium' | 'high';
   turboMode: boolean;
   enableValidation: boolean;  // UI property names
   validationSampleRate: number;

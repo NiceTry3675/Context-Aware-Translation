@@ -37,6 +37,7 @@ export interface paths {
          *         translation_model_name: Optional override for translation model
          *         style_model_name: Optional override for style model
          *         glossary_model_name: Optional override for glossary model
+         *         thinking_level: Optional thinking level (Gemini 3: minimal/low/medium/high; Pro: low/high)
          *         style_data: Optional style data
          *         glossary_data: Optional glossary data
          *         segment_size: Segment size for translation
@@ -1462,6 +1463,8 @@ export interface components {
             style_model_name?: string | null;
             /** Glossary Model Name */
             glossary_model_name?: string | null;
+            /** Thinking Level */
+            thinking_level?: string | null;
             /** Style Data */
             style_data?: string | null;
             /** Glossary Data */
@@ -1999,6 +2002,8 @@ export interface components {
             style_model_name?: string | null;
             /** Glossary Model Name */
             glossary_model_name?: string | null;
+            /** Thinking Level */
+            thinking_level?: string | null;
             /**
              * Api Provider
              * @default gemini

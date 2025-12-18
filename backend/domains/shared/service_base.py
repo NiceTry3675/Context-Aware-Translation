@@ -69,6 +69,7 @@ class ServiceBase:
         *,
         backup_api_keys: list[str] | None = None,
         requests_per_minute: int | None = None,
+        thinking_level: str | None = None,
     ) -> Union[GeminiModel, OpenRouterModel]:
         """
         Create a model API instance using the factory.
@@ -88,6 +89,7 @@ class ServiceBase:
             usage_callback=usage_callback,
             backup_api_keys=backup_api_keys,
             requests_per_minute=requests_per_minute,
+            thinking_level=thinking_level,
         )
 
     def validate_api_key(
@@ -124,6 +126,7 @@ class ServiceBase:
         *,
         backup_api_keys: list[str] | None = None,
         requests_per_minute: int | None = None,
+        thinking_level: str | None = None,
     ) -> Union[GeminiModel, OpenRouterModel]:
         """
         Validate API key and create model in one step.
@@ -155,6 +158,7 @@ class ServiceBase:
             usage_callback=usage_callback,
             backup_api_keys=backup_api_keys,
             requests_per_minute=requests_per_minute,
+            thinking_level=thinking_level,
         )
 
     def build_provider_context(

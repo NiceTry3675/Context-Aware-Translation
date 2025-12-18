@@ -56,6 +56,7 @@ class ValidationDomainService(DomainServiceBase):
         job_id: int,
         api_key: Optional[str],
         model_name: str = "gemini-flash-lite-latest",
+        thinking_level: Optional[str] = None,
         provider_context: Optional[ProviderContext] = None,
         *,
         backup_api_keys: list[str] | None = None,
@@ -82,7 +83,7 @@ class ValidationDomainService(DomainServiceBase):
         
         logger.info(f"[VALIDATION PREP] Starting validation preparation for job_id={job_id}")
         api_key_display = f"{api_key[:8]}..." if api_key else "None"
-        logger.info(f"[VALIDATION PREP] Model: {model_name}, API key: {api_key_display}")
+        logger.info(f"[VALIDATION PREP] Model: {model_name}, thinking_level: {thinking_level}, API key: {api_key_display}")
         
         repository = self._get_repository(session)
         job = repository.get(job_id)
@@ -116,6 +117,7 @@ class ValidationDomainService(DomainServiceBase):
                 usage_callback=usage_collector.record_event,
                 backup_api_keys=backup_api_keys,
                 requests_per_minute=requests_per_minute,
+                thinking_level=thinking_level,
             )
             logger.info(f"[VALIDATION PREP] Model API created: {type(model_api)}")
 

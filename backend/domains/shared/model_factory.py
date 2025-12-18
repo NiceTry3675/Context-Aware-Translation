@@ -34,6 +34,48 @@ API_ERROR_TYPES: Tuple[type[BaseException], ...] = (genai_errors.APIError,)
 if google_api_exceptions is not None:  # pragma: no branch - simple tuple concat
     API_ERROR_TYPES = API_ERROR_TYPES + (google_api_exceptions.GoogleAPIError,)
 
+GEMINI_3_FLASH_THINKING_LEVELS: Tuple[str, ...] = ("minimal", "low", "medium", "high")
+GEMINI_3_PRO_THINKING_LEVELS: Tuple[str, ...] = ("low", "high")
+
+
+def _normalize_thinking_level(level: str) -> str:
+    return level.strip().lower()
+
+
+def _allowed_thinking_levels(model_name: str) -> Optional[Tuple[str, ...]]:
+    short = _short_model_name(model_name)
+    if "gemini-3-flash" in short:
+        return GEMINI_3_FLASH_THINKING_LEVELS
+    if "gemini-3-pro" in short:
+        return GEMINI_3_PRO_THINKING_LEVELS
+    return None
+
+
+def _apply_thinking_level(
+    generation_config: dict,
+    model_name: str,
+    thinking_level: str | None,
+) -> dict:
+    allowed = _allowed_thinking_levels(model_name)
+    if not allowed:
+        # Only apply thinking levels for Gemini 3 models (Gemini 2.5 uses thinkingBudget semantics).
+        return generation_config
+
+    if not thinking_level or not isinstance(thinking_level, str) or not thinking_level.strip():
+        thinking_level = "low"
+
+    normalized = _normalize_thinking_level(thinking_level)
+    if normalized not in allowed:
+        allowed_str = ", ".join(allowed)
+        raise ValueError(
+            f"thinking_level '{thinking_level}' is not supported for model '{_short_model_name(model_name)}'. "
+            f"Allowed: {allowed_str}"
+        )
+
+    merged = dict(generation_config or {})
+    merged["thinking_config"] = {"thinking_level": normalized}
+    return merged
+
 
 def _error_code(exc: Exception) -> Optional[int]:
     code = getattr(exc, "code", None)
@@ -97,6 +139,7 @@ class ModelAPIFactory:
         *,
         backup_api_keys: list[str] | None = None,
         requests_per_minute: int | None = None,
+        thinking_level: str | None = None,
     ) -> Union[GeminiModel, OpenRouterModel]:
         """
         Factory method to create the correct model API instance.
@@ -118,12 +161,17 @@ class ModelAPIFactory:
         if provider_context and provider_context.name == "vertex":
             client, resolved_model = ModelAPIFactory._create_vertex_client_and_model(provider_context, model_name)
             print(f"--- [API] Using Vertex Gemini model: {resolved_model} ---")
+            generation_config = _apply_thinking_level(
+                config["generation_config"],
+                resolved_model,
+                thinking_level,
+            )
             return GeminiModel(
                 api_key=None,
                 client=client,
                 model_name=resolved_model,
                 safety_settings=config['safety_settings'],
-                generation_config=config['generation_config'],
+                generation_config=generation_config,
                 enable_soft_retry=config.get('enable_soft_retry', True),
                 usage_callback=usage_callback,
             )
@@ -147,11 +195,16 @@ class ModelAPIFactory:
             )
         elif (provider_name == "gemini") or (api_key and (api_key.startswith("AIza") or len(api_key) == 39)):
             print(f"--- [API] Using Gemini model: {model_name} ---")
+            generation_config = _apply_thinking_level(
+                config["generation_config"],
+                model_name,
+                thinking_level,
+            )
             return GeminiModel(
                 api_key=api_key,
                 model_name=model_name,
                 safety_settings=config['safety_settings'],
-                generation_config=config['generation_config'],
+                generation_config=generation_config,
                 enable_soft_retry=config.get('enable_soft_retry', True),
                 usage_callback=usage_callback,
                 backup_api_keys=backup_api_keys,

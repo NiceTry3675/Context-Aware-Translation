@@ -125,6 +125,7 @@ class ResumeRequest(BaseModel):
     translation_model_name: Optional[str] = None
     style_model_name: Optional[str] = None
     glossary_model_name: Optional[str] = None
+    thinking_level: Optional[str] = None
     api_provider: Optional[str] = "gemini"
     provider_config: Optional[str] = None
     turbo_mode: Optional[bool] = False

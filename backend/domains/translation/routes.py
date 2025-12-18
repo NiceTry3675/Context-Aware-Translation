@@ -53,6 +53,7 @@ def create_job(
     translation_model_name: Optional[str] = Form(None),
     style_model_name: Optional[str] = Form(None),
     glossary_model_name: Optional[str] = Form(None),
+    thinking_level: Optional[str] = Form(None),
     style_data: Optional[str] = Form(None),
     glossary_data: Optional[str] = Form(None),
     segment_size: int = Form(15000),
@@ -77,6 +78,7 @@ def create_job(
         translation_model_name: Optional override for translation model
         style_model_name: Optional override for style model
         glossary_model_name: Optional override for glossary model
+        thinking_level: Optional thinking level (Gemini 3: minimal/low/medium/high; Pro: low/high)
         style_data: Optional style data
         glossary_data: Optional glossary data
         segment_size: Segment size for translation
@@ -100,6 +102,7 @@ def create_job(
         translation_model_name=translation_model_name,
         style_model_name=style_model_name,
         glossary_model_name=glossary_model_name,
+        thinking_level=thinking_level,
         style_data=style_data,
         glossary_data=glossary_data,
         segment_size=segment_size,
@@ -262,6 +265,7 @@ async def resume_job(
         translation_model_name=request.translation_model_name,
         style_model_name=request.style_model_name,
         glossary_model_name=request.glossary_model_name,
+        thinking_level=request.thinking_level,
         user_id=user.id,
         provider_context=provider_payload,
         # Signal resume via kwargs; consumed by service/translation pipeline

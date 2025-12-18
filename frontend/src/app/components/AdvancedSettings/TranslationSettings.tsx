@@ -1,20 +1,33 @@
 import {
-  Box, Typography, Chip, Slider, FormControlLabel, Switch, Select, MenuItem, FormControl, InputLabel
+  Box, Typography, Chip, Slider, FormControlLabel, Switch, Select, MenuItem, FormControl, InputLabel, FormHelperText
 } from '@mui/material';
 import { TranslationSettings as Settings } from '../../types/ui';
+import type { ApiProvider } from '../../hooks/useApiKey';
 
 interface TranslationSettingsProps {
   settings: Settings;
   onChange: (settings: Settings) => void;
   isTurboLocked?: boolean;
+  apiProvider: ApiProvider;
+  selectedModel: string;
 }
 
-export default function TranslationSettings({ settings, onChange, isTurboLocked = false }: TranslationSettingsProps) {
+export default function TranslationSettings({ settings, onChange, isTurboLocked = false, apiProvider, selectedModel }: TranslationSettingsProps) {
   const updateSetting = <K extends keyof Settings>(key: K, value: Settings[K]) => {
     onChange({ ...settings, [key]: value });
   };
 
   const turboModeLabel = isTurboLocked ? '터보 모드 활성화 (필수)' : '터보 모드 활성화';
+
+  const isGemini3Flash = (model: string) => model.includes('gemini-3-flash');
+  const isGemini3Pro = (model: string) => model.includes('gemini-3-pro');
+
+  const thinkingOptions = (() => {
+    if (apiProvider === 'openrouter') return null;
+    if (isGemini3Flash(selectedModel)) return ['minimal', 'low', 'medium', 'high'] as const;
+    if (isGemini3Pro(selectedModel)) return ['low', 'high'] as const;
+    return null;
+  })();
 
   return (
     <>
@@ -71,6 +84,35 @@ export default function TranslationSettings({ settings, onChange, isTurboLocked 
           label={turboModeLabel}
         />
       </Box>
+
+      {thinkingOptions && (
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="h6" gutterBottom>Thinking 수준 (Gemini 3)</Typography>
+          <Typography variant="body2" color="text.secondary" mb={1}>
+            Gemini 3에서는 thinkingLevel로 추론 깊이를 제어합니다. 기본값은 Low입니다.
+          </Typography>
+          <FormControl fullWidth size="small">
+            <InputLabel>Thinking Level</InputLabel>
+            <Select
+              value={(settings.thinkingLevel || 'low')}
+              onChange={(e) => updateSetting('thinkingLevel', e.target.value as Settings['thinkingLevel'])}
+              label="Thinking Level"
+            >
+              {thinkingOptions.map((opt) => (
+                <MenuItem key={opt} value={opt}>
+                  {opt === 'minimal' && 'Minimal (최소)'}
+                  {opt === 'low' && 'Low (기본, 빠름/저렴)'}
+                  {opt === 'medium' && 'Medium (균형)'}
+                  {opt === 'high' && 'High (최대)'}
+                </MenuItem>
+              ))}
+            </Select>
+            <FormHelperText>
+              Flash: minimal/low/medium/high · Pro: low/high
+            </FormHelperText>
+          </FormControl>
+        </Box>
+      )}
       
       {/* Validation Settings */}
       <Box sx={{ mt: 3 }}>

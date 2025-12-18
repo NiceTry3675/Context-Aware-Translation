@@ -410,6 +410,7 @@ class TranslationDomainService(DomainServiceBase):
         translation_model_name: Optional[str] = None,
         style_model_name: Optional[str] = None,
         glossary_model_name: Optional[str] = None,
+        thinking_level: Optional[str] = None,
         provider_context: Optional[ProviderContext] = None,
         resume: bool = False,
         turbo_mode: bool = False,
@@ -434,6 +435,7 @@ class TranslationDomainService(DomainServiceBase):
             usage_callback=usage_collector.record_event,
             backup_api_keys=normalized_backup_keys,
             requests_per_minute=requests_per_minute,
+            thinking_level=thinking_level,
         )
         style_model_api = (
             self.validate_and_create_model(
@@ -443,6 +445,7 @@ class TranslationDomainService(DomainServiceBase):
                 usage_callback=usage_collector.record_event,
                 backup_api_keys=normalized_backup_keys,
                 requests_per_minute=requests_per_minute,
+                thinking_level=thinking_level,
             )
             if style_model_name else model_api
         )
@@ -454,6 +457,7 @@ class TranslationDomainService(DomainServiceBase):
                 usage_callback=usage_collector.record_event,
                 backup_api_keys=normalized_backup_keys,
                 requests_per_minute=requests_per_minute,
+                thinking_level=thinking_level,
             )
             if glossary_model_name else model_api
         )
@@ -501,6 +505,7 @@ class TranslationDomainService(DomainServiceBase):
                 usage_callback=usage_collector.record_event,
                 backup_api_keys=normalized_backup_keys,
                 requests_per_minute=requests_per_minute,
+                thinking_level=thinking_level,
             )
             
             # Create StyleAnalysis instance with model API
@@ -543,6 +548,7 @@ class TranslationDomainService(DomainServiceBase):
                 usage_callback=usage_collector.record_event,
                 backup_api_keys=normalized_backup_keys,
                 requests_per_minute=requests_per_minute,
+                thinking_level=thinking_level,
             )
             
             # Create GlossaryAnalysis instance with model API
@@ -654,6 +660,7 @@ class TranslationDomainService(DomainServiceBase):
         translation_model_name: Optional[str] = None,
         style_model_name: Optional[str] = None,
         glossary_model_name: Optional[str] = None,
+        thinking_level: Optional[str] = None,
         style_data: Optional[str] = None,
         glossary_data: Optional[str] = None,
         segment_size: int = 15000,
@@ -706,16 +713,48 @@ class TranslationDomainService(DomainServiceBase):
             "default_model", fallback_model
         )
 
+        normalized_thinking_level: Optional[str] = None
+        if isinstance(thinking_level, str) and thinking_level.strip():
+            candidate_models = [
+                model_name,
+                translation_model_name or model_name,
+                style_model_name or model_name,
+                glossary_model_name or model_name,
+            ]
+            if any("gemini-3-" in (m or "") for m in candidate_models):
+                normalized_thinking_level = thinking_level.strip().lower()
+                if normalized_thinking_level not in {"minimal", "low", "medium", "high"}:
+                    raise HTTPException(
+                        status_code=422,
+                        detail=(
+                            f"Invalid thinking_level '{thinking_level}'. "
+                            "Allowed: minimal, low, medium, high"
+                        ),
+                    )
+                if any("gemini-3-pro" in (m or "") for m in candidate_models) and normalized_thinking_level in {"minimal", "medium"}:
+                    raise HTTPException(
+                        status_code=422,
+                        detail=(
+                            "Gemini 3 Pro only supports thinking_level: low, high "
+                            f"(got '{thinking_level}')."
+                        ),
+                    )
+
         normalized_backup_keys = self._parse_backup_api_keys(backup_api_keys)
 
-        # Validate credentials using inherited helper (raises if invalid)
-        self.validate_and_create_model(
-            api_key,
-            model_name,
-            provider_context=provider_context,
-            backup_api_keys=normalized_backup_keys,
-            requests_per_minute=requests_per_minute,
-        )
+        # Validate credentials using inherited helper (raises if invalid).
+        # Also validates Gemini 3 thinking_level compatibility when provided.
+        try:
+            self.validate_and_create_model(
+                api_key,
+                model_name,
+                provider_context=provider_context,
+                backup_api_keys=normalized_backup_keys,
+                requests_per_minute=requests_per_minute,
+                thinking_level=normalized_thinking_level,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
         
         # Create job
         job_with_id = self.create_translation_job(
@@ -769,6 +808,7 @@ class TranslationDomainService(DomainServiceBase):
             translation_model_name=translation_model_name,
             style_model_name=style_model_name,
             glossary_model_name=glossary_model_name,
+            thinking_level=normalized_thinking_level,
             user_id=user_id,
             provider_context=provider_payload,
             turbo_mode=turbo_mode,

@@ -41,6 +41,7 @@ def process_post_edit_task(
     backup_api_keys: Optional[list[str]] = None,
     requests_per_minute: Optional[int] = None,
     model_name: str = "gemini-flash-lite-latest",
+    thinking_level: Optional[str] = None,
     selected_cases: Optional[dict] = None,
     modified_cases: Optional[dict] = None,
     default_select_all: bool = True,
@@ -77,7 +78,7 @@ def process_post_edit_task(
         provider_name = context.name if context else "gemini"
 
         logger.info(
-            f"Starting post-edit for Job ID: {job_id}, Model: {model_name}, Provider: {provider_name}"
+            f"Starting post-edit for Job ID: {job_id}, Model: {model_name}, thinking_level: {thinking_level}, Provider: {provider_name}"
         )
 
         if provider_name != "vertex" and not (api_key or backup_api_keys):
@@ -100,6 +101,7 @@ def process_post_edit_task(
             backup_api_keys=backup_api_keys,
             requests_per_minute=requests_per_minute,
             model_name=model_name,
+            thinking_level=thinking_level,
             provider_context=context,
         )
         
