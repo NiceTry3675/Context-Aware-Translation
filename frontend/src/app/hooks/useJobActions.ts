@@ -23,6 +23,7 @@ export function useJobActions({ apiUrl, apiProvider, apiKey, backupApiKeys, requ
   const [error, setError] = useState<string | null>(null);
 
   const ensureCredentials = (actionLabel: string) => {
+    const usableBackupKeys = (backupApiKeys || []).map((k) => (k || '').trim()).filter((k) => k);
     if (apiProvider === 'vertex') {
       if (!providerConfig || !providerConfig.trim()) {
         const message = `Vertex ${actionLabel}을(를) 실행하려면 서비스 계정 JSON이 필요합니다.`;
@@ -31,13 +32,13 @@ export function useJobActions({ apiUrl, apiProvider, apiKey, backupApiKeys, requ
         return false;
       }
     } else if (apiProvider === 'gemini') {
-      if (!apiKey && !(backupApiKeys && backupApiKeys.length > 0)) {
+      if (!(apiKey || '').trim() && usableBackupKeys.length === 0) {
         const message = `${actionLabel}을(를) 실행하려면 Gemini API 키가 필요합니다.`;
         setError(message);
         onError?.(message);
         return false;
       }
-    } else if (!apiKey) {
+    } else if (!(apiKey || '').trim()) {
       const message = `${actionLabel}을(를) 실행하려면 API 키가 필요합니다.`;
       setError(message);
       onError?.(message);
@@ -47,16 +48,17 @@ export function useJobActions({ apiUrl, apiProvider, apiKey, backupApiKeys, requ
   };
 
   const buildCredentialPayload = () => {
+    const usableBackupKeys = (backupApiKeys || []).map((k) => (k || '').trim()).filter((k) => k);
     const payload: Record<string, unknown> = {
       api_provider: apiProvider,
-      api_key: apiProvider === 'vertex' ? '' : apiKey,
+      api_key: apiProvider === 'vertex' ? '' : (apiKey || '').trim(),
     };
     if (apiProvider === 'vertex' && providerConfig) {
       payload.provider_config = providerConfig;
     }
     if (apiProvider === 'gemini') {
-      if (backupApiKeys && backupApiKeys.length > 0) {
-        payload.backup_api_keys = backupApiKeys;
+      if (usableBackupKeys.length > 0) {
+        payload.backup_api_keys = usableBackupKeys;
       }
       if (requestsPerMinute && requestsPerMinute > 0) {
         payload.requests_per_minute = requestsPerMinute;

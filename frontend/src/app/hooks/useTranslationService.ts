@@ -63,10 +63,13 @@ export function useTranslationService({
       throw new Error("번역을 시작하려면 먼저 로그인해주세요.");
     }
     
-    if (apiProvider === 'gemini' && !apiKey && !(backupApiKeys && backupApiKeys.length > 0)) {
+    const usableBackupKeys = (backupApiKeys || []).map((k) => (k || '').trim()).filter((k) => k);
+    const hasAnyGeminiKey = apiKey.trim() !== '' || usableBackupKeys.length > 0;
+
+    if (apiProvider === 'gemini' && !hasAnyGeminiKey) {
       throw new Error("Gemini API 키를 먼저 입력해주세요.");
     }
-    if (apiProvider === 'openrouter' && !apiKey) {
+    if (apiProvider === 'openrouter' && !apiKey.trim()) {
       throw new Error("OpenRouter API 키를 먼저 입력해주세요.");
     }
     if (apiProvider === 'vertex' && !providerConfig.trim()) {
@@ -92,10 +95,10 @@ export function useTranslationService({
         styleFormData.append('api_key', '');
         styleFormData.append('provider_config', providerConfig);
       } else {
-        styleFormData.append('api_key', apiKey);
+        styleFormData.append('api_key', apiKey.trim());
         if (apiProvider === 'gemini') {
-          if (backupApiKeys && backupApiKeys.length > 0) {
-            styleFormData.append('backup_api_keys', JSON.stringify(backupApiKeys));
+          if (usableBackupKeys.length > 0) {
+            styleFormData.append('backup_api_keys', JSON.stringify(usableBackupKeys));
           }
           if (requestsPerMinute && requestsPerMinute > 0) {
             styleFormData.append('requests_per_minute', requestsPerMinute.toString());
@@ -136,10 +139,10 @@ export function useTranslationService({
           glossaryFormData.append('api_key', '');
           glossaryFormData.append('provider_config', providerConfig);
         } else {
-          glossaryFormData.append('api_key', apiKey);
+          glossaryFormData.append('api_key', apiKey.trim());
           if (apiProvider === 'gemini') {
-            if (backupApiKeys && backupApiKeys.length > 0) {
-              glossaryFormData.append('backup_api_keys', JSON.stringify(backupApiKeys));
+            if (usableBackupKeys.length > 0) {
+              glossaryFormData.append('backup_api_keys', JSON.stringify(usableBackupKeys));
             }
             if (requestsPerMinute && requestsPerMinute > 0) {
               glossaryFormData.append('requests_per_minute', requestsPerMinute.toString());
@@ -209,10 +212,13 @@ export function useTranslationService({
       openSignIn({ redirectUrl: '/' });
       throw new Error("번역을 시작하려면 먼저 로그인해주세요.");
     }
-    if (apiProvider === 'gemini' && !apiKey && !(backupApiKeys && backupApiKeys.length > 0)) {
+    const usableBackupKeys = (backupApiKeys || []).map((k) => (k || '').trim()).filter((k) => k);
+    const hasAnyGeminiKey = apiKey.trim() !== '' || usableBackupKeys.length > 0;
+
+    if (apiProvider === 'gemini' && !hasAnyGeminiKey) {
       throw new Error("Gemini API 키를 먼저 입력해주세요.");
     }
-    if (apiProvider === 'openrouter' && !apiKey) {
+    if (apiProvider === 'openrouter' && !apiKey.trim()) {
       throw new Error("OpenRouter API 키를 먼저 입력해주세요.");
     }
     if (apiProvider === 'vertex' && !providerConfig.trim()) {
@@ -230,10 +236,10 @@ export function useTranslationService({
       formData.append("api_key", '');
       formData.append("provider_config", providerConfig);
     } else {
-      formData.append("api_key", apiKey);
+      formData.append("api_key", apiKey.trim());
       if (apiProvider === 'gemini') {
-        if (backupApiKeys && backupApiKeys.length > 0) {
-          formData.append("backup_api_keys", JSON.stringify(backupApiKeys));
+        if (usableBackupKeys.length > 0) {
+          formData.append("backup_api_keys", JSON.stringify(usableBackupKeys));
         }
         if (requestsPerMinute && requestsPerMinute > 0) {
           formData.append("requests_per_minute", requestsPerMinute.toString());

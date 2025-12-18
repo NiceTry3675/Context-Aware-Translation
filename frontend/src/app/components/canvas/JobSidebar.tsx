@@ -420,14 +420,15 @@ export default function JobSidebar({
                                   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
                                   try {
                                     const token = await getCachedClerkToken(getToken);
+                                    const usableBackupKeys = (backupApiKeys || []).map((k) => (k || '').trim()).filter((k) => k);
                                     const body: any = {
                                       api_provider: apiProvider,
-                                      api_key: apiProvider === 'vertex' ? '' : (apiKey || ''),
+                                      api_key: apiProvider === 'vertex' ? '' : (apiKey || '').trim(),
                                       model_name: defaultModelName || 'gemini-flash-lite-latest',
                                     };
                                     if (apiProvider === 'gemini') {
-                                      if (backupApiKeys && backupApiKeys.length > 0) {
-                                        body.backup_api_keys = backupApiKeys;
+                                      if (usableBackupKeys.length > 0) {
+                                        body.backup_api_keys = usableBackupKeys;
                                       }
                                       if (requestsPerMinute && requestsPerMinute > 0) {
                                         body.requests_per_minute = requestsPerMinute;

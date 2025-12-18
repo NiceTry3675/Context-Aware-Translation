@@ -182,11 +182,12 @@ export function useApiKey() {
   };
 
   const handleBackupApiKeysChange = (keys: string[]) => {
-    const normalized = (keys || []).map((k) => `${k ?? ''}`.trim()).filter((k) => k);
+    const normalized = (keys || []).map((k) => `${k ?? ''}`);
     setBackupApiKeysState(normalized);
     if (!isInitialized) return;
     if (apiProvider === 'gemini') {
-      localStorage.setItem(STORAGE_KEYS.credentials.geminiBackup, JSON.stringify(normalized));
+      const toStore = normalized.map((k) => k.trim()).filter((k) => k);
+      localStorage.setItem(STORAGE_KEYS.credentials.geminiBackup, JSON.stringify(toStore));
     }
   };
 
