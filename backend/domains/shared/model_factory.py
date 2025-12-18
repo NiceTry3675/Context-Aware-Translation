@@ -22,6 +22,8 @@ except ImportError:  # pragma: no cover - optional dependency in minimal envs.
 KNOWN_VERTEX_MODELS: Tuple[str, ...] = (
     "gemini-flash-latest",
     "gemini-flash-lite-latest",
+    "gemini-3-flash-preview",
+    "gemini-3-pro-preview",
     "gemini-2.5-pro",
     "gemini-2.0-flash",
     "gemini-1.5-flash",
