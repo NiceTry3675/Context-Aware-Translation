@@ -19,6 +19,8 @@ class PostEditRequest(BaseModel):
     default_select_all: bool = True
     model_name: Optional[str] = None
     api_key: Optional[str] = None
+    backup_api_keys: Optional[List[str]] = None
+    requests_per_minute: Optional[int] = None
     api_provider: Optional[str] = None
     provider_config: Optional[Any] = None
 

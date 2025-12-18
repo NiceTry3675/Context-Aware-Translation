@@ -94,6 +94,7 @@ async def validate_job(
         request.api_key,
         model_name,
         provider_context=provider_context,
+        backup_api_keys=request.backup_api_keys,
     ):
         service.raise_invalid_api_key()
 
@@ -120,6 +121,8 @@ async def validate_job(
         kwargs={
             "job_id": job_id,
             "api_key": request.api_key,
+            "backup_api_keys": request.backup_api_keys,
+            "requests_per_minute": request.requests_per_minute,
             "model_name": model_name,
             "validation_mode": validation_mode,
             "sample_rate": request.validation_sample_rate,
@@ -133,6 +136,8 @@ async def validate_job(
         kwargs={
             "job_id": job_id,
             "api_key": request.api_key,
+            "backup_api_keys": request.backup_api_keys,
+            "requests_per_minute": request.requests_per_minute,
             "model_name": model_name,
             "validation_mode": validation_mode,
             "sample_rate": request.validation_sample_rate,

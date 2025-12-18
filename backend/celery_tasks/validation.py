@@ -42,6 +42,8 @@ def process_validation_task(
     self,
     job_id: int,
     api_key: str,
+    backup_api_keys: Optional[list[str]] = None,
+    requests_per_minute: Optional[int] = None,
     model_name: str = "gemini-flash-lite-latest",
     validation_mode: str = "comprehensive",
     sample_rate: float = 1.0,
@@ -96,7 +98,7 @@ def process_validation_task(
         )
         
         # Check if API key is provided when required
-        if not api_key and provider_name != "vertex":
+        if provider_name != "vertex" and not (api_key or backup_api_keys):
             task_logger.error(
                 "[VALIDATION TASK] No API key provided for non-Vertex provider"
             )
@@ -139,6 +141,8 @@ def process_validation_task(
                 session=db,
                 job_id=job_id,
                 api_key=api_key,
+                backup_api_keys=backup_api_keys,
+                requests_per_minute=requests_per_minute,
                 model_name=model_name,
                 provider_context=context,
             )
@@ -248,6 +252,8 @@ def process_validation_task(
                     process_post_edit_task.delay(
                         job_id=job_id,
                         api_key=api_key,
+                        backup_api_keys=backup_api_keys,
+                        requests_per_minute=requests_per_minute,
                         model_name=model_name,
                         default_select_all=True,
                         user_id=user_id,
@@ -311,6 +317,8 @@ def process_validation_task(
 def run_validation_in_background(
     job_id: int,
     api_key: str,
+    backup_api_keys: Optional[list[str]] = None,
+    requests_per_minute: Optional[int] = None,
     model_name: str = "gemini-flash-lite-latest",
     validation_mode: str = "comprehensive",
     sample_rate: float = 1.0
@@ -322,6 +330,8 @@ def run_validation_in_background(
     task = process_validation_task.delay(
         job_id=job_id,
         api_key=api_key,
+        backup_api_keys=backup_api_keys,
+        requests_per_minute=requests_per_minute,
         model_name=model_name,
         validation_mode=validation_mode,
         sample_rate=sample_rate

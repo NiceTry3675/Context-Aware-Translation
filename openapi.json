@@ -12,7 +12,7 @@
           "jobs"
         ],
         "summary": "List Jobs",
-        "description": "List all translation jobs for the current user.\n\nArgs:\n    skip: Number of jobs to skip for pagination\n    limit: Maximum number of jobs to return\n    user: Current authenticated user\n    service: Translation domain service\n    \nReturns:\n    List of translation jobs",
+        "description": "List all translation jobs for the current user.\n\nArgs:\n    skip: Number of jobs to skip for pagination\n    limit: Maximum number of jobs to return\n    user: Current authenticated user\n    service: Translation domain service\n\nReturns:\n    List of translation jobs (lightweight, without large JSON fields)",
         "operationId": "list_jobs_api_v1_jobs_get",
         "parameters": [
           {
@@ -3175,6 +3175,28 @@
             "type": "string",
             "title": "Api Key"
           },
+          "backup_api_keys": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backup Api Keys"
+          },
+          "requests_per_minute": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requests Per Minute"
+          },
           "model_name": {
             "type": "string",
             "title": "Model Name",
@@ -3214,6 +3236,28 @@
           "api_key": {
             "type": "string",
             "title": "Api Key"
+          },
+          "backup_api_keys": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backup Api Keys"
+          },
+          "requests_per_minute": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requests Per Minute"
           },
           "model_name": {
             "type": "string",
@@ -3255,6 +3299,28 @@
             "type": "string",
             "title": "Api Key"
           },
+          "backup_api_keys": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backup Api Keys"
+          },
+          "requests_per_minute": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requests Per Minute"
+          },
           "model_name": {
             "type": "string",
             "title": "Model Name",
@@ -3294,6 +3360,28 @@
           "api_key": {
             "type": "string",
             "title": "Api Key"
+          },
+          "backup_api_keys": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backup Api Keys"
+          },
+          "requests_per_minute": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requests Per Minute"
           },
           "model_name": {
             "type": "string",
@@ -4269,6 +4357,31 @@
             ],
             "title": "Api Key"
           },
+          "backup_api_keys": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backup Api Keys"
+          },
+          "requests_per_minute": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requests Per Minute"
+          },
           "api_provider": {
             "anyOf": [
               {
@@ -4509,6 +4622,31 @@
               }
             ],
             "title": "Api Key"
+          },
+          "backup_api_keys": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backup Api Keys"
+          },
+          "requests_per_minute": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requests Per Minute"
           },
           "model_name": {
             "anyOf": [
@@ -5570,6 +5708,31 @@
               }
             ],
             "title": "Api Key"
+          },
+          "backup_api_keys": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backup Api Keys"
+          },
+          "requests_per_minute": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requests Per Minute"
           },
           "api_provider": {
             "anyOf": [

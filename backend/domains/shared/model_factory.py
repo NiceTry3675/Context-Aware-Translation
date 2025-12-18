@@ -92,6 +92,9 @@ class ModelAPIFactory:
         config: dict | None = None,
         provider_context: ProviderContext | None = None,
         usage_callback: Callable[[UsageEvent], None] | None = None,
+        *,
+        backup_api_keys: list[str] | None = None,
+        requests_per_minute: int | None = None,
     ) -> Union[GeminiModel, OpenRouterModel]:
         """
         Factory method to create the correct model API instance.
@@ -123,10 +126,14 @@ class ModelAPIFactory:
                 usage_callback=usage_callback,
             )
 
-        if not api_key:
+        provider_name = provider_context.name if provider_context else None
+        has_any_key = bool(api_key) or bool(backup_api_keys)
+        if provider_name != "vertex" and not has_any_key:
             raise ValueError("API key is required for the selected provider.")
 
-        if api_key.startswith("sk-or-") or (provider_context and provider_context.name == "openrouter"):
+        if (provider_name == "openrouter") or (api_key and api_key.startswith("sk-or-")):
+            if not api_key:
+                raise ValueError("OpenRouter API key is required for the selected provider.")
             print(f"--- [API] Using OpenRouter model: {model_name} ---")
             return OpenRouterModel(
                 api_key=api_key,
@@ -136,7 +143,7 @@ class ModelAPIFactory:
                 usage_callback=usage_callback,
                 native_gemini_api_key=config.get('gemini_api_key'),
             )
-        elif api_key.startswith("AIza") or len(api_key) == 39 or (provider_context and provider_context.name == "gemini"):
+        elif (provider_name == "gemini") or (api_key and (api_key.startswith("AIza") or len(api_key) == 39)):
             print(f"--- [API] Using Gemini model: {model_name} ---")
             return GeminiModel(
                 api_key=api_key,
@@ -145,15 +152,20 @@ class ModelAPIFactory:
                 generation_config=config['generation_config'],
                 enable_soft_retry=config.get('enable_soft_retry', True),
                 usage_callback=usage_callback,
+                backup_api_keys=backup_api_keys,
+                requests_per_minute=requests_per_minute,
             )
         else:
-            raise ValueError(f"Unsupported API key format: {api_key[:10]}...")
+            prefix = (api_key or "")[:10]
+            raise ValueError(f"Unsupported API key format: {prefix}...")
     
     @staticmethod
     def validate_api_key(
         api_key: str | None,
         model_name: str,
         provider_context: ProviderContext | None = None,
+        *,
+        backup_api_keys: list[str] | None = None,
     ) -> bool:
         """
         Validates the API key based on its format and model compatibility.
@@ -169,13 +181,25 @@ class ModelAPIFactory:
             if provider_context and provider_context.name == "vertex":
                 return ModelAPIFactory._validate_vertex_credentials(provider_context, model_name)
 
-            if not api_key:
+            provider_name = provider_context.name if provider_context else None
+            keys_to_try = []
+            if api_key:
+                keys_to_try.append(api_key)
+            if backup_api_keys:
+                keys_to_try.extend([k for k in backup_api_keys if k])
+
+            if provider_name != "vertex" and not keys_to_try:
                 return False
 
-            if api_key.startswith("sk-or-") or (provider_context and provider_context.name == "openrouter"):
+            if provider_name == "openrouter" or (api_key and api_key.startswith("sk-or-")):
+                if not api_key:
+                    return False
                 return OpenRouterModel.validate_api_key(api_key, model_name)
-            elif api_key.startswith("AIza") or len(api_key) == 39 or (provider_context and provider_context.name == "gemini"):
-                return GeminiModel.validate_api_key(api_key, model_name)
+            elif provider_name == "gemini" or (api_key and (api_key.startswith("AIza") or len(api_key) == 39)):
+                for key in keys_to_try:
+                    if GeminiModel.validate_api_key(key, model_name):
+                        return True
+                return False
             else:
                 return False
         except API_ERROR_TYPES as exc:  # Normalise google-genai APIError surface

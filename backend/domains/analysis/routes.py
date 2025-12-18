@@ -11,6 +11,8 @@ from .schemas import StyleAnalysisResponse, GlossaryAnalysisResponse, CharacterA
 async def analyze_style(
     file: UploadFile,
     api_key: str = Form(...),
+    backup_api_keys: Optional[str] = Form(None),
+    requests_per_minute: Optional[int] = Form(None),
     model_name: str = Form("gemini-flash-lite-latest"),
     api_provider: str = Form("gemini"),
     provider_config: Optional[str] = Form(None),
@@ -30,7 +32,9 @@ async def analyze_style(
     return await service.analyze_style(
         file,
         api_key,
-        model_name,
+        backup_api_keys=backup_api_keys,
+        requests_per_minute=requests_per_minute,
+        model_name=model_name,
         api_provider=api_provider,
         provider_config=provider_config,
     )
@@ -39,6 +43,8 @@ async def analyze_style(
 async def analyze_glossary(
     file: UploadFile,
     api_key: str = Form(...),
+    backup_api_keys: Optional[str] = Form(None),
+    requests_per_minute: Optional[int] = Form(None),
     model_name: str = Form("gemini-flash-lite-latest"),
     api_provider: str = Form("gemini"),
     provider_config: Optional[str] = Form(None),
@@ -58,7 +64,9 @@ async def analyze_glossary(
     return await service.analyze_glossary(
         file,
         api_key,
-        model_name,
+        backup_api_keys=backup_api_keys,
+        requests_per_minute=requests_per_minute,
+        model_name=model_name,
         api_provider=api_provider,
         provider_config=provider_config,
     )
@@ -67,6 +75,8 @@ async def analyze_glossary(
 async def analyze_characters(
     file: UploadFile,
     api_key: str = Form(...),
+    backup_api_keys: Optional[str] = Form(None),
+    requests_per_minute: Optional[int] = Form(None),
     model_name: str = Form("gemini-flash-lite-latest"),
     api_provider: str = Form("gemini"),
     provider_config: Optional[str] = Form(None),
@@ -86,7 +96,9 @@ async def analyze_characters(
     return await service.analyze_characters(
         file,
         api_key,
-        model_name,
+        backup_api_keys=backup_api_keys,
+        requests_per_minute=requests_per_minute,
+        model_name=model_name,
         api_provider=api_provider,
         provider_config=provider_config,
     )
