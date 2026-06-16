@@ -215,7 +215,14 @@ jobs:
           }
 
           configure_maintenance_scheduler() {
-            gcloud services enable cloudscheduler.googleapis.com --project "${GCP_PROJECT_ID}" --quiet
+            if ! gcloud services list \
+              --enabled \
+              --project "${GCP_PROJECT_ID}" \
+              --filter "config.name=cloudscheduler.googleapis.com" \
+              --format "value(config.name)" | grep -q '^cloudscheduler.googleapis.com$'; then
+              echo "Cloud Scheduler API is not enabled or cannot be checked by this service account; skipping scheduler configuration."
+              return 0
+            fi
 
             local run_uri
             run_uri="https://run.googleapis.com/v2/projects/${GCP_PROJECT_ID}/locations/${GCP_REGION}/jobs/${BACKGROUND_JOB}:run"

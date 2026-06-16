@@ -34,6 +34,10 @@ gcloud services enable \
   storage.googleapis.com
 ```
 
+The GitHub deploy service account does not enable APIs. Enable
+`cloudscheduler.googleapis.com` once with a project owner/editor account before
+expecting the workflow to create the maintenance scheduler job.
+
 Create or verify these resources:
 
 - Artifact Registry Docker repository for the backend image.
