@@ -26,6 +26,7 @@ _install_fastapi_stub()
 def _install_google_stub():
     google_module = types.ModuleType("google")
     genai_module = types.ModuleType("google.genai")
+    genai_errors_module = types.ModuleType("google.genai.errors")
 
     class DummyClient:
         def __init__(self, *args, **kwargs):
@@ -33,6 +34,8 @@ def _install_google_stub():
 
     genai_module.Client = DummyClient
     genai_module.types = types.SimpleNamespace()
+    genai_errors_module.APIError = Exception
+    genai_module.errors = genai_errors_module
 
     oauth2_module = types.ModuleType("google.oauth2")
     service_account_module = types.ModuleType("google.oauth2.service_account")
@@ -46,6 +49,7 @@ def _install_google_stub():
 
     sys.modules.setdefault("google", google_module)
     sys.modules.setdefault("google.genai", genai_module)
+    sys.modules.setdefault("google.genai.errors", genai_errors_module)
     sys.modules.setdefault("google.oauth2", oauth2_module)
     sys.modules.setdefault("google.oauth2.service_account", service_account_module)
 
