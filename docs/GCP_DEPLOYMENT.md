@@ -37,6 +37,8 @@ gcloud services enable \
 The GitHub deploy service account does not enable APIs. Enable
 `cloudscheduler.googleapis.com` once with a project owner/editor account before
 expecting the workflow to create the maintenance scheduler job.
+The deploy service account needs `roles/cloudscheduler.admin` to create or
+update that scheduler job.
 
 Create or verify these resources:
 

@@ -174,6 +174,7 @@ GitHub Actions deploy service account:
 Deploy service account project roles:
 
 - `roles/artifactregistry.writer`
+- `roles/cloudscheduler.admin`
 - `roles/run.admin`
 - `roles/secretmanager.secretAccessor`
 
