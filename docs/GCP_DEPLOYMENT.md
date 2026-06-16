@@ -58,11 +58,12 @@ printf '%s' "$CLERK_SECRET_KEY" | gcloud secrets create CLERK_SECRET_KEY --data-
 printf '%s' "$CLERK_WEBHOOK_SECRET" | gcloud secrets create CLERK_WEBHOOK_SECRET --data-file=-
 printf '%s' "$ADMIN_SECRET_KEY" | gcloud secrets create ADMIN_SECRET_KEY --data-file=-
 printf '%s' "$SECRET_KEY" | gcloud secrets create SECRET_KEY --data-file=-
-printf '%s' "$GEMINI_API_KEY" | gcloud secrets create GEMINI_API_KEY --data-file=-
 ```
 
 `OPENROUTER_API_KEY` is optional. If a secret with that name exists, the deploy
-workflow injects it automatically.
+workflow injects it automatically. `GEMINI_API_KEY` is intentionally not stored
+as a GCP Secret for this deployment; Gemini credentials are provided per request
+or through another configured provider path.
 
 For Cloud SQL over the Cloud Run socket, use this `DATABASE_URL` shape:
 
