@@ -71,7 +71,7 @@
           "jobs"
         ],
         "summary": "Create Job",
-        "description": "Create a new translation job.\n\nArgs:\n    file: File to translate\n    api_key: API key for translation service\n    model_name: Default model name\n    translation_model_name: Optional override for translation model\n    style_model_name: Optional override for style model\n    glossary_model_name: Optional override for glossary model\n    thinking_level: Optional thinking level (Gemini 3: minimal/low/medium/high; Pro: low/high)\n    style_data: Optional style data\n    glossary_data: Optional glossary data\n    segment_size: Segment size for translation\n    enable_validation: Whether to run validation automatically after translation\n    quick_validation: Whether to use quick validation mode\n    validation_sample_rate: Portion of segments to validate (0.0-1.0)\n    enable_post_edit: Whether to run post-edit automatically after validation\n    user: Current authenticated user\n    service: Translation domain service\n    \nReturns:\n    Created translation job",
+        "description": "Create a new translation job.\n\nArgs:\n    file: File to translate\n    api_key: API key for translation service\n    model_name: Default model name\n    translation_model_name: Optional override for translation model\n    style_model_name: Optional override for style model\n    glossary_model_name: Optional override for glossary model\n    thinking_level: Optional thinking level (Flash: minimal/low/medium/high; Pro: low/medium/high)\n    style_data: Optional style data\n    glossary_data: Optional glossary data\n    segment_size: Segment size for translation\n    enable_validation: Whether to run validation automatically after translation\n    quick_validation: Whether to use quick validation mode\n    validation_sample_rate: Portion of segments to validate (0.0-1.0)\n    enable_post_edit: Whether to run post-edit automatically after validation\n    user: Current authenticated user\n    service: Translation domain service\n    \nReturns:\n    Created translation job",
         "operationId": "create_job_api_v1_jobs_post",
         "requestBody": {
           "required": true,
@@ -3198,9 +3198,15 @@
             "title": "Requests Per Minute"
           },
           "model_name": {
-            "type": "string",
-            "title": "Model Name",
-            "default": "gemini-flash-lite-latest"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
           },
           "api_provider": {
             "type": "string",
@@ -3260,9 +3266,15 @@
             "title": "Requests Per Minute"
           },
           "model_name": {
-            "type": "string",
-            "title": "Model Name",
-            "default": "gemini-flash-lite-latest"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
           },
           "api_provider": {
             "type": "string",
@@ -3322,9 +3334,15 @@
             "title": "Requests Per Minute"
           },
           "model_name": {
-            "type": "string",
-            "title": "Model Name",
-            "default": "gemini-flash-lite-latest"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
           },
           "api_provider": {
             "type": "string",
@@ -3384,9 +3402,15 @@
             "title": "Requests Per Minute"
           },
           "model_name": {
-            "type": "string",
-            "title": "Model Name",
-            "default": "gemini-flash-lite-latest"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
           },
           "translation_model_name": {
             "anyOf": [
@@ -4668,8 +4692,7 @@
                 "type": "null"
               }
             ],
-            "title": "Model Name",
-            "default": "gemini-flash-lite-latest"
+            "title": "Model Name"
           },
           "translation_model_name": {
             "anyOf": [

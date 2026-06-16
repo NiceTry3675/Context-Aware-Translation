@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getDefaultModel, getPreferredDefaultModel, vertexModelOptions } from '../utils/constants/models';
+import { getDefaultModel, getModelOptionsForProvider, getPreferredDefaultModel } from '../utils/constants/models';
 
 export type ApiProvider = 'gemini' | 'vertex' | 'openrouter';
 
@@ -18,6 +18,19 @@ const STORAGE_KEYS = {
     openrouter: 'openRouterModel',
   },
 } as const;
+
+const normalizeStoredModel = (provider: ApiProvider, storedModel: string | null): string => {
+  const preferredModel = getPreferredDefaultModel(provider);
+  const defaultModel = getDefaultModel(provider);
+  const candidateModel = storedModel || preferredModel || defaultModel;
+  const modelOptions = getModelOptionsForProvider(provider);
+
+  if (!modelOptions.some((opt) => opt.value === candidateModel)) {
+    return preferredModel || defaultModel;
+  }
+
+  return candidateModel;
+};
 
 export function useApiKey() {
   const [apiKey, setApiKeyState] = useState<string>('');
@@ -77,18 +90,12 @@ export function useApiKey() {
     }
 
     const storedModel = localStorage.getItem(STORAGE_KEYS.model[storedProvider]);
-    const preferredModel = getPreferredDefaultModel(storedProvider);
-    const defaultModel = getDefaultModel(storedProvider);
-    let normalizedModel = storedModel || preferredModel || defaultModel;
-
-    if (storedProvider === 'vertex' && !vertexModelOptions.some((opt) => opt.value === normalizedModel)) {
-      normalizedModel = defaultModel;
-    }
+    const normalizedModel = normalizeStoredModel(storedProvider, storedModel);
 
     if (!storedModel && normalizedModel) {
       localStorage.setItem(STORAGE_KEYS.model[storedProvider], normalizedModel);
-    } else if (storedModel && normalizedModel !== storedModel && storedProvider === 'vertex') {
-      localStorage.setItem(STORAGE_KEYS.model.vertex, normalizedModel);
+    } else if (storedModel && normalizedModel !== storedModel) {
+      localStorage.setItem(STORAGE_KEYS.model[storedProvider], normalizedModel);
     }
 
     setSelectedModel(normalizedModel);
@@ -113,18 +120,12 @@ export function useApiKey() {
     localStorage.setItem(STORAGE_KEYS.provider, newProvider);
 
     const storedModel = localStorage.getItem(STORAGE_KEYS.model[newProvider]);
-    const preferredModel = getPreferredDefaultModel(newProvider);
-    const defaultModel = getDefaultModel(newProvider);
-    let normalizedModel = storedModel || preferredModel || defaultModel;
-
-    if (newProvider === 'vertex' && !vertexModelOptions.some((opt) => opt.value === normalizedModel)) {
-      normalizedModel = getDefaultModel('vertex');
-    }
+    const normalizedModel = normalizeStoredModel(newProvider, storedModel);
 
     if (!storedModel && normalizedModel) {
       localStorage.setItem(STORAGE_KEYS.model[newProvider], normalizedModel);
-    } else if (storedModel && normalizedModel !== storedModel && newProvider === 'vertex') {
-      localStorage.setItem(STORAGE_KEYS.model.vertex, normalizedModel);
+    } else if (storedModel && normalizedModel !== storedModel) {
+      localStorage.setItem(STORAGE_KEYS.model[newProvider], normalizedModel);
     }
 
     setSelectedModel(normalizedModel);

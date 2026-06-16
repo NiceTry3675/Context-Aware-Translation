@@ -606,7 +606,7 @@ class GeminiModel:
             raise Exception(f"All {max_retries} {label} attempts failed. Last error: {error}") from error
 
     @staticmethod
-    def validate_api_key(api_key: str, model_name: str = "gemini-flash-lite-latest") -> bool:
+    def validate_api_key(api_key: str, model_name: str = "gemini-flash-latest") -> bool:
         """
         Validates the provided API key by checking if the specified model can be accessed.
         Returns True if valid, False otherwise.

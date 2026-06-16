@@ -11,7 +11,7 @@ import { useApiKey } from './useApiKey';
 import { useTranslationService } from './useTranslationService';
 import { useJobActions } from './useJobActions';
 import { Job, StyleData, GlossaryTerm, TranslationSettings } from '../types/ui';
-import { ensureOpenRouterGeminiModel, isOpenRouterGeminiModel } from '../utils/constants/models';
+import { ensureOpenRouterGeminiModel, getAllowedThinkingLevels, isOpenRouterGeminiModel } from '../utils/constants/models';
 
 export function useCanvasState() {
   const searchParams = useSearchParams();
@@ -76,11 +76,7 @@ export function useCanvasState() {
   const isTurboModeLocked = apiProvider === 'openrouter' && !isOpenRouterGeminiModel(selectedModel);
 
   useEffect(() => {
-    const allowed: ReadonlyArray<string> | null = (() => {
-      if (selectedModel.includes('gemini-3-flash')) return ['minimal', 'low', 'medium', 'high'];
-      if (selectedModel.includes('gemini-3-pro')) return ['low', 'high'];
-      return null;
-    })();
+    const allowed = getAllowedThinkingLevels(selectedModel);
 
     if (!allowed) return;
 

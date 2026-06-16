@@ -55,7 +55,7 @@ class ValidationDomainService(DomainServiceBase):
         session: Session,
         job_id: int,
         api_key: Optional[str],
-        model_name: str = "gemini-flash-lite-latest",
+        model_name: str = "gemini-flash-latest",
         thinking_level: Optional[str] = None,
         provider_context: Optional[ProviderContext] = None,
         *,
@@ -386,7 +386,7 @@ class ValidationDomainService(DomainServiceBase):
         session: Session,
         job_id: int,
         api_key: str,
-        model_name: str = "gemini-flash-lite-latest",
+        model_name: str = "gemini-flash-latest",
         sample_rate: float = 1.0,
         quick_mode: bool = False,
         progress_callback: Optional[Callable[[int], None]] = None

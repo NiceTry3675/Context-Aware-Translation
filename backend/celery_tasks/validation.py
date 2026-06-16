@@ -44,7 +44,7 @@ def process_validation_task(
     api_key: str,
     backup_api_keys: Optional[list[str]] = None,
     requests_per_minute: Optional[int] = None,
-    model_name: str = "gemini-flash-lite-latest",
+    model_name: str = "gemini-flash-latest",
     thinking_level: Optional[str] = None,
     validation_mode: str = "comprehensive",
     sample_rate: float = 1.0,
@@ -322,7 +322,7 @@ def run_validation_in_background(
     api_key: str,
     backup_api_keys: Optional[list[str]] = None,
     requests_per_minute: Optional[int] = None,
-    model_name: str = "gemini-flash-lite-latest",
+    model_name: str = "gemini-flash-latest",
     validation_mode: str = "comprehensive",
     sample_rate: float = 1.0
 ):

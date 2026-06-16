@@ -9,35 +9,21 @@ export interface ModelOption {
 export const geminiModelOptions: ModelOption[] = [
   {
     value: "gemini-flash-lite-latest",
-    label: "Flash Lite",
+    label: "Flash Lite Latest",
     description: "가장 빠른 속도와 저렴한 비용으로 빠르게 결과물을 확인하고 싶을 때 적합합니다.",
     chip: "속도",
     chipColor: "primary",
   },
   {
     value: "gemini-flash-latest",
-    label: "Flash",
+    label: "Flash Latest (기본)",
     description: "준수한 품질과 합리적인 속도의 균형을 원할 때 가장 이상적인 선택입니다.",
     chip: "균형",
     chipColor: "info",
   },
   {
-    value: "gemini-3-flash-preview",
-    label: "3 Flash",
-    description: "최신 Gemini 3 Flash 모델입니다. 빠르고 똑똑하지만 약간 더 비쌉니다.",
-    chip: "균형",
-    chipColor: "info",
-  },
-  {
-    value: "gemini-2.5-pro",
-    label: "Pro",
-    description: "최고 수준의 문학적 번역 품질을 원하신다면 선택하세요.(느리고 비쌀 수 있음)",
-    chip: "품질",
-    chipColor: "error",
-  },
-  {
-    value: "gemini-3-pro-preview",
-    label: "3 Pro (추천)",
+    value: "gemini-pro-latest",
+    label: "Pro Latest",
     description: "최신 Gemini 3 Pro 모델입니다. 최고 수준의 문학적 번역 품질을 원하신다면 선택하세요.(느리고 비쌀 수 있음)",
     chip: "품질",
     chipColor: "error",
@@ -46,22 +32,22 @@ export const geminiModelOptions: ModelOption[] = [
 
 export const openRouterModelOptions: ModelOption[] = [
   {
-    value: "google/gemini-2.5-flash-lite-preview-09-2025",
-    label: "Gemini 2.5 Flash Lite",
+    value: "google/gemini-3.1-flash-lite",
+    label: "Gemini 3.1 Flash Lite",
     description: " ",
     chip: "속도",
     chipColor: "primary",
   },
   {
-    value: "google/gemini-2.5-flash-preview-09-2025",
-    label: "Gemini 2.5 Flash",
+    value: "google/gemini-3.5-flash",
+    label: "Gemini 3.5 Flash (기본)",
     description: " ",
     chip: "균형",
     chipColor: "success",
   },
   {
-    value: "google/gemini-2.5-pro",
-    label: "Gemini 2.5 Pro",
+    value: "google/gemini-3.1-pro-preview",
+    label: "Gemini 3.1 Pro Preview",
     description: " ",
     chip: "품질",
     chipColor: "info",
@@ -140,36 +126,22 @@ export const openRouterModelOptions: ModelOption[] = [
 
 export const vertexModelOptions: ModelOption[] = [
   {
-    value: "gemini-flash-lite-latest",
-    label: "Flash Lite",
-    description: "가장 저렴한 Vertex Gemini 옵션으로 빠른 번역과 검수를 위한 기본 선택입니다.",
+    value: "gemini-3.1-flash-lite",
+    label: "3.1 Flash Lite",
+    description: "가장 저렴한 Vertex Gemini 옵션으로 빠른 번역과 검수를 위한 선택입니다.",
     chip: "속도",
     chipColor: "primary",
   },
   {
-    value: "gemini-flash-latest",
-    label: "Flash",
-    description: "품질과 속도의 균형이 좋은 Vertex Gemini 2.5 Flash 모델입니다.",
+    value: "gemini-3.5-flash",
+    label: "3.5 Flash (기본)",
+    description: "품질과 속도의 균형이 좋은 Vertex Gemini 기본 모델입니다.",
     chip: "균형",
     chipColor: "info",
   },
   {
-    value: "gemini-3-flash-preview",
-    label: "3 Flash",
-    description: "최신 Gemini 3 Flash 모델입니다. 빠르고 똑똑하지만 약간 더 비쌉니다.",
-    chip: "균형",
-    chipColor: "info",
-  },
-  {
-    value: "gemini-2.5-pro",
-    label: "Pro",
-    description: "최고 수준의 번역 품질을 제공하지만 비용과 지연이 더 큰 Pro 모델입니다.",
-    chip: "품질",
-    chipColor: "error",
-  },
-  {
-    value: "gemini-3-pro-preview",
-    label: "3 Pro (추천)",
+    value: "gemini-3.1-pro-preview",
+    label: "3.1 Pro Preview",
     description: "최신 Gemini 3 Pro 모델입니다. 최고 수준의 문학적 번역 품질을 원하신다면 선택하세요.(느리고 비쌀 수 있음)",
     chip: "품질",
     chipColor: "error",
@@ -183,9 +155,10 @@ export const openRouterGeminiModelOptions: ModelOption[] = openRouterModelOption
 );
 
 export const getDefaultOpenRouterGeminiModel = (): string => {
-  const preferred = openRouterGeminiModelOptions[0]?.value
+  const preferred = openRouterGeminiModelOptions.find((opt) => opt.value === 'google/gemini-3.5-flash')?.value
+    ?? openRouterGeminiModelOptions[0]?.value
     ?? openRouterModelOptions.find((opt) => isOpenRouterGeminiModel(opt.value))?.value
-    ?? 'google/gemini-2.5-flash-preview-09-2025';
+    ?? 'google/gemini-3.5-flash';
   return preferred;
 };
 
@@ -199,22 +172,64 @@ export const ensureOpenRouterGeminiModel = (model?: string | null): string => {
 export function getPreferredDefaultModel(apiProvider: 'gemini' | 'vertex' | 'openrouter'): string {
   switch (apiProvider) {
     case 'openrouter':
-      return 'google/gemini-2.5-pro';
+      return 'google/gemini-3.5-flash';
     case 'vertex':
+      return 'gemini-3.5-flash';
     case 'gemini':
     default:
-      return 'gemini-2.5-pro';
+      return 'gemini-flash-latest';
   }
 }
 
 export function getDefaultModel(apiProvider: 'gemini' | 'vertex' | 'openrouter'): string {
   switch (apiProvider) {
     case 'openrouter':
-      return openRouterModelOptions[0].value;
+      return getDefaultOpenRouterGeminiModel();
     case 'vertex':
-      return vertexModelOptions[0].value;
+      return 'gemini-3.5-flash';
     case 'gemini':
     default:
-      return geminiModelOptions[0].value;
+      return 'gemini-flash-latest';
   }
 }
+
+export type GeminiThinkingLevel = 'minimal' | 'low' | 'medium' | 'high';
+
+const shortModelName = (model: string): string => {
+  const trimmed = (model || '').trim().toLowerCase();
+  const parts = trimmed.split('/');
+  return parts[parts.length - 1] || trimmed;
+};
+
+export const getAllowedThinkingLevels = (model: string): readonly GeminiThinkingLevel[] | null => {
+  const short = shortModelName(model);
+  if (
+    short === 'gemini-flash-latest'
+    || short === 'gemini-flash-lite-latest'
+    || short === 'gemini-3.5-flash'
+    || short === 'gemini-3.1-flash-lite'
+    || short === 'gemini-3-flash-preview'
+  ) {
+    return ['minimal', 'low', 'medium', 'high'] as const;
+  }
+  if (
+    short === 'gemini-pro-latest'
+    || short === 'gemini-3.1-pro-preview'
+    || short === 'gemini-3-pro-preview'
+  ) {
+    return ['low', 'medium', 'high'] as const;
+  }
+  return null;
+};
+
+export const getModelOptionsForProvider = (apiProvider: 'gemini' | 'vertex' | 'openrouter'): ModelOption[] => {
+  switch (apiProvider) {
+    case 'openrouter':
+      return openRouterModelOptions;
+    case 'vertex':
+      return vertexModelOptions;
+    case 'gemini':
+    default:
+      return geminiModelOptions;
+  }
+};

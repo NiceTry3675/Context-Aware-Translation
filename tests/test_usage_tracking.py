@@ -196,7 +196,7 @@ def test_user_service_token_usage_dashboard(session: Session) -> None:
             original_length=0,
             translated_length=0,
             translation_duration_seconds=1,
-            model_used="gemini-2.5-flash-image-preview",
+            model_used="gemini-3.1-flash-image",
             prompt_tokens=0,
             completion_tokens=0,
             total_tokens=0,
@@ -225,7 +225,7 @@ def test_user_service_token_usage_dashboard(session: Session) -> None:
     assert summary['illustrations']['image_count'] == 0
     illustration_models = {entry['model']: entry for entry in summary['illustrations']['per_model']}
     assert illustration_models['gemini-flash-latest']['total_tokens'] == 35
-    assert illustration_models['gemini-2.5-flash-image-preview']['total_tokens'] == 0
+    assert illustration_models['gemini-3.1-flash-image']['total_tokens'] == 0
 
 
 def test_user_service_includes_illustration_usage(session: Session) -> None:
@@ -263,7 +263,7 @@ def test_user_service_includes_illustration_usage(session: Session) -> None:
             original_length=0,
             translated_length=0,
             translation_duration_seconds=1,
-            model_used="gemini-2.5-flash-image-preview",
+            model_used="gemini-3.1-flash-image",
             prompt_tokens=0,
             completion_tokens=0,
             total_tokens=0,
@@ -284,4 +284,4 @@ def test_user_service_includes_illustration_usage(session: Session) -> None:
     assert summary['illustrations']['image_count'] == 3
     illustration_models = {entry['model']: entry for entry in summary['illustrations']['per_model']}
     assert illustration_models['gemini-flash-latest']['total_tokens'] == 17
-    assert illustration_models['gemini-2.5-flash-image-preview']['total_tokens'] == 0
+    assert illustration_models['gemini-3.1-flash-image']['total_tokens'] == 0

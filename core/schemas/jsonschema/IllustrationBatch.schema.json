@@ -100,7 +100,7 @@
           "type": "boolean"
         },
         "model_name": {
-          "default": "gemini-2.5-flash-image-preview",
+          "default": "gemini-3.1-flash-image",
           "description": "AI model to use for image generation",
           "title": "Model Name",
           "type": "string"

@@ -424,7 +424,7 @@ export default function JobSidebar({
                                     const body: any = {
                                       api_provider: apiProvider,
                                       api_key: apiProvider === 'vertex' ? '' : (apiKey || '').trim(),
-                                      model_name: defaultModelName || 'gemini-flash-lite-latest',
+                                      model_name: defaultModelName || 'gemini-flash-latest',
                                     };
                                     if (apiProvider === 'gemini') {
                                       if (usableBackupKeys.length > 0) {

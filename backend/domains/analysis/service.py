@@ -46,7 +46,7 @@ class AnalysisService(ServiceBase):
         api_key: str,
         backup_api_keys: Any,
         requests_per_minute: int | None,
-        model_name: str,
+        model_name: str | None,
         api_provider: str,
         provider_config: Any,
     ) -> Tuple[Any, Any, str]:
@@ -54,17 +54,21 @@ class AnalysisService(ServiceBase):
 
         provider_context = self.build_provider_context(api_provider, provider_config)
         # Use provider-specific default models
-        fallback_model = "gemini-flash-lite-latest"
+        fallback_model = "gemini-flash-latest"
         if provider_context and provider_context.name == "vertex":
-            fallback_model = "gemini-flash-latest"
+            fallback_model = "gemini-3.5-flash"
         elif provider_context and provider_context.name == "openrouter":
-            fallback_model = "google/gemini-2.5-flash-lite-preview-09-2025"
+            fallback_model = "google/gemini-3.5-flash"
 
-        resolved_model = (
-            model_name
-            or provider_context.default_model
-            or self.config.get("default_model", fallback_model)
-        )
+        provider_default_model = provider_context.default_model if provider_context else None
+        configured_default_model = self.config.get("default_model", fallback_model)
+        resolved_model = model_name or provider_default_model
+        if not resolved_model:
+            resolved_model = (
+                fallback_model
+                if provider_context and provider_context.name != "gemini"
+                else configured_default_model
+            )
 
         model_api = self.validate_and_create_model(
             api_key,
@@ -80,7 +84,7 @@ class AnalysisService(ServiceBase):
         self,
         file: UploadFile,
         api_key: str,
-        model_name: str = "gemini-flash-lite-latest",
+        model_name: str | None = None,
         *,
         backup_api_keys: Any = None,
         requests_per_minute: int | None = None,
@@ -140,7 +144,7 @@ class AnalysisService(ServiceBase):
         self,
         file: UploadFile,
         api_key: str,
-        model_name: str = "gemini-flash-lite-latest",
+        model_name: str | None = None,
         *,
         backup_api_keys: Any = None,
         requests_per_minute: int | None = None,
@@ -202,7 +206,7 @@ class AnalysisService(ServiceBase):
         self,
         file: UploadFile,
         api_key: str,
-        model_name: str = "gemini-flash-lite-latest",
+        model_name: str | None = None,
         *,
         backup_api_keys: Any = None,
         requests_per_minute: int | None = None,

@@ -3,6 +3,7 @@ import {
 } from '@mui/material';
 import { TranslationSettings as Settings } from '../../types/ui';
 import type { ApiProvider } from '../../hooks/useApiKey';
+import { getAllowedThinkingLevels } from '../../utils/constants/models';
 
 interface TranslationSettingsProps {
   settings: Settings;
@@ -19,14 +20,9 @@ export default function TranslationSettings({ settings, onChange, isTurboLocked 
 
   const turboModeLabel = isTurboLocked ? '터보 모드 활성화 (필수)' : '터보 모드 활성화';
 
-  const isGemini3Flash = (model: string) => model.includes('gemini-3-flash');
-  const isGemini3Pro = (model: string) => model.includes('gemini-3-pro');
-
   const thinkingOptions = (() => {
     if (apiProvider === 'openrouter') return null;
-    if (isGemini3Flash(selectedModel)) return ['minimal', 'low', 'medium', 'high'] as const;
-    if (isGemini3Pro(selectedModel)) return ['low', 'high'] as const;
-    return null;
+    return getAllowedThinkingLevels(selectedModel);
   })();
 
   return (
@@ -108,7 +104,7 @@ export default function TranslationSettings({ settings, onChange, isTurboLocked 
               ))}
             </Select>
             <FormHelperText>
-              Flash: minimal/low/medium/high · Pro: low/high
+              Flash: minimal/low/medium/high · Pro: low/medium/high
             </FormHelperText>
           </FormControl>
         </Box>

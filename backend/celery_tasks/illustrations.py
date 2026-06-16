@@ -206,7 +206,7 @@ def generate_illustrations_task(
         try:
             settings = get_settings()
             client = None
-            model_name = settings.illustration_model
+            model_name = config.model_name or settings.illustration_model
 
             if context and context.name == "vertex":
                 client = build_vertex_client(context)
@@ -223,7 +223,7 @@ def generate_illustrations_task(
                 output_dir=settings.job_storage_base,
                 usage_callback=usage_collector.record_event,
             )
-            print(f"[ILLUSTRATIONS TASK] Generator initialized successfully with model: {settings.illustration_model}")
+            print(f"[ILLUSTRATIONS TASK] Generator initialized successfully with model: {model_name}")
         except Exception as e:
             print(f"[ILLUSTRATIONS TASK] Error initializing generator: {e}")
             import traceback
@@ -682,9 +682,10 @@ def regenerate_single_illustration(
         settings = get_settings()
         context = provider_context_from_payload(provider_context)
         provider_name = context.name if context else "gemini"
+        job_config = job.illustrations_config or {}
 
         client = None
-        model_name = settings.illustration_model
+        model_name = (job_config.get('model_name') if isinstance(job_config, dict) else None) or settings.illustration_model
         effective_api_key = api_key or api_token
 
         if context and context.name == "vertex":
@@ -715,7 +716,6 @@ def regenerate_single_illustration(
         except Exception:
             shared_config = None
 
-        job_config = job.illustrations_config or {}
         prompt_model_override = job_config.get('prompt_model_name') if isinstance(job_config, dict) else None
         text_model_name = _resolve_prompt_model_name(prompt_model_override, shared_config)
 
@@ -1021,9 +1021,10 @@ def regenerate_single_base(
         settings = get_settings()
         context = provider_context_from_payload(provider_context)
         provider_name = context.name if context else "gemini"
+        job_config = job.illustrations_config or {}
 
         client = None
-        model_name = settings.illustration_model
+        model_name = (job_config.get('model_name') if isinstance(job_config, dict) else None) or settings.illustration_model
 
         if context and context.name == "vertex":
             client = build_vertex_client(context)

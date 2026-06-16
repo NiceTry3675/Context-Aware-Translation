@@ -176,7 +176,7 @@ class IllustrationConfig(BaseModel):
     
     # Model and Quality Settings
     model_name: str = Field(
-        default="gemini-2.5-flash-image-preview",
+        default="gemini-3.1-flash-image",
         description="AI model to use for image generation"
     )
     prompt_model_name: Optional[str] = Field(

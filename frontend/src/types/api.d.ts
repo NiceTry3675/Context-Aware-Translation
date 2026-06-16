@@ -37,7 +37,7 @@ export interface paths {
          *         translation_model_name: Optional override for translation model
          *         style_model_name: Optional override for style model
          *         glossary_model_name: Optional override for glossary model
-         *         thinking_level: Optional thinking level (Gemini 3: minimal/low/medium/high; Pro: low/high)
+         *         thinking_level: Optional thinking level (Flash: minimal/low/medium/high; Pro: low/medium/high)
          *         style_data: Optional style data
          *         glossary_data: Optional glossary data
          *         segment_size: Segment size for translation
@@ -1374,11 +1374,8 @@ export interface components {
             backup_api_keys?: string | null;
             /** Requests Per Minute */
             requests_per_minute?: number | null;
-            /**
-             * Model Name
-             * @default gemini-flash-lite-latest
-             */
-            model_name: string;
+            /** Model Name */
+            model_name?: string | null;
             /**
              * Api Provider
              * @default gemini
@@ -1400,11 +1397,8 @@ export interface components {
             backup_api_keys?: string | null;
             /** Requests Per Minute */
             requests_per_minute?: number | null;
-            /**
-             * Model Name
-             * @default gemini-flash-lite-latest
-             */
-            model_name: string;
+            /** Model Name */
+            model_name?: string | null;
             /**
              * Api Provider
              * @default gemini
@@ -1426,11 +1420,8 @@ export interface components {
             backup_api_keys?: string | null;
             /** Requests Per Minute */
             requests_per_minute?: number | null;
-            /**
-             * Model Name
-             * @default gemini-flash-lite-latest
-             */
-            model_name: string;
+            /** Model Name */
+            model_name?: string | null;
             /**
              * Api Provider
              * @default gemini
@@ -1452,11 +1443,8 @@ export interface components {
             backup_api_keys?: string | null;
             /** Requests Per Minute */
             requests_per_minute?: number | null;
-            /**
-             * Model Name
-             * @default gemini-flash-lite-latest
-             */
-            model_name: string;
+            /** Model Name */
+            model_name?: string | null;
             /** Translation Model Name */
             translation_model_name?: string | null;
             /** Style Model Name */
@@ -1991,11 +1979,8 @@ export interface components {
             backup_api_keys?: string[] | null;
             /** Requests Per Minute */
             requests_per_minute?: number | null;
-            /**
-             * Model Name
-             * @default gemini-flash-lite-latest
-             */
-            model_name: string | null;
+            /** Model Name */
+            model_name?: string | null;
             /** Translation Model Name */
             translation_model_name?: string | null;
             /** Style Model Name */

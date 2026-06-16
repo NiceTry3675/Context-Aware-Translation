@@ -51,7 +51,7 @@ class IllustrationGenerator:
         job_id: Optional[int] = None,
         output_dir: str = "logs/jobs",
         enable_caching: bool = True,
-        model_name: str = "gemini-2.5-flash-image-preview",
+        model_name: str = "gemini-3.1-flash-image",
         client: Optional[genai.Client] = None,
         usage_callback: Optional[Callable[[UsageEvent], None]] = None,
     ):

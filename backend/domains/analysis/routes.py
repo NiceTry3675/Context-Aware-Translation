@@ -13,7 +13,7 @@ async def analyze_style(
     api_key: str = Form(...),
     backup_api_keys: Optional[str] = Form(None),
     requests_per_minute: Optional[int] = Form(None),
-    model_name: str = Form("gemini-flash-lite-latest"),
+    model_name: Optional[str] = Form(None),
     api_provider: str = Form("gemini"),
     provider_config: Optional[str] = Form(None),
 ) -> StyleAnalysisResponse:
@@ -45,7 +45,7 @@ async def analyze_glossary(
     api_key: str = Form(...),
     backup_api_keys: Optional[str] = Form(None),
     requests_per_minute: Optional[int] = Form(None),
-    model_name: str = Form("gemini-flash-lite-latest"),
+    model_name: Optional[str] = Form(None),
     api_provider: str = Form("gemini"),
     provider_config: Optional[str] = Form(None),
 ) -> GlossaryAnalysisResponse:
@@ -77,7 +77,7 @@ async def analyze_characters(
     api_key: str = Form(...),
     backup_api_keys: Optional[str] = Form(None),
     requests_per_minute: Optional[int] = Form(None),
-    model_name: str = Form("gemini-flash-lite-latest"),
+    model_name: Optional[str] = Form(None),
     api_provider: str = Form("gemini"),
     provider_config: Optional[str] = Form(None),
 ) -> CharacterAnalysisResponse:

@@ -40,6 +40,7 @@ from backend.domains.shared import (
     TranslationCompletedEvent,
     TranslationFailedEvent,
 )
+from backend.domains.shared.model_factory import allowed_thinking_levels_for_model
 from backend.domains.translation import SqlAlchemyTranslationJobRepository
 from backend.domains.translation.models import TranslationJob
 from backend.domains.translation.schemas import (
@@ -660,7 +661,7 @@ class TranslationDomainService(DomainServiceBase):
         api_key: Optional[str],
         backup_api_keys: object | None = None,
         requests_per_minute: int | None = None,
-        model_name: str = "gemini-flash-lite-latest",
+        model_name: Optional[str] = None,
         translation_model_name: Optional[str] = None,
         style_model_name: Optional[str] = None,
         glossary_model_name: Optional[str] = None,
@@ -707,15 +708,21 @@ class TranslationDomainService(DomainServiceBase):
         provider_context = self.build_provider_context(api_provider, provider_config)
 
         # Use provider-specific default models
-        fallback_model = "gemini-flash-lite-latest"
+        fallback_model = "gemini-flash-latest"
         if provider_context and provider_context.name == "vertex":
-            fallback_model = "gemini-flash-latest"
+            fallback_model = "gemini-3.5-flash"
         elif provider_context and provider_context.name == "openrouter":
-            fallback_model = "google/gemini-2.5-flash-lite-preview-09-2025"
+            fallback_model = "google/gemini-3.5-flash"
 
-        model_name = model_name or provider_context.default_model or self.config.get(
-            "default_model", fallback_model
-        )
+        provider_default_model = provider_context.default_model if provider_context else None
+        configured_default_model = self.config.get("default_model", fallback_model)
+        model_name = model_name or provider_default_model
+        if not model_name:
+            model_name = (
+                fallback_model
+                if provider_context and provider_context.name != "gemini"
+                else configured_default_model
+            )
 
         normalized_thinking_level: Optional[str] = None
         if isinstance(thinking_level, str) and thinking_level.strip():
@@ -725,22 +732,17 @@ class TranslationDomainService(DomainServiceBase):
                 style_model_name or model_name,
                 glossary_model_name or model_name,
             ]
-            if any("gemini-3-" in (m or "") for m in candidate_models):
-                normalized_thinking_level = thinking_level.strip().lower()
-                if normalized_thinking_level not in {"minimal", "low", "medium", "high"}:
+            normalized_thinking_level = thinking_level.strip().lower()
+            for candidate_model in candidate_models:
+                allowed = allowed_thinking_levels_for_model(candidate_model or "")
+                if not allowed:
+                    continue
+                if normalized_thinking_level not in allowed:
                     raise HTTPException(
                         status_code=422,
                         detail=(
-                            f"Invalid thinking_level '{thinking_level}'. "
-                            "Allowed: minimal, low, medium, high"
-                        ),
-                    )
-                if any("gemini-3-pro" in (m or "") for m in candidate_models) and normalized_thinking_level in {"minimal", "medium"}:
-                    raise HTTPException(
-                        status_code=422,
-                        detail=(
-                            "Gemini 3 Pro only supports thinking_level: low, high "
-                            f"(got '{thinking_level}')."
+                            f"thinking_level '{thinking_level}' is not supported for model '{candidate_model}'. "
+                            f"Allowed: {', '.join(allowed)}"
                         ),
                     )
 

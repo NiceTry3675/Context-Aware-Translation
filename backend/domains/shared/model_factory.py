@@ -22,6 +22,11 @@ except ImportError:  # pragma: no cover - optional dependency in minimal envs.
 KNOWN_VERTEX_MODELS: Tuple[str, ...] = (
     "gemini-flash-latest",
     "gemini-flash-lite-latest",
+    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-3.1-pro-preview",
+    "gemini-3.1-flash-image",
+    "gemini-3-pro-image",
     "gemini-3-flash-preview",
     "gemini-3-pro-preview",
     "gemini-2.5-pro",
@@ -34,8 +39,10 @@ API_ERROR_TYPES: Tuple[type[BaseException], ...] = (genai_errors.APIError,)
 if google_api_exceptions is not None:  # pragma: no branch - simple tuple concat
     API_ERROR_TYPES = API_ERROR_TYPES + (google_api_exceptions.GoogleAPIError,)
 
-GEMINI_3_FLASH_THINKING_LEVELS: Tuple[str, ...] = ("minimal", "low", "medium", "high")
-GEMINI_3_PRO_THINKING_LEVELS: Tuple[str, ...] = ("low", "high")
+GEMINI_FLASH_THINKING_LEVELS: Tuple[str, ...] = ("minimal", "low", "medium", "high")
+GEMINI_PRO_THINKING_LEVELS: Tuple[str, ...] = ("low", "medium", "high")
+GEMINI_FLASH_IMAGE_THINKING_LEVELS: Tuple[str, ...] = ("minimal", "high")
+GEMINI_PRO_IMAGE_THINKING_LEVELS: Tuple[str, ...] = ("high",)
 
 
 def _normalize_thinking_level(level: str) -> str:
@@ -44,11 +51,29 @@ def _normalize_thinking_level(level: str) -> str:
 
 def _allowed_thinking_levels(model_name: str) -> Optional[Tuple[str, ...]]:
     short = _short_model_name(model_name)
-    if "gemini-3-flash" in short:
-        return GEMINI_3_FLASH_THINKING_LEVELS
-    if "gemini-3-pro" in short:
-        return GEMINI_3_PRO_THINKING_LEVELS
+    if short == "gemini-3.1-flash-image":
+        return GEMINI_FLASH_IMAGE_THINKING_LEVELS
+    if short == "gemini-3-pro-image":
+        return GEMINI_PRO_IMAGE_THINKING_LEVELS
+    if short in {
+        "gemini-flash-latest",
+        "gemini-flash-lite-latest",
+        "gemini-3.5-flash",
+        "gemini-3.1-flash-lite",
+        "gemini-3-flash-preview",
+    }:
+        return GEMINI_FLASH_THINKING_LEVELS
+    if short in {
+        "gemini-pro-latest",
+        "gemini-3.1-pro-preview",
+        "gemini-3-pro-preview",
+    }:
+        return GEMINI_PRO_THINKING_LEVELS
     return None
+
+
+def allowed_thinking_levels_for_model(model_name: str) -> Optional[Tuple[str, ...]]:
+    return _allowed_thinking_levels(model_name)
 
 
 def _apply_thinking_level(
@@ -58,11 +83,11 @@ def _apply_thinking_level(
 ) -> dict:
     allowed = _allowed_thinking_levels(model_name)
     if not allowed:
-        # Only apply thinking levels for Gemini 3 models (Gemini 2.5 uses thinkingBudget semantics).
+        # Only apply thinking levels for Gemini models that expose thinking_level.
         return generation_config
 
     if not thinking_level or not isinstance(thinking_level, str) or not thinking_level.strip():
-        thinking_level = "low"
+        thinking_level = "low" if "low" in allowed else allowed[0]
 
     normalized = _normalize_thinking_level(thinking_level)
     if normalized not in allowed:

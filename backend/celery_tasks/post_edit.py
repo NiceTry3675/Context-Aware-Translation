@@ -40,7 +40,7 @@ def process_post_edit_task(
     api_key: Optional[str],
     backup_api_keys: Optional[list[str]] = None,
     requests_per_minute: Optional[int] = None,
-    model_name: str = "gemini-flash-lite-latest",
+    model_name: str = "gemini-flash-latest",
     thinking_level: Optional[str] = None,
     selected_cases: Optional[dict] = None,
     modified_cases: Optional[dict] = None,
@@ -248,7 +248,7 @@ def run_post_edit_in_background(
     api_key: str,
     backup_api_keys: Optional[list[str]] = None,
     requests_per_minute: Optional[int] = None,
-    model_name: str = "gemini-flash-lite-latest"
+    model_name: str = "gemini-flash-latest"
 ):
     """
     Backward compatibility wrapper for existing code.

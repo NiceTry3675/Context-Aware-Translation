@@ -4,6 +4,7 @@ import { getCachedClerkToken } from '../utils/authToken';
 import type { components } from '@/types/api';
 import { StyleData, GlossaryTerm, TranslationSettings } from '../types/ui';
 import type { ApiProvider } from './useApiKey';
+import { getAllowedThinkingLevels } from '../utils/constants/models';
 
 // Type aliases for convenience
 type TranslationJob = components['schemas']['TranslationJob'];
@@ -234,7 +235,7 @@ export function useTranslationService({
     if (
       settings.thinkingLevel
       && (apiProvider === 'gemini' || apiProvider === 'vertex')
-      && (selectedModel.includes('gemini-3-flash') || selectedModel.includes('gemini-3-pro'))
+      && getAllowedThinkingLevels(selectedModel)
     ) {
       formData.append("thinking_level", settings.thinkingLevel);
     }

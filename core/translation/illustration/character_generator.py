@@ -24,7 +24,7 @@ class CharacterIllustrationGenerator:
         base_dir: Path,
         prompt_builder,
         logger=None,
-        model_name: str = "gemini-2.5-flash-image-preview",
+        model_name: str = "gemini-3.1-flash-image",
         usage_callback: Optional[Callable[[UsageEvent], None]] = None,
     ):
         """
@@ -267,9 +267,11 @@ class CharacterIllustrationGenerator:
 
                 # Add timeout to prevent hanging
                 def generate_with_timeout():
+                    config = types.GenerateContentConfig(response_modalities=["TEXT", "IMAGE"])
                     return self.client.models.generate_content(
                         model=self.model_name,
-                        contents=contents
+                        contents=contents,
+                        config=config,
                     )
 
                 # Use ThreadPoolExecutor with timeout

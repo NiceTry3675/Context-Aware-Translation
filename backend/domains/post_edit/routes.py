@@ -67,17 +67,19 @@ async def post_edit_job(
         request.provider_config,
     )
     # Use provider-specific default models
-    fallback_model = "gemini-flash-lite-latest"
+    fallback_model = "gemini-flash-latest"
     if provider_context and provider_context.name == "vertex":
-        fallback_model = "gemini-flash-latest"
+        fallback_model = "gemini-3.5-flash"
     elif provider_context and provider_context.name == "openrouter":
-        fallback_model = "google/gemini-2.5-flash-lite-preview-09-2025"
+        fallback_model = "google/gemini-3.5-flash"
 
-    model_name = (
-        request.model_name
-        or provider_context.default_model
-        or service.config.get("default_model", fallback_model)
-    )
+    model_name = request.model_name or (provider_context.default_model if provider_context else None)
+    if not model_name:
+        model_name = (
+            fallback_model
+            if provider_context and provider_context.name != "gemini"
+            else service.config.get("default_model", fallback_model)
+        )
 
     if not service.validate_api_key(
         request.api_key,

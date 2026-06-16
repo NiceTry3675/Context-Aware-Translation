@@ -52,7 +52,7 @@ def create_job(
     api_key: str = Form(...),
     backup_api_keys: Optional[str] = Form(None),
     requests_per_minute: Optional[int] = Form(None),
-    model_name: str = Form("gemini-flash-lite-latest"),
+    model_name: Optional[str] = Form(None),
     translation_model_name: Optional[str] = Form(None),
     style_model_name: Optional[str] = Form(None),
     glossary_model_name: Optional[str] = Form(None),
@@ -81,7 +81,7 @@ def create_job(
         translation_model_name: Optional override for translation model
         style_model_name: Optional override for style model
         glossary_model_name: Optional override for glossary model
-        thinking_level: Optional thinking level (Gemini 3: minimal/low/medium/high; Pro: low/high)
+        thinking_level: Optional thinking level (Flash: minimal/low/medium/high; Pro: low/medium/high)
         style_data: Optional style data
         glossary_data: Optional glossary data
         segment_size: Segment size for translation
@@ -250,6 +250,18 @@ async def resume_job(
     # Build provider context same as create_job
     provider_context = service.build_provider_context(request.api_provider or "gemini", request.provider_config)
     provider_payload = provider_context_to_payload(provider_context)
+    fallback_model = "gemini-flash-latest"
+    if provider_context and provider_context.name == "vertex":
+        fallback_model = "gemini-3.5-flash"
+    elif provider_context and provider_context.name == "openrouter":
+        fallback_model = "google/gemini-3.5-flash"
+    model_name = request.model_name or (provider_context.default_model if provider_context else None)
+    if not model_name:
+        model_name = (
+            fallback_model
+            if provider_context and provider_context.name != "gemini"
+            else service.config.get("default_model", fallback_model)
+        )
 
     # Fetch job to ensure ownership and state
     job = service.get_job(job_id)
@@ -268,7 +280,7 @@ async def resume_job(
             "api_key": request.api_key or "",
             "backup_api_keys": request.backup_api_keys,
             "requests_per_minute": request.requests_per_minute,
-            "model_name": (request.model_name or provider_context.default_model or service.config.get("default_model", "gemini-flash-lite-latest")),
+            "model_name": model_name,
             "translation_model_name": request.translation_model_name,
             "style_model_name": request.style_model_name,
             "glossary_model_name": request.glossary_model_name,
