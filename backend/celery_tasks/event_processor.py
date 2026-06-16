@@ -11,7 +11,7 @@ from .base import DatabaseTask
 from ..config.database import SessionLocal
 from ..domains.shared.events.outbox_model import OutboxEvent
 from ..domains.tasks.models import TaskKind
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,8 @@ def process_outbox_events(self, batch_size: int = 100):
         pending_events = db.query(OutboxEvent).filter(
             and_(
                 OutboxEvent.processed_at.is_(None),
-                OutboxEvent.retry_count < 5  # Max 5 retries
+                OutboxEvent.retry_count < 5,  # Max 5 retries
+                or_(OutboxEvent.status.is_(None), OutboxEvent.status == "pending"),
             )
         ).order_by(OutboxEvent.created_at).limit(batch_size).all()
         
@@ -68,6 +69,8 @@ def process_outbox_events(self, batch_size: int = 100):
                 process_event(event)
                 
                 # Mark as processed
+                event.processed = True
+                event.status = "processed"
                 event.processed_at = datetime.utcnow()
                 db.commit()
                 
@@ -79,10 +82,9 @@ def process_outbox_events(self, batch_size: int = 100):
                 logger.error(f"Failed to process event {event.id}: {e}")
                 
                 event.retry_count += 1
+                event.status = "failed" if event.retry_count >= 5 else "pending"
                 event.last_error = str(e)
-                event.next_retry_at = datetime.utcnow() + timedelta(
-                    minutes=5 * (2 ** event.retry_count)  # Exponential backoff
-                )
+                event.last_retry_at = datetime.utcnow()
                 db.commit()
                 
                 failed_count += 1
@@ -111,20 +113,31 @@ def process_event(event: OutboxEvent):
     This is where you would implement the actual event handling logic.
     For example, sending emails, updating caches, triggering other services, etc.
     """
-    event_data = json.loads(event.event_data) if event.event_data else {}
+    event_data = _normalize_event_payload(event.payload)
     
-    if event.event_type == "TranslationJobCreated":
+    if event.event_type in {"TranslationJobCreated", "translation.started"}:
         handle_translation_job_created(event.aggregate_id, event_data)
-    elif event.event_type == "TranslationJobCompleted":
+    elif event.event_type in {"TranslationJobCompleted", "translation.completed"}:
         handle_translation_job_completed(event.aggregate_id, event_data)
-    elif event.event_type == "TranslationJobFailed":
+    elif event.event_type in {"TranslationJobFailed", "translation.failed"}:
         handle_translation_job_failed(event.aggregate_id, event_data)
-    elif event.event_type == "UserCreated":
+    elif event.event_type in {"UserCreated", "user.created"}:
         handle_user_created(event.aggregate_id, event_data)
-    elif event.event_type == "PostCreated":
+    elif event.event_type in {"PostCreated", "post.created"}:
         handle_post_created(event.aggregate_id, event_data)
     else:
         logger.warning(f"Unknown event type: {event.event_type}")
+
+
+def _normalize_event_payload(payload) -> dict:
+    """Return an outbox payload dict from JSON, text, or empty legacy values."""
+    if payload is None:
+        return {}
+    if isinstance(payload, dict):
+        return payload
+    if isinstance(payload, str):
+        return json.loads(payload) if payload else {}
+    return {}
 
 
 def handle_translation_job_created(job_id: str, data: dict):

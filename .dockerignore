@@ -41,11 +41,11 @@ commit_message.txt
 frontend/
 docs/
 tests/
-logs/
-uploads/
-illustrations/
-translated_novel/
-_archive/
-source_novel/
+/logs/
+/uploads/
+/illustrations/
+/translated_novel/
+/_archive/
+/source_novel/
 celery.log
 openapi.json

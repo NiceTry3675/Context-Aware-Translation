@@ -1,0 +1,11 @@
+.next
+.next/**
+node_modules
+node_modules/**
+tsconfig.tsbuildinfo
+.env*.local
+.clerk
+.clerk/**
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

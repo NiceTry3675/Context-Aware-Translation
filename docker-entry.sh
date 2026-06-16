@@ -4,13 +4,18 @@ set -e
 echo "[entry] Starting backend container"
 
 # Defaults
+: "${APP_RUNTIME_ROLE:=all}"       # all|api|worker|beat|migrate
+: "${RUN_MIGRATIONS:=true}"
 : "${START_CELERY_WORKER:=true}"
 : "${START_CELERY_BEAT:=false}"
 : "${ENABLE_LOCAL_REDIS:=auto}"  # auto|true|false
 : "${REDIS_URL:=}"
 : "${CELERY_AUTOSCALE:=}"
+: "${PORT:=8000}"
 # Keep glibc thread arenas small to reduce RSS on multithreaded workers
 export MALLOC_ARENA_MAX=${MALLOC_ARENA_MAX:-2}
+
+echo "[entry] Runtime role: ${APP_RUNTIME_ROLE}"
 
 # Default Celery worker sizing: prefer autoscale if provided, otherwise
 # choose a sensible concurrency per environment (more aggressive in prod).
@@ -44,6 +49,10 @@ PY
       start_local_redis=true
     fi
   fi
+fi
+
+if [ "$APP_RUNTIME_ROLE" = "migrate" ]; then
+  start_local_redis=false
 fi
 
 if [ "$start_local_redis" = true ]; then
@@ -83,30 +92,67 @@ do
   sleep $SLEEP_SECONDS
 done
 
-# Bootstrap alembic if schema exists without alembic_version
-echo "[entry] Bootstrapping Alembic version table if needed"
-python -m backend.scripts.bootstrap_migrations || true
+if [ "$RUN_MIGRATIONS" = "true" ] || [ "$APP_RUNTIME_ROLE" = "migrate" ]; then
+  # Bootstrap alembic if schema exists without alembic_version
+  echo "[entry] Bootstrapping Alembic version table if needed"
+  python -m backend.scripts.bootstrap_migrations || true
 
-# Run migrations once (best effort)
-echo "[entry] Running Alembic upgrade head"
-alembic -c backend/alembic.ini upgrade head || echo "[entry] Alembic upgrade failed (continuing)"
+  # Run migrations once (best effort for long-running roles, strict for migration job)
+  echo "[entry] Running Alembic upgrade head"
+  if [ "$APP_RUNTIME_ROLE" = "migrate" ]; then
+    alembic -c backend/alembic.ini upgrade head
+    echo "[entry] Migration completed"
+    exit 0
+  else
+    alembic -c backend/alembic.ini upgrade head || echo "[entry] Alembic upgrade failed (continuing)"
+  fi
+fi
 
-# Start Celery processes if enabled
-if [ "$START_CELERY_WORKER" = "true" ]; then
+start_celery_worker() {
   if [ -n "$CELERY_AUTOSCALE" ]; then
     echo "[entry] Celery autoscale is not supported with the threads pool; ignoring CELERY_AUTOSCALE=${CELERY_AUTOSCALE}"
     unset CELERY_AUTOSCALE
   fi
   echo "[entry] Starting Celery worker (threads pool, concurrency=${CELERY_CONCURRENCY})"
-  C_FORCE_ROOT=true celery -A backend.celery_app worker --loglevel=info --concurrency="${CELERY_CONCURRENCY}" \
+  export C_FORCE_ROOT=true
+  celery -A backend.celery_app worker --loglevel=info --concurrency="${CELERY_CONCURRENCY}" \
     --queues=translation,validation,post_edit,illustrations,events,maintenance,default \
-    --pool=threads &
-fi
+    --pool=threads
+}
 
-if [ "$START_CELERY_BEAT" = "true" ]; then
+start_celery_beat() {
   echo "[entry] Starting Celery beat"
-  celery -A backend.celery_app beat --loglevel=info &
-fi
+  celery -A backend.celery_app beat --loglevel=info
+}
 
-echo "[entry] Starting Uvicorn"
-exec uvicorn backend.main:app --host 0.0.0.0 --port 8000
+case "$APP_RUNTIME_ROLE" in
+  api)
+    echo "[entry] Starting Uvicorn on port ${PORT}"
+    exec uvicorn backend.main:app --host 0.0.0.0 --port "${PORT}"
+    ;;
+  worker)
+    export C_FORCE_ROOT=true
+    exec celery -A backend.celery_app worker --loglevel=info --concurrency="${CELERY_CONCURRENCY}" \
+      --queues=translation,validation,post_edit,illustrations,events,maintenance,default \
+      --pool=threads
+    ;;
+  beat)
+    exec celery -A backend.celery_app beat --loglevel=info
+    ;;
+  all)
+    if [ "$START_CELERY_WORKER" = "true" ]; then
+      start_celery_worker &
+    fi
+
+    if [ "$START_CELERY_BEAT" = "true" ]; then
+      start_celery_beat &
+    fi
+
+    echo "[entry] Starting Uvicorn on port ${PORT}"
+    exec uvicorn backend.main:app --host 0.0.0.0 --port "${PORT}"
+    ;;
+  *)
+    echo "[entry] Unknown APP_RUNTIME_ROLE '${APP_RUNTIME_ROLE}'. Expected all, api, worker, beat, or migrate."
+    exit 2
+    ;;
+esac

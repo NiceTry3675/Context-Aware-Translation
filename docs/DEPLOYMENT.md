@@ -1,5 +1,9 @@
 # 🚀 배포 가이드
 
+> Railway에서 GCP로 백엔드를 이전하는 최신 절차는
+> [GCP_DEPLOYMENT.md](./GCP_DEPLOYMENT.md)를 기준으로 합니다.
+> 이 문서는 기존 Railway/Vercel 배포 절차 보관용입니다.
+
 ## 📋 배포 환경
 - **프론트엔드**: Vercel
 - **백엔드**: Railway
