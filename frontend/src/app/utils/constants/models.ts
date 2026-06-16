@@ -9,21 +9,21 @@ export interface ModelOption {
 export const geminiModelOptions: ModelOption[] = [
   {
     value: "gemini-flash-lite-latest",
-    label: "Flash Lite Latest",
+    label: "Flash Lite",
     description: "가장 빠른 속도와 저렴한 비용으로 빠르게 결과물을 확인하고 싶을 때 적합합니다.",
     chip: "속도",
     chipColor: "primary",
   },
   {
     value: "gemini-flash-latest",
-    label: "Flash Latest (기본)",
+    label: "Flash",
     description: "준수한 품질과 합리적인 속도의 균형을 원할 때 가장 이상적인 선택입니다.",
     chip: "균형",
     chipColor: "info",
   },
   {
     value: "gemini-pro-latest",
-    label: "Pro Latest",
+    label: "Pro",
     description: "최신 Gemini 3 Pro 모델입니다. 최고 수준의 문학적 번역 품질을 원하신다면 선택하세요.(느리고 비쌀 수 있음)",
     chip: "품질",
     chipColor: "error",
@@ -33,21 +33,21 @@ export const geminiModelOptions: ModelOption[] = [
 export const openRouterModelOptions: ModelOption[] = [
   {
     value: "google/gemini-3.1-flash-lite",
-    label: "Gemini 3.1 Flash Lite",
+    label: "Flash Lite",
     description: " ",
     chip: "속도",
     chipColor: "primary",
   },
   {
     value: "google/gemini-3.5-flash",
-    label: "Gemini 3.5 Flash (기본)",
+    label: "Flash",
     description: " ",
     chip: "균형",
     chipColor: "success",
   },
   {
     value: "google/gemini-3.1-pro-preview",
-    label: "Gemini 3.1 Pro Preview",
+    label: "Pro",
     description: " ",
     chip: "품질",
     chipColor: "info",
@@ -127,21 +127,21 @@ export const openRouterModelOptions: ModelOption[] = [
 export const vertexModelOptions: ModelOption[] = [
   {
     value: "gemini-3.1-flash-lite",
-    label: "3.1 Flash Lite",
+    label: "Flash Lite",
     description: "가장 저렴한 Vertex Gemini 옵션으로 빠른 번역과 검수를 위한 선택입니다.",
     chip: "속도",
     chipColor: "primary",
   },
   {
     value: "gemini-3.5-flash",
-    label: "3.5 Flash (기본)",
+    label: "Flash",
     description: "품질과 속도의 균형이 좋은 Vertex Gemini 기본 모델입니다.",
     chip: "균형",
     chipColor: "info",
   },
   {
     value: "gemini-3.1-pro-preview",
-    label: "3.1 Pro Preview",
+    label: "Pro",
     description: "최신 Gemini 3 Pro 모델입니다. 최고 수준의 문학적 번역 품질을 원하신다면 선택하세요.(느리고 비쌀 수 있음)",
     chip: "품질",
     chipColor: "error",
