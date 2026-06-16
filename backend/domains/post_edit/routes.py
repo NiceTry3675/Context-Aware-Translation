@@ -8,20 +8,17 @@ from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 import json
 import os
-import uuid
 
 from backend.config.dependencies import get_db, get_required_user
 from backend.domains.user.models import User
 from backend.domains.post_edit.schemas import PostEditRequest
 from backend.domains.post_edit.service import PostEditDomainService
-from backend.celery_tasks.post_edit import process_post_edit_task
 from backend.domains.translation.repository import SqlAlchemyTranslationJobRepository
-from backend.domains.tasks.models import TaskKind
+from backend.domains.tasks.models import TaskKind, TaskStatus
 from backend.domains.tasks.repository import TaskRepository
-from backend.celery_app import celery_app
-from celery.result import AsyncResult
-from backend.celery_tasks.base import create_task_execution
 from backend.domains.shared.provider_context import provider_context_to_payload
+from backend.background.executor import enqueue_background_task
+from backend.background.tasks import PROCESS_POST_EDIT_TASK
 
 
 async def post_edit_job(
@@ -56,10 +53,13 @@ async def post_edit_job(
         task_repo = TaskRepository(db)
         tasks = task_repo.get_job_tasks(job_id)
         recent_post_edit_task = next((t for t in tasks if t.kind == TaskKind.POST_EDIT), None)
-        if recent_post_edit_task:
-            celery_state = AsyncResult(recent_post_edit_task.id, app=celery_app).state
-            if celery_state in ("PENDING", "STARTED", "RETRY"):
-                raise HTTPException(status_code=409, detail="Post-edit is already in progress for this job")
+        if recent_post_edit_task and recent_post_edit_task.status in {
+            TaskStatus.PENDING,
+            TaskStatus.STARTED,
+            TaskStatus.RUNNING,
+            TaskStatus.RETRY,
+        }:
+            raise HTTPException(status_code=409, detail="Post-edit is already in progress for this job")
         # else fall through and re-queue
 
     provider_context = service.build_provider_context(
@@ -97,43 +97,26 @@ async def post_edit_job(
     )
     db.commit()
 
-    # Launch the post-edit task with pre-created tracking record and explicit task_id
-    task_id = str(uuid.uuid4())
-    create_task_execution(
-        task_id=task_id,
-        task_name=process_post_edit_task.name,
+    # Launch the post-edit task with a tracking record
+    task_kwargs = {
+        "job_id": job_id,
+        "api_key": request.api_key,
+        "backup_api_keys": request.backup_api_keys,
+        "requests_per_minute": request.requests_per_minute,
+        "model_name": model_name,
+        "selected_cases": request.selected_cases,
+        "modified_cases": request.modified_cases,
+        "default_select_all": request.default_select_all,
+        "user_id": user.id,
+        "provider_context": provider_payload,
+    }
+    task_id = enqueue_background_task(
+        db,
+        task_name=PROCESS_POST_EDIT_TASK,
         task_kind=TaskKind.POST_EDIT,
         job_id=job_id,
         user_id=user.id,
-        args=[],
-        kwargs={
-            "job_id": job_id,
-            "api_key": request.api_key,
-            "backup_api_keys": request.backup_api_keys,
-            "requests_per_minute": request.requests_per_minute,
-            "model_name": model_name,
-            "selected_cases": request.selected_cases,
-            "modified_cases": request.modified_cases,
-            "default_select_all": request.default_select_all,
-            "user_id": user.id,
-            "provider_context": provider_payload,
-        },
-    )
-
-    process_post_edit_task.apply_async(
-        kwargs={
-            "job_id": job_id,
-            "api_key": request.api_key,
-            "backup_api_keys": request.backup_api_keys,
-            "requests_per_minute": request.requests_per_minute,
-            "model_name": model_name,
-            "selected_cases": request.selected_cases,
-            "modified_cases": request.modified_cases,
-            "default_select_all": request.default_select_all,
-            "user_id": user.id,
-            "provider_context": provider_payload,
-        },
-        task_id=task_id,
+        kwargs=task_kwargs,
     )
 
     return {

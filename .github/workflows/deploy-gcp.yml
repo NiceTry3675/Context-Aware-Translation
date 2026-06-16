@@ -15,21 +15,18 @@ env:
   GCP_REGION: ${{ vars.GOOGLE_CLOUD_LOCATION }}
   ARTIFACT_REPOSITORY: ${{ vars.ARTIFACT_REGISTRY_REPOSITORY }}
   API_SERVICE: ${{ vars.CLOUD_RUN_BACKEND_SERVICE }}
-  WORKER_POOL: ${{ vars.CLOUD_RUN_WORKER_SERVICE }}
-  BEAT_POOL: ${{ vars.CLOUD_RUN_BEAT_SERVICE }}
+  BACKGROUND_JOB: ${{ vars.CLOUD_RUN_BACKGROUND_JOB || 'trans-background-job' }}
   MIGRATION_JOB: ${{ vars.CLOUD_RUN_MIGRATION_JOB }}
+  SCHEDULER_JOB: ${{ vars.CLOUD_SCHEDULER_MAINTENANCE_JOB || 'trans-maintenance' }}
   RUNTIME_SERVICE_ACCOUNT: ${{ vars.CLOUD_RUN_RUNTIME_SERVICE_ACCOUNT || vars.SERVICE_ACCOUNT_EMAIL }}
   CLOUD_SQL_INSTANCE: ${{ vars.CLOUD_SQL_INSTANCE }}
-  VPC_CONNECTOR: ${{ vars.CLOUD_RUN_VPC_CONNECTOR }}
-  VPC_NETWORK: ${{ vars.CLOUD_RUN_NETWORK || 'trans-vpc' }}
-  VPC_SUBNET: ${{ vars.CLOUD_RUN_SUBNET || 'trans-subnet' }}
   GCS_BUCKET: ${{ vars.GCS_BUCKET }}
   GCS_PREFIX: ${{ vars.GCS_PREFIX || 'prod' }}
   GCS_MOUNT_PATH: /mnt/trans-storage
   CORS_ORIGINS: ${{ vars.CORS_ORIGINS }}
-  API_MIN_INSTANCES: ${{ vars.CLOUD_RUN_API_MIN_INSTANCES || '1' }}
-  WORKER_INSTANCES: ${{ vars.CLOUD_RUN_WORKER_INSTANCES || vars.CLOUD_RUN_WORKER_MIN_INSTANCES || '1' }}
-  BEAT_INSTANCES: ${{ vars.CLOUD_RUN_BEAT_INSTANCES || vars.CLOUD_RUN_BEAT_MIN_INSTANCES || '1' }}
+  API_MIN_INSTANCES: ${{ vars.CLOUD_RUN_API_MIN_INSTANCES || '0' }}
+  API_MAX_INSTANCES: ${{ vars.CLOUD_RUN_API_MAX_INSTANCES || '3' }}
+  BACKGROUND_JOB_TIMEOUT: ${{ vars.CLOUD_RUN_BACKGROUND_JOB_TIMEOUT || '86400s' }}
 
 jobs:
   deploy:
@@ -71,9 +68,9 @@ jobs:
             GCP_PROJECT_ID
             GCP_REGION
             API_SERVICE
-            WORKER_POOL
-            BEAT_POOL
+            BACKGROUND_JOB
             MIGRATION_JOB
+            SCHEDULER_JOB
             RUNTIME_SERVICE_ACCOUNT
             GCS_BUCKET
             CORS_ORIGINS
@@ -92,7 +89,7 @@ jobs:
             storage_root="${storage_root}/${clean_prefix}"
           fi
 
-          secret_vars="DATABASE_URL=DATABASE_URL:latest,REDIS_URL=REDIS_URL:latest,CLERK_SECRET_KEY=CLERK_SECRET_KEY:latest,CLERK_WEBHOOK_SECRET=CLERK_WEBHOOK_SECRET:latest,ADMIN_SECRET_KEY=ADMIN_SECRET_KEY:latest,SECRET_KEY=SECRET_KEY:latest"
+          secret_vars="DATABASE_URL=DATABASE_URL:latest,CLERK_SECRET_KEY=CLERK_SECRET_KEY:latest,CLERK_WEBHOOK_SECRET=CLERK_WEBHOOK_SECRET:latest,ADMIN_SECRET_KEY=ADMIN_SECRET_KEY:latest,SECRET_KEY=SECRET_KEY:latest"
           if gcloud secrets describe OPENROUTER_API_KEY --project "${GCP_PROJECT_ID}" >/dev/null 2>&1; then
             secret_vars="${secret_vars},OPENROUTER_API_KEY=OPENROUTER_API_KEY:latest"
           fi
@@ -104,22 +101,23 @@ jobs:
             local job_storage_base="$4"
             local legacy_translated_dir="$5"
 
-            printf '^|^APP_ENV=production|ENVIRONMENT=production|APP_RUNTIME_ROLE=%s|RUN_MIGRATIONS=%s|STORAGE_BACKEND=local|UPLOAD_DIR=%s|JOB_STORAGE_BASE=%s|LEGACY_TRANSLATED_DIR=%s|CORS_ORIGINS=%s' \
+            printf '^|^APP_ENV=production|ENVIRONMENT=production|APP_RUNTIME_ROLE=%s|RUN_MIGRATIONS=%s|STORAGE_BACKEND=local|UPLOAD_DIR=%s|JOB_STORAGE_BASE=%s|LEGACY_TRANSLATED_DIR=%s|CORS_ORIGINS=%s|BACKGROUND_EXECUTOR=cloud_run|CLOUD_RUN_BACKGROUND_JOB=%s|CLOUD_RUN_JOB_TIMEOUT=%s|GOOGLE_CLOUD_PROJECT=%s|GOOGLE_CLOUD_LOCATION=%s' \
               "${role}" \
               "${run_migrations}" \
               "${upload_dir}" \
               "${job_storage_base}" \
               "${legacy_translated_dir}" \
-              "${CORS_ORIGINS}"
+              "${CORS_ORIGINS}" \
+              "${BACKGROUND_JOB}" \
+              "${BACKGROUND_JOB_TIMEOUT}" \
+              "${GCP_PROJECT_ID}" \
+              "${GCP_REGION}"
           }
 
           add_service_connectivity_args() {
             local -n out_args=$1
             if [[ -n "${CLOUD_SQL_INSTANCE:-}" ]]; then
               out_args+=(--add-cloudsql-instances "${CLOUD_SQL_INSTANCE}")
-            fi
-            if [[ -n "${VPC_CONNECTOR:-}" ]]; then
-              out_args+=(--vpc-connector "${VPC_CONNECTOR}" --vpc-egress private-ranges-only)
             fi
           }
 
@@ -128,17 +126,6 @@ jobs:
             if [[ -n "${CLOUD_SQL_INSTANCE:-}" ]]; then
               out_args+=(--set-cloudsql-instances "${CLOUD_SQL_INSTANCE}")
             fi
-            if [[ -n "${VPC_CONNECTOR:-}" ]]; then
-              out_args+=(--vpc-connector "${VPC_CONNECTOR}" --vpc-egress private-ranges-only)
-            fi
-          }
-
-          add_worker_pool_connectivity_args() {
-            local -n out_args=$1
-            if [[ -n "${CLOUD_SQL_INSTANCE:-}" ]]; then
-              out_args+=(--add-cloudsql-instances "${CLOUD_SQL_INSTANCE}")
-            fi
-            out_args+=(--network "${VPC_NETWORK}" --subnet "${VPC_SUBNET}" --vpc-egress private-ranges-only)
           }
 
           deploy_migration_job() {
@@ -178,6 +165,7 @@ jobs:
               --allow-unauthenticated \
               --execution-environment gen2 \
               --min-instances "${API_MIN_INSTANCES}" \
+              --max-instances "${API_MAX_INSTANCES}" \
               --add-volume "name=trans-storage,type=cloud-storage,bucket=${GCS_BUCKET},readonly=false" \
               --add-volume-mount "volume=trans-storage,mount-path=${GCS_MOUNT_PATH}" \
               --set-env-vars "${env_vars}" \
@@ -185,27 +173,24 @@ jobs:
               "${args[@]}"
           }
 
-          deploy_worker_pool() {
-            local pool_name="$1"
-            local role="$2"
-            local instances="$3"
-            local cpu="$4"
-            local memory="$5"
-
+          deploy_background_job() {
             local env_vars
-            env_vars="$(env_vars_for_role "${role}" false "${storage_root}/uploads" "${storage_root}/logs/jobs" "${storage_root}/translated_novel")"
+            env_vars="$(env_vars_for_role job false "${storage_root}/uploads" "${storage_root}/logs/jobs" "${storage_root}/translated_novel")"
 
             local args=()
-            add_worker_pool_connectivity_args args
+            add_job_connectivity_args args
 
-            gcloud alpha run worker-pools deploy "${pool_name}" \
+            gcloud run jobs deploy "${BACKGROUND_JOB}" \
               --project "${GCP_PROJECT_ID}" \
               --region "${GCP_REGION}" \
               --image "${IMAGE_URI}" \
               --service-account "${RUNTIME_SERVICE_ACCOUNT}" \
-              --instances "${instances}" \
-              --cpu "${cpu}" \
-              --memory "${memory}" \
+              --tasks 1 \
+              --parallelism 1 \
+              --max-retries 0 \
+              --task-timeout "${BACKGROUND_JOB_TIMEOUT}" \
+              --cpu 2 \
+              --memory 2Gi \
               --add-volume "name=trans-storage,type=cloud-storage,bucket=${GCS_BUCKET},readonly=false" \
               --add-volume-mount "volume=trans-storage,mount-path=${GCS_MOUNT_PATH}" \
               --set-env-vars "${env_vars}" \
@@ -213,7 +198,61 @@ jobs:
               "${args[@]}"
           }
 
+          configure_background_iam() {
+            gcloud run jobs add-iam-policy-binding "${BACKGROUND_JOB}" \
+              --project "${GCP_PROJECT_ID}" \
+              --region "${GCP_REGION}" \
+              --member "serviceAccount:${RUNTIME_SERVICE_ACCOUNT}" \
+              --role "roles/run.jobsExecutorWithOverrides" \
+              --quiet
+
+            gcloud run jobs add-iam-policy-binding "${BACKGROUND_JOB}" \
+              --project "${GCP_PROJECT_ID}" \
+              --region "${GCP_REGION}" \
+              --member "serviceAccount:${RUNTIME_SERVICE_ACCOUNT}" \
+              --role "roles/run.developer" \
+              --quiet
+          }
+
+          configure_maintenance_scheduler() {
+            gcloud services enable cloudscheduler.googleapis.com --project "${GCP_PROJECT_ID}" --quiet
+
+            local run_uri
+            run_uri="https://run.googleapis.com/v2/projects/${GCP_PROJECT_ID}/locations/${GCP_REGION}/jobs/${BACKGROUND_JOB}:run"
+            local body
+            body='{"overrides":{"containerOverrides":[{"env":[{"name":"BACKGROUND_TASK_NAME","value":"backend.background.maintenance.run_maintenance"},{"name":"BACKGROUND_TASK_KIND","value":"maintenance"}]}],"taskCount":1,"timeout":"900s"}}'
+
+            if gcloud scheduler jobs describe "${SCHEDULER_JOB}" \
+              --project "${GCP_PROJECT_ID}" \
+              --location "${GCP_REGION}" >/dev/null 2>&1; then
+              gcloud scheduler jobs update http "${SCHEDULER_JOB}" \
+                --project "${GCP_PROJECT_ID}" \
+                --location "${GCP_REGION}" \
+                --schedule "*/5 * * * *" \
+                --time-zone "Asia/Seoul" \
+                --uri "${run_uri}" \
+                --http-method POST \
+                --oauth-service-account-email "${RUNTIME_SERVICE_ACCOUNT}" \
+                --oauth-token-scope "https://www.googleapis.com/auth/cloud-platform" \
+                --headers "Content-Type=application/json" \
+                --message-body "${body}"
+            else
+              gcloud scheduler jobs create http "${SCHEDULER_JOB}" \
+                --project "${GCP_PROJECT_ID}" \
+                --location "${GCP_REGION}" \
+                --schedule "*/5 * * * *" \
+                --time-zone "Asia/Seoul" \
+                --uri "${run_uri}" \
+                --http-method POST \
+                --oauth-service-account-email "${RUNTIME_SERVICE_ACCOUNT}" \
+                --oauth-token-scope "https://www.googleapis.com/auth/cloud-platform" \
+                --headers "Content-Type=application/json" \
+                --message-body "${body}"
+            fi
+          }
+
           deploy_migration_job
+          deploy_background_job
+          configure_background_iam
+          configure_maintenance_scheduler
           deploy_api_service
-          deploy_worker_pool "${WORKER_POOL}" worker "${WORKER_INSTANCES}" 2 2Gi
-          deploy_worker_pool "${BEAT_POOL}" beat "${BEAT_INSTANCES}" 1 1Gi

@@ -16,6 +16,9 @@ from backend.domains.translation.models import TranslationJob as TranslationJobM
 from backend.domains.translation.schemas import TranslationJob, TranslationJobListItem, ResumeRequest
 from backend.domains.translation.service import TranslationDomainService
 from backend.domains.shared.provider_context import provider_context_to_payload
+from backend.background.executor import enqueue_background_task
+from backend.background.tasks import PROCESS_TRANSLATION_TASK
+from backend.domains.tasks.models import TaskKind
 
 
 def get_translation_service(db: Session = Depends(get_db)) -> TranslationDomainService:
@@ -238,6 +241,7 @@ async def resume_job(
     job_id: int,
     request: ResumeRequest,
     user: User = Depends(get_required_user),
+    db: Session = Depends(get_db),
     service: TranslationDomainService = Depends(get_translation_service)
 ) -> TranslationJob:
     """
@@ -247,30 +251,34 @@ async def resume_job(
     provider_context = service.build_provider_context(request.api_provider or "gemini", request.provider_config)
     provider_payload = provider_context_to_payload(provider_context)
 
-    # Launch background translation with resume flag
-    from backend.celery_tasks.translation import process_translation_task
-
     # Fetch job to ensure ownership and state
     job = service.get_job(job_id)
     if job.status == "PROCESSING":
         from fastapi import HTTPException
         raise HTTPException(status_code=409, detail="Job is already processing")
 
-    process_translation_task.delay(
+    enqueue_background_task(
+        db,
+        task_name=PROCESS_TRANSLATION_TASK,
+        task_kind=TaskKind.TRANSLATION,
         job_id=job_id,
-        api_key=request.api_key or "",
-        backup_api_keys=request.backup_api_keys,
-        requests_per_minute=request.requests_per_minute,
-        model_name=(request.model_name or provider_context.default_model or service.config.get("default_model", "gemini-flash-lite-latest")),
-        translation_model_name=request.translation_model_name,
-        style_model_name=request.style_model_name,
-        glossary_model_name=request.glossary_model_name,
-        thinking_level=request.thinking_level,
         user_id=user.id,
-        provider_context=provider_payload,
-        # Signal resume via kwargs; consumed by service/translation pipeline
-        resume=True,
-        turbo_mode=(request.turbo_mode or False),
+        kwargs={
+            "job_id": job_id,
+            "api_key": request.api_key or "",
+            "backup_api_keys": request.backup_api_keys,
+            "requests_per_minute": request.requests_per_minute,
+            "model_name": (request.model_name or provider_context.default_model or service.config.get("default_model", "gemini-flash-lite-latest")),
+            "translation_model_name": request.translation_model_name,
+            "style_model_name": request.style_model_name,
+            "glossary_model_name": request.glossary_model_name,
+            "thinking_level": request.thinking_level,
+            "user_id": user.id,
+            "provider_context": provider_payload,
+            # Signal resume via kwargs; consumed by service/translation pipeline
+            "resume": True,
+            "turbo_mode": (request.turbo_mode or False),
+        },
     )
 
     # Optimistically mark job PROCESSING (avoid duplicate starts) and return

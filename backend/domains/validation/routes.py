@@ -9,20 +9,17 @@ from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 import json
 import os
-import uuid
 
 from backend.config.dependencies import get_db, get_required_user
 from backend.domains.user.models import User
 from backend.domains.validation.schemas import ValidationRequest
 from backend.domains.validation.service import ValidationDomainService
 from backend.domains.shared.provider_context import provider_context_to_payload
-from backend.celery_tasks.validation import process_validation_task
 from backend.domains.translation.repository import SqlAlchemyTranslationJobRepository
-from backend.domains.tasks.models import TaskKind
+from backend.domains.tasks.models import TaskKind, TaskStatus
 from backend.domains.tasks.repository import TaskRepository
-from backend.celery_app import celery_app
-from celery.result import AsyncResult
-from backend.celery_tasks.base import create_task_execution
+from backend.background.executor import enqueue_background_task
+from backend.background.tasks import PROCESS_VALIDATION_TASK
 
 
 def get_validation_service(db: Session = Depends(get_db)) -> ValidationDomainService:
@@ -66,11 +63,14 @@ async def validate_job(
         # Find the most recent validation task for this job
         recent_validation_task = next((t for t in tasks if t.kind == TaskKind.VALIDATION), None)
 
-        if recent_validation_task:
-            celery_state = AsyncResult(recent_validation_task.id, app=celery_app).state
-            if celery_state in ("PENDING", "STARTED", "RETRY"):
-                # Already running; avoid duplicate
-                raise HTTPException(status_code=409, detail="Validation is already in progress for this job")
+        if recent_validation_task and recent_validation_task.status in {
+            TaskStatus.PENDING,
+            TaskStatus.STARTED,
+            TaskStatus.RUNNING,
+            TaskStatus.RETRY,
+        }:
+            # Already running; avoid duplicate
+            raise HTTPException(status_code=409, detail="Validation is already in progress for this job")
         # No active task found; fall through and re-queue a new one
 
     provider_context = service.build_provider_context(
@@ -108,44 +108,27 @@ async def validate_job(
     )
     db.commit()
 
-    # Launch the validation task with a pre-created tracking record and explicit task_id
+    # Launch the validation task with a tracking record and explicit task_id
     validation_mode = "quick" if request.quick_validation else "comprehensive"
-    task_id = str(uuid.uuid4())
-    create_task_execution(
-        task_id=task_id,
-        task_name=process_validation_task.name,
+    task_kwargs = {
+        "job_id": job_id,
+        "api_key": request.api_key,
+        "backup_api_keys": request.backup_api_keys,
+        "requests_per_minute": request.requests_per_minute,
+        "model_name": model_name,
+        "validation_mode": validation_mode,
+        "sample_rate": request.validation_sample_rate,
+        "user_id": user.id,
+        "autotrigger_post_edit": False,
+        "provider_context": provider_payload,
+    }
+    task_id = enqueue_background_task(
+        db,
+        task_name=PROCESS_VALIDATION_TASK,
         task_kind=TaskKind.VALIDATION,
         job_id=job_id,
         user_id=user.id,
-        args=[],
-        kwargs={
-            "job_id": job_id,
-            "api_key": request.api_key,
-            "backup_api_keys": request.backup_api_keys,
-            "requests_per_minute": request.requests_per_minute,
-            "model_name": model_name,
-            "validation_mode": validation_mode,
-            "sample_rate": request.validation_sample_rate,
-            "user_id": user.id,
-            "autotrigger_post_edit": False,
-            "provider_context": provider_payload,
-        },
-    )
-
-    process_validation_task.apply_async(
-        kwargs={
-            "job_id": job_id,
-            "api_key": request.api_key,
-            "backup_api_keys": request.backup_api_keys,
-            "requests_per_minute": request.requests_per_minute,
-            "model_name": model_name,
-            "validation_mode": validation_mode,
-            "sample_rate": request.validation_sample_rate,
-            "user_id": user.id,
-            "autotrigger_post_edit": False,
-            "provider_context": provider_payload,
-        },
-        task_id=task_id,
+        kwargs=task_kwargs,
     )
 
     return {

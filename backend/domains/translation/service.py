@@ -46,6 +46,10 @@ from backend.domains.translation.schemas import (
     TranslationJob as TranslationJobSchema,
     TranslationJobListItem as TranslationJobListItemSchema
 )
+from backend.background.executor import enqueue_background_task
+from backend.background.tasks import PROCESS_TRANSLATION_TASK
+from backend.config.database import SessionLocal
+from backend.domains.tasks.models import TaskKind
 from backend.domains.user.models import User
 
 logger = logging.getLogger(__name__)
@@ -791,28 +795,35 @@ class TranslationDomainService(DomainServiceBase):
             job_id = job.id
             user_id = user.id
         
-        # Start translation in background using Celery
-        # Import here to avoid circular dependency
-        from backend.celery_tasks.translation import process_translation_task
-        
         provider_payload = provider_context_to_payload(provider_context)
 
-        process_translation_task.delay(
-            job_id=job_id,
-            api_key=api_key,
-            backup_api_keys=normalized_backup_keys,
-            requests_per_minute=requests_per_minute,
-            model_name=model_name,
-            style_data=style_data,
-            glossary_data=glossary_data,
-            translation_model_name=translation_model_name,
-            style_model_name=style_model_name,
-            glossary_model_name=glossary_model_name,
-            thinking_level=normalized_thinking_level,
-            user_id=user_id,
-            provider_context=provider_payload,
-            turbo_mode=turbo_mode,
-        )
+        enqueue_db = SessionLocal()
+        try:
+            enqueue_background_task(
+                enqueue_db,
+                task_name=PROCESS_TRANSLATION_TASK,
+                task_kind=TaskKind.TRANSLATION,
+                job_id=job_id,
+                user_id=user_id,
+                kwargs={
+                    "job_id": job_id,
+                    "api_key": api_key,
+                    "backup_api_keys": normalized_backup_keys,
+                    "requests_per_minute": requests_per_minute,
+                    "model_name": model_name,
+                    "style_data": style_data,
+                    "glossary_data": glossary_data,
+                    "translation_model_name": translation_model_name,
+                    "style_model_name": style_model_name,
+                    "glossary_model_name": glossary_model_name,
+                    "thinking_level": normalized_thinking_level,
+                    "user_id": user_id,
+                    "provider_context": provider_payload,
+                    "turbo_mode": turbo_mode,
+                },
+            )
+        finally:
+            enqueue_db.close()
         
         # Fetch the job again and convert to Pydantic schema
         with self.unit_of_work() as uow:

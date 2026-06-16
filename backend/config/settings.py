@@ -63,6 +63,13 @@ class Settings(BaseSettings):
     redis_url: str = Field(default="redis://localhost:6379", env="REDIS_URL")
     redis_max_connections: int = 50
     cache_ttl: int = 3600  # 1 hour default cache TTL
+
+    # Background execution
+    background_executor: str = Field(default="inline_thread", env="BACKGROUND_EXECUTOR")
+    cloud_run_background_job: Optional[str] = Field(default=None, env="CLOUD_RUN_BACKGROUND_JOB")
+    cloud_run_job_timeout: str = Field(default="86400s", env="CLOUD_RUN_JOB_TIMEOUT")
+    google_cloud_project: Optional[str] = Field(default=None, env="GOOGLE_CLOUD_PROJECT")
+    google_cloud_location: Optional[str] = Field(default=None, env="GOOGLE_CLOUD_LOCATION")
     
     # Security
     # Provide a sensible default for local development

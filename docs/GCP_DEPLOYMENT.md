@@ -6,11 +6,11 @@ frontend on Vercel.
 ## Target Architecture
 
 - Cloud Run service: FastAPI API server.
-- Cloud Run worker pool: Celery worker for translation, validation, post-editing, illustrations, events, and maintenance queues.
-- Cloud Run worker pool: Celery beat, fixed to one instance.
+- Cloud Run job: on-demand background runner for translation, validation,
+  post-editing, illustrations, events, and maintenance.
 - Cloud Run job: Alembic migration runner.
+- Cloud Scheduler: triggers the maintenance Cloud Run job every 5 minutes.
 - Cloud SQL for PostgreSQL: production database.
-- Memorystore for Redis: Celery broker and result backend.
 - Cloud Storage bucket mounted at `/mnt/trans-storage`: uploads, job logs, outputs, and legacy translated files.
 - Secret Manager: runtime secrets injected into Cloud Run.
 
@@ -19,8 +19,8 @@ to the Cloud Run API URL.
 
 ## Required GCP Resources
 
-Use one region for Cloud Run, Cloud SQL, Memorystore, and the VPC connector.
-For Korea-first latency, use `asia-northeast3`.
+Use one region for Cloud Run, Cloud SQL, Cloud Scheduler, and the runtime
+bucket. For Korea-first latency, use `asia-northeast3`.
 
 Required APIs:
 
@@ -29,9 +29,8 @@ gcloud services enable \
   artifactregistry.googleapis.com \
   run.googleapis.com \
   sqladmin.googleapis.com \
-  redis.googleapis.com \
+  cloudscheduler.googleapis.com \
   secretmanager.googleapis.com \
-  vpcaccess.googleapis.com \
   storage.googleapis.com
 ```
 
@@ -39,12 +38,13 @@ Create or verify these resources:
 
 - Artifact Registry Docker repository for the backend image.
 - Cloud SQL PostgreSQL instance and database, for example `trans_prod`.
-- Memorystore Redis instance reachable from Cloud Run through a VPC connector.
 - Cloud Storage bucket for runtime files.
 - Runtime service account with:
   - `roles/cloudsql.client`
   - `roles/secretmanager.secretAccessor`
   - `roles/storage.objectUser` on the runtime bucket
+  - `roles/run.jobsExecutorWithOverrides` on the background job
+  - `roles/run.developer` on the background job if API-side cancellation must cancel Cloud Run executions
   - Artifact Registry read access if the image repository is in another project.
 
 ## Secret Manager
@@ -53,7 +53,6 @@ Create these secrets before running the GitHub workflow:
 
 ```bash
 printf '%s' "$DATABASE_URL" | gcloud secrets create DATABASE_URL --data-file=-
-printf '%s' "$REDIS_URL" | gcloud secrets create REDIS_URL --data-file=-
 printf '%s' "$CLERK_SECRET_KEY" | gcloud secrets create CLERK_SECRET_KEY --data-file=-
 printf '%s' "$CLERK_WEBHOOK_SECRET" | gcloud secrets create CLERK_WEBHOOK_SECRET --data-file=-
 printf '%s' "$ADMIN_SECRET_KEY" | gcloud secrets create ADMIN_SECRET_KEY --data-file=-
@@ -71,12 +70,6 @@ For Cloud SQL over the Cloud Run socket, use this `DATABASE_URL` shape:
 postgresql+psycopg2://trans_app:<password>@/trans_prod?host=/cloudsql/<project>:<region>:<instance>
 ```
 
-For Memorystore, use:
-
-```text
-redis://<memorystore-private-ip>:6379/0
-```
-
 ## GitHub Actions Variables
 
 Set these repository variables:
@@ -89,11 +82,10 @@ SERVICE_ACCOUNT_EMAIL=<deploy-service-account>
 GCP_WIF_PROVIDER=<workload-identity-provider>
 CLOUD_RUN_RUNTIME_SERVICE_ACCOUNT=<runtime-service-account>
 CLOUD_RUN_BACKEND_SERVICE=<api-service-name>
-CLOUD_RUN_WORKER_SERVICE=<worker-pool-name>
-CLOUD_RUN_BEAT_SERVICE=<beat-pool-name>
+CLOUD_RUN_BACKGROUND_JOB=<background-job-name>
 CLOUD_RUN_MIGRATION_JOB=<migration-job-name>
+CLOUD_SCHEDULER_MAINTENANCE_JOB=<scheduler-job-name>
 CLOUD_SQL_INSTANCE=<project>:<region>:<instance>
-CLOUD_RUN_VPC_CONNECTOR=<connector-name>
 GCS_BUCKET=<runtime-bucket-name>
 GCS_PREFIX=prod
 CORS_ORIGINS=https://<vercel-app-domain>
@@ -102,13 +94,14 @@ CORS_ORIGINS=https://<vercel-app-domain>
 Optional scaling variables:
 
 ```text
-CLOUD_RUN_API_MIN_INSTANCES=1
-CLOUD_RUN_WORKER_INSTANCES=1
-CLOUD_RUN_BEAT_INSTANCES=1
+CLOUD_RUN_API_MIN_INSTANCES=0
+CLOUD_RUN_API_MAX_INSTANCES=3
+CLOUD_RUN_BACKGROUND_JOB_TIMEOUT=86400s
 ```
 
 The workflow builds the Docker image, runs the migration job, deploys the API
-service, and deploys the worker and beat worker pools.
+service, deploys the background Cloud Run job, configures IAM, and creates or
+updates the maintenance Cloud Scheduler job.
 
 ## Railway DB Cutover
 
@@ -145,6 +138,6 @@ Then test from the Vercel UI:
 
 - Sign in.
 - Upload a small text file and start translation.
-- Confirm Celery progress updates.
+- Confirm task progress updates.
 - Download translated output.
 - Upload a community image and verify `/static/community/...` loads.

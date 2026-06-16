@@ -4,7 +4,7 @@ set -e
 echo "[entry] Starting backend container"
 
 # Defaults
-: "${APP_RUNTIME_ROLE:=all}"       # all|api|worker|beat|migrate
+: "${APP_RUNTIME_ROLE:=all}"       # all|api|worker|beat|migrate|job
 : "${RUN_MIGRATIONS:=true}"
 : "${START_CELERY_WORKER:=true}"
 : "${START_CELERY_BEAT:=false}"
@@ -51,7 +51,7 @@ PY
   fi
 fi
 
-if [ "$APP_RUNTIME_ROLE" = "migrate" ]; then
+if [ "$APP_RUNTIME_ROLE" = "migrate" ] || [ "$APP_RUNTIME_ROLE" = "job" ]; then
   start_local_redis=false
 fi
 
@@ -139,6 +139,10 @@ case "$APP_RUNTIME_ROLE" in
   beat)
     exec celery -A backend.celery_app beat --loglevel=info
     ;;
+  job)
+    echo "[entry] Running Cloud Run background job"
+    exec python -m backend.background.job_runner
+    ;;
   all)
     if [ "$START_CELERY_WORKER" = "true" ]; then
       start_celery_worker &
@@ -152,7 +156,7 @@ case "$APP_RUNTIME_ROLE" in
     exec uvicorn backend.main:app --host 0.0.0.0 --port "${PORT}"
     ;;
   *)
-    echo "[entry] Unknown APP_RUNTIME_ROLE '${APP_RUNTIME_ROLE}'. Expected all, api, worker, beat, or migrate."
+    echo "[entry] Unknown APP_RUNTIME_ROLE '${APP_RUNTIME_ROLE}'. Expected all, api, worker, beat, migrate, or job."
     exit 2
     ;;
 esac

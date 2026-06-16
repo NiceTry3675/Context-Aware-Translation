@@ -70,14 +70,6 @@ celery_app.conf.update(
                 'priority': 1,
             }
         },
-        'backup-database-daily': {
-            'task': 'backup.database_to_s3',
-            'schedule': 86400.0,  # Every 24 hours (daily)
-            'options': {
-                'queue': 'maintenance',
-                'priority': 1,
-            }
-        },
     },
     
     # Worker configuration

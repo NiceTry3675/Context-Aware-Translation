@@ -2,8 +2,6 @@
 
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from celery.result import AsyncResult
-from datetime import datetime
 
 from .models import TaskExecution, TaskStatus, TaskKind
 from .schemas import (
@@ -13,7 +11,8 @@ from .schemas import (
 )
 from .repository import TaskRepository
 from ..user.models import User
-from ...celery_app import celery_app
+from ...background.cloud_run import CloudRunJobClient
+from ...config.settings import get_settings
 
 
 class TaskService:
@@ -30,62 +29,20 @@ class TaskService:
     ) -> TaskExecutionResponse:
         """
         Get the status of a specific task.
-        Returns both database tracking info and real-time Celery status.
+        Returns database tracking info and background executor progress.
         """
         # Get task execution from database
         task_execution = self.repo.get_by_id(task_id)
         
         if not task_execution:
-            # Try to get status directly from Celery
-            celery_result = AsyncResult(task_id, app=celery_app)
-            
-            if celery_result.state == 'PENDING':
-                raise ValueError("Task not found")
-            
-            # Create response from Celery state
-            return TaskExecutionResponse(
-                id=task_id,
-                kind=TaskKind.OTHER,
-                name="Unknown",
-                status=TaskStatus.PENDING,
-                celery_state=celery_result.state,
-                result=celery_result.result if celery_result.ready() else None,
-                created_at=datetime.utcnow()
-            )
+            raise ValueError("Task not found")
         
         # Check if user has permission to view this task
         if current_user and task_execution.user_id:
             if task_execution.user_id != current_user.id and not self._is_admin(current_user):
                 raise PermissionError("Not authorized to view this task")
         
-        # Get real-time status from Celery
-        celery_result = AsyncResult(task_id, app=celery_app)
-        
-        # Merge database and Celery information
-        response = TaskExecutionResponse(
-            id=task_execution.id,
-            name=task_execution.name,
-            kind=task_execution.kind,
-            status=task_execution.status,
-            job_id=task_execution.job_id,
-            user_id=task_execution.user_id,
-            args=task_execution.args,
-            kwargs=task_execution.kwargs,
-            result=task_execution.result or celery_result.result,
-            attempts=task_execution.attempts,
-            max_retries=task_execution.max_retries,
-            last_error=task_execution.last_error,
-            created_at=task_execution.created_at,
-            updated_at=task_execution.updated_at,
-            start_time=task_execution.start_time,
-            end_time=task_execution.end_time,
-            duration=task_execution.duration,
-            queue_duration=task_execution.queue_duration,
-            celery_state=celery_result.state,
-            celery_info=celery_result.info if celery_result.state not in ['SUCCESS', 'FAILURE'] else None
-        )
-        
-        return response
+        return self._to_response(task_execution)
     
     def list_tasks(
         self,
@@ -115,26 +72,10 @@ class TaskService:
             offset=offset
         )
         
-        # Convert to response objects with Celery status
+        # Convert to response objects with executor progress
         task_responses = []
         for task in tasks:
-            celery_result = AsyncResult(task.id, app=celery_app)
-            
-            task_responses.append(TaskExecutionResponse(
-                id=task.id,
-                name=task.name,
-                kind=task.kind,
-                status=task.status,
-                job_id=task.job_id,
-                user_id=task.user_id,
-                created_at=task.created_at,
-                updated_at=task.updated_at,
-                start_time=task.start_time,
-                end_time=task.end_time,
-                duration=task.duration,
-                celery_state=celery_result.state,
-                last_error=task.last_error
-            ))
+            task_responses.append(self._to_response(task))
         
         return TaskExecutionListResponse(
             tasks=task_responses,
@@ -157,13 +98,37 @@ class TaskService:
         if task_execution.user_id != current_user.id and not self._is_admin(current_user):
             raise PermissionError("Not authorized to cancel this task")
         
-        # Cancel the Celery task
-        celery_app.control.revoke(task_id, terminate=True)
+        cancel_result: dict[str, Any] = {}
+        extra = task_execution.extra_data or {}
+        execution_name = extra.get("cloud_run_execution")
+        operation_name = extra.get("cloud_run_operation")
+        if execution_name or operation_name:
+            settings = get_settings()
+            client = CloudRunJobClient(
+                project_id=settings.google_cloud_project or "",
+                region=settings.google_cloud_location or "",
+                job_name=settings.cloud_run_background_job or "",
+            )
+            if not execution_name and operation_name:
+                execution_name = client.execution_from_operation(operation_name)
+                if execution_name:
+                    extra = dict(extra)
+                    extra["cloud_run_execution"] = execution_name
+                    task_execution.extra_data = extra
+                    self.db.commit()
+            if not execution_name:
+                raise RuntimeError("Cloud Run execution name is not available yet")
+            cancel_result = client.cancel_execution(execution_name)
         
         # Update database
         self.repo.cancel_task(task_id)
+        self._mark_related_job_cancelled(task_execution)
         
-        return {"message": "Task cancelled successfully", "task_id": task_id}
+        return {
+            "message": "Task cancelled successfully",
+            "task_id": task_id,
+            "cloud_run_cancel": cancel_result or None,
+        }
     
     def get_job_tasks(
         self, 
@@ -176,22 +141,7 @@ class TaskService:
         # Convert to response objects
         task_responses = []
         for task in tasks:
-            celery_result = AsyncResult(task.id, app=celery_app)
-            
-            task_responses.append(TaskExecutionResponse(
-                id=task.id,
-                name=task.name,
-                kind=task.kind,
-                status=task.status,
-                job_id=task.job_id,
-                created_at=task.created_at,
-                updated_at=task.updated_at,
-                start_time=task.start_time,
-                end_time=task.end_time,
-                duration=task.duration,
-                celery_state=celery_result.state,
-                last_error=task.last_error
-            ))
+            task_responses.append(self._to_response(task))
         
         return task_responses
     
@@ -214,3 +164,55 @@ class TaskService:
         if hasattr(user, 'role'):
             return user.role in ['admin', 'super_admin']
         return False
+
+    def _to_response(self, task: TaskExecution) -> TaskExecutionResponse:
+        progress_data = {}
+        if isinstance(task.extra_data, dict):
+            progress_data = task.extra_data.get("progress") or {}
+        progress_value = progress_data.get("current", progress_data.get("progress"))
+        try:
+            progress = int(progress_value) if progress_value is not None else None
+        except (TypeError, ValueError):
+            progress = None
+        message = progress_data.get("status") or progress_data.get("message")
+        executor_state = progress_data.get("state") or task.status.value.upper()
+
+        return TaskExecutionResponse(
+            id=task.id,
+            name=task.name,
+            kind=task.kind,
+            status=task.status,
+            job_id=task.job_id,
+            user_id=task.user_id,
+            args=task.args,
+            kwargs=task.kwargs,
+            result=task.result,
+            attempts=task.attempts,
+            max_retries=task.max_retries,
+            last_error=task.last_error,
+            created_at=task.created_at,
+            updated_at=task.updated_at,
+            start_time=task.start_time,
+            end_time=task.end_time,
+            duration=task.duration,
+            queue_duration=task.queue_duration,
+            progress=progress,
+            message=message,
+            celery_state=executor_state,
+            celery_info=progress_data or None,
+        )
+
+    def _mark_related_job_cancelled(self, task: TaskExecution) -> None:
+        if not task.job_id:
+            return
+        from ..translation.repository import SqlAlchemyTranslationJobRepository
+
+        repo = SqlAlchemyTranslationJobRepository(self.db)
+        repo.set_status(task.job_id, "FAILED", error="Cancelled by user")
+        if task.kind == TaskKind.VALIDATION:
+            repo.update_validation_status(task.job_id, "FAILED")
+        elif task.kind == TaskKind.POST_EDIT:
+            repo.update_post_edit_status(task.job_id, "FAILED")
+        elif task.kind == TaskKind.ILLUSTRATION:
+            repo.update_illustration_status(task.job_id, "FAILED")
+        self.db.commit()

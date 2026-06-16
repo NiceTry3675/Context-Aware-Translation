@@ -1,19 +1,25 @@
 """
-Simple watchdog to mark stalled jobs as FAILED when there's no active Celery task.
+Simple watchdog to mark stalled jobs as FAILED when there's no active background task.
 
 Intended to be triggered periodically (e.g., via a Celery beat or external scheduler).
 """
 from datetime import datetime, timedelta
 import logging
-from celery.result import AsyncResult
 
 from backend.config.database import SessionLocal
-from backend.celery_app import celery_app
 from backend.domains.translation.repository import SqlAlchemyTranslationJobRepository
 from backend.domains.tasks.repository import TaskRepository
-from backend.domains.tasks.models import TaskKind
+from backend.domains.tasks.models import TaskKind, TaskStatus
 
 logger = logging.getLogger(__name__)
+
+
+ACTIVE_TASK_STATUSES = {
+    TaskStatus.PENDING,
+    TaskStatus.STARTED,
+    TaskStatus.RUNNING,
+    TaskStatus.RETRY,
+}
 
 
 def mark_stalled_jobs(
@@ -21,7 +27,7 @@ def mark_stalled_jobs(
     lookback_hours: int = 24,
 ) -> dict:
     """
-    Scan recent jobs and mark IN_PROGRESS validation/post-edit/illustration as FAILED if no active Celery task.
+    Scan recent jobs and mark IN_PROGRESS validation/post-edit/illustration as FAILED if no active task.
 
     Returns a summary dict with counts.
     """
@@ -61,10 +67,8 @@ def mark_stalled_jobs(
                 # Find most recent task for this job and kind
                 tasks = task_repo.get_job_tasks(job.id)
                 recent = next((t for t in tasks if t.kind == kind), None)
-                if recent:
-                    state = AsyncResult(recent.id, app=celery_app).state
-                    if state in ("PENDING", "STARTED", "RETRY"):
-                        return False
+                if recent and recent.status in ACTIVE_TASK_STATUSES:
+                    return False
                 # Fallback: use created_at/validation_completed_at timestamps to estimate staleness
                 started_at = getattr(job, started_at_field) if started_at_field else job.created_at
                 if not started_at:
@@ -95,4 +99,3 @@ def mark_stalled_jobs(
     logger.info(f"Watchdog: stalled summary: {stalled}")
     db.close()
     return stalled
-
