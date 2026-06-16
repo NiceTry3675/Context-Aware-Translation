@@ -1,6 +1,6 @@
 # GCP Production Configuration Report
 
-Generated: 2026-06-16
+Generated: 2026-06-16 17:16 KST
 
 This report describes the production GCP configuration for the
 Context-Aware Translation backend after the Cloud Run Jobs background
@@ -31,9 +31,9 @@ processing migration.
 
 - Service: `trans-api`
 - URL: `https://trans-api-inn34takza-du.a.run.app`
-- Latest ready revision: `trans-api-00010-jwr`
+- Latest ready revision: `trans-api-00011-gdd`
 - Traffic: `100%` to latest revision
-- Image: `asia-northeast3-docker.pkg.dev/trans-prod-260616-3fa1/trans-backend/trans-backend:d840d561fa05281749a3cf2c68b4f5521a5d49b4`
+- Image: `asia-northeast3-docker.pkg.dev/trans-prod-260616-3fa1/trans-backend/trans-backend:efeaad761a59c5f18e4e8a359a42a8fb5f4e2efc`
 - Runtime service account: `trans-runtime@trans-prod-260616-3fa1.iam.gserviceaccount.com`
 - Execution environment: Gen 2
 - Scaling: min `0`, max `3`
@@ -46,7 +46,7 @@ processing migration.
 ### Background Job
 
 - Job: `trans-background-job`
-- Image: `asia-northeast3-docker.pkg.dev/trans-prod-260616-3fa1/trans-backend/trans-backend:d840d561fa05281749a3cf2c68b4f5521a5d49b4`
+- Image: `asia-northeast3-docker.pkg.dev/trans-prod-260616-3fa1/trans-backend/trans-backend:efeaad761a59c5f18e4e8a359a42a8fb5f4e2efc`
 - Runtime role: `job`
 - Runtime service account: `trans-runtime@trans-prod-260616-3fa1.iam.gserviceaccount.com`
 - Resources: CPU `2`, memory `2Gi`
@@ -56,6 +56,7 @@ processing migration.
 - Task timeout: `86400s` (24 hours)
 - Cloud SQL connection: `trans-prod-260616-3fa1:asia-northeast3:trans-prod-db`
 - Cloud Storage mount: bucket `trans-prod-260616-3fa1-runtime` mounted at `/mnt/trans-storage`
+- VPC access connector: none
 
 The API starts this job through Cloud Run Jobs `run` with environment variable
 overrides. User-supplied AI keys are passed in the per-execution override
@@ -68,15 +69,18 @@ payload and are redacted before being stored in `task_executions`.
 - State: `ENABLED`
 - Target: Cloud Run Jobs `run` endpoint for `trans-background-job`
 - Payload: `BACKGROUND_TASK_NAME=backend.background.maintenance.run_maintenance`
+- Latest verified executions: `trans-background-job-lj9b4` and
+  `trans-background-job-jbbxg`, both completed successfully
 - Runs outbox processing, temp cleanup, and stalled job watchdog
 
 ### Migration Job
 
 - Job: `trans-migrate`
-- Latest execution: `trans-migrate-9kg6d`
-- Image: `asia-northeast3-docker.pkg.dev/trans-prod-260616-3fa1/trans-backend/trans-backend:d840d561fa05281749a3cf2c68b4f5521a5d49b4`
+- Latest execution: `trans-migrate-8fn54` (`EXECUTION_SUCCEEDED`)
+- Image: `asia-northeast3-docker.pkg.dev/trans-prod-260616-3fa1/trans-backend/trans-backend:efeaad761a59c5f18e4e8a359a42a8fb5f4e2efc`
 - Runtime role: `migrate`
 - Runs Alembic migrations with `RUN_MIGRATIONS=true`
+- VPC access connector: none
 
 ## Runtime Environment
 
@@ -116,6 +120,7 @@ Role-specific values:
 ## Network
 
 - Cloud Run connects to Cloud SQL through the Cloud SQL connector.
+- Cloud Run service and job templates do not use a Serverless VPC connector.
 - Redis, Memorystore, and Serverless VPC connector are no longer used by the
   application runtime.
 - Removed resources: `trans-worker`, `trans-beat`, `trans-prod-redis`,
@@ -136,7 +141,7 @@ Role-specific values:
 - Location: `asia-northeast3`
 - Format: Docker
 - Mode: standard repository
-- Latest deployed image tag: `d840d561fa05281749a3cf2c68b4f5521a5d49b4`
+- Latest deployed image tag: `efeaad761a59c5f18e4e8a359a42a8fb5f4e2efc`
 
 ## Secret Manager
 
@@ -194,7 +199,8 @@ GitHub Actions:
 
 - Workflow: `.github/workflows/deploy-gcp.yml`
 - Trigger: push to `main`, or manual `workflow_dispatch`
-- Last verified deployment commit: `d840d561fa05281749a3cf2c68b4f5521a5d49b4`
+- Last verified deployment commit: `efeaad761a59c5f18e4e8a359a42a8fb5f4e2efc`
+- Last verified GitHub Actions run: `27603642843` (`success`)
 
 ## External Cutover
 
@@ -211,8 +217,12 @@ Latest verification after the Cloud Run Jobs migration:
 - `catrans.me` returns HTTP `200`
 - `GEMINI_API_KEY` no longer appears in Cloud Run API or migration job env
 - `GEMINI_API_KEY` no longer exists in GCP Secret Manager
-- Background maintenance execution completed successfully through Cloud
+- Migration job `trans-migrate-8fn54` completed successfully.
+- Background maintenance executions completed successfully through Cloud
   Scheduler and Cloud Run Jobs.
+- Cloud Run Job templates no longer contain the deleted
+  `trans-prod-connector` VPC connector annotation.
+- GitHub Actions deploy run `27603642843` completed successfully from `main`.
 - Old Cloud Run worker pools, Memorystore Redis, and Serverless VPC connector
   were deleted.
 
