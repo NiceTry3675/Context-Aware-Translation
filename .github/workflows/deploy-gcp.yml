@@ -254,7 +254,7 @@ jobs:
                 --http-method POST \
                 --oauth-service-account-email "${RUNTIME_SERVICE_ACCOUNT}" \
                 --oauth-token-scope "https://www.googleapis.com/auth/cloud-platform" \
-                --headers "Content-Type=application/json" \
+                --update-headers "Content-Type=application/json" \
                 --message-body "${body}"
             else
               gcloud scheduler jobs create http "${SCHEDULER_JOB}" \
