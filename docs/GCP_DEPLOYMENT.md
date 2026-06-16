@@ -9,7 +9,7 @@ frontend on Vercel.
 - Cloud Run job: on-demand background runner for translation, validation,
   post-editing, illustrations, events, and maintenance.
 - Cloud Run job: Alembic migration runner.
-- Cloud Scheduler: triggers the maintenance Cloud Run job every 5 minutes.
+- Cloud Scheduler: triggers the maintenance Cloud Run job hourly.
 - Cloud SQL for PostgreSQL: production database.
 - Cloud Storage bucket mounted at `/mnt/trans-storage`: uploads, job logs, outputs, and legacy translated files.
 - Secret Manager: runtime secrets injected into Cloud Run.
@@ -101,7 +101,8 @@ Optional scaling variables:
 
 ```text
 CLOUD_RUN_API_MIN_INSTANCES=0
-CLOUD_RUN_API_MAX_INSTANCES=3
+CLOUD_RUN_API_MAX_INSTANCES=5
+CLOUD_SCHEDULER_MAINTENANCE_SCHEDULE=0 * * * *
 CLOUD_RUN_BACKGROUND_JOB_TIMEOUT=86400s
 ```
 

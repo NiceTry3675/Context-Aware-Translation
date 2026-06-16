@@ -1,6 +1,6 @@
 # GCP Production Configuration Report
 
-Generated: 2026-06-16 17:28 KST
+Generated: 2026-06-16 18:12 KST
 
 This report describes the production GCP configuration for the
 Context-Aware Translation backend after the Cloud Run Jobs background
@@ -36,7 +36,7 @@ processing migration.
 - Image: `asia-northeast3-docker.pkg.dev/trans-prod-260616-3fa1/trans-backend/trans-backend:8f7740870cfda653f6456c58976845302155744a`
 - Runtime service account: `trans-runtime@trans-prod-260616-3fa1.iam.gserviceaccount.com`
 - Execution environment: Gen 2
-- Scaling: min `0`, max `3`
+- Scaling: min `0`, max `5`
 - Resources: CPU `1`, memory `1Gi`
 - Cloud SQL connection: `trans-prod-260616-3fa1:asia-northeast3:trans-prod-db`
 - Cloud Storage mount: bucket `trans-prod-260616-3fa1-runtime` mounted at `/mnt/trans-storage`
@@ -65,7 +65,7 @@ payload and are redacted before being stored in `task_executions`.
 ### Maintenance Scheduler
 
 - Scheduler job: `trans-maintenance`
-- Schedule: every 5 minutes
+- Schedule: hourly (`0 * * * *`)
 - State: `ENABLED`
 - Target: Cloud Run Jobs `run` endpoint for `trans-background-job`
 - Payload: `BACKGROUND_TASK_NAME=backend.background.maintenance.run_maintenance`

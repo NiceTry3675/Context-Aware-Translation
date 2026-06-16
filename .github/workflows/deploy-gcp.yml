@@ -25,8 +25,9 @@ env:
   GCS_MOUNT_PATH: /mnt/trans-storage
   CORS_ORIGINS: ${{ vars.CORS_ORIGINS }}
   API_MIN_INSTANCES: ${{ vars.CLOUD_RUN_API_MIN_INSTANCES || '0' }}
-  API_MAX_INSTANCES: ${{ vars.CLOUD_RUN_API_MAX_INSTANCES || '3' }}
+  API_MAX_INSTANCES: ${{ vars.CLOUD_RUN_API_MAX_INSTANCES || '5' }}
   BACKGROUND_JOB_TIMEOUT: ${{ vars.CLOUD_RUN_BACKGROUND_JOB_TIMEOUT || '86400s' }}
+  MAINTENANCE_SCHEDULE: ${{ vars.CLOUD_SCHEDULER_MAINTENANCE_SCHEDULE || '0 * * * *' }}
 
 jobs:
   deploy:
@@ -248,7 +249,7 @@ jobs:
               gcloud scheduler jobs update http "${SCHEDULER_JOB}" \
                 --project "${GCP_PROJECT_ID}" \
                 --location "${GCP_REGION}" \
-                --schedule "*/5 * * * *" \
+                --schedule "${MAINTENANCE_SCHEDULE}" \
                 --time-zone "Asia/Seoul" \
                 --uri "${run_uri}" \
                 --http-method POST \
@@ -260,7 +261,7 @@ jobs:
               gcloud scheduler jobs create http "${SCHEDULER_JOB}" \
                 --project "${GCP_PROJECT_ID}" \
                 --location "${GCP_REGION}" \
-                --schedule "*/5 * * * *" \
+                --schedule "${MAINTENANCE_SCHEDULE}" \
                 --time-zone "Asia/Seoul" \
                 --uri "${run_uri}" \
                 --http-method POST \
