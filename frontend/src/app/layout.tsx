@@ -1,21 +1,26 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ClerkProvider } from '@clerk/nextjs';
-import { koKR } from "@clerk/localizations";
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import theme from '../theme';
+import { koKR } from '@clerk/localizations';
 import { Analytics } from '@vercel/analytics/react';
-import AnnouncementHandler from './components/AnnouncementHandler';
-import { Inter } from 'next/font/google';
+import { Noto_Sans_KR } from 'next/font/google';
 
-const inter = Inter({ subsets: ["latin"] });
+const notoSansKr = Noto_Sans_KR({
+  subsets: ['latin'],
+  display: 'swap',
+  weight: ['400', '600', '700'],
+});
 
 
 export const metadata: Metadata = {
-  title: "냥번역 - Context-Aware AI Novel Translator",
-  description: "소설 번역을 위한 AI 번역 서비스",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=5",
+  title: "냥번역 - 서비스 종료 안내",
+  description: "냥번역 서비스 운영 종료 안내",
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({
@@ -25,14 +30,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body className={inter.className}>
+      <body className={notoSansKr.className}>
         <ClerkProvider localization={koKR}>
-          <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <AnnouncementHandler />
-            {children}
-            <Analytics />
-          </ThemeProvider>
+          {children}
+          <Analytics />
         </ClerkProvider>
       </body>
     </html>
